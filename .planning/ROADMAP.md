@@ -14,7 +14,7 @@ None (no domain expertise files configured)
 - Integer phases (1, 2, 3): Planned milestone work
 - Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
 
-- [ ] **Phase 1: Foundation** - Project setup, Electron shell, React 19, TypeScript config, build tooling
+- [x] **Phase 1: Foundation** - Project setup, TypeScript config, build tooling, infrastructure services ✓
 - [ ] **Phase 2: Infrastructure** - File system ops, process runner, git worktree isolation, LSP client
 - [ ] **Phase 3: Persistence** - SQLite + Drizzle ORM, STATE.md format, checkpoints, long-term memory
 - [ ] **Phase 4: Event System** - EventBus implementation, event types, pub/sub infrastructure
@@ -208,7 +208,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 0/TBD | Not started | - |
+| 1. Foundation | 8/8 | Complete | 2026-01-14 |
 | 2. Infrastructure | 0/TBD | Not started | - |
 | 3. Persistence | 0/TBD | Not started | - |
 | 4. Event System | 0/TBD | Not started | - |
