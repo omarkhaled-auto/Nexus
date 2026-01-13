@@ -53,7 +53,8 @@ None yet.
 
 ### Pending Todos
 
-None yet.
+1 critical todo pending:
+- **Hotfix - Add missing type fields before Phase 2** (types) - Task.type, Requirement fields, Feature.complexity
 
 ### Blockers/Concerns
 
