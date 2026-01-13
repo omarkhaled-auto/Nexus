@@ -30,6 +30,11 @@ export type FeatureStatus =
   | 'human-review'
   | 'done';
 
+// Feature complexity - determines decomposition strategy
+export type FeatureComplexity = 'simple' | 'complex';
+// simple: 1-3 tasks, straightforward implementation
+// complex: requires decomposition into sub-features, 4+ tasks
+
 export interface Project {
   id: string;
   name: string;
@@ -53,6 +58,7 @@ export interface Feature {
   description: string;
   priority: Priority;
   status: FeatureStatus;
+  complexity: FeatureComplexity;
   subFeatures: SubFeature[];
   estimatedTasks: number;
   completedTasks: number;
@@ -76,6 +82,8 @@ export interface Requirement {
   description: string;
   priority: Priority;
   source?: string; // Interview question or context
+  userStories: string[]; // User stories derived from requirement
+  acceptanceCriteria: string[]; // Criteria for verifying requirement is met
   linkedFeatures: string[];
   validated: boolean;
   createdAt: Date;

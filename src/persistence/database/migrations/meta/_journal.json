@@ -8,6 +8,13 @@
       "when": 1768342300219,
       "tag": "0000_premium_mariko_yashida",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1768343414845,
+      "tag": "0001_quiet_black_panther",
+      "breakpoints": true
     }
   ]
 }

@@ -32,6 +32,10 @@ export const features = sqliteTable('features', {
     .notNull()
     .default('should'),
   status: text('status').notNull().default('backlog'),
+  complexity: text('complexity')
+    .$type<'simple' | 'complex'>()
+    .notNull()
+    .default('simple'),
   estimatedTasks: integer('estimated_tasks').default(0),
   completedTasks: integer('completed_tasks').default(0),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
@@ -64,6 +68,10 @@ export const tasks = sqliteTable('tasks', {
   subFeatureId: text('sub_feature_id').references(() => subFeatures.id),
   name: text('name').notNull(),
   description: text('description'),
+  type: text('type')
+    .$type<'auto' | 'checkpoint' | 'tdd'>()
+    .notNull()
+    .default('auto'),
   status: text('status').notNull().default('pending'),
   size: text('size').$type<'atomic' | 'small'>().notNull().default('small'),
   assignedAgent: text('assigned_agent'),
@@ -129,6 +137,8 @@ export const requirements = sqliteTable('requirements', {
   description: text('description').notNull(),
   priority: text('priority').notNull().default('medium'),
   source: text('source'),
+  userStories: text('user_stories'), // JSON array of user stories
+  acceptanceCriteria: text('acceptance_criteria'), // JSON array of acceptance criteria
   linkedFeatures: text('linked_features'), // JSON array
   validated: integer('validated', { mode: 'boolean' }).default(false),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),

@@ -513,8 +513,8 @@ export class GitService {
       deletions: result.deletions,
       files: result.files.map((file) => ({
         path: file.file,
-        insertions: file.insertions,
-        deletions: file.deletions,
+        insertions: 'insertions' in file ? file.insertions : 0,
+        deletions: 'deletions' in file ? file.deletions : 0,
       })),
     };
   }
@@ -556,7 +556,7 @@ export class GitService {
       if (result.failed) {
         return {
           success: false,
-          conflicts: result.conflicts,
+          conflicts: result.conflicts.map((c) => (typeof c === 'string' ? c : c.file ?? String(c))),
         };
       }
 

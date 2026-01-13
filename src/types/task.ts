@@ -16,6 +16,12 @@ export type TaskSize = 'atomic' | 'small';
 // small: 15-30 minutes, 1-2 files
 // NO task can exceed 30 minutes (HARD LIMIT)
 
+// Task type - distinguishes automated tasks from checkpoints
+export type TaskType = 'auto' | 'checkpoint' | 'tdd';
+// auto: fully automated task executed by agent
+// checkpoint: requires human verification or decision
+// tdd: test-driven development task (red-green-refactor cycle)
+
 export interface Task {
   id: string;
   projectId: string;
@@ -23,6 +29,7 @@ export interface Task {
   subFeatureId?: string;
   name: string;
   description: string;
+  type: TaskType;
   status: TaskStatus;
   size: TaskSize;
 
