@@ -11,6 +11,7 @@
  * - Clean error handling with typed exceptions
  */
 
+import { simpleGit, SimpleGit, SimpleGitOptions } from 'simple-git';
 import { normalize } from 'pathe';
 
 // ============================================================================
@@ -220,11 +221,43 @@ export class GitService {
   private readonly baseDir: string;
   private readonly binary?: string;
   private readonly logger?: Logger;
+  private readonly git: SimpleGit;
 
   constructor(options: GitServiceOptions) {
     this.baseDir = normalize(options.baseDir);
     this.binary = options.binary;
     this.logger = options.logger;
+
+    // Configure simple-git instance
+    const gitOptions: Partial<SimpleGitOptions> = {
+      baseDir: this.baseDir,
+      trimmed: true,
+    };
+
+    if (this.binary) {
+      gitOptions.binary = this.binary;
+    }
+
+    this.git = simpleGit(gitOptions);
+  }
+
+  /**
+   * Log a message if logger is available
+   */
+  private log(level: keyof Logger, message: string, ...args: unknown[]): void {
+    if (this.logger) {
+      this.logger[level](message, ...args);
+    }
+  }
+
+  /**
+   * Ensure path is a git repository before operations
+   */
+  private async ensureRepository(): Promise<void> {
+    const isRepo = await this.isRepository();
+    if (!isRepo) {
+      throw new NotARepositoryError(this.baseDir);
+    }
   }
 
   // ==========================================================================
@@ -235,7 +268,13 @@ export class GitService {
    * Check if path is inside a git repository
    */
   async isRepository(): Promise<boolean> {
-    throw new Error('Not implemented');
+    this.log('debug', `Checking if ${this.baseDir} is a git repository`);
+    try {
+      const result = await this.git.checkIsRepo();
+      return result;
+    } catch {
+      return false;
+    }
   }
 
   /**
@@ -243,7 +282,21 @@ export class GitService {
    * @throws NotARepositoryError if not in a git repository
    */
   async status(): Promise<GitStatus> {
-    throw new Error('Not implemented');
+    this.log('debug', `Getting status for ${this.baseDir}`);
+    await this.ensureRepository();
+
+    const result = await this.git.status();
+
+    return {
+      current: result.current || '',
+      tracking: result.tracking || undefined,
+      staged: [...result.staged, ...result.created],
+      modified: result.modified,
+      untracked: result.not_added,
+      conflicted: result.conflicted,
+      ahead: result.ahead,
+      behind: result.behind,
+    };
   }
 
   /**
@@ -251,7 +304,11 @@ export class GitService {
    * @throws NotARepositoryError if not in a git repository
    */
   async currentBranch(): Promise<string> {
-    throw new Error('Not implemented');
+    this.log('debug', `Getting current branch for ${this.baseDir}`);
+    await this.ensureRepository();
+
+    const result = await this.git.branch();
+    return result.current;
   }
 
   // ==========================================================================
@@ -264,7 +321,16 @@ export class GitService {
    * @throws NotARepositoryError if not in a git repository
    */
   async createBranch(name: string, from?: string): Promise<void> {
-    throw new Error('Not implemented');
+    this.log('debug', `Creating branch ${name}${from ? ` from ${from}` : ''}`);
+    await this.ensureRepository();
+
+    if (from) {
+      // Create branch from specified ref
+      await this.git.branch([name, from]);
+    } else {
+      // Create branch from current HEAD
+      await this.git.branch([name]);
+    }
   }
 
   /**
@@ -273,7 +339,16 @@ export class GitService {
    * @throws BranchNotFoundError if branch does not exist
    */
   async checkoutBranch(name: string): Promise<void> {
-    throw new Error('Not implemented');
+    this.log('debug', `Checking out branch ${name}`);
+    await this.ensureRepository();
+
+    // Check if branch exists
+    const branches = await this.git.branchLocal();
+    if (!branches.all.includes(name)) {
+      throw new BranchNotFoundError(name);
+    }
+
+    await this.git.checkout(name);
   }
 
   /**
@@ -283,7 +358,24 @@ export class GitService {
    * @throws BranchNotFoundError if branch does not exist
    */
   async deleteBranch(name: string, force?: boolean): Promise<void> {
-    throw new Error('Not implemented');
+    this.log('debug', `Deleting branch ${name}${force ? ' (force)' : ''}`);
+    await this.ensureRepository();
+
+    // Check if branch exists
+    const branches = await this.git.branchLocal();
+    if (!branches.all.includes(name)) {
+      throw new BranchNotFoundError(name);
+    }
+
+    try {
+      await this.git.deleteLocalBranch(name, force ?? false);
+    } catch (error) {
+      // Re-throw with more context if it's not a force delete issue
+      if (!force) {
+        throw error;
+      }
+      throw new GitError(`Failed to delete branch ${name}: ${(error as Error).message}`);
+    }
   }
 
   /**
@@ -291,7 +383,16 @@ export class GitService {
    * @throws NotARepositoryError if not in a git repository
    */
   async listBranches(): Promise<BranchInfo[]> {
-    throw new Error('Not implemented');
+    this.log('debug', `Listing branches for ${this.baseDir}`);
+    await this.ensureRepository();
+
+    const result = await this.git.branchLocal();
+
+    return result.all.map((name) => ({
+      name,
+      current: name === result.current,
+      commit: result.branches[name]?.commit || '',
+    }));
   }
 
   // ==========================================================================
@@ -304,7 +405,14 @@ export class GitService {
    * @throws NotARepositoryError if not in a git repository
    */
   async stageFiles(files: string[] | 'all'): Promise<void> {
-    throw new Error('Not implemented');
+    this.log('debug', `Staging files: ${files === 'all' ? 'all' : files.join(', ')}`);
+    await this.ensureRepository();
+
+    if (files === 'all') {
+      await this.git.add('.');
+    } else {
+      await this.git.add(files);
+    }
   }
 
   /**
@@ -313,7 +421,22 @@ export class GitService {
    * @throws CommitError if nothing to commit
    */
   async commit(message: string): Promise<string> {
-    throw new Error('Not implemented');
+    this.log('debug', `Creating commit: ${message}`);
+    await this.ensureRepository();
+
+    // Check if there's anything to commit
+    const status = await this.git.status();
+    if (status.staged.length === 0 && status.created.length === 0) {
+      throw new CommitError('Nothing to commit');
+    }
+
+    try {
+      const result = await this.git.commit(message);
+      return result.commit;
+    } catch (error) {
+      const errMsg = (error as Error).message;
+      throw new CommitError(errMsg);
+    }
   }
 
   /**
@@ -322,7 +445,18 @@ export class GitService {
    * @throws NotARepositoryError if not in a git repository
    */
   async getLog(limit?: number): Promise<CommitInfo[]> {
-    throw new Error('Not implemented');
+    this.log('debug', `Getting log${limit ? ` (limit: ${limit})` : ''}`);
+    await this.ensureRepository();
+
+    const options = limit ? { maxCount: limit } : {};
+    const result = await this.git.log(options);
+
+    return result.all.map((commit) => ({
+      hash: commit.hash,
+      message: commit.message,
+      author: commit.author_name,
+      date: new Date(commit.date),
+    }));
   }
 
   // ==========================================================================
@@ -334,7 +468,22 @@ export class GitService {
    * @throws NotARepositoryError if not in a git repository
    */
   async diff(options?: DiffOptions): Promise<string> {
-    throw new Error('Not implemented');
+    this.log('debug', `Getting diff`, options);
+    await this.ensureRepository();
+
+    const args: string[] = [];
+
+    if (options?.ref1 && options?.ref2) {
+      // Diff between two refs
+      args.push(options.ref1, options.ref2);
+    } else if (options?.staged) {
+      // Staged changes
+      args.push('--cached');
+    }
+    // Default: unstaged changes (no args needed)
+
+    const result = await this.git.diff(args);
+    return result;
   }
 
   /**
@@ -342,7 +491,32 @@ export class GitService {
    * @throws NotARepositoryError if not in a git repository
    */
   async diffStat(options?: DiffOptions): Promise<DiffStat> {
-    throw new Error('Not implemented');
+    this.log('debug', `Getting diff stat`, options);
+    await this.ensureRepository();
+
+    const args: string[] = [];
+
+    if (options?.ref1 && options?.ref2) {
+      // Diff between two refs
+      args.push(options.ref1, options.ref2);
+    } else if (options?.staged) {
+      // Staged changes
+      args.push('--cached');
+    }
+    // Default: unstaged changes (no args needed)
+
+    const result = await this.git.diffSummary(args);
+
+    return {
+      filesChanged: result.files.length,
+      insertions: result.insertions,
+      deletions: result.deletions,
+      files: result.files.map((file) => ({
+        path: file.file,
+        insertions: file.insertions,
+        deletions: file.deletions,
+      })),
+    };
   }
 
   // ==========================================================================
@@ -356,7 +530,52 @@ export class GitService {
    * @throws BranchNotFoundError if branch does not exist
    */
   async merge(branch: string, options?: MergeOptions): Promise<MergeResult> {
-    throw new Error('Not implemented');
+    this.log('debug', `Merging branch ${branch}`, options);
+    await this.ensureRepository();
+
+    // Check if branch exists
+    const branches = await this.git.branchLocal();
+    if (!branches.all.includes(branch)) {
+      throw new BranchNotFoundError(branch);
+    }
+
+    const args: string[] = [branch];
+
+    if (options?.noFf) {
+      args.unshift('--no-ff');
+    }
+
+    if (options?.message) {
+      args.unshift('-m', options.message);
+    }
+
+    try {
+      const result = await this.git.merge(args);
+
+      // Check if merge was successful
+      if (result.failed) {
+        return {
+          success: false,
+          conflicts: result.conflicts,
+        };
+      }
+
+      return {
+        success: true,
+        mergeCommit: result.merges?.[0],
+      };
+    } catch (error) {
+      // Check for merge conflicts
+      const status = await this.git.status();
+      if (status.conflicted.length > 0) {
+        return {
+          success: false,
+          conflicts: status.conflicted,
+        };
+      }
+
+      throw new GitError(`Merge failed: ${(error as Error).message}`);
+    }
   }
 
   /**
@@ -364,6 +583,13 @@ export class GitService {
    * @throws NotARepositoryError if not in a git repository
    */
   async abortMerge(): Promise<void> {
-    throw new Error('Not implemented');
+    this.log('debug', `Aborting merge`);
+    await this.ensureRepository();
+
+    try {
+      await this.git.merge(['--abort']);
+    } catch (error) {
+      throw new GitError(`Failed to abort merge: ${(error as Error).message}`);
+    }
   }
 }
