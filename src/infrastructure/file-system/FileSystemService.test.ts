@@ -404,7 +404,9 @@ describe('FileSystemService', () => {
         absolute: true,
       });
 
-      expect(results.every(f => f.startsWith('/'))).toBe(true);
+      // Check for absolute paths (cross-platform: / on Unix, C:\ on Windows)
+      const isAbsolute = (p: string) => p.startsWith('/') || /^[A-Za-z]:[\\/]/.test(p);
+      expect(results.every(isAbsolute)).toBe(true);
     });
   });
 

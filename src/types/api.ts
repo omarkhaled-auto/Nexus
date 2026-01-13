@@ -55,7 +55,7 @@ export interface UpdateProjectRequest {
   description?: string;
 }
 
-export interface ProjectResponse extends Project {}
+export type ProjectResponse = Project;
 
 export interface ProjectFilterParams extends PaginationParams {
   status?: Project['status'] | Project['status'][];
@@ -79,7 +79,7 @@ export interface UpdateFeatureRequest {
   priority?: Priority;
 }
 
-export interface FeatureResponse extends Feature {}
+export type FeatureResponse = Feature;
 
 export interface FeatureFilterParams extends PaginationParams {
   projectId?: string;
@@ -106,7 +106,7 @@ export interface UpdateTaskRequest {
   status?: TaskStatus;
 }
 
-export interface TaskResponse extends Task {}
+export type TaskResponse = Task;
 
 export interface TaskFilterParams extends PaginationParams {
   projectId?: string;
@@ -125,7 +125,7 @@ export interface SpawnAgentRequest {
   taskId?: string;
 }
 
-export interface AgentResponse extends Agent {}
+export type AgentResponse = Agent;
 
 export interface AgentFilterParams extends PaginationParams {
   type?: AgentType | AgentType[];
@@ -186,7 +186,7 @@ export interface UpdateRequirementRequest {
   validated?: boolean;
 }
 
-export interface RequirementResponse extends Requirement {}
+export type RequirementResponse = Requirement;
 
 export interface RequirementFilterParams extends PaginationParams {
   projectId?: string;

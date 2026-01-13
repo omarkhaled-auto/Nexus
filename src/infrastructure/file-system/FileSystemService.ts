@@ -6,9 +6,12 @@
  * - fs-extra: Enhanced file operations
  * - fast-glob: Glob pattern matching
  * - chokidar: File watching
- *
- * TDD RED Phase: Stub implementation - all methods throw NotImplementedError
  */
+
+import fse from 'fs-extra';
+import { normalize, dirname } from 'pathe';
+import fg from 'fast-glob';
+import chokidar from 'chokidar';
 
 // ============================================================================
 // Custom Error Types
@@ -21,6 +24,8 @@ export class FileSystemError extends Error {
   constructor(message: string) {
     super(message);
     this.name = 'FileSystemError';
+    // Restore prototype chain for instanceof checks
+    Object.setPrototypeOf(this, new.target.prototype);
   }
 }
 
@@ -122,7 +127,7 @@ export interface FileSystemServiceOptions {
 }
 
 // ============================================================================
-// Service Implementation (Stub)
+// Service Implementation
 // ============================================================================
 
 /**
@@ -138,83 +143,203 @@ export class FileSystemService {
   }
 
   /**
+   * Normalize a path for cross-platform compatibility
+   */
+  private normalizePath(path: string): string {
+    return normalize(path);
+  }
+
+  /**
+   * Log a debug message if logger is available
+   */
+  private log(level: keyof Logger, message: string, ...args: unknown[]): void {
+    if (this.logger) {
+      this.logger[level](message, ...args);
+    }
+  }
+
+  /**
    * Read file contents as string
    * @throws FileNotFoundError if file does not exist
    */
-  async readFile(_path: string): Promise<string> {
-    throw new Error('Not implemented');
+  async readFile(path: string): Promise<string> {
+    const normalizedPath = this.normalizePath(path);
+    this.log('debug', `Reading file: ${normalizedPath}`);
+
+    try {
+      const content = await fse.readFile(normalizedPath, 'utf-8');
+      return content;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        throw new FileNotFoundError(normalizedPath);
+      }
+      throw error;
+    }
   }
 
   /**
    * Read file contents as Buffer (for binary files)
    * @throws FileNotFoundError if file does not exist
    */
-  async readFileBuffer(_path: string): Promise<Buffer> {
-    throw new Error('Not implemented');
+  async readFileBuffer(path: string): Promise<Buffer> {
+    const normalizedPath = this.normalizePath(path);
+    this.log('debug', `Reading file buffer: ${normalizedPath}`);
+
+    try {
+      const content = await fse.readFile(normalizedPath);
+      return content;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        throw new FileNotFoundError(normalizedPath);
+      }
+      throw error;
+    }
   }
 
   /**
    * Write content to file (creates parent directories if needed)
    * @throws WriteError if write operation fails
    */
-  async writeFile(_path: string, _content: string | Buffer): Promise<void> {
-    throw new Error('Not implemented');
+  async writeFile(path: string, content: string | Buffer): Promise<void> {
+    const normalizedPath = this.normalizePath(path);
+    this.log('debug', `Writing file: ${normalizedPath}`);
+
+    try {
+      // Ensure parent directory exists
+      const dir = dirname(normalizedPath);
+      await fse.ensureDir(dir);
+
+      // Write the file
+      await fse.writeFile(normalizedPath, content);
+    } catch (error) {
+      const err = error as NodeJS.ErrnoException;
+      throw new WriteError(normalizedPath, err.message || 'Unknown error');
+    }
   }
 
   /**
    * Check if path exists
    */
-  async exists(_path: string): Promise<boolean> {
-    throw new Error('Not implemented');
+  async exists(path: string): Promise<boolean> {
+    const normalizedPath = this.normalizePath(path);
+    this.log('debug', `Checking exists: ${normalizedPath}`);
+
+    return fse.pathExists(normalizedPath);
   }
 
   /**
    * Check if path is a directory
    */
-  async isDirectory(_path: string): Promise<boolean> {
-    throw new Error('Not implemented');
+  async isDirectory(path: string): Promise<boolean> {
+    const normalizedPath = this.normalizePath(path);
+    this.log('debug', `Checking isDirectory: ${normalizedPath}`);
+
+    try {
+      const stat = await fse.stat(normalizedPath);
+      return stat.isDirectory();
+    } catch {
+      return false;
+    }
   }
 
   /**
    * Create directory (recursive by default)
    */
-  async mkdir(_path: string): Promise<void> {
-    throw new Error('Not implemented');
+  async mkdir(path: string): Promise<void> {
+    const normalizedPath = this.normalizePath(path);
+    this.log('debug', `Creating directory: ${normalizedPath}`);
+
+    await fse.ensureDir(normalizedPath);
   }
 
   /**
    * Remove file or directory (recursive for directories)
    */
-  async remove(_path: string): Promise<void> {
-    throw new Error('Not implemented');
+  async remove(path: string): Promise<void> {
+    const normalizedPath = this.normalizePath(path);
+    this.log('debug', `Removing: ${normalizedPath}`);
+
+    await fse.remove(normalizedPath);
   }
 
   /**
    * Copy file or directory
    */
-  async copy(_src: string, _dest: string): Promise<void> {
-    throw new Error('Not implemented');
+  async copy(src: string, dest: string): Promise<void> {
+    const normalizedSrc = this.normalizePath(src);
+    const normalizedDest = this.normalizePath(dest);
+    this.log('debug', `Copying: ${normalizedSrc} -> ${normalizedDest}`);
+
+    // Ensure parent directory of destination exists
+    const destDir = dirname(normalizedDest);
+    await fse.ensureDir(destDir);
+
+    await fse.copy(normalizedSrc, normalizedDest);
   }
 
   /**
    * Move file or directory
    */
-  async move(_src: string, _dest: string): Promise<void> {
-    throw new Error('Not implemented');
+  async move(src: string, dest: string): Promise<void> {
+    const normalizedSrc = this.normalizePath(src);
+    const normalizedDest = this.normalizePath(dest);
+    this.log('debug', `Moving: ${normalizedSrc} -> ${normalizedDest}`);
+
+    // Ensure parent directory of destination exists
+    const destDir = dirname(normalizedDest);
+    await fse.ensureDir(destDir);
+
+    await fse.move(normalizedSrc, normalizedDest);
   }
 
   /**
    * Find files matching glob pattern
    */
-  async glob(_pattern: string, _options?: GlobOptions): Promise<string[]> {
-    throw new Error('Not implemented');
+  async glob(pattern: string, options?: GlobOptions): Promise<string[]> {
+    this.log('debug', `Glob pattern: ${pattern}`, options);
+
+    try {
+      const results = await fg(pattern, {
+        cwd: options?.cwd,
+        ignore: options?.ignore,
+        absolute: options?.absolute ?? false,
+      });
+      return results;
+    } catch (error) {
+      const err = error as Error;
+      throw new GlobError(pattern, err.message || 'Unknown error');
+    }
   }
 
   /**
    * Watch for file changes
    * @returns Disposer function to stop watching
    */
-  watch(_path: string, _callback: WatchCallback): WatchDisposer {
-    throw new Error('Not implemented');
+  watch(path: string, callback: WatchCallback): WatchDisposer {
+    const normalizedPath = this.normalizePath(path);
+    this.log('debug', `Starting watch: ${normalizedPath}`);
+
+    const watcher = chokidar.watch(normalizedPath, {
+      ignoreInitial: true,
+      persistent: true,
+    });
+
+    watcher.on('add', (filePath) => {
+      callback({ type: 'add', path: filePath });
+    });
+
+    watcher.on('change', (filePath) => {
+      callback({ type: 'change', path: filePath });
+    });
+
+    watcher.on('unlink', (filePath) => {
+      callback({ type: 'unlink', path: filePath });
+    });
+
+    // Return disposer function
+    return () => {
+      this.log('debug', `Stopping watch: ${normalizedPath}`);
+      void watcher.close();
+    };
   }
 }
