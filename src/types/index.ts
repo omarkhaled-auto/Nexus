@@ -6,3 +6,9 @@ export * from './task';
 
 // Agent types
 export * from './agent';
+
+// Event types
+export * from './events';
+
+// API types
+export * from './api';
