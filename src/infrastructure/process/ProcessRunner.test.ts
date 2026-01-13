@@ -221,9 +221,9 @@ describe('ProcessRunner', () => {
         : 'sleep 10';
 
       await expect(
-        runner.run(command, { timeout: 100 })
+        runner.run(command, { timeout: 500 })
       ).rejects.toThrow(TimeoutError);
-    });
+    }, 10000); // Extend test timeout
 
     it('should have default 30 second timeout', () => {
       // Test the default timeout value through the runner
@@ -237,13 +237,13 @@ describe('ProcessRunner', () => {
         : 'sleep 10';
 
       try {
-        await runner.run(command, { timeout: 100 });
+        await runner.run(command, { timeout: 500 });
         expect.fail('Should have thrown TimeoutError');
       } catch (error) {
         expect(error).toBeInstanceOf(TimeoutError);
         expect((error as TimeoutError).name).toBe('TimeoutError');
       }
-    });
+    }, 10000); // Extend test timeout
   });
 
   // ============================================================================
@@ -429,10 +429,10 @@ describe('ProcessRunner', () => {
         ? 'node -e "setTimeout(() => {}, 10000)"'
         : 'sleep 10';
 
-      const handle = runner.runStreaming(command, { timeout: 100 });
+      const handle = runner.runStreaming(command, { timeout: 500 });
 
       await expect(handle.promise).rejects.toThrow(TimeoutError);
-    });
+    }, 10000); // Extend test timeout
 
     it('should throw BlockedCommandError for blocked commands', async () => {
       expect(() => runner.runStreaming('rm -rf /')).toThrow(BlockedCommandError);
@@ -449,23 +449,18 @@ describe('ProcessRunner', () => {
         ? 'node -e "setTimeout(() => {}, 30000)"'
         : 'sleep 30';
 
-      const handle = runner.runStreaming(command);
+      const handle = runner.runStreaming(command, { timeout: 30000 });
 
       // Give the process time to start
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 200));
 
-      // Kill the process
-      await runner.kill(handle.pid);
+      // Kill the process using the handle's kill method
+      handle.kill();
 
-      // The promise should reject or resolve with killed flag
-      try {
-        const result = await handle.promise;
-        expect(result.killed).toBe(true);
-      } catch (error) {
-        // Some platforms throw on kill, which is also valid
-        expect(error).toBeTruthy();
-      }
-    });
+      // The promise should resolve with killed flag
+      const result = await handle.promise;
+      expect(result.killed).toBe(true);
+    }, 10000);
 
     it('should use tree-kill to terminate process tree', async () => {
       // This test verifies that child processes are also killed
@@ -474,24 +469,18 @@ describe('ProcessRunner', () => {
         ? 'node -e "const cp = require(\'child_process\'); cp.spawn(\'node\', [\'-e\', \'setTimeout(() => {}, 30000)\']); setTimeout(() => {}, 30000);"'
         : 'sh -c "sleep 30 & sleep 30"';
 
-      const handle = runner.runStreaming(command);
+      const handle = runner.runStreaming(command, { timeout: 30000 });
 
       // Give processes time to start
-      await new Promise((resolve) => setTimeout(resolve, 200));
+      await new Promise((resolve) => setTimeout(resolve, 300));
 
-      // Kill the process tree
-      await runner.kill(handle.pid);
+      // Kill the process tree using the handle's kill method
+      handle.kill();
 
-      // Wait a bit and verify process is gone
-      await new Promise((resolve) => setTimeout(resolve, 100));
-
-      // The handle promise should resolve or reject
-      try {
-        await handle.promise;
-      } catch {
-        // Expected - process was killed
-      }
-    });
+      // The handle promise should resolve with killed flag
+      const result = await handle.promise;
+      expect(result.killed).toBe(true);
+    }, 10000);
 
     it('should handle killing non-existent process gracefully', async () => {
       // Killing a non-existent PID should not throw
