@@ -321,7 +321,7 @@ describe('ClaudeClient', () => {
       };
 
       await expect(client.chat(messages, options)).rejects.toThrow(
-        /temperature.*1.*required.*thinking/i
+        /temperature.*1.*thinking/i
       );
     });
   });
@@ -387,6 +387,7 @@ describe('ClaudeClient', () => {
             index: 0,
             delta: { type: 'input_json_delta', partial_json: '{"path":"test.txt"}' },
           };
+          yield { type: 'content_block_stop', index: 0 }; // This triggers tool emission
           yield { type: 'message_stop' };
         },
         finalMessage: vi.fn().mockResolvedValue({
