@@ -202,6 +202,7 @@ export const projectsRelations = relations(projects, ({ many }) => ({
   requirements: many(requirements),
   metrics: many(metrics),
   sessions: many(sessions),
+  episodes: many(episodes),
 }));
 
 export const featuresRelations = relations(features, ({ one, many }) => ({
@@ -265,6 +266,36 @@ export const sessionsRelations = relations(sessions, ({ one }) => ({
 }));
 
 // ============================================================================
+// Episodes table (for episodic memory)
+// ============================================================================
+export const episodes = sqliteTable('episodes', {
+  id: text('id').primaryKey(),
+  projectId: text('project_id')
+    .notNull()
+    .references(() => projects.id, { onDelete: 'cascade' }),
+  type: text('type')
+    .$type<'code_generation' | 'error_fix' | 'review_feedback' | 'decision' | 'research'>()
+    .notNull(),
+  content: text('content').notNull(),
+  summary: text('summary'), // Short summary for display
+  embedding: text('embedding'), // JSON array of floats (1536 dimensions)
+  context: text('context'), // JSON metadata
+  taskId: text('task_id'),
+  agentId: text('agent_id'),
+  importance: real('importance').default(1.0), // For pruning priority
+  accessCount: integer('access_count').default(0),
+  lastAccessedAt: integer('last_accessed_at', { mode: 'timestamp' }),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+});
+
+export const episodesRelations = relations(episodes, ({ one }) => ({
+  project: one(projects, {
+    fields: [episodes.projectId],
+    references: [projects.id],
+  }),
+}));
+
+// ============================================================================
 // Type exports for use in application code
 // ============================================================================
 export type Project = typeof projects.$inferSelect;
@@ -293,3 +324,6 @@ export type NewMetric = typeof metrics.$inferInsert;
 
 export type Session = typeof sessions.$inferSelect;
 export type NewSession = typeof sessions.$inferInsert;
+
+export type Episode = typeof episodes.$inferSelect;
+export type NewEpisode = typeof episodes.$inferInsert;
