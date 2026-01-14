@@ -5,14 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-01-14)
 
 **Core value:** Enable anyone to build production-quality software by describing what they want in natural language
-**Current focus:** Phase 4 — Event System
+**Current focus:** Phase 4 — Orchestration
 
 ## Current Position
 
-Phase: 4 of 12 (Event System)
+Phase: 4 of 12 (Orchestration)
 Plan: 0 of 3 (plans created, not yet executed)
 Status: Phase 4 planned
-Last activity: 2026-01-14 — Phase 4 plans created
+Last activity: 2026-01-14 — Phase 4 plans corrected (BUILD-011 + BUILD-012)
 
 Progress: ██░░░░░░░░ 25%
 

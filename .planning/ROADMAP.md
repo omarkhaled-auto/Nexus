@@ -17,11 +17,11 @@ None (no domain expertise files configured)
 - [x] **Phase 1: Foundation** - Project setup, TypeScript config, build tooling, infrastructure services ✓
 - [x] **Phase 2: Persistence** - StateManager, CheckpointManager, MemorySystem, RequirementsDB ✓
 - [x] **Phase 3: LLM & Agents** - LLM clients (Claude/Gemini), agent runners, quality layer, QA loop ✓
-- [ ] **Phase 4: Event System** - EventBus implementation, event types, pub/sub infrastructure
-- [ ] **Phase 5: Agent Core** - Agent pool, lifecycle management, tool access system, model providers
-- [ ] **Phase 6: Planning Layer** - Task decomposition, dependency resolution, parallel wave calculation
-- [ ] **Phase 7: Execution Layer** - Single agent execution, QA loop (build/lint/test/review)
-- [ ] **Phase 8: Multi-Agent** - Concurrent agents, worktree coordination, merge handling
+- [ ] **Phase 4: Orchestration** - Planning layer + orchestration layer (BUILD-011, BUILD-012)
+- [ ] **Phase 5: UI Foundation** - Electron IPC, React/Vite, Zustand stores, routing (BUILD-013)
+- [ ] **Phase 6: Interview UI** - Genesis mode interview, requirements sidebar (BUILD-014)
+- [ ] **Phase 7: Kanban UI** - Evolution mode Kanban board, drag-drop (BUILD-015)
+- [ ] **Phase 8: Dashboard UI** - Progress metrics, agent status, event log (BUILD-016)
 - [ ] **Phase 9: Genesis Mode** - Interview engine, requirements database, research engine
 - [ ] **Phase 10: Evolution Mode** - Kanban board, feature management, drag-drop interface
 - [ ] **Phase 11: Dashboard** - Progress metrics, agent status grid, event log, cost tracking
@@ -73,135 +73,125 @@ Key deliverables:
 
 **Success Criteria**: Single agent completes a task through full QA loop
 
-### Phase 4: Event System
-**Goal**: Event-driven communication infrastructure for all layers
-**Depends on**: Phase 1
-**Research**: Unlikely (internal pub/sub patterns)
+### Phase 4: Orchestration
+**Goal**: Task planning and multi-agent orchestration (Master Book Sprint 4)
+**Depends on**: Phase 3
+**Research**: Unlikely (internal algorithms, established patterns)
+**Plans**: 3 total
+**BUILD Items**: BUILD-011 (Planning Layer, 20h) + BUILD-012 (Orchestration Layer, 28h)
+
+Key deliverables:
+- **BUILD-011 Planning Layer:**
+  - TaskDecomposer - Feature → SubFeature → Task breakdown, 30-min limit
+  - DependencyResolver - Topological sort, cycle detection, wave calculation
+  - TimeEstimator - AI-based estimation, historical calibration
+  - TaskSchemaAdapter
+- **BUILD-012 Orchestration Layer:**
+  - NexusCoordinator - Main orchestration entry point, Genesis/Evolution modes
+  - AgentPool - Spawn and manage up to 4 agents, worktree assignment
+  - TaskQueue - Priority queue with dependency awareness
+  - EventBus - Cross-layer event communication
+  - Bridges: AgentWorktreeBridge, PlanningExecutionBridge
+
+**Success Criteria**: Task decomposition works, dependency resolution correct, multiple agents coordinate in parallel, events flow through system.
+
+### Phase 5: UI Foundation
+**Goal**: Set up React/Electron foundation with routing and state (BUILD-013)
+**Depends on**: Phase 4
+**Research**: Unlikely (established Electron + React patterns)
 **Plans**: TBD
 
 Key deliverables:
-- EventBus singleton with typed events
-- Event type definitions for all system events
-- Subscription management with cleanup
-- Event logging for observability
-- IPC bridge between main/renderer processes
+- Electron main process with window management, IPC
+- React with Vite and shadcn/ui
+- Zustand stores (projectStore, taskStore, agentStore, uiStore)
+- UIBackendBridge for orchestration layer connection
+- Routing: Genesis → Interview → Dashboard, Evolution → Kanban → Dashboard
 
-### Phase 5: Agent Core
-**Goal**: Agent pool with lifecycle management and multi-provider support
-**Depends on**: Phase 3, Phase 4
-**Research**: Likely (Claude/Gemini API integration, Ralph ACP protocol)
-**Research topics**: Claude Agent SDK patterns, Gemini 2.5 Pro API, multi-provider abstraction
-**Plans**: TBD
-
-Key deliverables:
-- Agent base class with lifecycle (spawn, monitor, terminate)
-- Model provider abstraction (Claude Opus/Sonnet, Gemini)
-- Agent pool with max 4 concurrent agents
-- Per-agent tool access configuration
-- Agent state persistence
-- Ralph ACP protocol implementation
-
-### Phase 6: Planning Layer
-**Goal**: Intelligent task decomposition with dependency resolution
+### Phase 6: Interview UI
+**Goal**: Genesis mode interview interface (BUILD-014)
 **Depends on**: Phase 5
-**Research**: Unlikely (internal algorithms)
+**Research**: Unlikely (React chat patterns)
 **Plans**: TBD
 
 Key deliverables:
-- Task decomposition engine (30-min max enforcement)
-- Task sizing (Atomic: 5-15min, Small: 15-30min)
-- Dependency resolution with Kahn's algorithm
-- Parallel wave calculation for concurrent execution
-- Time estimation based on complexity
-- Feature complexity classification
+- Interview chat interface
+- Requirements sidebar with real-time capture
+- Category progress indicators
+- Scope estimation display
 
-### Phase 7: Execution Layer
-**Goal**: Single agent task execution with self-healing QA loop
-**Depends on**: Phase 6
-**Research**: Likely (Claude Agent SDK tool use patterns)
-**Research topics**: Claude tool use best practices, error recovery patterns, code review automation
+### Phase 7: Kanban UI
+**Goal**: Evolution mode Kanban board (BUILD-015)
+**Depends on**: Phase 5
+**Research**: Unlikely (React drag-drop patterns)
 **Plans**: TBD
 
 Key deliverables:
-- Single agent task executor
-- 4-stage QA loop: Build → Lint → Test → Review
-- Error classification and auto-fix attempts
-- AI-powered code review (Gemini 2.5 Pro)
-- Iteration tracking (max 50 per task)
-- Human escalation triggers
-
-### Phase 8: Multi-Agent
-**Goal**: Concurrent agent orchestration with isolated worktrees
-**Depends on**: Phase 7
-**Research**: Likely (git worktree patterns for parallel execution)
-**Research topics**: Git worktree best practices, merge conflict prevention, concurrent file access
-**Plans**: TBD
-
-Key deliverables:
-- Multi-agent orchestrator
-- Worktree-per-agent isolation
-- Branch naming: nexus/task/{taskId}/{timestamp}
-- Conflict-free merge strategies
-- Agent coordination and handoff
-- Resource contention handling
-
-### Phase 9: Genesis Mode
-**Goal**: Conversational interview engine for new application creation
-**Depends on**: Phase 8
-**Research**: Likely (conversational AI patterns, requirement extraction)
-**Research topics**: Structured conversation design, requirement categorization, MoSCoW prioritization
-**Plans**: TBD
-
-Key deliverables:
-- Conversational interview engine
-- Requirements database (6 categories)
-- MoSCoW prioritization system
-- Research engine for technical context
-- Automatic feature decomposition
-- Real-time requirements sidebar
-- Scope estimation with projections
-
-### Phase 10: Evolution Mode
-**Goal**: Kanban-based feature management for existing projects
-**Depends on**: Phase 8
-**Research**: Unlikely (React drag-drop with established patterns)
-**Plans**: TBD
-
-Key deliverables:
-- Kanban board UI (Backlog → In Progress → AI Review → Human Review → Done)
+- Kanban board (Backlog → In Progress → AI Review → Human Review → Done)
 - Drag-and-drop feature cards
-- Feature complexity classification
-- Manual feature addition/modification
-- Integration with planning layer
+- Feature complexity badges
+- Task breakdown view
 
-### Phase 11: Dashboard
-**Goal**: Real-time observability with metrics and status tracking
-**Depends on**: Phase 10
-**Research**: Unlikely (React + Zustand + shadcn/ui patterns)
+### Phase 8: Dashboard UI
+**Goal**: Real-time observability dashboard (BUILD-016)
+**Depends on**: Phase 5
+**Research**: Unlikely (React + charts)
 **Plans**: TBD
 
 Key deliverables:
-- Progress dashboard with real-time metrics
-- Agent status grid (activity, state)
-- Chronological event log
+- Progress metrics and charts
+- Agent status grid
+- Event log with filtering
 - Token usage and cost tracking
-- Task completion statistics
-- Velocity tracking
+
+### Phase 9: Interview Engine
+**Goal**: Genesis mode conversation engine backend
+**Depends on**: Phase 4
+**Research**: Likely (conversational AI patterns)
+**Plans**: TBD
+
+Key deliverables:
+- InterviewEngine - Conversational requirement capture
+- RequirementExtractor - AI-powered requirement parsing
+- ResearchEngine - Technical context gathering
+- Scope estimation algorithms
+
+### Phase 10: Human Checkpoints
+**Goal**: Checkpoint system and human review flow
+**Depends on**: Phase 4
+**Research**: Unlikely
+**Plans**: TBD
+
+Key deliverables:
+- 5 mandatory checkpoints (Foundation, Persistence, Single Agent, Multi-Agent, MVP)
+- Review request and approval flow
+- Escalation handling
+- Checkpoint UI integration
+
+### Phase 11: Integration & Testing
+**Goal**: End-to-end integration and comprehensive testing
+**Depends on**: Phases 5-10
+**Research**: Unlikely
+**Plans**: TBD
+
+Key deliverables:
+- End-to-end integration tests
+- Performance testing
+- Error boundary and recovery
+- Cross-platform validation
 
 ### Phase 12: Polish
-**Goal**: Final integration, human checkpoints, and production readiness
+**Goal**: Final polish and production readiness
 **Depends on**: Phase 11
-**Research**: Unlikely (Framer Motion, established patterns)
+**Research**: Unlikely (Framer Motion patterns)
 **Plans**: TBD
 
 Key deliverables:
-- 5 mandatory human checkpoints (Foundation, Persistence, Single Agent, Multi-Agent, MVP)
-- Review request and approval flow
 - Settings page with configuration
 - Framer Motion animations
-- End-to-end integration testing
-- Error boundary and recovery
-- Final bug fixes and polish
+- Final bug fixes
+- Documentation
+- Release preparation
 
 ## Progress
 
@@ -213,12 +203,12 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 1. Foundation | 8/8 | Complete | 2026-01-14 |
 | 2. Persistence | 3/3 | Complete | 2026-01-14 |
 | 3. LLM & Agents | 3/3 | Complete | 2026-01-14 |
-| 4. Event System | 0/TBD | Not started | - |
-| 5. Agent Core | 0/TBD | Not started | - |
-| 6. Planning Layer | 0/TBD | Not started | - |
-| 7. Execution Layer | 0/TBD | Not started | - |
-| 8. Multi-Agent | 0/TBD | Not started | - |
-| 9. Genesis Mode | 0/TBD | Not started | - |
-| 10. Evolution Mode | 0/TBD | Not started | - |
-| 11. Dashboard | 0/TBD | Not started | - |
+| 4. Orchestration | 0/3 | Planned | - |
+| 5. UI Foundation | 0/TBD | Not started | - |
+| 6. Interview UI | 0/TBD | Not started | - |
+| 7. Kanban UI | 0/TBD | Not started | - |
+| 8. Dashboard UI | 0/TBD | Not started | - |
+| 9. Interview Engine | 0/TBD | Not started | - |
+| 10. Human Checkpoints | 0/TBD | Not started | - |
+| 11. Integration & Testing | 0/TBD | Not started | - |
 | 12. Polish | 0/TBD | Not started | - |
