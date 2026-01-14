@@ -355,6 +355,90 @@ describe('StateManager', () => {
       expect(manager).toBeInstanceOf(StateManager);
     });
   });
+
+  // ============================================================================
+  // Continue Point Methods
+  // ============================================================================
+
+  describe('ContinuePoint', () => {
+    it('saveContinuePoint stores continue point', async () => {
+      const state = createTestState('proj-1');
+      await stateManager.saveState(state);
+
+      const continuePoint = createTestContinuePoint('proj-1', 'task-1');
+      stateManager.saveContinuePoint(continuePoint);
+
+      const loaded = stateManager.loadContinuePoint('proj-1');
+      expect(loaded).not.toBeNull();
+      expect(loaded!.projectId).toBe('proj-1');
+      expect(loaded!.taskId).toBe('task-1');
+    });
+
+    it('saveContinuePoint overwrites existing point for same project', async () => {
+      const state = createTestState('proj-1');
+      await stateManager.saveState(state);
+
+      const point1 = createTestContinuePoint('proj-1', 'task-1');
+      stateManager.saveContinuePoint(point1);
+
+      const point2 = createTestContinuePoint('proj-1', 'task-2');
+      point2.lastAction = 'Updated action';
+      stateManager.saveContinuePoint(point2);
+
+      const loaded = stateManager.loadContinuePoint('proj-1');
+      expect(loaded!.taskId).toBe('task-2');
+      expect(loaded!.lastAction).toBe('Updated action');
+    });
+
+    it('saveContinuePoint stores all fields correctly', async () => {
+      const state = createTestState('proj-1');
+      await stateManager.saveState(state);
+
+      const continuePoint = {
+        projectId: 'proj-1',
+        taskId: 'task-1',
+        lastAction: 'Editing function',
+        file: 'src/utils.ts',
+        line: 42,
+        functionName: 'processData',
+        nextSteps: ['Add error handling', 'Write tests'],
+        agentId: 'agent-1',
+        iterationCount: 5,
+        savedAt: new Date(),
+      };
+      stateManager.saveContinuePoint(continuePoint);
+
+      const loaded = stateManager.loadContinuePoint('proj-1');
+      expect(loaded!.file).toBe('src/utils.ts');
+      expect(loaded!.line).toBe(42);
+      expect(loaded!.functionName).toBe('processData');
+      expect(loaded!.nextSteps).toEqual(['Add error handling', 'Write tests']);
+      expect(loaded!.agentId).toBe('agent-1');
+      expect(loaded!.iterationCount).toBe(5);
+    });
+
+    it('loadContinuePoint returns null when no point exists', () => {
+      const loaded = stateManager.loadContinuePoint('non-existent');
+      expect(loaded).toBeNull();
+    });
+
+    it('loadContinuePoint returns null after clearContinuePoint', async () => {
+      const state = createTestState('proj-1');
+      await stateManager.saveState(state);
+
+      const continuePoint = createTestContinuePoint('proj-1', 'task-1');
+      stateManager.saveContinuePoint(continuePoint);
+
+      stateManager.clearContinuePoint('proj-1');
+
+      const loaded = stateManager.loadContinuePoint('proj-1');
+      expect(loaded).toBeNull();
+    });
+
+    it('clearContinuePoint does not throw for non-existent project', () => {
+      expect(() => stateManager.clearContinuePoint('non-existent')).not.toThrow();
+    });
+  });
 });
 
 // ============================================================================
@@ -453,5 +537,20 @@ function createTestAgent(id: string, type: 'planner' | 'coder' | 'tester' | 'rev
     lastActivityAt: new Date(),
     terminatedAt: null,
     terminationReason: null,
+  };
+}
+
+function createTestContinuePoint(projectId: string, taskId: string) {
+  return {
+    projectId,
+    taskId,
+    lastAction: 'Working on task',
+    file: undefined,
+    line: undefined,
+    functionName: undefined,
+    nextSteps: ['Complete implementation', 'Add tests'],
+    agentId: undefined,
+    iterationCount: 0,
+    savedAt: new Date(),
   };
 }

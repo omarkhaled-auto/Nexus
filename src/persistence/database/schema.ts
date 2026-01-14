@@ -203,6 +203,7 @@ export const projectsRelations = relations(projects, ({ many }) => ({
   metrics: many(metrics),
   sessions: many(sessions),
   episodes: many(episodes),
+  continuePoints: many(continuePoints),
 }));
 
 export const featuresRelations = relations(features, ({ one, many }) => ({
@@ -296,6 +297,32 @@ export const episodesRelations = relations(episodes, ({ one }) => ({
 }));
 
 // ============================================================================
+// Continue Points table (for resuming interrupted work)
+// ============================================================================
+export const continuePoints = sqliteTable('continue_points', {
+  id: text('id').primaryKey(),
+  projectId: text('project_id')
+    .notNull()
+    .references(() => projects.id, { onDelete: 'cascade' }),
+  taskId: text('task_id').notNull(),
+  lastAction: text('last_action').notNull(),
+  file: text('file'),
+  line: integer('line'),
+  functionName: text('function_name'),
+  nextSteps: text('next_steps'), // JSON array
+  agentId: text('agent_id'),
+  iterationCount: integer('iteration_count').notNull().default(0),
+  savedAt: integer('saved_at', { mode: 'timestamp' }).notNull(),
+});
+
+export const continuePointsRelations = relations(continuePoints, ({ one }) => ({
+  project: one(projects, {
+    fields: [continuePoints.projectId],
+    references: [projects.id],
+  }),
+}));
+
+// ============================================================================
 // Type exports for use in application code
 // ============================================================================
 export type Project = typeof projects.$inferSelect;
@@ -327,3 +354,6 @@ export type NewSession = typeof sessions.$inferInsert;
 
 export type Episode = typeof episodes.$inferSelect;
 export type NewEpisode = typeof episodes.$inferInsert;
+
+export type ContinuePointRecord = typeof continuePoints.$inferSelect;
+export type NewContinuePointRecord = typeof continuePoints.$inferInsert;

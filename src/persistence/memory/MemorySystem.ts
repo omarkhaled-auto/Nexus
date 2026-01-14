@@ -8,7 +8,7 @@
  * - Memory pruning by age and count
  */
 
-import { eq, desc, and } from 'drizzle-orm';
+import { eq, desc, and, isNotNull } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
 import type { DatabaseClient } from '../database/DatabaseClient';
 import { episodes, type NewEpisode } from '../database/schema';
@@ -255,40 +255,64 @@ export class MemorySystem {
   }
 
   /**
-   * Query memory for relevant episodes
+   * Query memory for relevant episodes.
+   *
+   * Performance optimization: Pre-filters to most recent 1000 episodes
+   * with embeddings before applying cosine similarity, preventing O(N)
+   * degradation on large history sets.
+   *
+   * @param query Search query text
+   * @param limit Maximum results to return (default: 10)
+   * @param maxCandidates Maximum episodes to consider for similarity (default: 1000)
    */
-  async queryMemory(query: string, limit: number = 10): Promise<Episode[]> {
+  async queryMemory(
+    query: string,
+    limit: number = 10,
+    maxCandidates: number = 1000
+  ): Promise<Episode[]> {
     this.log('debug', `Querying memory: "${query.substring(0, 50)}..."`);
 
     // Get query embedding
     const queryEmbedding = await this.embeddingsService.embed(query);
 
-    // Get all episodes for this project
+    // Build WHERE clause: project filter + has embedding (for efficiency)
+    const baseCondition = isNotNull(episodes.embedding);
     const whereClause = this.projectId
-      ? eq(episodes.projectId, this.projectId)
-      : undefined;
+      ? and(eq(episodes.projectId, this.projectId), baseCondition)
+      : baseCondition;
 
-    const allEpisodes = whereClause
-      ? this.db.db.select().from(episodes).where(whereClause).all()
-      : this.db.db.select().from(episodes).all();
+    // Pre-filter: Get most recent episodes with embeddings, limited to maxCandidates
+    // This prevents O(N) memory loading for large history sets
+    const recentEpisodes = this.db.db
+      .select()
+      .from(episodes)
+      .where(whereClause)
+      .orderBy(desc(episodes.createdAt))
+      .limit(maxCandidates)
+      .all();
 
-    if (allEpisodes.length === 0) {
+    if (recentEpisodes.length === 0) {
       return [];
     }
 
-    // Calculate similarity scores and sort
-    const scoredEpisodes: { episode: typeof allEpisodes[0]; score: number }[] = [];
+    this.log(
+      'debug',
+      `Evaluating ${String(recentEpisodes.length)} recent episodes for similarity`
+    );
 
-    for (const episode of allEpisodes) {
-      if (episode.embedding) {
-        try {
-          const embedding = JSON.parse(episode.embedding) as number[];
-          const score = cosineSimilarity(queryEmbedding, embedding);
-          scoredEpisodes.push({ episode, score });
-        } catch {
-          // Skip episodes with invalid embeddings
-          this.log('warn', `Invalid embedding for episode ${episode.id}`);
-        }
+    // Calculate similarity scores on pre-filtered set
+    const scoredEpisodes: { episode: typeof recentEpisodes[0]; score: number }[] = [];
+
+    for (const episode of recentEpisodes) {
+      // embedding is guaranteed non-null by our WHERE clause, but add guard for type safety
+      if (!episode.embedding) continue;
+      try {
+        const embedding = JSON.parse(episode.embedding) as number[];
+        const score = cosineSimilarity(queryEmbedding, embedding);
+        scoredEpisodes.push({ episode, score });
+      } catch {
+        // Skip episodes with invalid embeddings
+        this.log('warn', `Invalid embedding for episode ${episode.id}`);
       }
     }
 

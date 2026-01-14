@@ -120,6 +120,13 @@ describe('StateFormatAdapter', () => {
 
       expect(markdown).toContain('chk-abc123');
     });
+
+    it('includes project ID for lossless roundtrip', () => {
+      const state = createTestState('proj-unique-123');
+      const markdown = adapter.exportToSTATE_MD(state);
+
+      expect(markdown).toContain('**ID:** proj-unique-123');
+    });
   });
 
   // ============================================================================
@@ -227,6 +234,34 @@ describe('StateFormatAdapter', () => {
 
       expect(state.tasks.length).toBeGreaterThanOrEqual(2);
     });
+
+    it('extracts project ID when present', () => {
+      const markdown = `# Project State: Test App
+
+## Status
+- **ID:** proj-explicit-id-456
+- **Phase:** Phase 1
+- **Status:** planning
+- **Progress:** ░░░░░░░░░░ 0%
+`;
+      const state = adapter.importFromSTATE_MD(markdown);
+
+      expect(state.projectId).toBe('proj-explicit-id-456');
+      expect(state.project.id).toBe('proj-explicit-id-456');
+    });
+
+    it('generates project ID from name when ID not present (backwards compatibility)', () => {
+      const markdown = `# Project State: My Test App
+
+## Status
+- **Phase:** Phase 1
+- **Status:** planning
+`;
+      const state = adapter.importFromSTATE_MD(markdown);
+
+      // Should generate ID from name
+      expect(state.projectId).toBe('my-test-app');
+    });
   });
 
   // ============================================================================
@@ -252,6 +287,33 @@ describe('StateFormatAdapter', () => {
       expect(restored.status).toBe(original.status);
       expect(restored.currentPhase).toContain('2');
       expect(restored.features).toHaveLength(original.features.length);
+    });
+
+    it('preserves project ID through roundtrip (lossless)', () => {
+      const original = createTestState('proj-unique-id-12345');
+      original.project.name = 'ID Test Project';
+
+      const markdown = adapter.exportToSTATE_MD(original);
+      const restored = adapter.importFromSTATE_MD(markdown);
+
+      // Project ID must be preserved exactly
+      expect(restored.projectId).toBe(original.projectId);
+      expect(restored.project.id).toBe(original.project.id);
+    });
+
+    it('export -> import -> export produces identical output', () => {
+      const original = createTestState('proj-roundtrip-xyz');
+      original.project.name = 'Double Roundtrip';
+      original.status = 'executing';
+      original.currentPhase = 'Phase 3';
+
+      const markdown1 = adapter.exportToSTATE_MD(original);
+      const restored = adapter.importFromSTATE_MD(markdown1);
+      const markdown2 = adapter.exportToSTATE_MD(restored);
+
+      // Both exports should contain the same project ID
+      expect(markdown1).toContain('proj-roundtrip-xyz');
+      expect(markdown2).toContain('proj-roundtrip-xyz');
     });
 
     it('import ignores formatting/whitespace differences', () => {

@@ -52,8 +52,9 @@ export class StateFormatAdapter {
     lines.push(`# Project State: ${state.project.name}`);
     lines.push('');
 
-    // Status section
+    // Status section (includes ID for lossless roundtrip)
     lines.push('## Status');
+    lines.push(`- **ID:** ${state.projectId}`);
     lines.push(`- **Phase:** ${state.currentPhase ?? 'Not started'}`);
     lines.push(`- **Status:** ${state.status}`);
     lines.push(`- **Progress:** ${this.generateProgressBar(state)}`);
@@ -140,6 +141,10 @@ export class StateFormatAdapter {
     }
     const projectName = projectMatch?.[1]?.trim() ?? '';
 
+    // Parse project ID (for lossless roundtrip)
+    const idMatch = normalizedContent.match(/\*\*ID:\*\*\s*(\S+)/);
+    const parsedProjectId = idMatch?.[1]?.trim();
+
     // Parse status section
     const statusMatch = normalizedContent.match(
       /\*\*Status:\*\*\s*(\w+)/
@@ -172,8 +177,8 @@ export class StateFormatAdapter {
     );
     const lastCheckpointId = checkpointMatch?.[1]?.trim();
 
-    // Generate project ID from name
-    const projectId = this.generateProjectId(projectName);
+    // Use parsed ID if available, otherwise generate from name (backwards compatibility)
+    const projectId = parsedProjectId ?? this.generateProjectId(projectName);
 
     // Build NexusState
     return {

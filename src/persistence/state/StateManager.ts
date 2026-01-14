@@ -6,12 +6,14 @@
  */
 
 import { eq } from 'drizzle-orm';
+import { nanoid } from 'nanoid';
 import type { DatabaseClient } from '../database/DatabaseClient';
 import {
   projects,
   features,
   tasks,
   agents,
+  continuePoints,
   type Project,
   type Feature,
   type Task,
@@ -20,7 +22,9 @@ import {
   type NewFeature,
   type NewTask,
   type NewAgent,
+  type NewContinuePointRecord,
 } from '../database/schema';
+import type { ContinuePoint } from '../../types/core';
 
 // ============================================================================
 // Custom Error Types
@@ -468,5 +472,86 @@ export class StateManager {
    */
   markDirty(projectId: string, state: NexusState): void {
     this.dirtyStates.set(projectId, state);
+  }
+
+  // ============================================================================
+  // Continue Point Methods
+  // ============================================================================
+
+  /**
+   * Save a continue point for resuming interrupted work.
+   * Only one continue point per project is stored (overwrites existing).
+   */
+  saveContinuePoint(point: ContinuePoint): void {
+    this.log('debug', `Saving continue point for project ${point.projectId}`);
+
+    const db = this.db.db;
+
+    // Delete existing continue point for this project
+    db.delete(continuePoints)
+      .where(eq(continuePoints.projectId, point.projectId))
+      .run();
+
+    // Insert new continue point
+    const record: NewContinuePointRecord = {
+      id: nanoid(),
+      projectId: point.projectId,
+      taskId: point.taskId,
+      lastAction: point.lastAction,
+      file: point.file ?? null,
+      line: point.line ?? null,
+      functionName: point.functionName ?? null,
+      nextSteps: JSON.stringify(point.nextSteps),
+      agentId: point.agentId ?? null,
+      iterationCount: point.iterationCount,
+      savedAt: point.savedAt,
+    };
+
+    db.insert(continuePoints).values(record).run();
+  }
+
+  /**
+   * Load continue point for a project.
+   * Returns null if no continue point exists.
+   */
+  loadContinuePoint(projectId: string): ContinuePoint | null {
+    this.log('debug', `Loading continue point for project ${projectId}`);
+
+    const db = this.db.db;
+
+    const record = db
+      .select()
+      .from(continuePoints)
+      .where(eq(continuePoints.projectId, projectId))
+      .get();
+
+    if (!record) {
+      return null;
+    }
+
+    return {
+      projectId: record.projectId,
+      taskId: record.taskId,
+      lastAction: record.lastAction,
+      file: record.file ?? undefined,
+      line: record.line ?? undefined,
+      functionName: record.functionName ?? undefined,
+      nextSteps: record.nextSteps ? (JSON.parse(record.nextSteps) as string[]) : [],
+      agentId: record.agentId ?? undefined,
+      iterationCount: record.iterationCount,
+      savedAt: record.savedAt,
+    };
+  }
+
+  /**
+   * Clear continue point for a project.
+   */
+  clearContinuePoint(projectId: string): void {
+    this.log('debug', `Clearing continue point for project ${projectId}`);
+
+    const db = this.db.db;
+    db.delete(continuePoints)
+      .where(eq(continuePoints.projectId, projectId))
+      .run();
   }
 }

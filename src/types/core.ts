@@ -120,3 +120,22 @@ export interface ProjectMetrics {
   startedAt?: Date;
   estimatedCompletion?: Date;
 }
+
+/**
+ * ContinuePoint - Checkpoint for resuming interrupted agent work
+ *
+ * Stores context needed to resume a task after interruption,
+ * including the exact position in code and planned next steps.
+ */
+export interface ContinuePoint {
+  projectId: string;
+  taskId: string;
+  lastAction: string;
+  file?: string;
+  line?: number;
+  functionName?: string;
+  nextSteps: string[];
+  agentId?: string;
+  iterationCount: number;
+  savedAt: Date;
+}
