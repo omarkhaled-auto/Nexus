@@ -47,7 +47,7 @@ export interface Cycle {
  */
 export interface Wave {
   id: number;
-  tasks: Task[];
+  tasks: PlanningTask[];
   estimatedTime: number; // max of task times in minutes
   dependencies: number[]; // wave IDs this wave depends on
 }
@@ -160,16 +160,20 @@ export class CycleError extends Error {
 }
 
 export class DecompositionError extends Error {
-  constructor(message: string, public cause?: Error) {
+  public override cause?: Error;
+  constructor(message: string, cause?: Error) {
     super(message);
     this.name = 'DecompositionError';
+    this.cause = cause;
   }
 }
 
 export class EstimationError extends Error {
-  constructor(message: string, public cause?: Error) {
+  public override cause?: Error;
+  constructor(message: string, cause?: Error) {
     super(message);
     this.name = 'EstimationError';
+    this.cause = cause;
   }
 }
 

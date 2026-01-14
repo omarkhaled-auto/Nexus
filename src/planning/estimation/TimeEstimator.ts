@@ -9,7 +9,6 @@ import type {
   TaskEstimate,
   CompletedTask,
   ITimeEstimator,
-  DecompositionResult,
 } from '../types';
 import {
   MAX_TASK_MINUTES,
@@ -183,7 +182,7 @@ Provide your estimate in minutes (5-30 range).`;
       // Try to parse JSON from the response
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
+        const parsed = JSON.parse(jsonMatch[0]) as { estimatedMinutes?: unknown };
         if (typeof parsed.estimatedMinutes === 'number') {
           return parsed.estimatedMinutes;
         }
@@ -191,7 +190,7 @@ Provide your estimate in minutes (5-30 range).`;
 
       // Fallback: try to find a number in the response
       const numberMatch = content.match(/(\d+)\s*min/i);
-      if (numberMatch) {
+      if (numberMatch && numberMatch[1]) {
         return parseInt(numberMatch[1], 10);
       }
 
@@ -259,19 +258,26 @@ Return JSON with tasks array where each task has:
         return [];
       }
 
-      const parsed = JSON.parse(jsonMatch[0]);
+      const parsed = JSON.parse(jsonMatch[0]) as { tasks?: unknown[] };
+      const tasks = Array.isArray(parsed.tasks) ? parsed.tasks : [];
 
-      return (parsed.tasks || []).map((t: Record<string, unknown>) => ({
-        id: String(t.id || `task-${Date.now()}`),
-        name: String(t.name || 'Task'),
-        description: String(t.description || ''),
-        type: this.normalizeTaskType(t.type),
-        size: this.normalizeTaskSize(t.size),
-        estimatedMinutes: Number(t.estimatedMinutes) || 15,
-        dependsOn: Array.isArray(t.dependsOn) ? t.dependsOn.map(String) : [],
-        testCriteria: Array.isArray(t.testCriteria) ? t.testCriteria.map(String) : [],
-        files: Array.isArray(t.files) ? t.files.map(String) : [],
-      }));
+      return tasks.map((t: unknown) => {
+        const task = t as Record<string, unknown>;
+        const taskId = typeof task.id === 'string' ? task.id : `task-${Date.now().toString()}`;
+        const taskName = typeof task.name === 'string' ? task.name : 'Task';
+        const taskDesc = typeof task.description === 'string' ? task.description : '';
+        return {
+          id: taskId,
+          name: taskName,
+          description: taskDesc,
+          type: this.normalizeTaskType(task.type),
+          size: this.normalizeTaskSize(task.size),
+          estimatedMinutes: Number(task.estimatedMinutes) || 15,
+          dependsOn: Array.isArray(task.dependsOn) ? task.dependsOn.map(String) : [],
+          testCriteria: Array.isArray(task.testCriteria) ? task.testCriteria.map(String) : [],
+          files: Array.isArray(task.files) ? task.files.map(String) : [],
+        };
+      });
     } catch {
       return [];
     }

@@ -102,7 +102,7 @@ export class TaskDecomposer implements ITaskDecomposer {
     if (task.estimatedMinutes > MAX_TASK_MINUTES) {
       issues.push({
         code: 'too_large',
-        message: `Task estimated at ${task.estimatedMinutes} minutes exceeds maximum of ${MAX_TASK_MINUTES} minutes`,
+        message: `Task estimated at ${String(task.estimatedMinutes)} minutes exceeds maximum of ${String(MAX_TASK_MINUTES)} minutes`,
         suggestion: 'Split this task into smaller subtasks',
       });
     }
@@ -129,7 +129,7 @@ export class TaskDecomposer implements ITaskDecomposer {
     if (task.files && task.files.length > 3) {
       issues.push({
         code: 'multi_concern',
-        message: `Task touches ${task.files.length} files, which may indicate multiple concerns`,
+        message: `Task touches ${String(task.files.length)} files, which may indicate multiple concerns`,
         suggestion: 'Consider splitting into separate tasks for each concern',
       });
     }
@@ -268,7 +268,7 @@ Return JSON with tasks array.`;
 Task ID: ${task.id}
 Name: ${task.name}
 Description: ${task.description}
-Current Estimate: ${task.estimatedMinutes} minutes (needs to be <= 30 min each)
+Current Estimate: ${String(task.estimatedMinutes)} minutes (needs to be <= 30 min each)
 Test Criteria: ${JSON.stringify(task.testCriteria)}
 Files: ${JSON.stringify(task.files)}
 
@@ -283,27 +283,35 @@ Split into subtasks where each is 30 minutes or less. Maintain dependencies betw
         return { tasks: [] };
       }
 
-      const parsed = JSON.parse(jsonMatch[0]);
+      const parsed = JSON.parse(jsonMatch[0]) as {
+        tasks?: unknown[];
+        subFeatures?: unknown[];
+      };
 
       // Validate and normalize tasks
-      const tasks: PlanningTask[] = (parsed.tasks || []).map((t: unknown) => {
+      const rawTasks = Array.isArray(parsed.tasks) ? parsed.tasks : [];
+      const tasks: PlanningTask[] = rawTasks.map((t: unknown) => {
         const task = t as Record<string, unknown>;
+        const taskId = typeof task.id === 'string' ? task.id : `task-${Date.now().toString()}`;
+        const taskName = typeof task.name === 'string' ? task.name : 'Unnamed task';
+        const taskDesc = typeof task.description === 'string' ? task.description : '';
+        const parentId = typeof task.parentTaskId === 'string' ? task.parentTaskId : undefined;
         return {
-          id: String(task.id || `task-${Date.now()}`),
-          name: String(task.name || 'Unnamed task'),
-          description: String(task.description || ''),
+          id: taskId,
+          name: taskName,
+          description: taskDesc,
           type: this.normalizeTaskType(task.type),
           size: this.normalizeTaskSize(task.size),
           estimatedMinutes: Number(task.estimatedMinutes) || 15,
           dependsOn: Array.isArray(task.dependsOn) ? task.dependsOn.map(String) : [],
-          parentTaskId: task.parentTaskId ? String(task.parentTaskId) : undefined,
+          parentTaskId: parentId,
           testCriteria: Array.isArray(task.testCriteria) ? task.testCriteria.map(String) : [],
           files: Array.isArray(task.files) ? task.files.map(String) : [],
         };
       });
 
-      const subFeatures = parsed.subFeatures
-        ? (parsed.subFeatures as unknown[]).map((sf: unknown) => {
+      const subFeatures = Array.isArray(parsed.subFeatures)
+        ? parsed.subFeatures.map((sf: unknown) => {
             const sub = sf as Record<string, unknown>;
             return {
               id: String(sub.id),

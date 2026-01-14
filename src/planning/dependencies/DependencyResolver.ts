@@ -106,7 +106,8 @@ export class DependencyResolver implements IDependencyResolver {
     const result: PlanningTask[] = [];
 
     while (queue.length > 0) {
-      const current = queue.shift()!;
+      const current = queue.shift();
+      if (!current) break;
       const task = taskMap.get(current);
       if (task) {
         result.push(task);
@@ -244,7 +245,9 @@ export class DependencyResolver implements IDependencyResolver {
 
     while (currentWave.length > 0) {
       // Create wave from current level
-      const waveTasks = currentWave.map(id => taskMap.get(id)!);
+      const waveTasks = currentWave
+        .map(id => taskMap.get(id))
+        .filter((t): t is PlanningTask => t !== undefined);
       const maxTime = Math.max(...waveTasks.map(t => t.estimatedMinutes));
 
       // Calculate wave dependencies (which previous waves does this wave depend on)
