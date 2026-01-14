@@ -3,7 +3,7 @@
 
 import type { LLMProvider } from '@/llm/LLMProvider';
 import type { Message } from '@/llm';
-import type { ReviewResult, ReviewIssue, FileChange, Logger } from '../types';
+import type { ReviewResult, FileChange, Logger } from '../types';
 
 // ============================================================================
 // Custom Error Types
@@ -196,7 +196,7 @@ ${diff}
         return this.createFailedReview('Could not parse review response');
       }
 
-      const parsed = JSON.parse(jsonMatch[0]) as ReviewResult;
+      const parsed = JSON.parse(jsonMatch[0]) as Record<string, unknown>;
 
       // Validate required fields
       if (typeof parsed.approved !== 'boolean') {
@@ -205,9 +205,9 @@ ${diff}
 
       return {
         approved: parsed.approved,
-        hasBlockingIssues: parsed.hasBlockingIssues ?? false,
-        issues: Array.isArray(parsed.issues) ? parsed.issues : [],
-        summary: parsed.summary ?? 'No summary provided',
+        hasBlockingIssues: parsed.hasBlockingIssues === true,
+        issues: Array.isArray(parsed.issues) ? (parsed.issues as ReviewResult['issues']) : [],
+        summary: typeof parsed.summary === 'string' ? parsed.summary : 'No summary provided',
       };
     } catch (error) {
       this.logger?.warn('Failed to parse review response:', error);

@@ -272,7 +272,7 @@ export class LintRunner {
   private extractConfigError(stderr: string): string {
     // Try to extract the most relevant error message
     const match = stderr.match(/Error:\s*(.+)/i);
-    if (match) {
+    if (match?.[1]) {
       return match[1];
     }
     return 'ESLint configuration error';

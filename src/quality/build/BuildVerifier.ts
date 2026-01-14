@@ -135,21 +135,23 @@ export class BuildVerifier {
 
     while ((match = tscPattern.exec(output)) !== null) {
       const [, file, lineStr, colStr, code, message] = match;
-      errors.push({
-        type: 'build',
-        file: this.normalizePath(file),
-        line: parseInt(lineStr, 10),
-        column: colStr ? parseInt(colStr, 10) : undefined,
-        message: message.trim(),
-        code,
-      });
+      if (file && lineStr && message) {
+        errors.push({
+          type: 'build',
+          file: this.normalizePath(file),
+          line: parseInt(lineStr, 10),
+          column: colStr ? parseInt(colStr, 10) : undefined,
+          message: message.trim(),
+          code,
+        });
+      }
     }
 
     // esbuild error format: X [ERROR] message\n\n    file:line:col:
     const esbuildPattern = /X \[ERROR\]\s*(.+?)(?:\n\n\s*(.+?):(\d+):(\d+))?/g;
     while ((match = esbuildPattern.exec(output)) !== null) {
       const [, message, file, lineStr, colStr] = match;
-      if (file) {
+      if (file && message) {
         errors.push({
           type: 'build',
           file: this.normalizePath(file),
@@ -157,7 +159,7 @@ export class BuildVerifier {
           column: colStr ? parseInt(colStr, 10) : undefined,
           message: message.trim(),
         });
-      } else {
+      } else if (message) {
         // General esbuild error without file location
         errors.push({
           type: 'build',
