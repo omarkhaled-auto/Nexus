@@ -15,8 +15,8 @@ None (no domain expertise files configured)
 - Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
 
 - [x] **Phase 1: Foundation** - Project setup, TypeScript config, build tooling, infrastructure services ✓
-- [ ] **Phase 2: Infrastructure** - File system ops, process runner, git worktree isolation, LSP client
-- [ ] **Phase 3: Persistence** - SQLite + Drizzle ORM, STATE.md format, checkpoints, long-term memory
+- [ ] **Phase 2: Persistence** - StateManager, CheckpointManager, MemorySystem, RequirementsDB
+- [ ] **Phase 3: Infrastructure** - File system ops, process runner, git worktree isolation, LSP client
 - [ ] **Phase 4: Event System** - EventBus implementation, event types, pub/sub infrastructure
 - [ ] **Phase 5: Agent Core** - Agent pool, lifecycle management, tool access system, model providers
 - [ ] **Phase 6: Planning Layer** - Task decomposition, dependency resolution, parallel wave calculation
@@ -43,9 +43,22 @@ Key deliverables:
 - Zustand state management scaffold
 - Basic window with navigation shell
 
-### Phase 2: Infrastructure
-**Goal**: Core utilities for file operations, process execution, and git worktree management
+### Phase 2: Persistence
+**Goal**: Complete data persistence layer with state management, checkpoints, memory, and requirements
 **Depends on**: Phase 1
+**Research**: Unlikely (Drizzle ORM patterns established in Phase 1)
+**Plans**: 3 total
+
+Key deliverables:
+- StateManager for project state persistence
+- CheckpointManager for state snapshots and recovery
+- StateFormatAdapter for STATE.md export/import
+- MemorySystem with EmbeddingsService for long-term memory
+- RequirementsDB for structured requirement storage
+
+### Phase 3: Infrastructure
+**Goal**: Core utilities for file operations, process execution, and git worktree management
+**Depends on**: Phase 2
 **Research**: Unlikely (standard Node.js APIs with pathe for cross-platform)
 **Plans**: TBD
 
@@ -55,21 +68,6 @@ Key deliverables:
 - Git worktree isolation system (.nexus/worktrees/registry.json)
 - LSP client setup for code intelligence
 - Tool registry for agent tool access
-
-### Phase 3: Persistence
-**Goal**: Complete data persistence layer with SQLite, state files, and checkpoints
-**Depends on**: Phase 2
-**Research**: Likely (better-sqlite3 + Drizzle ORM integration)
-**Research topics**: Drizzle ORM schema patterns, better-sqlite3 in Electron, migration strategies
-**Plans**: TBD
-
-Key deliverables:
-- SQLite database with Drizzle ORM schemas
-- STATE.md file format implementation
-- .continue-here.md for mid-task resume
-- Checkpoint system (auto + manual)
-- Requirements database (JSON in structured folders)
-- Long-term memory with embeddings storage
 
 ### Phase 4: Event System
 **Goal**: Event-driven communication infrastructure for all layers
@@ -209,8 +207,8 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 8/8 | Complete | 2026-01-14 |
-| 2. Infrastructure | 0/TBD | Not started | - |
-| 3. Persistence | 0/TBD | Not started | - |
+| 2. Persistence | 1/3 | In progress | - |
+| 3. Infrastructure | 0/TBD | Not started | - |
 | 4. Event System | 0/TBD | Not started | - |
 | 5. Agent Core | 0/TBD | Not started | - |
 | 6. Planning Layer | 0/TBD | Not started | - |
