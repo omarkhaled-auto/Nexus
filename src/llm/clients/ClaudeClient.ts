@@ -9,6 +9,7 @@ import type {
   ToolCall,
   TokenUsage,
   ToolDefinition,
+  ToolResult,
 } from '../types';
 
 /**
@@ -491,5 +492,74 @@ export class ClaudeClient implements LLMClient {
     if (!content || content.length === 0) return 0;
     // Approximate: ~4 characters per token
     return Math.ceil(content.length / 4);
+  }
+
+  // ==========================================================================
+  // Helper Methods for Tool Use Flow
+  // ==========================================================================
+
+  /**
+   * Send a message with tools and return the response with tool calls.
+   * Convenience method for the common pattern of sending a message and handling tool calls.
+   */
+  async sendWithTools(
+    messages: Message[],
+    tools: ToolDefinition[],
+    options?: ChatOptions
+  ): Promise<{ response: LLMResponse; toolCalls: ToolCall[] }> {
+    const mergedOptions: ChatOptions = {
+      ...options,
+      tools,
+    };
+
+    const response = await this.chat(messages, mergedOptions);
+
+    return {
+      response,
+      toolCalls: response.toolCalls ?? [],
+    };
+  }
+
+  /**
+   * Continue a conversation with tool results.
+   * Builds the appropriate message history and sends to the LLM.
+   *
+   * @param originalMessages - The original conversation messages
+   * @param assistantMessage - The assistant's response that contained tool calls
+   * @param toolResults - The results from executing the tools
+   * @param options - Chat options (tools should be included if more tool calls expected)
+   */
+  async continueWithToolResults(
+    originalMessages: Message[],
+    assistantMessage: LLMResponse,
+    toolResults: ToolResult[],
+    options?: ChatOptions
+  ): Promise<LLMResponse> {
+    // Build updated message history
+    const updatedMessages: Message[] = [
+      ...originalMessages,
+      // Add assistant message with tool calls
+      {
+        role: 'assistant' as const,
+        content: assistantMessage.content,
+        toolCalls: assistantMessage.toolCalls,
+      },
+      // Add tool results as user message (Claude's format)
+      {
+        role: 'user' as const,
+        content: '',
+        toolResults,
+      },
+    ];
+
+    return this.chat(updatedMessages, options);
+  }
+
+  /**
+   * Extract text content from an LLM response.
+   * Returns only the text portion, excluding thinking content.
+   */
+  extractText(response: LLMResponse): string {
+    return response.content;
   }
 }

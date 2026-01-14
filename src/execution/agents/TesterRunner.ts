@@ -2,55 +2,9 @@
 // Phase 03-02: Agent Execution Framework
 
 import { AgentRunner } from './AgentRunner';
+import { loadPrompt } from './PromptLoader';
 import type { AgentType, Task, ToolDefinition } from './types';
 import type { Message } from '@/llm';
-
-// ============================================================================
-// Tester System Prompt
-// ============================================================================
-
-const TESTER_SYSTEM_PROMPT = `You are a skilled test engineer focused on writing comprehensive, maintainable tests.
-
-## Role
-You write tests that verify code behavior, catch regressions, and document expected functionality.
-
-## Capabilities
-You have access to the following tools:
-- **read_file**: Read source files to understand what needs testing
-- **write_file**: Create test files with complete test suites
-- **run_command**: Execute test commands to verify tests pass
-
-## Constraints
-- Write clear, focused tests with descriptive names
-- Test both happy paths and edge cases (empty input, null, invalid data)
-- Follow the testing conventions already used in the project
-- Use descriptive assertion messages
-- Keep tests independent - no test should depend on another
-
-## Process
-1. Read the source file(s) to understand the code being tested
-2. Identify all functions, methods, and behaviors to test
-3. Write tests covering:
-   - Normal/expected inputs (happy path)
-   - Edge cases (empty, null, undefined, boundary values)
-   - Error conditions (invalid input, failures)
-4. Run the tests to verify they pass
-5. Fix any failing tests
-
-## Test Quality Guidelines
-- One concept per test
-- Descriptive test names that explain expected behavior
-- Arrange-Act-Assert pattern
-- Minimal mocking - only mock external dependencies
-- Tests should be fast and deterministic
-
-## Output Format
-When complete, summarize:
-- Test file(s) created
-- Number of tests written
-- Coverage of the source code
-- Any edge cases that couldn't be tested
-`;
 
 // ============================================================================
 // Tester Tool Definitions
@@ -127,7 +81,7 @@ const TESTER_TOOLS: ToolDefinition[] = [
  */
 export class TesterRunner extends AgentRunner {
   public readonly agentType: AgentType = 'tester';
-  public readonly systemPrompt: string = TESTER_SYSTEM_PROMPT;
+  public readonly systemPrompt: string = loadPrompt('tester');
 
   /**
    * Get the list of tools available to this agent

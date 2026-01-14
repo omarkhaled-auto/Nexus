@@ -1,5 +1,7 @@
 import { ClaudeClient } from './clients/ClaudeClient';
 import { GeminiClient } from './clients/GeminiClient';
+import { MockClaudeClient, type MockResponseConfig } from './clients/MockClaudeClient';
+import { MockGeminiClient } from './clients/MockGeminiClient';
 import type {
   Message,
   ChatOptions,
@@ -17,6 +19,18 @@ export interface LLMProviderOptions {
   anthropicApiKey: string;
   googleApiKey: string;
   logger?: Logger;
+  /**
+   * Enable mock mode for testing without hitting real APIs.
+   * When true, uses MockClaudeClient and MockGeminiClient.
+   */
+  mockMode?: boolean;
+  /**
+   * Mock configuration (only used when mockMode is true)
+   */
+  mockConfig?: {
+    claude?: MockResponseConfig;
+    gemini?: MockResponseConfig;
+  };
 }
 
 /**
@@ -80,20 +94,62 @@ export class LLMProvider {
   private geminiClient: LLMClient;
   private logger?: Logger;
   private usageStats: UsageStats;
+  private readonly mockMode: boolean;
 
   constructor(options: LLMProviderOptions) {
-    this.claudeClient = new ClaudeClient({
-      apiKey: options.anthropicApiKey,
-      logger: options.logger,
-    });
+    this.mockMode = options.mockMode ?? false;
 
-    this.geminiClient = new GeminiClient({
-      apiKey: options.googleApiKey,
-      logger: options.logger,
-    });
+    if (this.mockMode) {
+      // Use mock clients for testing
+      this.claudeClient = new MockClaudeClient(options.mockConfig?.claude);
+      this.geminiClient = new MockGeminiClient(options.mockConfig?.gemini);
+      this.logger = options.logger;
+      this.logger?.info('LLMProvider initialized in MOCK MODE');
+    } else {
+      // Use real clients
+      this.claudeClient = new ClaudeClient({
+        apiKey: options.anthropicApiKey,
+        logger: options.logger,
+      });
 
-    this.logger = options.logger;
+      this.geminiClient = new GeminiClient({
+        apiKey: options.googleApiKey,
+        logger: options.logger,
+      });
+
+      this.logger = options.logger;
+    }
+
     this.usageStats = createEmptyUsageStats();
+  }
+
+  /**
+   * Check if running in mock mode
+   */
+  isMockMode(): boolean {
+    return this.mockMode;
+  }
+
+  /**
+   * Get the mock Claude client for test configuration.
+   * Throws if not in mock mode.
+   */
+  getMockClaudeClient(): MockClaudeClient {
+    if (!this.mockMode) {
+      throw new Error('getMockClaudeClient() only available in mock mode');
+    }
+    return this.claudeClient as MockClaudeClient;
+  }
+
+  /**
+   * Get the mock Gemini client for test configuration.
+   * Throws if not in mock mode.
+   */
+  getMockGeminiClient(): MockGeminiClient {
+    if (!this.mockMode) {
+      throw new Error('getMockGeminiClient() only available in mock mode');
+    }
+    return this.geminiClient as MockGeminiClient;
   }
 
   /**

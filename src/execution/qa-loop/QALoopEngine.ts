@@ -314,25 +314,26 @@ export class QALoopEngine {
   }
 
   /**
-   * Ask coder to fix errors
+   * Ask coder to fix errors using the fixIssues() method
    */
   private async fixErrors(
     coder: CoderRunner,
-    task: Task,
+    _task: Task,
     stage: QAStage,
     errors: VerificationError[]
   ): Promise<void> {
     this.logger?.info(`Asking coder to fix ${String(errors.length)} ${stage} errors`);
 
-    // Create a fix task
-    const fixDescription = this.createFixDescription(stage, errors);
-    const fixTask: Task = {
-      ...task,
-      name: `Fix ${stage} errors`,
-      description: fixDescription,
-    };
+    // Convert verification errors to string descriptions for fixIssues
+    const errorMessages = errors.map((error) => {
+      const location = error.line
+        ? `${error.file}:${String(error.line)}`
+        : error.file;
+      return `[${stage}] ${location}: ${error.message}`;
+    });
 
-    await coder.execute(fixTask);
+    // Use the dedicated fixIssues method
+    await coder.fixIssues(errorMessages);
   }
 
   /**

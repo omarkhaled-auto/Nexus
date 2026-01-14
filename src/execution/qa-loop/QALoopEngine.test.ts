@@ -48,6 +48,13 @@ function createMockCodeReviewer(): CodeReviewer {
 function createMockCoderRunner(): CoderRunner {
   return {
     execute: vi.fn(),
+    fixIssues: vi.fn().mockResolvedValue({
+      success: true,
+      filesChanged: [],
+      output: 'Fixed',
+      iterations: 1,
+      tokenUsage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
+    }),
     getState: vi.fn().mockReturnValue('idle'),
     cancel: vi.fn(),
     agentType: 'coder',
@@ -241,17 +248,10 @@ describe('QALoopEngine', () => {
       vi.mocked(lintRunner.run).mockResolvedValue(createVerificationResult(true));
       vi.mocked(testRunner.run).mockResolvedValue(createTestResult(true));
       vi.mocked(codeReviewer.review).mockResolvedValue(createReviewResult(true));
-      vi.mocked(coderRunner.execute).mockResolvedValue({
-        success: true,
-        filesChanged: [],
-        output: 'Fixed',
-        iterations: 1,
-        tokenUsage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
-      });
 
       const result = await engine.run(createTask(), coderRunner);
 
-      expect(coderRunner.execute).toHaveBeenCalled();
+      expect(coderRunner.fixIssues).toHaveBeenCalled();
       expect(result.success).toBe(true);
       expect(result.iterations).toBe(2);
     });
@@ -263,17 +263,10 @@ describe('QALoopEngine', () => {
         .mockResolvedValue(createVerificationResult(true));
       vi.mocked(testRunner.run).mockResolvedValue(createTestResult(true));
       vi.mocked(codeReviewer.review).mockResolvedValue(createReviewResult(true));
-      vi.mocked(coderRunner.execute).mockResolvedValue({
-        success: true,
-        filesChanged: [],
-        output: 'Fixed',
-        iterations: 1,
-        tokenUsage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
-      });
 
       const result = await engine.run(createTask(), coderRunner);
 
-      expect(coderRunner.execute).toHaveBeenCalled();
+      expect(coderRunner.fixIssues).toHaveBeenCalled();
       expect(result.success).toBe(true);
     });
 
@@ -284,17 +277,10 @@ describe('QALoopEngine', () => {
         .mockResolvedValueOnce(createTestResult(false, 1))
         .mockResolvedValue(createTestResult(true));
       vi.mocked(codeReviewer.review).mockResolvedValue(createReviewResult(true));
-      vi.mocked(coderRunner.execute).mockResolvedValue({
-        success: true,
-        filesChanged: [],
-        output: 'Fixed',
-        iterations: 1,
-        tokenUsage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
-      });
 
       const result = await engine.run(createTask(), coderRunner);
 
-      expect(coderRunner.execute).toHaveBeenCalled();
+      expect(coderRunner.fixIssues).toHaveBeenCalled();
       expect(result.success).toBe(true);
     });
 
@@ -305,17 +291,10 @@ describe('QALoopEngine', () => {
       vi.mocked(codeReviewer.review)
         .mockResolvedValueOnce(createReviewResult(false, 1, 0))
         .mockResolvedValue(createReviewResult(true));
-      vi.mocked(coderRunner.execute).mockResolvedValue({
-        success: true,
-        filesChanged: [],
-        output: 'Fixed',
-        iterations: 1,
-        tokenUsage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
-      });
 
       const result = await engine.run(createTask(), coderRunner);
 
-      expect(coderRunner.execute).toHaveBeenCalled();
+      expect(coderRunner.fixIssues).toHaveBeenCalled();
       expect(result.success).toBe(true);
     });
 
@@ -328,13 +307,6 @@ describe('QALoopEngine', () => {
       vi.mocked(lintRunner.run).mockResolvedValue(createVerificationResult(true));
       vi.mocked(testRunner.run).mockResolvedValue(createTestResult(true));
       vi.mocked(codeReviewer.review).mockResolvedValue(createReviewResult(true));
-      vi.mocked(coderRunner.execute).mockResolvedValue({
-        success: true,
-        filesChanged: [],
-        output: 'Fixed',
-        iterations: 1,
-        tokenUsage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
-      });
 
       const result = await engine.run(createTask(), coderRunner);
 
@@ -357,13 +329,6 @@ describe('QALoopEngine', () => {
       vi.mocked(lintRunner.run).mockResolvedValue(createVerificationResult(true));
       vi.mocked(testRunner.run).mockResolvedValue(createTestResult(true));
       vi.mocked(codeReviewer.review).mockResolvedValue(createReviewResult(true));
-      vi.mocked(coderRunner.execute).mockResolvedValue({
-        success: true,
-        filesChanged: [],
-        output: 'Tried to fix',
-        iterations: 1,
-        tokenUsage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
-      });
 
       const result = await engine.run(createTask(), coderRunner);
 
