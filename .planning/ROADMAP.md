@@ -16,7 +16,7 @@ None (no domain expertise files configured)
 
 - [x] **Phase 1: Foundation** - Project setup, TypeScript config, build tooling, infrastructure services ✓
 - [x] **Phase 2: Persistence** - StateManager, CheckpointManager, MemorySystem, RequirementsDB ✓
-- [ ] **Phase 3: Infrastructure** - File system ops, process runner, git worktree isolation, LSP client
+- [ ] **Phase 3: LLM & Agents** - LLM clients (Claude/Gemini), agent runners, quality layer, QA loop
 - [ ] **Phase 4: Event System** - EventBus implementation, event types, pub/sub infrastructure
 - [ ] **Phase 5: Agent Core** - Agent pool, lifecycle management, tool access system, model providers
 - [ ] **Phase 6: Planning Layer** - Task decomposition, dependency resolution, parallel wave calculation
@@ -56,18 +56,22 @@ Key deliverables:
 - MemorySystem with EmbeddingsService for long-term memory
 - RequirementsDB for structured requirement storage
 
-### Phase 3: Infrastructure
-**Goal**: Core utilities for file operations, process execution, and git worktree management
+### Phase 3: LLM & Agents
+**Goal**: LLM client integration and agent execution framework with self-healing QA loop
 **Depends on**: Phase 2
-**Research**: Unlikely (standard Node.js APIs with pathe for cross-platform)
-**Plans**: TBD
+**Research**: Likely (Claude/Gemini API integration)
+**Plans**: 3 total
 
 Key deliverables:
-- FileSystem service with cross-platform path handling (pathe)
-- ProcessRunner with command validation and blocked patterns
-- Git worktree isolation system (.nexus/worktrees/registry.json)
-- LSP client setup for code intelligence
-- Tool registry for agent tool access
+- ClaudeClient with streaming, tool use, retry logic
+- GeminiClient for code review (large context)
+- LLMProvider for model routing per agent type
+- AgentRunner base class with tool loop
+- CoderRunner, TesterRunner, ReviewerRunner, MergerRunner
+- BuildVerifier, LintRunner, TestRunner, CodeReviewer
+- QALoopEngine (Build → Lint → Test → Review cycle)
+
+**Success Criteria**: Single agent completes a task through full QA loop
 
 ### Phase 4: Event System
 **Goal**: Event-driven communication infrastructure for all layers
@@ -208,7 +212,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 |-------|----------------|--------|-----------|
 | 1. Foundation | 8/8 | Complete | 2026-01-14 |
 | 2. Persistence | 3/3 | Complete | 2026-01-14 |
-| 3. Infrastructure | 0/TBD | Not started | - |
+| 3. LLM & Agents | 0/3 | Not started | - |
 | 4. Event System | 0/TBD | Not started | - |
 | 5. Agent Core | 0/TBD | Not started | - |
 | 6. Planning Layer | 0/TBD | Not started | - |
