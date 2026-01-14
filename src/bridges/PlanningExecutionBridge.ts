@@ -1,8 +1,8 @@
 // PlanningExecutionBridge - Plan to Execution Connection
 // Phase 04-03: Connects planning layer output to execution layer input
 
-import type { TaskQueue, OrchestrationTask } from '@/orchestration/types';
-import type { Wave, PlanningTask } from '@/planning/types';
+import type { ITaskQueue, OrchestrationTask } from '@/orchestration/types';
+import type { Wave } from '@/planning/types';
 import type { EventBus } from '@/orchestration/events/EventBus';
 
 /**
@@ -29,7 +29,7 @@ export interface ExecutionStatus {
  * Options for PlanningExecutionBridge constructor
  */
 export interface PlanningExecutionBridgeOptions {
-  taskQueue: TaskQueue;
+  taskQueue: ITaskQueue;
   eventBus: EventBus;
 }
 
@@ -79,7 +79,7 @@ interface ExecutionContext {
  * - Abort capability
  */
 export class PlanningExecutionBridge {
-  private readonly taskQueue: TaskQueue;
+  private readonly taskQueue: ITaskQueue;
   private readonly eventBus: EventBus;
 
   /** Map of handleId -> ExecutionContext */

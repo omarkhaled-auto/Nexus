@@ -19,7 +19,7 @@ export interface EmitOptions {
 /**
  * Wildcard handler type - receives all events
  */
-export type WildcardHandler = (event: NexusEvent<unknown>) => void | Promise<void>;
+export type WildcardHandler = (event: NexusEvent) => void | Promise<void>;
 
 /**
  * Unsubscribe function type
@@ -29,7 +29,7 @@ export type Unsubscribe = () => void;
 /**
  * Internal handler wrapper for type-safe handling
  */
-type InternalHandler = EventHandler<unknown>;
+type InternalHandler = EventHandler;
 
 /**
  * EventBus provides type-safe pub/sub across all Nexus layers.
@@ -123,6 +123,7 @@ export class EventBus {
     }
 
     const internalHandler = handler as InternalHandler;
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     this.handlers.get(type)!.add(internalHandler);
 
     return () => {
@@ -147,7 +148,11 @@ export class EventBus {
       if (unsubscribed) return;
       unsubscribed = true;
       unsubscribe();
-      handler(event);
+      // Call the handler and ignore any promise result
+      const result = handler(event);
+      if (result instanceof Promise) {
+        void result;
+      }
     };
 
     const unsubscribe = this.on(type, wrappedHandler);
@@ -218,13 +223,13 @@ export class EventBus {
    */
   private safeCall(
     handler: InternalHandler | WildcardHandler,
-    event: NexusEvent<unknown>
+    event: NexusEvent
   ): void {
     try {
       const result = handler(event);
       // Handle async handlers - just let them run, don't wait
       if (result instanceof Promise) {
-        result.catch(() => {
+        void result.catch(() => {
           // Swallow async errors silently
         });
       }

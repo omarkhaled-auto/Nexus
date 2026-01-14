@@ -4,7 +4,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { PlanningExecutionBridge, ExecutionHandle, ExecutionStatus } from './PlanningExecutionBridge';
 import { EventBus } from '@/orchestration/events/EventBus';
-import type { TaskQueue, OrchestrationTask } from '@/orchestration/types';
+import type { ITaskQueue, OrchestrationTask } from '@/orchestration/types';
 import type { Wave, PlanningTask } from '@/planning/types';
 
 // Helper to create mock tasks
@@ -82,7 +82,7 @@ describe('PlanningExecutionBridge', () => {
     eventBus = EventBus.getInstance();
     mockTaskQueue = createMockTaskQueue();
     bridge = new PlanningExecutionBridge({
-      taskQueue: mockTaskQueue as unknown as TaskQueue,
+      taskQueue: mockTaskQueue as unknown as ITaskQueue,
       eventBus,
     });
   });

@@ -103,8 +103,8 @@ export class AgentWorktreeBridge {
    * @param agentId Agent to look up
    * @returns WorktreeInfo if assigned, null otherwise
    */
-  async getWorktree(agentId: string): Promise<WorktreeInfo | null> {
-    return this.assignments.get(agentId) ?? null;
+  getWorktree(agentId: string): Promise<WorktreeInfo | null> {
+    return Promise.resolve(this.assignments.get(agentId) ?? null);
   }
 
   /**
