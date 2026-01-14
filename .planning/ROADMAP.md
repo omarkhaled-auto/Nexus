@@ -16,7 +16,7 @@ None (no domain expertise files configured)
 
 - [x] **Phase 1: Foundation** - Project setup, TypeScript config, build tooling, infrastructure services ✓
 - [x] **Phase 2: Persistence** - StateManager, CheckpointManager, MemorySystem, RequirementsDB ✓
-- [ ] **Phase 3: LLM & Agents** - LLM clients (Claude/Gemini), agent runners, quality layer, QA loop
+- [x] **Phase 3: LLM & Agents** - LLM clients (Claude/Gemini), agent runners, quality layer, QA loop ✓
 - [ ] **Phase 4: Event System** - EventBus implementation, event types, pub/sub infrastructure
 - [ ] **Phase 5: Agent Core** - Agent pool, lifecycle management, tool access system, model providers
 - [ ] **Phase 6: Planning Layer** - Task decomposition, dependency resolution, parallel wave calculation
@@ -212,7 +212,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 |-------|----------------|--------|-----------|
 | 1. Foundation | 8/8 | Complete | 2026-01-14 |
 | 2. Persistence | 3/3 | Complete | 2026-01-14 |
-| 3. LLM & Agents | 0/3 | Not started | - |
+| 3. LLM & Agents | 3/3 | Complete | 2026-01-14 |
 | 4. Event System | 0/TBD | Not started | - |
 | 5. Agent Core | 0/TBD | Not started | - |
 | 6. Planning Layer | 0/TBD | Not started | - |
