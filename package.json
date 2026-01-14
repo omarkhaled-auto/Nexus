@@ -24,6 +24,8 @@
     "doctor": "tsx src/scripts/doctor.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.71.2",
+    "@google/genai": "^1.35.0",
     "better-sqlite3": "^11.7.0",
     "chokidar": "^3.6.0",
     "drizzle-orm": "^0.38.3",
