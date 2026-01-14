@@ -5,10 +5,16 @@
  * checkpoint creation based on system events.
  */
 
+import { eq, desc } from 'drizzle-orm';
+import { v4 as uuidv4 } from 'uuid';
 import type { DatabaseClient } from '../database/DatabaseClient';
 import type { StateManager, NexusState } from '../state/StateManager';
 import type { GitService } from '../../infrastructure/git/GitService';
-import type { Checkpoint } from '../database/schema';
+import {
+  checkpoints,
+  type Checkpoint,
+  type NewCheckpoint,
+} from '../database/schema';
 
 // ============================================================================
 // Custom Error Types
@@ -136,11 +142,57 @@ export class CheckpointManager {
    * @returns Created checkpoint with id and timestamp
    */
   async createCheckpoint(
-    _projectId: string,
-    _reason: string
+    projectId: string,
+    reason: string
   ): Promise<Checkpoint & { state: string }> {
-    // TODO: Implement
-    throw new Error('Not implemented');
+    this.log('debug', `Creating checkpoint for project ${projectId}: ${reason}`);
+
+    // Load current state
+    const state = this.stateManager.loadState(projectId);
+    if (!state) {
+      throw new CheckpointError(`Project not found: ${projectId}`);
+    }
+
+    // Get current git commit
+    let gitCommit: string | null = null;
+    try {
+      const log = await this.gitService.getLog(1);
+      if (log.length > 0 && log[0]) {
+        gitCommit = log[0].hash;
+      }
+    } catch {
+      // Git might not be available, continue without commit hash
+      this.log('warn', 'Could not get git commit hash');
+    }
+
+    // Serialize state to JSON
+    const stateJson = JSON.stringify(state);
+
+    // Create checkpoint record
+    const checkpointId = uuidv4();
+    const now = new Date();
+
+    const newCheckpoint: NewCheckpoint = {
+      id: checkpointId,
+      projectId,
+      name: `Checkpoint: ${reason}`,
+      reason,
+      state: stateJson,
+      gitCommit,
+      createdAt: now,
+    };
+
+    this.db.db.insert(checkpoints).values(newCheckpoint).run();
+
+    return {
+      id: checkpointId,
+      projectId,
+      name: `Checkpoint: ${reason}`,
+      reason,
+      state: stateJson,
+      gitCommit,
+      createdAt: now,
+    };
   }
 
   /**
@@ -150,11 +202,51 @@ export class CheckpointManager {
    * @throws CheckpointNotFoundError if checkpoint doesn't exist
    */
   async restoreCheckpoint(
-    _checkpointId: string,
-    _options?: RestoreOptions
+    checkpointId: string,
+    options?: RestoreOptions
   ): Promise<void> {
-    // TODO: Implement
-    throw new Error('Not implemented');
+    this.log('debug', `Restoring checkpoint ${checkpointId}`);
+
+    // Load checkpoint
+    const checkpoint = this.db.db
+      .select()
+      .from(checkpoints)
+      .where(eq(checkpoints.id, checkpointId))
+      .get();
+
+    if (!checkpoint) {
+      throw new CheckpointNotFoundError(checkpointId);
+    }
+
+    // Parse state from checkpoint
+    if (!checkpoint.state) {
+      throw new RestoreError(checkpointId, 'Checkpoint has no state data');
+    }
+
+    let state: NexusState;
+    try {
+      state = JSON.parse(checkpoint.state) as NexusState;
+    } catch {
+      throw new RestoreError(checkpointId, 'Invalid state data');
+    }
+
+    // Restore state
+    this.stateManager.saveState(state);
+
+    // Optionally restore git state
+    if (options?.restoreGit && checkpoint.gitCommit) {
+      try {
+        // Use git reset or checkout to restore to commit
+        // Note: This is a simplified implementation
+        await this.gitService.checkoutBranch(checkpoint.gitCommit);
+      } catch (err) {
+        this.log(
+          'warn',
+          `Could not restore git state: ${(err as Error).message}`
+        );
+        // Don't throw - state was restored, git restore is optional
+      }
+    }
   }
 
   /**
@@ -162,18 +254,30 @@ export class CheckpointManager {
    * @param projectId Project to list checkpoints for
    * @returns Checkpoints ordered by date descending
    */
-  async listCheckpoints(_projectId: string): Promise<Checkpoint[]> {
-    // TODO: Implement
-    throw new Error('Not implemented');
+  listCheckpoints(projectId: string): Checkpoint[] {
+    this.log('debug', `Listing checkpoints for project ${projectId}`);
+
+    const result = this.db.db
+      .select()
+      .from(checkpoints)
+      .where(eq(checkpoints.projectId, projectId))
+      .orderBy(desc(checkpoints.createdAt))
+      .all();
+
+    return result;
   }
 
   /**
    * Delete a checkpoint.
    * @param checkpointId Checkpoint to delete
    */
-  async deleteCheckpoint(_checkpointId: string): Promise<void> {
-    // TODO: Implement
-    throw new Error('Not implemented');
+  deleteCheckpoint(checkpointId: string): void {
+    this.log('debug', `Deleting checkpoint ${checkpointId}`);
+
+    this.db.db
+      .delete(checkpoints)
+      .where(eq(checkpoints.id, checkpointId))
+      .run();
   }
 
   /**

@@ -199,10 +199,10 @@ describe('StateManager', () => {
       expect(loaded!.status).toBe('completed');
     });
 
-    it('throws StateNotFoundError if project not found', async () => {
-      await expect(
+    it('throws StateNotFoundError if project not found', () => {
+      expect(() =>
         stateManager.updateState('non-existent', { status: 'paused' })
-      ).rejects.toThrow(StateNotFoundError);
+      ).toThrow(StateNotFoundError);
     });
 
     it('updates currentPhase', async () => {
@@ -253,11 +253,9 @@ describe('StateManager', () => {
       expect(loaded).toBeNull();
     });
 
-    it('does not throw for non-existent project', async () => {
+    it('does not throw for non-existent project', () => {
       // Should not throw
-      await expect(
-        stateManager.deleteState('non-existent')
-      ).resolves.not.toThrow();
+      expect(() => stateManager.deleteState('non-existent')).not.toThrow();
     });
   });
 

@@ -254,11 +254,12 @@ describe('CheckpointManager', () => {
       const state = createTestState('proj-1');
       await stateManager.saveState(state);
 
-      // Create multiple checkpoints
+      // Create multiple checkpoints with delay to ensure different timestamps
+      // SQLite timestamp mode has second precision, so we need 1s+ delays
       const chk1 = await checkpointManager.createCheckpoint('proj-1', 'First');
-      await new Promise((r) => setTimeout(r, 10)); // Small delay
+      await new Promise((r) => setTimeout(r, 1100)); // 1.1s delay for timestamp difference
       const chk2 = await checkpointManager.createCheckpoint('proj-1', 'Second');
-      await new Promise((r) => setTimeout(r, 10));
+      await new Promise((r) => setTimeout(r, 1100));
       const chk3 = await checkpointManager.createCheckpoint('proj-1', 'Third');
 
       const checkpoints = await checkpointManager.listCheckpoints('proj-1');
@@ -314,10 +315,8 @@ describe('CheckpointManager', () => {
       expect(checkpoints).toHaveLength(0);
     });
 
-    it('does not throw for non-existent checkpoint', async () => {
-      await expect(
-        checkpointManager.deleteCheckpoint('non-existent')
-      ).resolves.not.toThrow();
+    it('does not throw for non-existent checkpoint', () => {
+      expect(() => checkpointManager.deleteCheckpoint('non-existent')).not.toThrow();
     });
   });
 
