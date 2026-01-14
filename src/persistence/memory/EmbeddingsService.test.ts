@@ -267,18 +267,25 @@ describe('EmbeddingsService', () => {
     });
 
     it('should throw EmbeddingAPIError with correct status code', async () => {
+      // Use a service with no retries to test immediate error
+      const noRetryService = new EmbeddingsService({
+        apiKey: 'sk-test-key',
+        mockMode: false,
+        maxRetries: 1, // Only one attempt, no retries
+      });
+
       global.fetch = vi.fn().mockResolvedValue({
         ok: false,
-        status: 429,
-        statusText: 'Too Many Requests',
+        status: 401,
+        statusText: 'Unauthorized',
       });
 
       try {
-        await service.embed('test');
+        await noRetryService.embed('test');
         expect.fail('Should have thrown');
       } catch (error) {
         expect(error).toBeInstanceOf(EmbeddingAPIError);
-        expect((error as EmbeddingAPIError).statusCode).toBe(429);
+        expect((error as EmbeddingAPIError).statusCode).toBe(401);
       }
     });
 
