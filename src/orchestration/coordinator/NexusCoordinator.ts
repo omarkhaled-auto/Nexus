@@ -349,7 +349,10 @@ export class NexusCoordinator implements INexusCoordinator {
         this.currentWaveIndex = waveIndex;
         this.emitEvent('wave:started', { waveId: waveIndex });
 
-        await this.processWave(this.waves[waveIndex]);
+        const wave = this.waves[waveIndex];
+        if (wave) {
+          await this.processWave(wave);
+        }
 
         if (!this.stopRequested) {
           this.emitEvent('wave:completed', { waveId: waveIndex });
