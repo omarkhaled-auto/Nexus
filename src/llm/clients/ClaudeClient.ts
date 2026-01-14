@@ -115,10 +115,9 @@ function convertMessages(
           content: msg.content,
         });
       }
-    } else if (msg.role === 'tool') {
-      // Tool messages are handled as user messages with tool_result blocks
-      // This is typically handled through toolResults above
     }
+    // Note: 'tool' role messages are handled as user messages with tool_result blocks
+    // via the toolResults property above
   }
 
   return { systemPrompt, messages: anthropicMessages };
@@ -280,9 +279,11 @@ export class ClaudeClient implements LLMClient {
           stop_sequences: options?.stopSequences,
         });
 
-        const timeoutPromise = new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new TimeoutError('Request timed out')), this.timeout)
-        );
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          setTimeout(() => {
+            reject(new TimeoutError('Request timed out'));
+          }, this.timeout);
+        });
 
         const response = await Promise.race([requestPromise, timeoutPromise]);
 
@@ -317,7 +318,7 @@ export class ClaudeClient implements LLMClient {
 
         // Exponential backoff
         const delay = INITIAL_RETRY_DELAY * Math.pow(2, attempt);
-        this.logger?.warn(`Retrying request after ${delay}ms (attempt ${attempt + 1}/${MAX_RETRIES})`);
+        this.logger?.warn(`Retrying request after ${String(delay)}ms (attempt ${String(attempt + 1)}/${String(MAX_RETRIES)})`);
         await sleep(delay);
       }
     }
@@ -346,7 +347,7 @@ export class ClaudeClient implements LLMClient {
     }
 
     // Get final message for usage stats
-    const usage = await this.getStreamUsage();
+    const usage = this.getStreamUsage();
 
     return {
       content: textContent,
@@ -362,7 +363,7 @@ export class ClaudeClient implements LLMClient {
    */
   private streamUsage: TokenUsage = { inputTokens: 0, outputTokens: 0, totalTokens: 0 };
 
-  private async getStreamUsage(): Promise<TokenUsage> {
+  private getStreamUsage(): TokenUsage {
     return this.streamUsage;
   }
 
@@ -419,9 +420,10 @@ export class ClaudeClient implements LLMClient {
           const delta = event.delta;
 
           if (delta.type === 'thinking_delta') {
+            const thinkingDelta = delta as { thinking?: string };
             yield {
               type: 'thinking',
-              content: (delta as { thinking?: string }).thinking,
+              content: thinkingDelta.thinking,
             };
           } else if (delta.type === 'text_delta') {
             yield {
@@ -437,7 +439,7 @@ export class ClaudeClient implements LLMClient {
             let args: Record<string, unknown> = {};
             try {
               if (currentToolJson) {
-                args = JSON.parse(currentToolJson);
+                args = JSON.parse(currentToolJson) as Record<string, unknown>;
               }
             } catch {
               // Ignore JSON parse errors for partial tools

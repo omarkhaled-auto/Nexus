@@ -189,13 +189,16 @@ export class GeminiClient implements LLMClient {
             },
           });
 
-          const timeoutPromise = new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new GeminiTimeoutError('Request timed out')), this.timeout)
-          );
+          const timeoutPromise = new Promise<never>((_, reject) => {
+            setTimeout(() => {
+              reject(new GeminiTimeoutError('Request timed out'));
+            }, this.timeout);
+          });
 
           const result = await Promise.race([requestPromise, timeoutPromise]);
 
-          const responseText = result.response.text();
+          // Access the text directly from response (SDK provides it as a property)
+          const responseText = result.text ?? '';
 
           this.logger?.debug('Gemini API response received', {
             model: currentModel,
@@ -205,9 +208,9 @@ export class GeminiClient implements LLMClient {
           const usage: TokenUsage = {
             inputTokens: result.usageMetadata?.promptTokenCount ?? 0,
             outputTokens: result.usageMetadata?.candidatesTokenCount ?? 0,
-            totalTokens:
-              (result.usageMetadata?.promptTokenCount ?? 0) +
-              (result.usageMetadata?.candidatesTokenCount ?? 0),
+            totalTokens: result.usageMetadata?.totalTokenCount ??
+              ((result.usageMetadata?.promptTokenCount ?? 0) +
+              (result.usageMetadata?.candidatesTokenCount ?? 0)),
           };
 
           return {
@@ -241,7 +244,7 @@ export class GeminiClient implements LLMClient {
 
           // Exponential backoff
           const delay = INITIAL_RETRY_DELAY * Math.pow(2, attempt);
-          this.logger?.warn(`Retrying request after ${delay}ms (attempt ${attempt + 1}/${MAX_RETRIES})`);
+          this.logger?.warn(`Retrying request after ${String(delay)}ms (attempt ${String(attempt + 1)}/${String(MAX_RETRIES)})`);
           await sleep(delay);
         }
       }
@@ -271,7 +274,8 @@ export class GeminiClient implements LLMClient {
       });
 
       for await (const chunk of stream) {
-        const text = chunk.text();
+        // Access text directly as property (SDK provides it as a getter)
+        const text = chunk.text;
         if (text) {
           yield {
             type: 'text',

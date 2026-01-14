@@ -9,7 +9,6 @@ import type {
   AgentType,
   UsageStats,
   AgentUsageStats,
-  ModelConfig,
   LLMClient,
 } from './types';
 import { DEFAULT_MODEL_CONFIGS, MODEL_PRICING } from './types';

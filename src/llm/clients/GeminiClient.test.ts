@@ -100,10 +100,8 @@ describe('GeminiClient', () => {
       ];
 
       mockGenAIInstance.models.generateContent.mockResolvedValue({
-        response: {
-          text: () => 'The code looks good. Consider adding type annotations.',
-        },
-        usageMetadata: { promptTokenCount: 50, candidatesTokenCount: 30 },
+        text: 'The code looks good. Consider adding type annotations.',
+        usageMetadata: { promptTokenCount: 50, candidatesTokenCount: 30, totalTokenCount: 80 },
       });
 
       const response = await client.chat(messages);
@@ -122,10 +120,8 @@ describe('GeminiClient', () => {
       ];
 
       mockGenAIInstance.models.generateContent.mockResolvedValue({
-        response: {
-          text: () => 'Large file reviewed successfully.',
-        },
-        usageMetadata: { promptTokenCount: 100000, candidatesTokenCount: 10 },
+        text: 'Large file reviewed successfully.',
+        usageMetadata: { promptTokenCount: 100000, candidatesTokenCount: 10, totalTokenCount: 100010 },
       });
 
       const response = await client.chat(messages);
@@ -155,10 +151,8 @@ describe('GeminiClient', () => {
         .mockRejectedValueOnce(rateLimitError)
         .mockRejectedValueOnce(rateLimitError)
         .mockResolvedValue({
-          response: {
-            text: () => 'Success after retry',
-          },
-          usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 5 },
+          text: 'Success after retry',
+          usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 5, totalTokenCount: 15 },
         });
 
       const response = await client.chat(messages);
@@ -191,8 +185,8 @@ describe('GeminiClient', () => {
 
       const mockStreamResponse = {
         async *[Symbol.asyncIterator]() {
-          yield { text: () => 'Hello' };
-          yield { text: () => ' there!' };
+          yield { text: 'Hello' };
+          yield { text: ' there!' };
         },
       };
 
@@ -213,7 +207,7 @@ describe('GeminiClient', () => {
 
       const mockStreamResponse = {
         async *[Symbol.asyncIterator]() {
-          yield { text: () => 'Hi!' };
+          yield { text: 'Hi!' };
         },
       };
 
@@ -265,10 +259,8 @@ describe('GeminiClient', () => {
       mockGenAIInstance.models.generateContent
         .mockRejectedValueOnce(modelNotFoundError)
         .mockResolvedValue({
-          response: {
-            text: () => 'Response from fallback model',
-          },
-          usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 5 },
+          text: 'Response from fallback model',
+          usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 5, totalTokenCount: 15 },
         });
 
       const response = await client.chat(messages);
