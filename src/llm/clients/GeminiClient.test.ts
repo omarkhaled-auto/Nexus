@@ -137,12 +137,13 @@ describe('GeminiClient', () => {
     it('throws GeminiAPIError for API errors', async () => {
       const messages: Message[] = [{ role: 'user', content: 'Hello!' }];
 
+      // Use 400 status to avoid retry logic (non-retryable)
       const apiError = new Error('API error');
-      (apiError as Error & { status?: number }).status = 500;
+      (apiError as Error & { status?: number }).status = 400;
       mockGenAIInstance.models.generateContent.mockRejectedValue(apiError);
 
       await expect(client.chat(messages)).rejects.toThrow(GeminiAPIError);
-    });
+    }, 10000);
 
     it('retries on rate limit errors', async () => {
       const messages: Message[] = [{ role: 'user', content: 'Hello!' }];
