@@ -1,7 +1,7 @@
 // MergerRunner - Branch merge agent
 // Phase 03-02: Agent Execution Framework
 
-import { AgentRunner, type AgentRunnerOptions } from './AgentRunner';
+import { AgentRunner } from './AgentRunner';
 import type { AgentType, Task, ToolDefinition } from './types';
 import type { Message } from '@/llm';
 
@@ -164,10 +164,6 @@ const MERGER_TOOLS: ToolDefinition[] = [
 export class MergerRunner extends AgentRunner {
   public readonly agentType: AgentType = 'merger';
   public readonly systemPrompt: string = MERGER_SYSTEM_PROMPT;
-
-  constructor(options: AgentRunnerOptions) {
-    super(options);
-  }
 
   /**
    * Get the list of tools available to this agent

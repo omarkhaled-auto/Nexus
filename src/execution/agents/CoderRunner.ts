@@ -1,7 +1,7 @@
 // CoderRunner - Code generation agent
 // Phase 03-02: Agent Execution Framework
 
-import { AgentRunner, type AgentRunnerOptions } from './AgentRunner';
+import { AgentRunner } from './AgentRunner';
 import type { AgentType, Task, ToolDefinition } from './types';
 import type { Message } from '@/llm';
 
@@ -180,10 +180,6 @@ const CODER_TOOLS: ToolDefinition[] = [
 export class CoderRunner extends AgentRunner {
   public readonly agentType: AgentType = 'coder';
   public readonly systemPrompt: string = CODER_SYSTEM_PROMPT;
-
-  constructor(options: AgentRunnerOptions) {
-    super(options);
-  }
 
   /**
    * Get the list of tools available to this agent

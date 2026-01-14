@@ -34,7 +34,7 @@ export class MaxIterationsError extends AgentError {
   public readonly iterations: number;
 
   constructor(iterations: number) {
-    super(`Agent exceeded maximum iterations: ${iterations}`);
+    super(`Agent exceeded maximum iterations: ${String(iterations)}`);
     this.name = 'MaxIterationsError';
     this.iterations = iterations;
   }
@@ -45,7 +45,7 @@ export class MaxIterationsError extends AgentError {
  */
 export class ToolExecutionError extends AgentError {
   public readonly toolName: string;
-  public readonly cause: Error;
+  public override readonly cause: Error;
 
   constructor(toolName: string, cause: Error) {
     super(`Tool execution failed for ${toolName}: ${cause.message}`);
@@ -59,7 +59,7 @@ export class ToolExecutionError extends AgentError {
  * Error thrown when LLM call fails
  */
 export class LLMCallError extends AgentError {
-  public readonly cause: Error;
+  public override readonly cause: Error;
 
   constructor(cause: Error) {
     super(`LLM call failed: ${cause.message}`);
@@ -150,7 +150,8 @@ export abstract class AgentRunner {
 
     try {
       while (iterations < this.maxIterations) {
-        // Check for cancellation
+        // Check for cancellation (can be set by cancel() from another context)
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (this.cancelled) {
           this.state = 'completed';
           return {
@@ -164,7 +165,7 @@ export abstract class AgentRunner {
         }
 
         iterations++;
-        this.logger?.debug(`Iteration ${iterations}/${this.maxIterations}`);
+        this.logger?.debug(`Iteration ${String(iterations)}/${String(this.maxIterations)}`);
 
         // Build messages for LLM
         const messages = this.buildMessages(task, history);
