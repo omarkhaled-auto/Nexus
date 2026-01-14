@@ -56,6 +56,11 @@ export interface Agent {
   type: AgentType;
   status: AgentStatus;
 
+  // Model configuration (per-instance, may differ from AGENT_CONFIGS defaults)
+  model: ModelConfig;
+  systemPrompt: string; // path to prompt file or content
+  tools: AgentTool[]; // tools available to this agent instance
+
   // Current work
   currentTaskId?: string;
   worktreePath?: string;

@@ -15,6 +15,13 @@
       "when": 1768343414845,
       "tag": "0001_quiet_black_panther",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1736848000000,
+      "tag": "0002_hotfix_metadata_fields",
+      "breakpoints": true
     }
   ]
 }

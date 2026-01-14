@@ -12,6 +12,7 @@ export const projects = sqliteTable('projects', {
   status: text('status').notNull(), // ProjectStatus
   rootPath: text('root_path').notNull(),
   repositoryUrl: text('repository_url'),
+  settings: text('settings'), // JSON: ProjectSettings
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
   completedAt: integer('completed_at', { mode: 'timestamp' }),
@@ -74,6 +75,9 @@ export const tasks = sqliteTable('tasks', {
     .default('auto'),
   status: text('status').notNull().default('pending'),
   size: text('size').$type<'atomic' | 'small'>().notNull().default('small'),
+  priority: integer('priority').notNull().default(5), // for sorting (1 = highest)
+  tags: text('tags'), // JSON array for categorization
+  notes: text('notes'), // JSON array of implementation notes
   assignedAgent: text('assigned_agent'),
   worktreePath: text('worktree_path'),
   branchName: text('branch_name'),
@@ -98,6 +102,17 @@ export const agents = sqliteTable('agents', {
     .$type<'planner' | 'coder' | 'tester' | 'reviewer' | 'merger'>()
     .notNull(),
   status: text('status').notNull().default('idle'),
+  // Model configuration
+  modelProvider: text('model_provider')
+    .$type<'anthropic' | 'google' | 'openai'>()
+    .notNull()
+    .default('anthropic'),
+  modelName: text('model_name').notNull().default('claude-sonnet-4'),
+  temperature: real('temperature').notNull().default(0.3),
+  maxTokens: integer('max_tokens').notNull().default(8000),
+  systemPrompt: text('system_prompt'), // path to prompt file or content
+  tools: text('tools'), // JSON array of tool names
+  // Current work
   currentTaskId: text('current_task_id'),
   worktreePath: text('worktree_path'),
   branchName: text('branch_name'),
@@ -141,6 +156,8 @@ export const requirements = sqliteTable('requirements', {
   acceptanceCriteria: text('acceptance_criteria'), // JSON array of acceptance criteria
   linkedFeatures: text('linked_features'), // JSON array
   validated: integer('validated', { mode: 'boolean' }).default(false),
+  confidence: real('confidence').default(1.0), // 0-1, AI confidence in extraction
+  tags: text('tags'), // JSON array for filtering/categorization
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
 });
 

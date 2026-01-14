@@ -32,6 +32,9 @@ export interface Task {
   type: TaskType;
   status: TaskStatus;
   size: TaskSize;
+  priority: number; // for sorting (1 = highest)
+  tags: string[]; // categorization
+  notes: string[]; // implementation notes
 
   // Execution context
   assignedAgent?: string;

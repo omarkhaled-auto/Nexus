@@ -35,6 +35,23 @@ export type FeatureComplexity = 'simple' | 'complex';
 // simple: 1-3 tasks, straightforward implementation
 // complex: requires decomposition into sub-features, 4+ tasks
 
+// Project-level configuration settings
+export interface ProjectSettings {
+  maxParallelAgents: number; // default: 4
+  testCoverageTarget: number; // default: 80
+  maxTaskMinutes: number; // default: 30
+  qaMaxIterations: number; // default: 50
+  checkpointIntervalHours: number; // default: 2
+}
+
+export const DEFAULT_PROJECT_SETTINGS: ProjectSettings = {
+  maxParallelAgents: 4,
+  testCoverageTarget: 80,
+  maxTaskMinutes: 30,
+  qaMaxIterations: 50,
+  checkpointIntervalHours: 2,
+} as const;
+
 export interface Project {
   id: string;
   name: string;
@@ -45,6 +62,7 @@ export interface Project {
   repositoryUrl?: string;
   features: Feature[];
   requirements: Requirement[];
+  settings: ProjectSettings;
   createdAt: Date;
   updatedAt: Date;
   completedAt?: Date;
@@ -86,6 +104,8 @@ export interface Requirement {
   acceptanceCriteria: string[]; // Criteria for verifying requirement is met
   linkedFeatures: string[];
   validated: boolean;
+  confidence: number; // 0-1, AI confidence in extraction
+  tags: string[]; // for filtering/categorization
   createdAt: Date;
 }
 
