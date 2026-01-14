@@ -137,6 +137,12 @@ export interface Checkpoint {
 }
 
 /**
+ * Project mode - Genesis (new project) or Evolution (existing codebase)
+ * Hotfix #5 - Issue 4: Mode affects decomposition strategy
+ */
+export type ProjectMode = 'genesis' | 'evolution';
+
+/**
  * Project configuration for coordinator
  */
 export interface ProjectConfig {
@@ -144,6 +150,10 @@ export interface ProjectConfig {
   projectPath: string;
   settings: ProjectSettings;
   features?: { id: string; name: string; description: string }[];
+  /** Project mode: 'genesis' for new projects, 'evolution' for existing codebases */
+  mode?: ProjectMode;
+  /** Requirements for Genesis mode */
+  requirements?: { id: string; description: string }[];
 }
 
 // ============================================================================
@@ -152,6 +162,7 @@ export interface ProjectConfig {
 
 /**
  * Nexus event types
+ * Hotfix #5 - Added new events for merge, mode, and checkpoint operations
  */
 export type NexusEventType =
   | 'coordinator:started'
@@ -165,11 +176,16 @@ export type NexusEventType =
   | 'task:started'
   | 'task:completed'
   | 'task:failed'
+  | 'task:merged'       // Hotfix #5 - Issue 2: Task merged to main
+  | 'task:merge-failed' // Hotfix #5 - Issue 2: Task merge failed
+  | 'task:escalated'    // Hotfix #5 - Task escalated for human intervention
   | 'agent:spawned'
   | 'agent:assigned'
   | 'agent:released'
   | 'agent:terminated'
-  | 'checkpoint:created';
+  | 'checkpoint:created'
+  | 'checkpoint:failed'    // Hotfix #5 - Issue 3: Checkpoint creation failed
+  | 'orchestration:mode';  // Hotfix #5 - Issue 4: Mode selection event
 
 /**
  * Base Nexus event

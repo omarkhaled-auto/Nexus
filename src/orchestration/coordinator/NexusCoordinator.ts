@@ -36,6 +36,8 @@ export interface NexusCoordinatorOptions {
   qaEngine: any; // QALoopEngine type
   worktreeManager: any; // WorktreeManager type
   checkpointManager: any; // CheckpointManager type
+  mergerRunner?: any; // MergerRunner for merging task branches
+  agentWorktreeBridge?: any; // AgentWorktreeBridge for worktree management
 }
 
 /**
@@ -60,6 +62,8 @@ export class NexusCoordinator implements INexusCoordinator {
   private readonly qaEngine: any;
   private readonly worktreeManager: any;
   private readonly checkpointManager: any;
+  private readonly mergerRunner?: any;
+  private readonly agentWorktreeBridge?: any;
 
   // State
   private state: CoordinatorState = 'idle';
@@ -87,6 +91,8 @@ export class NexusCoordinator implements INexusCoordinator {
     this.qaEngine = options.qaEngine;
     this.worktreeManager = options.worktreeManager;
     this.checkpointManager = options.checkpointManager;
+    this.mergerRunner = options.mergerRunner;
+    this.agentWorktreeBridge = options.agentWorktreeBridge;
   }
 
   /**
@@ -297,26 +303,16 @@ export class NexusCoordinator implements INexusCoordinator {
 
   /**
    * Main orchestration loop
+   * Hotfix #5 - Issue 3: Added per-wave checkpoints
+   * Hotfix #5 - Issue 4: Added Genesis/Evolution mode branching
    */
   private async runOrchestrationLoop(): Promise<void> {
     try {
-      // Decompose features into tasks
       const config = this.projectConfig!;
-      const features = config.features ?? [];
 
-      // Decompose all features
-      const allTasks: PlanningTask[] = [];
-      for (const feature of features) {
-        const tasks = await this.decomposer.decompose(feature as any);
-        allTasks.push(...tasks);
-      }
-
-      // If no features, try to get tasks from decomposer with mock feature
-      if (allTasks.length === 0) {
-        const mockFeature = { id: 'mock', name: 'Mock', description: 'Mock', priority: 'must' as const, status: 'backlog' as const, complexity: 'simple' as const, subFeatures: [], estimatedTasks: 1, completedTasks: 0, createdAt: new Date(), updatedAt: new Date(), projectId: config.projectId };
-        const tasks = await this.decomposer.decompose(mockFeature as any);
-        allTasks.push(...tasks);
-      }
+      // HOTFIX #5 - Issue 4: Genesis/Evolution mode branching
+      // Different modes have different decomposition strategies
+      const allTasks = await this.decomposeByMode(config);
 
       // Check for cycles
       const cycles = this.resolver.detectCycles(allTasks);
@@ -342,7 +338,7 @@ export class NexusCoordinator implements INexusCoordinator {
         }
       }
 
-      // Process waves
+      // Process waves with checkpoints
       for (let waveIndex = 0; waveIndex < this.waves.length; waveIndex++) {
         if (this.stopRequested) break;
 
@@ -356,11 +352,110 @@ export class NexusCoordinator implements INexusCoordinator {
 
         if (!this.stopRequested) {
           this.emitEvent('wave:completed', { waveId: waveIndex });
+
+          // HOTFIX #5 - Issue 3: Create checkpoint after each wave
+          // This provides a safety net - can recover if crash after wave
+          await this.createWaveCheckpoint(waveIndex);
         }
       }
     } catch (error) {
       // Log error but don't crash
       console.error('Orchestration error:', error);
+    }
+  }
+
+  /**
+   * Decompose features based on project mode
+   * Hotfix #5 - Issue 4: Genesis vs Evolution mode distinction
+   *
+   * Genesis mode: Full decomposition from requirements (greenfield project)
+   * Evolution mode: Analyze existing code, targeted changes (existing codebase)
+   */
+  private async decomposeByMode(config: ProjectConfig): Promise<PlanningTask[]> {
+    const mode = config.mode ?? 'genesis';
+    const features = config.features ?? [];
+    const allTasks: PlanningTask[] = [];
+
+    if (mode === 'genesis') {
+      // Genesis: Full decomposition from requirements
+      // Project is new - decompose all features completely
+      this.emitEvent('orchestration:mode', { mode: 'genesis', reason: 'Full decomposition from requirements' });
+
+      for (const feature of features) {
+        const tasks = await this.decomposer.decompose(feature as any);
+        allTasks.push(...tasks);
+      }
+
+      // If no features, create mock feature for decomposition
+      if (allTasks.length === 0) {
+        const mockFeature = {
+          id: 'mock',
+          name: 'Mock',
+          description: 'Mock',
+          priority: 'must' as const,
+          status: 'backlog' as const,
+          complexity: 'simple' as const,
+          subFeatures: [],
+          estimatedTasks: 1,
+          completedTasks: 0,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          projectId: config.projectId,
+        };
+        const tasks = await this.decomposer.decompose(mockFeature as any);
+        allTasks.push(...tasks);
+      }
+    } else {
+      // Evolution: Analyze existing code, targeted changes
+      // Project exists - decompose features with awareness of existing code
+      this.emitEvent('orchestration:mode', { mode: 'evolution', reason: 'Targeted changes to existing codebase' });
+
+      // TODO: In future, implement analyzeExistingCode() to understand current state
+      // For now, use same decomposition but flag for evolution-aware handling
+      for (const feature of features) {
+        const tasks = await this.decomposer.decompose(feature as any);
+
+        // Tag tasks as evolution-mode for downstream handling
+        for (const task of tasks) {
+          task.testCriteria = task.testCriteria ?? [];
+          task.testCriteria.push('Evolution: Verify compatibility with existing code');
+        }
+
+        allTasks.push(...tasks);
+      }
+    }
+
+    return allTasks;
+  }
+
+  /**
+   * Create checkpoint after wave completion
+   * Hotfix #5 - Issue 3: Per-wave checkpoints for recovery
+   */
+  private async createWaveCheckpoint(waveIndex: number): Promise<void> {
+    try {
+      const checkpointName = `Wave ${waveIndex} complete`;
+
+      await this.checkpointManager.create({
+        name: checkpointName,
+        projectId: this.projectConfig?.projectId,
+        waveId: waveIndex,
+        completedTaskIds: [], // Would be tracked in production
+        pendingTaskIds: [],
+        coordinatorState: this.state,
+      });
+
+      this.emitEvent('checkpoint:created', {
+        waveId: waveIndex,
+        reason: checkpointName,
+      });
+    } catch (error) {
+      // Log but don't fail orchestration due to checkpoint error
+      console.error('Failed to create wave checkpoint:', error);
+      this.emitEvent('checkpoint:failed', {
+        waveId: waveIndex,
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
   }
 
@@ -448,7 +543,8 @@ export class NexusCoordinator implements INexusCoordinator {
   }
 
   /**
-   * Execute a single task
+   * Execute a single task with per-task merge on success
+   * Hotfix #5 - Issue 2: Added merge step after successful QA loop
    */
   private async executeTask(
     task: OrchestrationTask,
@@ -471,9 +567,33 @@ export class NexusCoordinator implements INexusCoordinator {
       );
 
       if (result.success) {
+        // HOTFIX #5 - Issue 2: Merge to main on success
+        // Code stays in worktree without this step
+        if (worktreePath && this.mergerRunner) {
+          try {
+            await this.mergerRunner.merge(worktreePath, 'main');
+            this.emitEvent('task:merged', { taskId: task.id, branch: 'main' });
+          } catch (mergeError) {
+            // Log merge failure but don't fail the task
+            this.emitEvent('task:merge-failed', {
+              taskId: task.id,
+              error: mergeError instanceof Error ? mergeError.message : String(mergeError),
+            });
+          }
+        }
+
         this.taskQueue.markComplete(task.id);
         this.completedTasks++;
         this.emitEvent('task:completed', { taskId: task.id, agentId });
+      } else if (result.escalated) {
+        // Task escalated - needs human intervention
+        this.taskQueue.markFailed(task.id);
+        this.failedTasks++;
+        this.emitEvent('task:escalated', {
+          taskId: task.id,
+          agentId,
+          reason: result.reason ?? 'Max QA iterations exceeded',
+        });
       } else {
         this.taskQueue.markFailed(task.id);
         this.failedTasks++;
@@ -492,6 +612,15 @@ export class NexusCoordinator implements INexusCoordinator {
         error: error instanceof Error ? error.message : String(error),
       });
     } finally {
+      // Release agent from worktree bridge (if available)
+      if (this.agentWorktreeBridge) {
+        try {
+          await this.agentWorktreeBridge.releaseWorktree(agentId);
+        } catch {
+          // Ignore bridge cleanup errors
+        }
+      }
+
       // Release agent
       try {
         this.agentPool.release(agentId);

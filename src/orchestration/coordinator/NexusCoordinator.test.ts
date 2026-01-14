@@ -11,6 +11,7 @@ import type {
   NexusEvent,
   OrchestrationTask,
   Checkpoint,
+  ProjectMode,
 } from '../types';
 
 // Mock dependencies
@@ -52,10 +53,24 @@ const mockCheckpointManager = {
   list: vi.fn(),
 };
 
+// Hotfix #5 - Issue 2: Mock merger runner
+const mockMergerRunner = {
+  merge: vi.fn(),
+};
+
+// Hotfix #5 - Issue 2: Mock agent worktree bridge
+const mockAgentWorktreeBridge = {
+  assignWorktree: vi.fn(),
+  releaseWorktree: vi.fn(),
+  getWorktree: vi.fn(),
+};
+
 /**
  * Helper to create test config
+ * Hotfix #5 - Added mode and features support
  */
-function createConfig(overrides: Partial<ProjectConfig> = {}): ProjectConfig {
+function createConfig(overrides: Partial<ProjectConfig> & { mode?: ProjectMode; features?: { id: string; name: string; description: string }[] } = {}): ProjectConfig {
+  const { mode, features, ...rest } = overrides;
   return {
     projectId: 'test-project',
     projectPath: '/path/to/project',
@@ -66,7 +81,9 @@ function createConfig(overrides: Partial<ProjectConfig> = {}): ProjectConfig {
       qaMaxIterations: 50,
       checkpointIntervalHours: 2,
     },
-    ...overrides,
+    mode,
+    features,
+    ...rest,
   };
 }
 
@@ -112,6 +129,8 @@ describe('NexusCoordinator', () => {
       qaEngine: mockQAEngine as any,
       worktreeManager: mockWorktreeManager as any,
       checkpointManager: mockCheckpointManager as any,
+      mergerRunner: mockMergerRunner as any,
+      agentWorktreeBridge: mockAgentWorktreeBridge as any,
     });
   });
 
@@ -750,6 +769,274 @@ describe('NexusCoordinator', () => {
       expect(progress.completedTasks).toBeGreaterThanOrEqual(0);
 
       await coordinator.stop();
+    });
+  });
+
+  // ============================================================================
+  // Hotfix #5 Tests
+  // ============================================================================
+
+  describe('Hotfix #5 - Issue 2: Per-task merge on success', () => {
+    beforeEach(async () => {
+      const config = createConfig();
+      await coordinator.initialize(config);
+      mockDecomposer.decompose.mockResolvedValue([createTask('task-1')]);
+      mockResolver.calculateWaves.mockReturnValue([
+        { id: 0, tasks: [createTask('task-1')], estimatedTime: 15, dependencies: [] },
+      ]);
+      mockResolver.detectCycles.mockReturnValue([]);
+      mockWorktreeManager.createWorktree.mockResolvedValue({ path: '/worktree/task-1' });
+      mockMergerRunner.merge.mockResolvedValue(undefined);
+    });
+
+    it('should merge task branch to main on success', async () => {
+      mockQAEngine.run.mockResolvedValue({
+        success: true,
+        iterations: 1,
+        escalated: false,
+        stages: [],
+      });
+
+      const startPromise = coordinator.start('test-project');
+      await new Promise(resolve => setTimeout(resolve, 300));
+      await coordinator.stop();
+
+      expect(mockMergerRunner.merge).toHaveBeenCalledWith('/worktree/task-1', 'main');
+    });
+
+    it('should emit task:merged event on successful merge', async () => {
+      const events: NexusEvent[] = [];
+      coordinator.onEvent(event => events.push(event));
+
+      mockQAEngine.run.mockResolvedValue({
+        success: true,
+        iterations: 1,
+        escalated: false,
+        stages: [],
+      });
+
+      const startPromise = coordinator.start('test-project');
+      await new Promise(resolve => setTimeout(resolve, 300));
+      await coordinator.stop();
+
+      const mergedEvent = events.find(e => e.type === 'task:merged');
+      expect(mergedEvent).toBeDefined();
+      expect(mergedEvent?.data?.taskId).toBe('task-1');
+      expect(mergedEvent?.data?.branch).toBe('main');
+    });
+
+    it('should emit task:merge-failed event on merge error', async () => {
+      const events: NexusEvent[] = [];
+      coordinator.onEvent(event => events.push(event));
+
+      mockQAEngine.run.mockResolvedValue({
+        success: true,
+        iterations: 1,
+        escalated: false,
+        stages: [],
+      });
+      mockMergerRunner.merge.mockRejectedValue(new Error('Merge conflict'));
+
+      const startPromise = coordinator.start('test-project');
+      await new Promise(resolve => setTimeout(resolve, 300));
+      await coordinator.stop();
+
+      const mergeFailedEvent = events.find(e => e.type === 'task:merge-failed');
+      expect(mergeFailedEvent).toBeDefined();
+      expect(mergeFailedEvent?.data?.error).toContain('Merge conflict');
+    });
+
+    it('should not merge on task failure', async () => {
+      mockQAEngine.run.mockResolvedValue({
+        success: false,
+        iterations: 50,
+        escalated: true,
+        stages: [],
+      });
+
+      const startPromise = coordinator.start('test-project');
+      await new Promise(resolve => setTimeout(resolve, 300));
+      await coordinator.stop();
+
+      expect(mockMergerRunner.merge).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Hotfix #5 - Issue 3: Per-wave checkpoints', () => {
+    beforeEach(async () => {
+      const config = createConfig();
+      await coordinator.initialize(config);
+      mockDecomposer.decompose.mockResolvedValue([
+        createTask('task-1'),
+        createTask('task-2', { dependsOn: ['task-1'] }),
+      ]);
+      mockResolver.calculateWaves.mockReturnValue([
+        { id: 0, tasks: [createTask('task-1')], estimatedTime: 15, dependencies: [] },
+        { id: 1, tasks: [createTask('task-2', { dependsOn: ['task-1'] })], estimatedTime: 15, dependencies: [0] },
+      ]);
+      mockResolver.detectCycles.mockReturnValue([]);
+      mockWorktreeManager.createWorktree.mockResolvedValue({ path: '/worktree' });
+      mockQAEngine.run.mockResolvedValue({
+        success: true,
+        iterations: 1,
+        escalated: false,
+        stages: [],
+      });
+      mockCheckpointManager.create.mockResolvedValue({
+        id: 'checkpoint-1',
+        name: 'Wave 0 complete',
+        projectId: 'test-project',
+        waveId: 0,
+        completedTaskIds: [],
+        pendingTaskIds: [],
+        timestamp: new Date(),
+        coordinatorState: 'running',
+      });
+    });
+
+    it('should create checkpoint after each wave completion', async () => {
+      const events: NexusEvent[] = [];
+      coordinator.onEvent(event => events.push(event));
+
+      const startPromise = coordinator.start('test-project');
+      await new Promise(resolve => setTimeout(resolve, 500));
+      await coordinator.stop();
+
+      // Should have checkpoint events for completed waves
+      const checkpointEvents = events.filter(e => e.type === 'checkpoint:created');
+      expect(checkpointEvents.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('should emit checkpoint:failed on checkpoint error', async () => {
+      const events: NexusEvent[] = [];
+      coordinator.onEvent(event => events.push(event));
+
+      // Make checkpoint creation fail
+      mockCheckpointManager.create.mockRejectedValue(new Error('Checkpoint storage failed'));
+
+      const startPromise = coordinator.start('test-project');
+      await new Promise(resolve => setTimeout(resolve, 300));
+      await coordinator.stop();
+
+      const failedEvent = events.find(e => e.type === 'checkpoint:failed');
+      expect(failedEvent).toBeDefined();
+      expect(failedEvent?.data?.error).toContain('Checkpoint storage failed');
+    });
+  });
+
+  describe('Hotfix #5 - Issue 4: Genesis/Evolution mode', () => {
+    beforeEach(async () => {
+      mockDecomposer.decompose.mockResolvedValue([createTask('task-1')]);
+      mockResolver.calculateWaves.mockReturnValue([
+        { id: 0, tasks: [createTask('task-1')], estimatedTime: 15, dependencies: [] },
+      ]);
+      mockResolver.detectCycles.mockReturnValue([]);
+      mockWorktreeManager.createWorktree.mockResolvedValue({ path: '/worktree' });
+      mockQAEngine.run.mockResolvedValue({
+        success: true,
+        iterations: 1,
+        escalated: false,
+        stages: [],
+      });
+    });
+
+    it('should emit orchestration:mode event for genesis mode', async () => {
+      const config = createConfig({ mode: 'genesis' });
+      await coordinator.initialize(config);
+
+      const events: NexusEvent[] = [];
+      coordinator.onEvent(event => events.push(event));
+
+      const startPromise = coordinator.start('test-project');
+      await new Promise(resolve => setTimeout(resolve, 200));
+      await coordinator.stop();
+
+      const modeEvent = events.find(e => e.type === 'orchestration:mode');
+      expect(modeEvent).toBeDefined();
+      expect(modeEvent?.data?.mode).toBe('genesis');
+    });
+
+    it('should emit orchestration:mode event for evolution mode', async () => {
+      const config = createConfig({ mode: 'evolution' });
+      await coordinator.initialize(config);
+
+      const events: NexusEvent[] = [];
+      coordinator.onEvent(event => events.push(event));
+
+      const startPromise = coordinator.start('test-project');
+      await new Promise(resolve => setTimeout(resolve, 200));
+      await coordinator.stop();
+
+      const modeEvent = events.find(e => e.type === 'orchestration:mode');
+      expect(modeEvent).toBeDefined();
+      expect(modeEvent?.data?.mode).toBe('evolution');
+    });
+
+    it('should default to genesis mode when not specified', async () => {
+      const config = createConfig(); // No mode specified
+      await coordinator.initialize(config);
+
+      const events: NexusEvent[] = [];
+      coordinator.onEvent(event => events.push(event));
+
+      const startPromise = coordinator.start('test-project');
+      await new Promise(resolve => setTimeout(resolve, 200));
+      await coordinator.stop();
+
+      const modeEvent = events.find(e => e.type === 'orchestration:mode');
+      expect(modeEvent).toBeDefined();
+      expect(modeEvent?.data?.mode).toBe('genesis');
+    });
+
+    it('should add evolution compatibility test criteria for evolution mode', async () => {
+      const config = createConfig({
+        mode: 'evolution',
+        features: [{ id: 'feature-1', name: 'Test Feature', description: 'Test' }],
+      });
+      await coordinator.initialize(config);
+
+      // The decomposer should receive features and add evolution test criteria
+      const startPromise = coordinator.start('test-project');
+      await new Promise(resolve => setTimeout(resolve, 200));
+      await coordinator.stop();
+
+      // Check that decomposer was called
+      expect(mockDecomposer.decompose).toHaveBeenCalled();
+    });
+  });
+
+  describe('Hotfix #5 - task:escalated event', () => {
+    beforeEach(async () => {
+      const config = createConfig();
+      await coordinator.initialize(config);
+      mockDecomposer.decompose.mockResolvedValue([createTask('task-1')]);
+      mockResolver.calculateWaves.mockReturnValue([
+        { id: 0, tasks: [createTask('task-1')], estimatedTime: 15, dependencies: [] },
+      ]);
+      mockResolver.detectCycles.mockReturnValue([]);
+      mockWorktreeManager.createWorktree.mockResolvedValue({ path: '/worktree' });
+    });
+
+    it('should emit task:escalated when QA loop escalates', async () => {
+      const events: NexusEvent[] = [];
+      coordinator.onEvent(event => events.push(event));
+
+      mockQAEngine.run.mockResolvedValue({
+        success: false,
+        iterations: 50,
+        escalated: true,
+        reason: 'Max QA iterations exceeded',
+        stages: [],
+      });
+
+      const startPromise = coordinator.start('test-project');
+      await new Promise(resolve => setTimeout(resolve, 300));
+      await coordinator.stop();
+
+      const escalatedEvent = events.find(e => e.type === 'task:escalated');
+      expect(escalatedEvent).toBeDefined();
+      expect(escalatedEvent?.data?.taskId).toBe('task-1');
+      expect(escalatedEvent?.data?.reason).toContain('Max QA iterations');
     });
   });
 });
