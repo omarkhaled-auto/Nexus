@@ -41,8 +41,12 @@ function createMockLogger(): Logger {
 function createMockToolExecutor(
   executeImpl?: (name: string, params: Record<string, unknown>) => Promise<{ toolCallId: string; result: string | object }>
 ): ToolExecutor {
+  const executeFn = executeImpl
+    ? vi.fn().mockImplementation(executeImpl)
+    : vi.fn().mockResolvedValue({ toolCallId: 'tool-1', result: 'success' });
+
   return {
-    execute: executeImpl ?? vi.fn().mockResolvedValue({ toolCallId: 'tool-1', result: 'success' }),
+    execute: executeFn,
     getAvailableTools: vi.fn().mockReturnValue([
       {
         name: 'test_tool',
@@ -402,8 +406,17 @@ describe('AgentRunner', () => {
   describe('cancel()', () => {
     it('should cancel ongoing execution', async () => {
       let resolveLLMCall: (value: LLMResponse) => void;
+      let callCount = 0;
       const llmClient: LLMClient = {
         chat: vi.fn().mockImplementation(() => {
+          callCount++;
+          if (callCount === 1) {
+            // First call returns tool_use to trigger more iterations
+            return Promise.resolve(createToolUseResponse([
+              { id: 'call-1', name: 'test_tool', arguments: {} },
+            ]));
+          }
+          // Second call hangs - this is where we cancel
           return new Promise<LLMResponse>((resolve) => {
             resolveLLMCall = resolve;
           });
@@ -420,11 +433,16 @@ describe('AgentRunner', () => {
 
       const executePromise = runner.execute(createMockTask());
 
-      // Cancel while waiting
+      // Wait a tick for the first LLM call and tool execution
+      await new Promise((r) => setTimeout(r, 10));
+
+      // Cancel while waiting for second LLM call
       runner.cancel();
 
-      // Resolve the pending call
-      resolveLLMCall!(createStopResponse('done'));
+      // Resolve the pending call - but cancel flag should be checked before next iteration
+      resolveLLMCall!(createToolUseResponse([
+        { id: 'call-2', name: 'test_tool', arguments: {} },
+      ]));
 
       const result = await executePromise;
 
