@@ -73,14 +73,44 @@ Test tool use exhaustively:
 - Large context for code review (1M tokens)
 - Similar interface to ClaudeClient for consistency
 
-### Model Configuration per Agent
+### Model Configuration per Agent (with Extended Thinking)
+```typescript
+const MODEL_CONFIG: Record<AgentType, ModelConfig> = {
+  planner: {
+    model: 'claude-opus-4-5-20250514',
+    maxTokens: 16000,
+    temperature: 1,  // required for extended thinking
+    thinking: { type: 'enabled', budget_tokens: 10000 }  // high thinking
+  },
+  coder: {
+    model: 'claude-opus-4-5-20250514',
+    maxTokens: 16000,
+    temperature: 1,
+    thinking: { type: 'enabled', budget_tokens: 5000 }  // medium thinking
+  },
+  reviewer: {
+    model: 'gemini-3.0-pro',  // fallback to gemini-2.5-pro if unavailable
+    maxTokens: 8000,
+    temperature: 0.2
+  },
+  tester: {
+    model: 'claude-sonnet-4-5-20250514',
+    maxTokens: 8000,
+    temperature: 0.3
+  },
+  merger: {
+    model: 'claude-sonnet-4-5-20250514',
+    maxTokens: 4000,
+    temperature: 0.1
+  }
+};
 ```
-planner:  claude-opus-4,    maxTokens: 8000,  temp: 0.7
-coder:    claude-sonnet-4,  maxTokens: 16000, temp: 0.3
-reviewer: gemini-2.5-pro,   maxTokens: 8000,  temp: 0.2
-tester:   claude-sonnet-4,  maxTokens: 8000,  temp: 0.3
-merger:   claude-sonnet-4,  maxTokens: 4000,  temp: 0.1
-```
+
+**Extended Thinking Requirements:**
+- temperature=1 is REQUIRED for extended thinking mode
+- Streaming is REQUIRED for extended thinking
+- budget_tokens controls thinking depth (separate from output tokens)
+- Thinking content returned in separate block before response
 
 ### Agent Behavior
 - Stateless execution (all context passed in)

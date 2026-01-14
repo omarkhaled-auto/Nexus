@@ -165,7 +165,7 @@ import { GoogleGenAI } from '@google/genai';
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 const response = await ai.models.generateContentStream({
-  model: 'gemini-2.5-pro',
+  model: 'gemini-3.0-pro',  // fallback to gemini-2.5-pro if unavailable
   contents: codeToReview,
   config: { maxOutputTokens: 8000 }
 });
@@ -173,6 +173,67 @@ const response = await ai.models.generateContentStream({
 for await (const chunk of response) {
   process.stdout.write(chunk.text);
 }
+```
+
+### Pattern 4: Extended Thinking (Claude Opus)
+**What:** Enable deep reasoning with thinking budget for complex planning tasks
+**When to use:** Planner and coder agents that need multi-step reasoning
+**Requirements:**
+- temperature MUST be 1 (required for extended thinking)
+- Streaming is REQUIRED
+- budget_tokens controls thinking depth (separate from output tokens)
+
+**Example:**
+```typescript
+// Extended thinking with streaming (REQUIRED)
+const stream = await client.messages.stream({
+  model: 'claude-opus-4-5-20250514',
+  max_tokens: 16000,
+  temperature: 1,  // REQUIRED for extended thinking
+  thinking: {
+    type: 'enabled',
+    budget_tokens: 10000  // thinking depth
+  },
+  messages: [{ role: 'user', content: task.description }]
+});
+
+// Handle thinking and text blocks separately
+for await (const event of stream) {
+  if (event.type === 'content_block_delta') {
+    if (event.delta.type === 'thinking_delta') {
+      // Thinking content (internal reasoning)
+      console.log('[thinking]', event.delta.thinking);
+    } else if (event.delta.type === 'text_delta') {
+      // Actual response
+      console.log(event.delta.text);
+    }
+  }
+}
+
+// Token usage includes thinking
+const message = await stream.finalMessage();
+console.log('Thinking tokens:', message.usage.thinking_tokens);
+```
+
+**Model Configuration for Extended Thinking:**
+```typescript
+const MODEL_CONFIG = {
+  planner: {
+    model: 'claude-opus-4-5-20250514',
+    maxTokens: 16000,
+    temperature: 1,
+    thinking: { type: 'enabled', budget_tokens: 10000 }
+  },
+  coder: {
+    model: 'claude-opus-4-5-20250514',
+    maxTokens: 16000,
+    temperature: 1,
+    thinking: { type: 'enabled', budget_tokens: 5000 }
+  },
+  // No thinking for faster agents
+  tester: { model: 'claude-sonnet-4-5-20250514', maxTokens: 8000, temperature: 0.3 },
+  merger: { model: 'claude-sonnet-4-5-20250514', maxTokens: 4000, temperature: 0.1 }
+};
 ```
 
 ### Anti-Patterns to Avoid
@@ -255,6 +316,28 @@ const mockClient = {
 **Why it happens:** No usage tracking, no backoff coordination
 **How to avoid:** Track usage per agent type, implement circuit breaker
 **Warning signs:** Frequent retries, increasing response latency
+
+### Pitfall 6: Extended Thinking Configuration
+**What goes wrong:** API returns error or ignores thinking parameter
+**Why it happens:** Wrong temperature or non-streaming request
+**How to avoid:**
+- Always use temperature=1 with extended thinking
+- Always use streaming (messages.stream, not messages.create)
+- Track thinking_tokens separately in usage stats
+**Warning signs:** No thinking content in response, error about temperature
+```typescript
+// WRONG: Non-streaming with thinking
+const response = await client.messages.create({
+  thinking: { type: 'enabled', budget_tokens: 5000 },
+  temperature: 0.3  // ❌ Must be 1
+});
+
+// CORRECT: Streaming with temperature=1
+const stream = await client.messages.stream({
+  thinking: { type: 'enabled', budget_tokens: 5000 },
+  temperature: 1  // ✅ Required
+});
+```
 </common_pitfalls>
 
 <code_examples>
@@ -378,11 +461,13 @@ What's changed recently:
 |--------------|------------------|--------------|--------|
 | Manual tool loop | toolRunner() beta | 2025 | Eliminates boilerplate, handles edge cases |
 | JSON Schema tools | betaZodTool() | 2025 | Runtime validation + TypeScript types |
-| claude-3-opus | claude-opus-4 / claude-opus-4-5 | 2025 | Better tool use, parallel calls |
-| gemini-1.5-pro | gemini-2.5-pro | 2025 | Improved code understanding, 1M tokens |
+| claude-3-opus | claude-opus-4-5-20250514 | 2025 | Better tool use, extended thinking |
+| gemini-1.5-pro | gemini-3.0-pro (fallback 2.5) | 2026 | Improved code understanding, 1M tokens |
 | google-generativeai | @google/genai | 2025 | New SDK, unified interface |
+| No deep reasoning | Extended Thinking | 2025 | Multi-step reasoning with thinking budget |
 
 **New tools/patterns to consider:**
+- **Extended Thinking:** Enable deep reasoning for planner/coder with budget_tokens (requires temp=1, streaming)
 - **Tool Search Tool:** For large tool collections (>50 tools), use search to reduce context
 - **Programmatic Tool Calling:** Claude writes Python to orchestrate tools (reduces context)
 - **input_examples:** Beta feature for complex tool schemas
