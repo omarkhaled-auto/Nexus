@@ -11,8 +11,8 @@ See: .planning/PROJECT.md (updated 2026-01-14)
 
 Phase: 4 of 12 (Orchestration) ✓ COMPLETE
 Plan: 3 of 3 in current phase
-Status: Phase complete, ready for Phase 5
-Last activity: 2026-01-14 — Phase 4 complete (BUILD-011 + BUILD-012)
+Status: Phase complete + Hotfix #5 applied, ready for Phase 5
+Last activity: 2026-01-14 — Hotfix #5 (4 critical fixes, 914 tests total)
 
 Progress: ███░░░░░░░ 33%
 
@@ -65,7 +65,11 @@ None yet.
 
 ### Pending Todos
 
-None - hotfix completed (commit 5dbc421).
+None - Hotfix #5 completed (commit 326d5e3):
+- TaskSchemaAdapter for GSD XML conversion
+- Per-task merge on QA success
+- Per-wave checkpoints for recovery
+- Genesis/Evolution mode branching
 
 ### Blockers/Concerns
 
@@ -74,6 +78,6 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-01-14
-Stopped at: Phase 4 complete (BUILD-011 + BUILD-012) - 226 tests
+Stopped at: Phase 4 complete + Hotfix #5 - 914 tests total
 Resume file: None
 Next action: Plan Phase 5 - /gsd:plan-phase 5
