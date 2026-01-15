@@ -1,4 +1,4 @@
-import { useEffect, type ReactElement } from 'react'
+import { useEffect, useRef, type ReactElement } from 'react'
 import {
   CostTracker,
   OverviewCards,
@@ -7,7 +7,7 @@ import {
   TaskTimeline,
   type ProgressDataPoint
 } from '../components/dashboard'
-import { useMetricsStore, useIsMetricsLoading } from '../stores'
+import { useMetricsStore, useIsMetricsLoading, useOverview } from '../stores'
 import type {
   OverviewMetrics,
   AgentMetrics,
@@ -15,6 +15,16 @@ import type {
   CostMetrics,
   TimelineEventType
 } from '../types/metrics'
+
+/**
+ * Check if we're in development/demo mode (no real backend data)
+ * Demo mode activates when:
+ * - nexusAPI is not available (not in Electron context)
+ * - OR we're explicitly in dev mode for visual testing
+ */
+const isDemoMode = (): boolean => {
+  return typeof window.nexusAPI === 'undefined'
+}
 
 /**
  * Generate demo data for visual testing
@@ -144,30 +154,45 @@ function generateDemoData(): {
  */
 export default function DashboardPage(): ReactElement {
   const isLoading = useIsMetricsLoading()
+  const overview = useOverview()
   const { setOverview, setAgents, setCosts, setLoading, addTimelineEvent } =
     useMetricsStore.getState()
 
-  // Demo data state for chart
-  const demoData = generateDemoData()
+  // Track if we've initialized to prevent re-running
+  const initializedRef = useRef(false)
 
-  // Populate metricsStore with demo data on mount (for visual testing)
+  // Generate demo data only once (memoized via ref to avoid regeneration)
+  const demoDataRef = useRef<ReturnType<typeof generateDemoData> | null>(null)
+  if (!demoDataRef.current) {
+    demoDataRef.current = generateDemoData()
+  }
+  const demoData = demoDataRef.current
+
+  // Populate metricsStore with demo data on mount ONLY in demo mode
+  // In production, real data flows via EventBus → IPC → UIBackendBridge
   useEffect(() => {
-    // Set overview metrics
-    setOverview(demoData.overview)
+    if (initializedRef.current) return
+    initializedRef.current = true
 
-    // Set agents
-    setAgents(demoData.agents)
+    // Only load demo data if we're in demo mode (no real backend)
+    if (isDemoMode()) {
+      // Set overview metrics
+      setOverview(demoData.overview)
 
-    // Set costs
-    setCosts(demoData.costs)
+      // Set agents
+      setAgents(demoData.agents)
 
-    // Add timeline events (in reverse to maintain order)
-    const reversedTimeline = [...demoData.timeline].reverse()
-    reversedTimeline.forEach((event) => {
-      addTimelineEvent(event)
-    })
+      // Set costs
+      setCosts(demoData.costs)
 
-    // Mark loading complete
+      // Add timeline events (in reverse to maintain order)
+      const reversedTimeline = [...demoData.timeline].reverse()
+      reversedTimeline.forEach((event) => {
+        addTimelineEvent(event)
+      })
+    }
+
+    // Mark loading complete (whether demo or real data)
     setLoading(false)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -200,7 +225,7 @@ export default function DashboardPage(): ReactElement {
       {/* Middle row: Chart + Agents */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 flex-shrink-0">
         <div className="lg:col-span-3">
-          <ProgressChart data={demoData.chartData} height={280} />
+          <ProgressChart data={isDemoMode() ? demoData.chartData : []} height={280} />
         </div>
         <div className="lg:col-span-2">
           <AgentActivity />

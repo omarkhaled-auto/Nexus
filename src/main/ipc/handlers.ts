@@ -361,16 +361,203 @@ export function registerIpcHandlers(): void {
 
 /**
  * Set up event forwarding from backend to renderer
- * Forwards orchestration events via IPC send
+ * Subscribes to EventBus events and forwards to renderer via IPC
  *
  * @param mainWindow - BrowserWindow to send events to
  */
 export function setupEventForwarding(mainWindow: BrowserWindow): void {
-  // In a full implementation, this would subscribe to EventBus
-  // For now, we expose methods that can be called when events occur
-
   // Store reference for forwarding
   eventForwardingWindow = mainWindow
+
+  const eventBus = EventBus.getInstance()
+
+  // ========================================
+  // Task Events → Timeline + Metrics
+  // ========================================
+
+  eventBus.on('task:started', (event) => {
+    // Forward as timeline event
+    forwardTimelineEvent({
+      id: event.id,
+      type: 'task_started',
+      title: `Task ${event.payload.taskId} started`,
+      timestamp: event.timestamp,
+      metadata: {
+        taskId: event.payload.taskId,
+        agentId: event.payload.agentId
+      }
+    })
+  })
+
+  eventBus.on('task:completed', (event) => {
+    forwardTimelineEvent({
+      id: event.id,
+      type: 'task_completed',
+      title: `Task ${event.payload.taskId} completed`,
+      timestamp: event.timestamp,
+      metadata: {
+        taskId: event.payload.taskId
+      }
+    })
+  })
+
+  eventBus.on('task:failed', (event) => {
+    forwardTimelineEvent({
+      id: event.id,
+      type: 'task_failed',
+      title: `Task ${event.payload.taskId} failed: ${event.payload.error}`,
+      timestamp: event.timestamp,
+      metadata: {
+        taskId: event.payload.taskId
+      }
+    })
+  })
+
+  eventBus.on('task:qa-iteration', (event) => {
+    forwardTimelineEvent({
+      id: event.id,
+      type: 'qa_iteration',
+      title: `QA iteration ${event.payload.iteration}`,
+      timestamp: event.timestamp,
+      metadata: {
+        taskId: event.payload.taskId,
+        iteration: event.payload.iteration
+      }
+    })
+  })
+
+  // ========================================
+  // Agent Events → Agent Metrics + Timeline
+  // ========================================
+
+  eventBus.on('agent:assigned', (event) => {
+    forwardAgentMetrics({
+      id: event.payload.agentId,
+      status: 'working',
+      currentTask: event.payload.taskId
+    })
+    forwardTimelineEvent({
+      id: event.id,
+      type: 'agent_task_assigned',
+      title: `Agent ${event.payload.agentId} assigned task`,
+      timestamp: event.timestamp,
+      metadata: {
+        agentId: event.payload.agentId,
+        taskId: event.payload.taskId
+      }
+    })
+  })
+
+  eventBus.on('agent:idle', (event) => {
+    forwardAgentMetrics({
+      id: event.payload.agentId,
+      status: 'idle',
+      currentTask: null,
+      progress: 100
+    })
+  })
+
+  eventBus.on('agent:error', (event) => {
+    forwardAgentMetrics({
+      id: event.payload.agentId,
+      status: 'error'
+    })
+    forwardTimelineEvent({
+      id: event.id,
+      type: 'agent_error',
+      title: `Agent ${event.payload.agentId} error: ${event.payload.error}`,
+      timestamp: event.timestamp,
+      metadata: {
+        agentId: event.payload.agentId
+      }
+    })
+  })
+
+  // ========================================
+  // QA Events → Timeline
+  // ========================================
+
+  eventBus.on('qa:build-started', (event) => {
+    forwardTimelineEvent({
+      id: event.id,
+      type: 'build_started',
+      title: `Build started for task ${event.payload.taskId}`,
+      timestamp: event.timestamp,
+      metadata: {
+        taskId: event.payload.taskId
+      }
+    })
+  })
+
+  eventBus.on('qa:build-completed', (event) => {
+    forwardTimelineEvent({
+      id: event.id,
+      type: 'build_completed',
+      title: event.payload.passed ? 'Build succeeded' : 'Build failed',
+      timestamp: event.timestamp,
+      metadata: {
+        taskId: event.payload.taskId
+      }
+    })
+  })
+
+  eventBus.on('qa:loop-completed', (event) => {
+    forwardTimelineEvent({
+      id: event.id,
+      type: event.payload.passed ? 'qa_passed' : 'qa_failed',
+      title: event.payload.passed
+        ? `QA passed for task ${event.payload.taskId}`
+        : `QA failed for task ${event.payload.taskId}`,
+      timestamp: event.timestamp,
+      metadata: {
+        taskId: event.payload.taskId,
+        iterations: event.payload.iterations
+      }
+    })
+  })
+
+  // ========================================
+  // Feature Events → Timeline + Metrics
+  // ========================================
+
+  eventBus.on('feature:status-changed', (event) => {
+    forwardTimelineEvent({
+      id: event.id,
+      type: 'feature_status_changed',
+      title: `Feature moved to ${event.payload.newStatus}`,
+      timestamp: event.timestamp,
+      metadata: {
+        featureId: event.payload.featureId
+      }
+    })
+  })
+
+  eventBus.on('feature:completed', (event) => {
+    forwardTimelineEvent({
+      id: event.id,
+      type: 'feature_completed',
+      title: `Feature ${event.payload.featureId} completed`,
+      timestamp: event.timestamp,
+      metadata: {
+        featureId: event.payload.featureId,
+        tasksCompleted: event.payload.tasksCompleted
+      }
+    })
+  })
+
+  // ========================================
+  // Checkpoint Events → Timeline
+  // ========================================
+
+  eventBus.on('system:checkpoint-created', (event) => {
+    forwardTimelineEvent({
+      id: event.id,
+      type: 'checkpoint_created',
+      title: `Checkpoint created: ${event.payload.checkpointId}`,
+      timestamp: event.timestamp,
+      metadata: {}
+    })
+  })
 }
 
 // Reference to main window for event forwarding
