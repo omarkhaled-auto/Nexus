@@ -1,6 +1,7 @@
+import { useState, useEffect, useCallback } from 'react'
 import { Plus, Search, Layers } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
-import { useFeatureCount } from '@renderer/stores/featureStore'
+import { useFeatureCount, useFeatureStore } from '@renderer/stores/featureStore'
 
 interface KanbanHeaderProps {
   /** Project or board name */
@@ -15,6 +16,29 @@ interface KanbanHeaderProps {
  */
 export function KanbanHeader({ projectName, onNewFeature }: KanbanHeaderProps) {
   const featureCount = useFeatureCount()
+  const setSearchFilter = useFeatureStore((s) => s.setSearchFilter)
+  const [searchInput, setSearchInput] = useState('')
+
+  // Debounce search filter updates
+  const debouncedSetSearch = useCallback(
+    (() => {
+      let timeoutId: ReturnType<typeof setTimeout> | null = null
+      return (value: string) => {
+        if (timeoutId) {
+          clearTimeout(timeoutId)
+        }
+        timeoutId = setTimeout(() => {
+          setSearchFilter(value)
+        }, 300)
+      }
+    })(),
+    [setSearchFilter]
+  )
+
+  // Update debounced search when input changes
+  useEffect(() => {
+    debouncedSetSearch(searchInput)
+  }, [searchInput, debouncedSetSearch])
 
   return (
     <header className="flex items-center justify-between border-b border-border bg-background px-6 py-4">
@@ -35,14 +59,15 @@ export function KanbanHeader({ projectName, onNewFeature }: KanbanHeaderProps) {
 
       {/* Right side: Actions */}
       <div className="flex items-center gap-3">
-        {/* Search placeholder - disabled for now */}
+        {/* Search input */}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
             placeholder="Search features..."
-            className="h-9 w-64 rounded-md border border-input bg-background pl-9 pr-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            disabled
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            className="h-9 w-64 rounded-md border border-input bg-background pl-9 pr-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
           />
         </div>
 
