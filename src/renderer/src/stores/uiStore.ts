@@ -44,3 +44,12 @@ export const useUIStore = create<UIState>()((set) => ({
     })),
   reset: () => set({ ...initialState, toasts: [] })
 }))
+
+// Selector hooks for optimized re-renders
+export const useSidebarOpen = () => useUIStore((s) => s.sidebarOpen)
+export const useIsLoading = () => useUIStore((s) => s.isLoading)
+export const useError = () => useUIStore((s) => s.error)
+export const useToasts = () => useUIStore((s) => s.toasts)
+
+/** Returns true if there is an active error */
+export const useHasError = () => useUIStore((s) => s.error !== null)

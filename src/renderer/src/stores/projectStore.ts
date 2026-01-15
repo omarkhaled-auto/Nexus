@@ -34,3 +34,8 @@ export const useProjectStore = create<ProjectState>()((set) => ({
   clearProject: () => set({ currentProject: null, mode: null }),
   reset: () => set({ ...initialState, projects: [] })
 }))
+
+// Selector hooks for optimized re-renders
+export const useCurrentProject = () => useProjectStore((s) => s.currentProject)
+export const useMode = () => useProjectStore((s) => s.mode)
+export const useProjects = () => useProjectStore((s) => s.projects)

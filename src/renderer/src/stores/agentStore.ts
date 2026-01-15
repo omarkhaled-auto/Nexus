@@ -52,3 +52,24 @@ export const useAgentStore = create<AgentState>()((set, get) => ({
   clearAgents: () => set({ agents: new Map() }),
   reset: () => set({ agents: new Map() })
 }))
+
+// Selector hooks for optimized re-renders
+export const useAgents = () => useAgentStore((s) => s.agents)
+
+/** Returns all agents as an array */
+export const useAgentsArray = () => {
+  const agents = useAgentStore((s) => s.agents)
+  return Array.from(agents.values())
+}
+
+/** Returns only agents that are currently working */
+export const useActiveAgents = () => {
+  const agents = useAgentStore((s) => s.agents)
+  return Array.from(agents.values()).filter((a) => a.status === 'working')
+}
+
+/** Returns agents by type */
+export const useAgentsByType = (type: AgentStatus['type']) => {
+  const agents = useAgentStore((s) => s.agents)
+  return Array.from(agents.values()).filter((a) => a.type === type)
+}

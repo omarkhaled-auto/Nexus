@@ -39,3 +39,18 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
   getTask: (id) => get().tasks.find((t) => t.id === id),
   reset: () => set({ tasks: [], selectedTaskId: null })
 }))
+
+// Selector hooks for optimized re-renders
+export const useTasks = () => useTaskStore((s) => s.tasks)
+export const useSelectedTaskId = () => useTaskStore((s) => s.selectedTaskId)
+
+/** Returns the currently selected task or undefined */
+export const useSelectedTask = () => {
+  const tasks = useTaskStore((s) => s.tasks)
+  const selectedId = useTaskStore((s) => s.selectedTaskId)
+  return tasks.find((t) => t.id === selectedId)
+}
+
+/** Returns tasks filtered by status */
+export const useTasksByStatus = (status: Task['status']) =>
+  useTaskStore((s) => s.tasks.filter((t) => t.status === status))
