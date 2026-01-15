@@ -26,6 +26,7 @@ export interface Feature {
   priority: FeaturePriority
   createdAt: string // ISO timestamp
   updatedAt: string // ISO timestamp
+  qaIterations?: number // Number of QA iterations completed (max 50)
 }
 
 // Column counts for the Kanban board

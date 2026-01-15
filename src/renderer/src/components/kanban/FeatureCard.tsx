@@ -99,6 +99,13 @@ export function FeatureCard({ feature, isOverlay = false, onClick }: FeatureCard
       {/* Progress indicator */}
       <ProgressIndicator progress={feature.progress} showLabel className="mb-2" />
 
+      {/* QA iterations indicator */}
+      {feature.qaIterations !== undefined && feature.qaIterations > 0 && (
+        <p className="mb-2 text-xs text-muted-foreground">
+          QA: {feature.qaIterations}/50
+        </p>
+      )}
+
       {/* Agent status */}
       <AgentStatusIndicator
         agentId={feature.assignedAgent}
