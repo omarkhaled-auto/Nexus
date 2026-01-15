@@ -1,13 +1,27 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import {
   useFeatureStore,
   useFeatures,
   useFeaturesByStatus,
   useFeature,
   useFeatureCount,
-  useColumnCounts
+  useColumnCounts,
+  useFilteredFeatures,
+  useSelectedFeatureId,
+  useFeatureFilter,
+  WIP_LIMIT
 } from './featureStore'
-import type { Feature, FeatureStatus } from '../types/feature'
+import type { Feature, FeatureStatus, FeaturePriority } from '../types/feature'
+import { EventBus } from '@/orchestration/events/EventBus'
+
+// Mock EventBus
+vi.mock('@/orchestration/events/EventBus', () => ({
+  EventBus: {
+    getInstance: vi.fn(() => ({
+      emit: vi.fn()
+    }))
+  }
+}))
 
 // Helper to create a test feature
 function createTestFeature(overrides: Partial<Feature> = {}): Feature {
@@ -29,8 +43,18 @@ function createTestFeature(overrides: Partial<Feature> = {}): Feature {
 }
 
 describe('featureStore', () => {
+  let mockEmit: ReturnType<typeof vi.fn>
+
   beforeEach(() => {
     useFeatureStore.getState().reset()
+    mockEmit = vi.fn()
+    vi.mocked(EventBus.getInstance).mockReturnValue({
+      emit: mockEmit
+    } as unknown as EventBus)
+  })
+
+  afterEach(() => {
+    vi.clearAllMocks()
   })
 
   describe('initial state', () => {
@@ -425,6 +449,316 @@ describe('featureStore', () => {
       const feature = createTestFeature({ id: 'f1', priority: 'critical' })
       useFeatureStore.getState().addFeature(feature)
       expect(useFeatureStore.getState().features[0].priority).toBe('critical')
+    })
+  })
+
+  describe('selectFeature', () => {
+    it('should set selectedFeatureId', () => {
+      useFeatureStore.getState().selectFeature('f1')
+      expect(useFeatureStore.getState().selectedFeatureId).toBe('f1')
+    })
+
+    it('should clear selection when set to null', () => {
+      useFeatureStore.getState().selectFeature('f1')
+      useFeatureStore.getState().selectFeature(null)
+      expect(useFeatureStore.getState().selectedFeatureId).toBeNull()
+    })
+  })
+
+  describe('setSearchFilter', () => {
+    it('should set search filter string', () => {
+      useFeatureStore.getState().setSearchFilter('test')
+      expect(useFeatureStore.getState().filter.search).toBe('test')
+    })
+
+    it('should update search filter preserving other filters', () => {
+      useFeatureStore.getState().setPriorityFilter(['high'])
+      useFeatureStore.getState().setSearchFilter('query')
+      expect(useFeatureStore.getState().filter.search).toBe('query')
+      expect(useFeatureStore.getState().filter.priority).toEqual(['high'])
+    })
+  })
+
+  describe('setPriorityFilter', () => {
+    it('should set priority filter array', () => {
+      const priorities: FeaturePriority[] = ['high', 'critical']
+      useFeatureStore.getState().setPriorityFilter(priorities)
+      expect(useFeatureStore.getState().filter.priority).toEqual(priorities)
+    })
+
+    it('should allow null to clear priority filter', () => {
+      useFeatureStore.getState().setPriorityFilter(['high'])
+      useFeatureStore.getState().setPriorityFilter(null)
+      expect(useFeatureStore.getState().filter.priority).toBeNull()
+    })
+  })
+
+  describe('setStatusFilter', () => {
+    it('should set status filter array', () => {
+      const statuses: FeatureStatus[] = ['backlog', 'in_progress']
+      useFeatureStore.getState().setStatusFilter(statuses)
+      expect(useFeatureStore.getState().filter.status).toEqual(statuses)
+    })
+
+    it('should allow null to clear status filter', () => {
+      useFeatureStore.getState().setStatusFilter(['done'])
+      useFeatureStore.getState().setStatusFilter(null)
+      expect(useFeatureStore.getState().filter.status).toBeNull()
+    })
+  })
+
+  describe('clearFilters', () => {
+    it('should reset all filters to default values', () => {
+      useFeatureStore.getState().setSearchFilter('query')
+      useFeatureStore.getState().setPriorityFilter(['high'])
+      useFeatureStore.getState().setStatusFilter(['backlog'])
+
+      useFeatureStore.getState().clearFilters()
+
+      const filter = useFeatureStore.getState().filter
+      expect(filter.search).toBe('')
+      expect(filter.priority).toBeNull()
+      expect(filter.status).toBeNull()
+    })
+  })
+
+  describe('useFilteredFeatures selector', () => {
+    it('should filter features by search in title', () => {
+      const features = [
+        createTestFeature({ id: 'f1', title: 'Authentication Module' }),
+        createTestFeature({ id: 'f2', title: 'Dashboard Widget' }),
+        createTestFeature({ id: 'f3', title: 'User Profile' })
+      ]
+      useFeatureStore.getState().setFeatures(features)
+      useFeatureStore.getState().setSearchFilter('auth')
+
+      const filtered = useFeatureStore.getState().features.filter(
+        (f) => f.title.toLowerCase().includes('auth')
+      )
+      expect(filtered).toHaveLength(1)
+      expect(filtered[0].id).toBe('f1')
+    })
+
+    it('should filter features by search in description', () => {
+      const features = [
+        createTestFeature({ id: 'f1', description: 'Handle user authentication' }),
+        createTestFeature({ id: 'f2', description: 'Display statistics' })
+      ]
+      useFeatureStore.getState().setFeatures(features)
+      useFeatureStore.getState().setSearchFilter('statistics')
+
+      const filtered = useFeatureStore.getState().features.filter(
+        (f) => f.description.toLowerCase().includes('statistics')
+      )
+      expect(filtered).toHaveLength(1)
+      expect(filtered[0].id).toBe('f2')
+    })
+
+    it('should filter features by priority', () => {
+      const features = [
+        createTestFeature({ id: 'f1', priority: 'high' }),
+        createTestFeature({ id: 'f2', priority: 'low' }),
+        createTestFeature({ id: 'f3', priority: 'high' })
+      ]
+      useFeatureStore.getState().setFeatures(features)
+      useFeatureStore.getState().setPriorityFilter(['high'])
+
+      const filtered = useFeatureStore.getState().features.filter(
+        (f) => ['high'].includes(f.priority)
+      )
+      expect(filtered).toHaveLength(2)
+    })
+
+    it('should filter features by status', () => {
+      const features = [
+        createTestFeature({ id: 'f1', status: 'backlog' }),
+        createTestFeature({ id: 'f2', status: 'in_progress' }),
+        createTestFeature({ id: 'f3', status: 'done' })
+      ]
+      useFeatureStore.getState().setFeatures(features)
+      useFeatureStore.getState().setStatusFilter(['backlog', 'done'])
+
+      const filter = useFeatureStore.getState().filter
+      const filtered = useFeatureStore.getState().features.filter(
+        (f) => filter.status!.includes(f.status)
+      )
+      expect(filtered).toHaveLength(2)
+    })
+
+    it('should combine multiple filters', () => {
+      const features = [
+        createTestFeature({ id: 'f1', title: 'Auth', status: 'backlog', priority: 'high' }),
+        createTestFeature({ id: 'f2', title: 'Auth', status: 'done', priority: 'high' }),
+        createTestFeature({ id: 'f3', title: 'Dashboard', status: 'backlog', priority: 'high' }),
+        createTestFeature({ id: 'f4', title: 'Auth', status: 'backlog', priority: 'low' })
+      ]
+      useFeatureStore.getState().setFeatures(features)
+      useFeatureStore.getState().setSearchFilter('auth')
+      useFeatureStore.getState().setStatusFilter(['backlog'])
+      useFeatureStore.getState().setPriorityFilter(['high'])
+
+      const state = useFeatureStore.getState()
+      const filtered = state.features.filter((f) => {
+        const matchesSearch = f.title.toLowerCase().includes('auth')
+        const matchesStatus = state.filter.status!.includes(f.status)
+        const matchesPriority = state.filter.priority!.includes(f.priority)
+        return matchesSearch && matchesStatus && matchesPriority
+      })
+      expect(filtered).toHaveLength(1)
+      expect(filtered[0].id).toBe('f1')
+    })
+  })
+
+  describe('WIP limit enforcement', () => {
+    it('should have WIP_LIMIT constant set to 3', () => {
+      expect(WIP_LIMIT).toBe(3)
+    })
+
+    it('should allow move to in_progress when under limit', () => {
+      const feature = createTestFeature({ id: 'f1', status: 'backlog' })
+      useFeatureStore.getState().addFeature(feature)
+
+      const result = useFeatureStore.getState().moveFeature('f1', 'in_progress')
+      expect(result).toBe(true)
+      expect(useFeatureStore.getState().features[0].status).toBe('in_progress')
+    })
+
+    it('should reject move to in_progress when at WIP limit', () => {
+      // Add 3 features already in_progress
+      const features = [
+        createTestFeature({ id: 'f1', status: 'in_progress' }),
+        createTestFeature({ id: 'f2', status: 'in_progress' }),
+        createTestFeature({ id: 'f3', status: 'in_progress' }),
+        createTestFeature({ id: 'f4', status: 'backlog' })
+      ]
+      useFeatureStore.getState().setFeatures(features)
+
+      const result = useFeatureStore.getState().moveFeature('f4', 'in_progress')
+      expect(result).toBe(false)
+      expect(useFeatureStore.getState().features[3].status).toBe('backlog')
+    })
+
+    it('should allow moving within in_progress when already in_progress', () => {
+      // When feature is already in_progress, re-moving to in_progress should be allowed
+      const features = [
+        createTestFeature({ id: 'f1', status: 'in_progress' }),
+        createTestFeature({ id: 'f2', status: 'in_progress' }),
+        createTestFeature({ id: 'f3', status: 'in_progress' })
+      ]
+      useFeatureStore.getState().setFeatures(features)
+
+      const result = useFeatureStore.getState().moveFeature('f1', 'in_progress')
+      expect(result).toBe(true)
+    })
+
+    it('should allow move to other statuses regardless of WIP limit', () => {
+      const features = [
+        createTestFeature({ id: 'f1', status: 'in_progress' }),
+        createTestFeature({ id: 'f2', status: 'in_progress' }),
+        createTestFeature({ id: 'f3', status: 'in_progress' }),
+        createTestFeature({ id: 'f4', status: 'backlog' })
+      ]
+      useFeatureStore.getState().setFeatures(features)
+
+      const result = useFeatureStore.getState().moveFeature('f4', 'planning')
+      expect(result).toBe(true)
+      expect(useFeatureStore.getState().features[3].status).toBe('planning')
+    })
+
+    it('should return false for non-existent feature', () => {
+      const result = useFeatureStore.getState().moveFeature('non-existent', 'in_progress')
+      expect(result).toBe(false)
+    })
+  })
+
+  describe('EventBus integration', () => {
+    it('should emit feature:created when adding a feature', () => {
+      const feature = createTestFeature({ id: 'f1', title: 'Test' })
+      useFeatureStore.getState().addFeature(feature)
+
+      expect(mockEmit).toHaveBeenCalledWith(
+        'feature:created',
+        expect.objectContaining({
+          projectId: 'current',
+          feature: expect.objectContaining({
+            id: 'f1',
+            name: 'Test'
+          })
+        }),
+        { source: 'featureStore' }
+      )
+    })
+
+    it('should emit feature:status-changed when moving a feature', () => {
+      const feature = createTestFeature({ id: 'f1', status: 'backlog' })
+      useFeatureStore.getState().addFeature(feature)
+      mockEmit.mockClear()
+
+      useFeatureStore.getState().moveFeature('f1', 'planning')
+
+      expect(mockEmit).toHaveBeenCalledWith(
+        'feature:status-changed',
+        expect.objectContaining({
+          featureId: 'f1',
+          projectId: 'current',
+          previousStatus: 'backlog',
+          newStatus: 'backlog' // planning maps to backlog in core types
+        }),
+        { source: 'featureStore' }
+      )
+    })
+
+    it('should emit feature:completed when moving to done', () => {
+      const feature = createTestFeature({ id: 'f1', status: 'human_review' })
+      useFeatureStore.getState().addFeature(feature)
+      mockEmit.mockClear()
+
+      useFeatureStore.getState().moveFeature('f1', 'done')
+
+      expect(mockEmit).toHaveBeenCalledWith(
+        'feature:completed',
+        expect.objectContaining({
+          featureId: 'f1',
+          projectId: 'current',
+          tasksCompleted: expect.any(Number),
+          duration: 0
+        }),
+        { source: 'featureStore' }
+      )
+    })
+
+    it('should not emit events when move fails due to WIP limit', () => {
+      const features = [
+        createTestFeature({ id: 'f1', status: 'in_progress' }),
+        createTestFeature({ id: 'f2', status: 'in_progress' }),
+        createTestFeature({ id: 'f3', status: 'in_progress' }),
+        createTestFeature({ id: 'f4', status: 'backlog' })
+      ]
+      useFeatureStore.getState().setFeatures(features)
+      mockEmit.mockClear()
+
+      useFeatureStore.getState().moveFeature('f4', 'in_progress')
+
+      // No status-changed event should be emitted
+      expect(mockEmit).not.toHaveBeenCalledWith(
+        'feature:status-changed',
+        expect.anything(),
+        expect.anything()
+      )
+    })
+  })
+
+  describe('reset with filter state', () => {
+    it('should reset filter state along with features', () => {
+      useFeatureStore.getState().addFeature(createTestFeature({ id: 'f1' }))
+      useFeatureStore.getState().setSearchFilter('test')
+      useFeatureStore.getState().selectFeature('f1')
+
+      useFeatureStore.getState().reset()
+
+      expect(useFeatureStore.getState().features).toEqual([])
+      expect(useFeatureStore.getState().selectedFeatureId).toBeNull()
+      expect(useFeatureStore.getState().filter.search).toBe('')
     })
   })
 })
