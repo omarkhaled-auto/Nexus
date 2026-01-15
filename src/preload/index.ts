@@ -1,77 +1,174 @@
-import { contextBridge } from 'electron';
-import { electronAPI } from '@electron-toolkit/preload';
+/**
+ * Preload Script - Nexus API
+ * Phase 05-04: Complete IPC bridge to main process
+ *
+ * Security:
+ * - Uses contextBridge to safely expose API to renderer
+ * - Never exposes raw ipcRenderer
+ * - Never passes event object to callbacks
+ * - Returns unsubscribe functions for cleanup
+ */
+
+import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron'
+import { electronAPI } from '@electron-toolkit/preload'
+
+/** Type-safe unsubscribe function */
+type Unsubscribe = () => void
 
 /**
  * Nexus API exposed to the renderer process via contextBridge.
  *
- * Security: Only wrapped, specific methods are exposed.
- * Never expose raw ipcRenderer or event objects.
- *
- * These are stubs that will be implemented in 05-04.
+ * All methods use ipcRenderer.invoke for request-response patterns.
+ * Event subscriptions return unsubscribe functions.
  */
 const nexusAPI = {
-  // Mode operations
-  startGenesis: async (): Promise<{ success: boolean }> => {
-    console.log('stub: startGenesis');
-    return { success: true };
-  },
-  startEvolution: async (projectId: string): Promise<{ success: boolean }> => {
-    console.log('stub: startEvolution', projectId);
-    return { success: true };
-  },
+  // ========================================
+  // Mode Operations
+  // ========================================
 
-  // Project operations
-  listProjects: async (): Promise<{ projects: unknown[] }> => {
-    console.log('stub: listProjects');
-    return { projects: [] };
-  },
-  openProject: async (projectId: string): Promise<{ success: boolean }> => {
-    console.log('stub: openProject', projectId);
-    return { success: true };
-  },
+  /**
+   * Start Genesis mode - create new project from scratch
+   * @returns Promise with success status and new projectId
+   */
+  startGenesis: (): Promise<{ success: boolean; projectId?: string }> =>
+    ipcRenderer.invoke('mode:genesis'),
 
-  // Event subscriptions (will be implemented with IPC in 05-04)
-  onProgress: (callback: (progress: unknown) => void): (() => void) => {
-    console.log('stub: onProgress registered');
-    // Return unsubscribe function
+  /**
+   * Start Evolution mode - work on existing project
+   * @param projectId - ID of project to evolve
+   * @returns Promise with success status
+   */
+  startEvolution: (projectId: string): Promise<{ success: boolean }> =>
+    ipcRenderer.invoke('mode:evolution', projectId),
+
+  // ========================================
+  // Project Operations
+  // ========================================
+
+  /**
+   * Get project by ID
+   * @param id - Project ID
+   * @returns Promise with project data or null
+   */
+  getProject: (id: string): Promise<unknown> =>
+    ipcRenderer.invoke('project:get', id),
+
+  /**
+   * Create a new project
+   * @param input - Project name and mode
+   * @returns Promise with new project ID
+   */
+  createProject: (input: {
+    name: string
+    mode: 'genesis' | 'evolution'
+  }): Promise<{ id: string }> => ipcRenderer.invoke('project:create', input),
+
+  // ========================================
+  // Task Operations
+  // ========================================
+
+  /**
+   * Get all tasks
+   * @returns Promise with array of tasks
+   */
+  getTasks: (): Promise<unknown[]> => ipcRenderer.invoke('tasks:list'),
+
+  /**
+   * Update a task
+   * @param id - Task ID
+   * @param update - Partial task update
+   * @returns Promise that resolves on success
+   */
+  updateTask: (id: string, update: Record<string, unknown>): Promise<void> =>
+    ipcRenderer.invoke('task:update', id, update),
+
+  // ========================================
+  // Agent Operations
+  // ========================================
+
+  /**
+   * Get status of all agents
+   * @returns Promise with array of agent statuses
+   */
+  getAgentStatus: (): Promise<unknown[]> => ipcRenderer.invoke('agents:status'),
+
+  // ========================================
+  // Event Subscriptions
+  // ========================================
+
+  /**
+   * Subscribe to task update events
+   * @param callback - Called when a task is updated
+   * @returns Unsubscribe function
+   *
+   * Security: Does not pass event object to callback
+   */
+  onTaskUpdate: (callback: (task: unknown) => void): Unsubscribe => {
+    const handler = (_event: IpcRendererEvent, task: unknown): void => {
+      callback(task)
+    }
+    ipcRenderer.on('task:updated', handler)
     return () => {
-      console.log('stub: onProgress unsubscribed');
-    };
+      ipcRenderer.removeListener('task:updated', handler)
+    }
   },
-  onAgentStatus: (callback: (status: unknown) => void): (() => void) => {
-    console.log('stub: onAgentStatus registered');
+
+  /**
+   * Subscribe to agent status events
+   * @param callback - Called when agent status changes
+   * @returns Unsubscribe function
+   *
+   * Security: Does not pass event object to callback
+   */
+  onAgentStatus: (callback: (status: unknown) => void): Unsubscribe => {
+    const handler = (_event: IpcRendererEvent, status: unknown): void => {
+      callback(status)
+    }
+    ipcRenderer.on('agent:status', handler)
     return () => {
-      console.log('stub: onAgentStatus unsubscribed');
-    };
+      ipcRenderer.removeListener('agent:status', handler)
+    }
   },
 
-  // System info
-  getVersion: async (): Promise<{ version: string }> => {
-    console.log('stub: getVersion');
-    return { version: '0.1.0' };
+  /**
+   * Subscribe to execution progress events
+   * @param callback - Called with progress updates
+   * @returns Unsubscribe function
+   *
+   * Security: Does not pass event object to callback
+   */
+  onExecutionProgress: (callback: (progress: unknown) => void): Unsubscribe => {
+    const handler = (_event: IpcRendererEvent, progress: unknown): void => {
+      callback(progress)
+    }
+    ipcRenderer.on('execution:progress', handler)
+    return () => {
+      ipcRenderer.removeListener('execution:progress', handler)
+    }
   },
-};
+}
 
-// Expose the API to the renderer process
+// Expose the API to the renderer process via contextBridge
 if (process.contextIsolated) {
   try {
-    contextBridge.exposeInMainWorld('electron', electronAPI);
-    contextBridge.exposeInMainWorld('nexusAPI', nexusAPI);
+    contextBridge.exposeInMainWorld('electron', electronAPI)
+    contextBridge.exposeInMainWorld('nexusAPI', nexusAPI)
   } catch (error) {
-    console.error('Failed to expose API:', error);
+    console.error('Failed to expose API:', error)
   }
 } else {
   // Fallback for non-isolated context (should not happen in production)
-  window.electron = electronAPI;
-  window.nexusAPI = nexusAPI;
+  window.electron = electronAPI
+  window.nexusAPI = nexusAPI
 }
 
-// Type declaration for the renderer process
-export type NexusAPI = typeof nexusAPI;
+// Export type for use in other files
+export type NexusAPI = typeof nexusAPI
 
+// Global type declaration
 declare global {
   interface Window {
-    electron: typeof electronAPI;
-    nexusAPI: typeof nexusAPI;
+    electron: typeof electronAPI
+    nexusAPI: typeof nexusAPI
   }
 }
