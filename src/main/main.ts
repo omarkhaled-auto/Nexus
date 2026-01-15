@@ -1,6 +1,7 @@
 import { app, BrowserWindow, shell } from 'electron';
 import { join } from 'path';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
+import { registerIpcHandlers, setupEventForwarding } from './ipc';
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -43,6 +44,9 @@ app.whenReady().then(() => {
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.nexus.app');
 
+  // Register IPC handlers before creating window
+  registerIpcHandlers();
+
   // Default open or close DevTools by F12 in development
   // and ignore CommandOrControl + R in production.
   app.on('browser-window-created', (_, window) => {
@@ -50,6 +54,11 @@ app.whenReady().then(() => {
   });
 
   createWindow();
+
+  // Set up event forwarding after window is created
+  if (mainWindow) {
+    setupEventForwarding(mainWindow);
+  }
 
   app.on('activate', () => {
     // On macOS it's common to re-create a window in the app when the
