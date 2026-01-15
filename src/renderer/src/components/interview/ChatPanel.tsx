@@ -1,24 +1,14 @@
 import { useEffect, useRef, useCallback, type ReactElement } from 'react';
 import { ChatMessage } from './ChatMessage';
 import { ChatInput } from './ChatInput';
+import { StageProgress } from './StageProgress';
 import {
   useInterviewStore,
   useMessages,
   useInterviewStage,
 } from '@renderer/stores/interviewStore';
-import type { InterviewMessage, InterviewStage } from '@renderer/types/interview';
+import type { InterviewMessage } from '@renderer/types/interview';
 import { Sparkles } from 'lucide-react';
-
-// Stage display labels
-const STAGE_LABELS: Record<InterviewStage, string> = {
-  welcome: 'Getting Started',
-  project_overview: 'Project Overview',
-  technical_requirements: 'Technical Details',
-  features: 'Features',
-  constraints: 'Constraints',
-  review: 'Review',
-  complete: 'Complete',
-};
 
 /**
  * ChatPanel - Main chat interface for the Genesis interview.
@@ -74,17 +64,20 @@ export function ChatPanel(): ReactElement {
 
   return (
     <div className="h-full flex flex-col">
-      {/* Stage Indicator */}
-      <div className="flex items-center gap-2 px-6 py-4 border-b border-border bg-background/50 backdrop-blur-sm">
-        <div className="p-1.5 rounded-md bg-violet-500/10">
-          <Sparkles className="h-4 w-4 text-violet-500" />
+      {/* Header with Stage Progress */}
+      <div className="flex flex-col gap-3 px-6 py-4 border-b border-border bg-background/50 backdrop-blur-sm">
+        {/* Title Row */}
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 rounded-md bg-violet-500/10">
+            <Sparkles className="h-4 w-4 text-violet-500" />
+          </div>
+          <span className="text-sm font-medium text-foreground">
+            Genesis Interview
+          </span>
         </div>
-        <span className="text-sm font-medium text-foreground">
-          {STAGE_LABELS[stage]}
-        </span>
-        <span className="text-xs text-muted-foreground/60 ml-auto">
-          Genesis Interview
-        </span>
+
+        {/* Stage Progress */}
+        <StageProgress />
       </div>
 
       {/* Messages Area */}
