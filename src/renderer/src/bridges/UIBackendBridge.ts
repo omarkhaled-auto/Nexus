@@ -52,29 +52,44 @@ class UIBackendBridge {
   async initialize(): Promise<void> {
     if (this.initialized) return
 
+    // Guard against missing nexusAPI (e.g., during tests or non-Electron context)
+    if (!window.nexusAPI) {
+      console.warn('UIBackendBridge: window.nexusAPI not available, skipping event subscriptions')
+      this.initialized = true
+      return
+    }
+
     // Subscribe to task update events
-    const unsubTask = window.nexusAPI.onTaskUpdate((task) => {
-      const typedTask = task as Task
-      if (typedTask && typedTask.id) {
-        useTaskStore.getState().updateTask(typedTask.id, typedTask)
-      }
-    })
+    if (window.nexusAPI.onTaskUpdate) {
+      const unsubTask = window.nexusAPI.onTaskUpdate((task) => {
+        const typedTask = task as Task
+        if (typedTask && typedTask.id) {
+          useTaskStore.getState().updateTask(typedTask.id, typedTask)
+        }
+      })
+      this.unsubscribers.push(unsubTask)
+    }
 
     // Subscribe to agent status events
-    const unsubAgent = window.nexusAPI.onAgentStatus((status) => {
-      const typedStatus = status as AgentStatus
-      if (typedStatus && typedStatus.id) {
-        useAgentStore.getState().setAgentStatus(typedStatus)
-      }
-    })
+    if (window.nexusAPI.onAgentStatus) {
+      const unsubAgent = window.nexusAPI.onAgentStatus((status) => {
+        const typedStatus = status as AgentStatus
+        if (typedStatus && typedStatus.id) {
+          useAgentStore.getState().setAgentStatus(typedStatus)
+        }
+      })
+      this.unsubscribers.push(unsubAgent)
+    }
 
     // Subscribe to execution progress events
-    const unsubProgress = window.nexusAPI.onExecutionProgress((progress) => {
-      // Log progress for now - could update a progress store in future
-      console.log('Execution progress:', progress)
-    })
+    if (window.nexusAPI.onExecutionProgress) {
+      const unsubProgress = window.nexusAPI.onExecutionProgress((progress) => {
+        // Log progress for now - could update a progress store in future
+        console.log('Execution progress:', progress)
+      })
+      this.unsubscribers.push(unsubProgress)
+    }
 
-    this.unsubscribers.push(unsubTask, unsubAgent, unsubProgress)
     this.initialized = true
   }
 
@@ -134,6 +149,27 @@ class UIBackendBridge {
     const agents = await window.nexusAPI.getAgentStatus()
     for (const agent of agents as AgentStatus[]) {
       useAgentStore.getState().setAgentStatus(agent)
+    }
+  }
+
+  /**
+   * Pause execution gracefully
+   * Calls NexusCoordinator.pause() via IPC
+   * @param reason - Optional reason for pausing
+   */
+  async pauseExecution(reason?: string): Promise<void> {
+    useUIStore.getState().setLoading(true)
+    try {
+      const result = await window.nexusAPI.pauseExecution(reason)
+      if (!result.success) {
+        throw new Error('Failed to pause execution')
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error'
+      useUIStore.getState().setError(message)
+      throw error
+    } finally {
+      useUIStore.getState().setLoading(false)
     }
   }
 

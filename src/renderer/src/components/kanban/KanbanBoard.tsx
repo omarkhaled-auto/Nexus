@@ -12,7 +12,7 @@ import {
 } from '@dnd-kit/core'
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import type { Feature, FeatureStatus } from '@renderer/types/feature'
-import { useFeatures, useFeatureStore } from '@renderer/stores/featureStore'
+import { useFilteredFeatures, useFeatureStore } from '@renderer/stores/featureStore'
 import { KanbanColumn } from './KanbanColumn'
 import { FeatureCard } from './FeatureCard'
 import { FeatureDetailModal } from './FeatureDetailModal'
@@ -34,7 +34,8 @@ export const COLUMNS: {
 export function KanbanBoard() {
   const [activeId, setActiveId] = useState<string | null>(null)
   const [selectedFeature, setSelectedFeature] = useState<Feature | null>(null)
-  const features = useFeatures()
+  // Use filtered features to respect search/priority/status filters
+  const features = useFilteredFeatures()
   const moveFeature = useFeatureStore((s) => s.moveFeature)
   const reorderFeatures = useFeatureStore((s) => s.reorderFeatures)
 
