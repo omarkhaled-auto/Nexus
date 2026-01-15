@@ -11,10 +11,11 @@ import {
   type DragEndEvent
 } from '@dnd-kit/core'
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable'
-import type { FeatureStatus } from '@renderer/types/feature'
+import type { Feature, FeatureStatus } from '@renderer/types/feature'
 import { useFeatures, useFeatureStore } from '@renderer/stores/featureStore'
 import { KanbanColumn } from './KanbanColumn'
 import { FeatureCard } from './FeatureCard'
+import { FeatureDetailModal } from './FeatureDetailModal'
 
 // 6-column Kanban configuration
 export const COLUMNS: {
@@ -32,6 +33,7 @@ export const COLUMNS: {
 
 export function KanbanBoard() {
   const [activeId, setActiveId] = useState<string | null>(null)
+  const [selectedFeature, setSelectedFeature] = useState<Feature | null>(null)
   const features = useFeatures()
   const moveFeature = useFeatureStore((s) => s.moveFeature)
   const reorderFeatures = useFeatureStore((s) => s.reorderFeatures)
@@ -127,26 +129,43 @@ export function KanbanBoard() {
     setActiveId(null)
   }
 
+  // Handle feature click - only open modal if not dragging
+  function handleFeatureClick(feature: Feature) {
+    // Only open modal if we're not in the middle of a drag operation
+    if (!activeId) {
+      setSelectedFeature(feature)
+    }
+  }
+
   return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={closestCenter}
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-      onDragCancel={handleDragCancel}
-    >
-      <div className="flex h-full gap-4 overflow-x-auto p-4">
-        {COLUMNS.map((column) => (
-          <KanbanColumn
-            key={column.id}
-            column={column}
-            features={featuresByColumn[column.id]}
-          />
-        ))}
-      </div>
-      <DragOverlay>
-        {activeFeature ? <FeatureCard feature={activeFeature} isOverlay /> : null}
-      </DragOverlay>
-    </DndContext>
+    <>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+        onDragCancel={handleDragCancel}
+      >
+        <div className="flex h-full gap-4 overflow-x-auto p-4">
+          {COLUMNS.map((column) => (
+            <KanbanColumn
+              key={column.id}
+              column={column}
+              features={featuresByColumn[column.id]}
+              onFeatureClick={handleFeatureClick}
+            />
+          ))}
+        </div>
+        <DragOverlay>
+          {activeFeature ? <FeatureCard feature={activeFeature} isOverlay /> : null}
+        </DragOverlay>
+      </DndContext>
+
+      <FeatureDetailModal
+        feature={selectedFeature}
+        open={!!selectedFeature}
+        onOpenChange={(open) => !open && setSelectedFeature(null)}
+      />
+    </>
   )
 }

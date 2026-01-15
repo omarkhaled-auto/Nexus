@@ -13,9 +13,10 @@ interface ColumnConfig {
 interface KanbanColumnProps {
   column: ColumnConfig
   features: Feature[]
+  onFeatureClick?: (feature: Feature) => void
 }
 
-export function KanbanColumn({ column, features }: KanbanColumnProps) {
+export function KanbanColumn({ column, features, onFeatureClick }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: column.id,
     data: { columnId: column.id }
@@ -53,7 +54,11 @@ export function KanbanColumn({ column, features }: KanbanColumnProps) {
       <SortableContext items={featureIds} strategy={verticalListSortingStrategy}>
         <div className="flex flex-1 flex-col space-y-2 overflow-y-auto">
           {features.map((feature) => (
-            <FeatureCard key={feature.id} feature={feature} />
+            <FeatureCard
+              key={feature.id}
+              feature={feature}
+              onClick={onFeatureClick ? () => onFeatureClick(feature) : undefined}
+            />
           ))}
         </div>
       </SortableContext>

@@ -9,6 +9,7 @@ import { AgentStatusIndicator } from './AgentStatusIndicator'
 interface FeatureCardProps {
   feature: Feature
   isOverlay?: boolean
+  onClick?: () => void
 }
 
 // Priority border colors
@@ -31,7 +32,7 @@ const PRIORITY_COLORS: Record<FeaturePriority, string> = {
  * │ [Bot] Coder - Running tests │
  * └─────────────────────────────┘
  */
-export function FeatureCard({ feature, isOverlay = false }: FeatureCardProps) {
+export function FeatureCard({ feature, isOverlay = false, onClick }: FeatureCardProps) {
   const {
     attributes,
     listeners,
@@ -52,12 +53,20 @@ export function FeatureCard({ feature, isOverlay = false }: FeatureCardProps) {
     transition
   }
 
+  // Handle click - only trigger if not dragging
+  const handleClick = () => {
+    if (!isDragging && onClick) {
+      onClick()
+    }
+  }
+
   return (
     <div
       ref={setNodeRef}
       style={style}
       {...attributes}
       {...listeners}
+      onClick={handleClick}
       className={cn(
         // Base styles
         'cursor-grab rounded-lg border border-l-4 bg-card p-3 shadow-sm',
@@ -66,7 +75,9 @@ export function FeatureCard({ feature, isOverlay = false }: FeatureCardProps) {
         // Dragging state - make original item semi-transparent
         isDragging && !isOverlay && 'opacity-50',
         // Overlay - slight scale and shadow for visual feedback
-        isOverlay && 'rotate-2 scale-105 shadow-lg'
+        isOverlay && 'rotate-2 scale-105 shadow-lg',
+        // Clickable styles
+        onClick && 'cursor-pointer hover:border-primary/50 hover:shadow-md transition-shadow'
       )}
     >
       {/* Header: Title + Complexity Badge */}
