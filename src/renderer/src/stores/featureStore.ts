@@ -5,10 +5,23 @@ import type {
   ColumnCounts,
   FeaturePriority
 } from '../types/feature'
-import { EventBus } from '@/orchestration/events/EventBus'
 
 // WIP Limit for in_progress column
 const WIP_LIMIT = 3
+
+/**
+ * Safely emit event via IPC (only in Electron context)
+ * Uses window.nexusAPI to communicate with main process EventBus
+ */
+function emitEvent(channel: string, payload: unknown): void {
+  if (typeof window !== 'undefined' && window.nexusAPI?.emitEvent) {
+    try {
+      void window.nexusAPI.emitEvent(channel, payload)
+    } catch {
+      // Silently ignore errors in event emission (e.g., during tests)
+    }
+  }
+}
 
 interface FeatureFilter {
   search: string
@@ -51,29 +64,24 @@ export const useFeatureStore = create<FeatureState>()((set, get) => ({
     set((state) => ({
       features: [...state.features, feature]
     }))
-    // Emit FEATURE_CREATED event
-    const eventBus = EventBus.getInstance()
-    eventBus.emit(
-      'feature:created',
-      {
-        feature: {
-          id: feature.id,
-          projectId: 'current',
-          name: feature.title,
-          description: feature.description,
-          priority: feature.priority === 'critical' ? 'must' : feature.priority === 'high' ? 'should' : feature.priority === 'medium' ? 'could' : 'wont',
-          status: mapToEventFeatureStatus(feature.status),
-          complexity: feature.complexity === 'moderate' ? 'simple' : feature.complexity,
-          subFeatures: [],
-          estimatedTasks: feature.tasks.length,
-          completedTasks: 0,
-          createdAt: new Date(feature.createdAt),
-          updatedAt: new Date(feature.updatedAt)
-        },
-        projectId: 'current'
+    // Emit FEATURE_CREATED event via IPC
+    emitEvent('feature:created', {
+      feature: {
+        id: feature.id,
+        projectId: 'current',
+        name: feature.title,
+        description: feature.description,
+        priority: feature.priority === 'critical' ? 'must' : feature.priority === 'high' ? 'should' : feature.priority === 'medium' ? 'could' : 'wont',
+        status: mapToEventFeatureStatus(feature.status),
+        complexity: feature.complexity === 'moderate' ? 'simple' : feature.complexity,
+        subFeatures: [],
+        estimatedTasks: feature.tasks.length,
+        completedTasks: 0,
+        createdAt: new Date(feature.createdAt),
+        updatedAt: new Date(feature.updatedAt)
       },
-      { source: 'featureStore' }
-    )
+      projectId: 'current'
+    })
   },
 
   updateFeature: (id, update) =>
@@ -114,33 +122,22 @@ export const useFeatureStore = create<FeatureState>()((set, get) => ({
       )
     }))
 
-    // Emit EventBus events
-    const eventBus = EventBus.getInstance()
-
-    // Emit FEATURE_STATUS_CHANGED
-    eventBus.emit(
-      'feature:status-changed',
-      {
-        featureId: id,
-        projectId: 'current',
-        previousStatus: mapToEventFeatureStatus(oldStatus),
-        newStatus: mapToEventFeatureStatus(newStatus)
-      },
-      { source: 'featureStore' }
-    )
+    // Emit events via IPC
+    emitEvent('feature:status-changed', {
+      featureId: id,
+      projectId: 'current',
+      previousStatus: mapToEventFeatureStatus(oldStatus),
+      newStatus: mapToEventFeatureStatus(newStatus)
+    })
 
     // Emit FEATURE_COMPLETED when moved to done
     if (newStatus === 'done') {
-      eventBus.emit(
-        'feature:completed',
-        {
-          featureId: id,
-          projectId: 'current',
-          tasksCompleted: feature.tasks.length,
-          duration: 0 // Would need actual time tracking
-        },
-        { source: 'featureStore' }
-      )
+      emitEvent('feature:completed', {
+        featureId: id,
+        projectId: 'current',
+        tasksCompleted: feature.tasks.length,
+        duration: 0 // Would need actual time tracking
+      })
     }
 
     return true

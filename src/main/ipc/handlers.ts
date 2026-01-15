@@ -333,6 +333,30 @@ export function registerIpcHandlers(): void {
       )
     }
   )
+
+  // ========================================
+  // Generic Event Emission (BUILD-015)
+  // ========================================
+
+  ipcMain.handle(
+    'eventbus:emit',
+    async (event, channel: string, payload: unknown) => {
+      if (!validateSender(event)) {
+        throw new Error('Unauthorized IPC sender')
+      }
+
+      if (typeof channel !== 'string' || !channel) {
+        throw new Error('Invalid event channel')
+      }
+
+      const eventBus = EventBus.getInstance()
+
+      // Emit generic event with payload
+      // The channel should be a valid event type (e.g., 'feature:created')
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      eventBus.emit(channel as any, payload as any, { source: 'RendererUI' })
+    }
+  )
 }
 
 /**

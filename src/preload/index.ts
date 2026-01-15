@@ -145,6 +145,19 @@ const nexusAPI = {
   }): Promise<void> => ipcRenderer.invoke('interview:emit-completed', payload),
 
   // ========================================
+  // Generic Event Emission (BUILD-015)
+  // ========================================
+
+  /**
+   * Generic event emission to main process EventBus
+   * @param channel - Event channel name (e.g., 'feature:created')
+   * @param payload - Event payload data
+   * @returns Promise that resolves on success
+   */
+  emitEvent: (channel: string, payload: unknown): Promise<void> =>
+    ipcRenderer.invoke('eventbus:emit', channel, payload),
+
+  // ========================================
   // Event Subscriptions
   // ========================================
 

@@ -12,16 +12,19 @@ import {
   WIP_LIMIT
 } from './featureStore'
 import type { Feature, FeatureStatus, FeaturePriority } from '../types/feature'
-import { EventBus } from '@/orchestration/events/EventBus'
 
-// Mock EventBus
-vi.mock('@/orchestration/events/EventBus', () => ({
-  EventBus: {
-    getInstance: vi.fn(() => ({
-      emit: vi.fn()
-    }))
-  }
-}))
+// Mock window.nexusAPI.emitEvent for IPC event emission
+const mockEmitEvent = vi.fn()
+
+// Set up global window.nexusAPI mock
+Object.defineProperty(global, 'window', {
+  value: {
+    nexusAPI: {
+      emitEvent: mockEmitEvent
+    }
+  },
+  writable: true
+})
 
 // Helper to create a test feature
 function createTestFeature(overrides: Partial<Feature> = {}): Feature {
@@ -43,14 +46,9 @@ function createTestFeature(overrides: Partial<Feature> = {}): Feature {
 }
 
 describe('featureStore', () => {
-  let mockEmit: ReturnType<typeof vi.fn>
-
   beforeEach(() => {
     useFeatureStore.getState().reset()
-    mockEmit = vi.fn()
-    vi.mocked(EventBus.getInstance).mockReturnValue({
-      emit: mockEmit
-    } as unknown as EventBus)
+    mockEmitEvent.mockClear()
   })
 
   afterEach(() => {
@@ -671,12 +669,12 @@ describe('featureStore', () => {
     })
   })
 
-  describe('EventBus integration', () => {
-    it('should emit feature:created when adding a feature', () => {
+  describe('IPC Event emission', () => {
+    it('should emit feature:created via IPC when adding a feature', () => {
       const feature = createTestFeature({ id: 'f1', title: 'Test' })
       useFeatureStore.getState().addFeature(feature)
 
-      expect(mockEmit).toHaveBeenCalledWith(
+      expect(mockEmitEvent).toHaveBeenCalledWith(
         'feature:created',
         expect.objectContaining({
           projectId: 'current',
@@ -684,46 +682,43 @@ describe('featureStore', () => {
             id: 'f1',
             name: 'Test'
           })
-        }),
-        { source: 'featureStore' }
+        })
       )
     })
 
-    it('should emit feature:status-changed when moving a feature', () => {
+    it('should emit feature:status-changed via IPC when moving a feature', () => {
       const feature = createTestFeature({ id: 'f1', status: 'backlog' })
       useFeatureStore.getState().addFeature(feature)
-      mockEmit.mockClear()
+      mockEmitEvent.mockClear()
 
       useFeatureStore.getState().moveFeature('f1', 'planning')
 
-      expect(mockEmit).toHaveBeenCalledWith(
+      expect(mockEmitEvent).toHaveBeenCalledWith(
         'feature:status-changed',
         expect.objectContaining({
           featureId: 'f1',
           projectId: 'current',
           previousStatus: 'backlog',
           newStatus: 'backlog' // planning maps to backlog in core types
-        }),
-        { source: 'featureStore' }
+        })
       )
     })
 
-    it('should emit feature:completed when moving to done', () => {
+    it('should emit feature:completed via IPC when moving to done', () => {
       const feature = createTestFeature({ id: 'f1', status: 'human_review' })
       useFeatureStore.getState().addFeature(feature)
-      mockEmit.mockClear()
+      mockEmitEvent.mockClear()
 
       useFeatureStore.getState().moveFeature('f1', 'done')
 
-      expect(mockEmit).toHaveBeenCalledWith(
+      expect(mockEmitEvent).toHaveBeenCalledWith(
         'feature:completed',
         expect.objectContaining({
           featureId: 'f1',
           projectId: 'current',
           tasksCompleted: expect.any(Number),
           duration: 0
-        }),
-        { source: 'featureStore' }
+        })
       )
     })
 
@@ -735,14 +730,13 @@ describe('featureStore', () => {
         createTestFeature({ id: 'f4', status: 'backlog' })
       ]
       useFeatureStore.getState().setFeatures(features)
-      mockEmit.mockClear()
+      mockEmitEvent.mockClear()
 
       useFeatureStore.getState().moveFeature('f4', 'in_progress')
 
       // No status-changed event should be emitted
-      expect(mockEmit).not.toHaveBeenCalledWith(
+      expect(mockEmitEvent).not.toHaveBeenCalledWith(
         'feature:status-changed',
-        expect.anything(),
         expect.anything()
       )
     })
