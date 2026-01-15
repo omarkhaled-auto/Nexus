@@ -1,5 +1,5 @@
 import type { Feature, FeaturePriority } from '@renderer/types/feature'
-import type { Task } from '@renderer/stores/taskStore'
+import { useTaskStore, type Task } from '@renderer/stores/taskStore'
 import {
   Dialog,
   DialogContent,
@@ -65,9 +65,28 @@ function getAgentStatus(feature: Feature): string | null {
   }
 }
 
-// Generate demo tasks for a feature
+/**
+ * Get real tasks from the task store for the feature.
+ * Falls back to demo tasks if no real tasks exist.
+ */
+function getFeatureTasks(feature: Feature, allTasks: Task[]): Task[] {
+  // Try to get real tasks from the store based on feature.tasks IDs
+  if (feature.tasks.length > 0) {
+    const realTasks = feature.tasks
+      .map((taskId) => allTasks.find((t) => t.id === taskId))
+      .filter((t): t is Task => t !== undefined)
+
+    if (realTasks.length > 0) {
+      return realTasks
+    }
+  }
+
+  // Fallback to demo tasks if no real tasks exist
+  return generateDemoTasks(feature)
+}
+
+// Generate demo tasks for a feature (fallback)
 function generateDemoTasks(feature: Feature): Task[] {
-  // In production, these would come from the task store based on feature.tasks IDs
   const taskTemplates: Array<{
     name: string
     status: Task['status']
@@ -182,9 +201,14 @@ function formatTime(date: Date): string {
  * └─────────────────────────────────────────┘
  */
 export function FeatureDetailModal({ feature, open, onOpenChange }: FeatureDetailModalProps) {
+  // Get tasks from real store
+  const allTasks = useTaskStore((s) => s.tasks)
+
   if (!feature) return null
 
-  const tasks = generateDemoTasks(feature)
+  // Get tasks: real from store if available, else demo fallback
+  const tasks = getFeatureTasks(feature, allTasks)
+  // TODO: Connect activity timeline to real event history in integration phase
   const activities = generateActivityTimeline(feature)
 
   return (
