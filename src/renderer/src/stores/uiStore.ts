@@ -22,19 +22,25 @@ interface UIState {
   reset: () => void
 }
 
-// Stub implementation - tests will fail
-export const useUIStore = create<UIState>()((set) => ({
+const initialState = {
   sidebarOpen: true,
   isLoading: false,
-  error: null,
-  toasts: [],
+  error: null as string | null,
+  toasts: [] as Toast[]
+}
 
-  toggleSidebar: () => {},
-  setSidebar: () => {},
-  setLoading: () => {},
-  setError: () => {},
-  clearError: () => {},
-  addToast: () => {},
-  removeToast: () => {},
-  reset: () => {}
+export const useUIStore = create<UIState>()((set) => ({
+  ...initialState,
+
+  toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
+  setSidebar: (open) => set({ sidebarOpen: open }),
+  setLoading: (loading) => set({ isLoading: loading }),
+  setError: (error) => set({ error }),
+  clearError: () => set({ error: null }),
+  addToast: (toast) => set((state) => ({ toasts: [...state.toasts, toast] })),
+  removeToast: (id) =>
+    set((state) => ({
+      toasts: state.toasts.filter((t) => t.id !== id)
+    })),
+  reset: () => set({ ...initialState, toasts: [] })
 }))

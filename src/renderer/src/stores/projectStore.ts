@@ -19,15 +19,18 @@ interface ProjectState {
   reset: () => void
 }
 
-// Stub implementation - tests will fail
-export const useProjectStore = create<ProjectState>()((set) => ({
-  currentProject: null,
-  projects: [],
-  mode: null,
+const initialState = {
+  currentProject: null as Project | null,
+  projects: [] as Project[],
+  mode: null as 'genesis' | 'evolution' | null
+}
 
-  setProject: () => {},
-  setMode: () => {},
-  addProject: () => {},
-  clearProject: () => {},
-  reset: () => {}
+export const useProjectStore = create<ProjectState>()((set) => ({
+  ...initialState,
+
+  setProject: (project) => set({ currentProject: project }),
+  setMode: (mode) => set({ mode }),
+  addProject: (project) => set((state) => ({ projects: [...state.projects, project] })),
+  clearProject: () => set({ currentProject: null, mode: null }),
+  reset: () => set({ ...initialState, projects: [] })
 }))
