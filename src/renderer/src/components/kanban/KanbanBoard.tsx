@@ -12,7 +12,7 @@ import {
 } from '@dnd-kit/core'
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import type { Feature, FeatureStatus } from '@renderer/types/feature'
-import { useFilteredFeatures, useFeatureStore } from '@renderer/stores/featureStore'
+import { useFeatureStore } from '@renderer/stores/featureStore'
 import { KanbanColumn } from './KanbanColumn'
 import { FeatureCard } from './FeatureCard'
 import { FeatureDetailModal } from './FeatureDetailModal'
@@ -34,10 +34,29 @@ export const COLUMNS: {
 export function KanbanBoard() {
   const [activeId, setActiveId] = useState<string | null>(null)
   const [selectedFeature, setSelectedFeature] = useState<Feature | null>(null)
-  // Use filtered features to respect search/priority/status filters
-  const features = useFilteredFeatures()
+
+  // Get raw features and filter from store
+  const allFeatures = useFeatureStore((s) => s.features)
+  const filter = useFeatureStore((s) => s.filter)
   const moveFeature = useFeatureStore((s) => s.moveFeature)
   const reorderFeatures = useFeatureStore((s) => s.reorderFeatures)
+
+  // Memoize filtered features to avoid infinite loop
+  // (useFilteredFeatures creates new array each render, causing React sync issues)
+  const features = useMemo(() => {
+    if (!filter.search && !filter.priority && !filter.status) {
+      return allFeatures
+    }
+    return allFeatures.filter((f) => {
+      const matchesSearch =
+        !filter.search ||
+        f.title.toLowerCase().includes(filter.search.toLowerCase()) ||
+        f.description.toLowerCase().includes(filter.search.toLowerCase())
+      const matchesPriority = !filter.priority || filter.priority.includes(f.priority)
+      const matchesStatus = !filter.status || filter.status.includes(f.status)
+      return matchesSearch && matchesPriority && matchesStatus
+    })
+  }, [allFeatures, filter])
 
   // Configure sensors with distance constraint to prevent accidental drags
   const sensors = useSensors(

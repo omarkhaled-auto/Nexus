@@ -47,6 +47,7 @@ const mockNexusAPI = {
   startEvolution: vi.fn().mockResolvedValue({ success: true }),
   getTasks: vi.fn().mockResolvedValue([]),
   getAgentStatus: vi.fn().mockResolvedValue([]),
+  pauseExecution: vi.fn().mockResolvedValue({ success: true }),
   onTaskUpdate: vi.fn().mockReturnValue(() => {}),
   onAgentStatus: vi.fn().mockReturnValue(() => {}),
   onExecutionProgress: vi.fn().mockReturnValue(() => {}),
@@ -170,6 +171,33 @@ describe('UIBackendBridge', () => {
       await bridge.loadAgentStatus()
 
       expect(mockNexusAPI.getAgentStatus).toHaveBeenCalled()
+    })
+  })
+
+  describe('pauseExecution()', () => {
+    it('should call nexusAPI.pauseExecution', async () => {
+      const bridge = UIBackendBridge.getInstance()
+      await bridge.pauseExecution()
+
+      expect(mockNexusAPI.pauseExecution).toHaveBeenCalled()
+    })
+
+    it('should pass reason to nexusAPI.pauseExecution', async () => {
+      const bridge = UIBackendBridge.getInstance()
+      await bridge.pauseExecution('User requested pause')
+
+      expect(mockNexusAPI.pauseExecution).toHaveBeenCalledWith(
+        'User requested pause'
+      )
+    })
+
+    it('should throw on failure', async () => {
+      mockNexusAPI.pauseExecution.mockResolvedValueOnce({ success: false })
+
+      const bridge = UIBackendBridge.getInstance()
+      await expect(bridge.pauseExecution()).rejects.toThrow(
+        'Failed to pause execution'
+      )
     })
   })
 
