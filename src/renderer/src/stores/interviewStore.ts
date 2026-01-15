@@ -13,6 +13,7 @@ interface InterviewState {
   requirements: Requirement[]
   isInterviewing: boolean
   projectName: string | null
+  interviewStartTime: number | null
 
   // Actions
   setStage: (stage: InterviewStage) => void
@@ -32,28 +33,61 @@ const initialState = {
   messages: [] as InterviewMessage[],
   requirements: [] as Requirement[],
   isInterviewing: false,
-  projectName: null as string | null
+  projectName: null as string | null,
+  interviewStartTime: null as number | null
 }
 
-export const useInterviewStore = create<InterviewState>()((set) => ({
+/**
+ * Safely emit event via IPC (only in Electron context)
+ */
+function emitEvent<T>(method: keyof typeof window.nexusAPI, payload: T): void {
+  if (typeof window !== 'undefined' && window.nexusAPI) {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const fn = window.nexusAPI[method] as (p: T) => Promise<void>
+      void fn(payload)
+    } catch {
+      // Silently ignore errors in event emission
+    }
+  }
+}
+
+export const useInterviewStore = create<InterviewState>()((set, get) => ({
   ...initialState,
 
   setStage: (stage) => set({ stage }),
 
-  addMessage: (message) =>
+  addMessage: (message) => {
     set((state) => ({
       messages: [...state.messages, message]
-    })),
+    }))
+
+    // Emit INTERVIEW_MESSAGE event
+    emitEvent('emitInterviewMessage', {
+      messageId: message.id,
+      role: message.role,
+      content: message.content
+    })
+  },
 
   updateMessage: (id, updates) =>
     set((state) => ({
       messages: state.messages.map((m) => (m.id === id ? { ...m, ...updates } : m))
     })),
 
-  addRequirement: (requirement) =>
+  addRequirement: (requirement) => {
     set((state) => ({
       requirements: [...state.requirements, requirement]
-    })),
+    }))
+
+    // Emit INTERVIEW_REQUIREMENT event
+    emitEvent('emitInterviewRequirement', {
+      requirementId: requirement.id,
+      category: requirement.category,
+      text: requirement.text,
+      priority: requirement.priority
+    })
+  },
 
   updateRequirement: (id, updates) =>
     set((state) => ({
@@ -67,23 +101,49 @@ export const useInterviewStore = create<InterviewState>()((set) => ({
 
   setProjectName: (name) => set({ projectName: name }),
 
-  startInterview: () =>
+  startInterview: () => {
+    const state = get()
     set({
       isInterviewing: true,
-      stage: 'welcome'
-    }),
+      stage: 'welcome',
+      interviewStartTime: Date.now()
+    })
 
-  completeInterview: () =>
+    // Emit INTERVIEW_STARTED event
+    emitEvent('emitInterviewStarted', {
+      projectName: state.projectName,
+      mode: 'genesis' as const
+    })
+  },
+
+  completeInterview: () => {
+    const state = get()
+    const duration = state.interviewStartTime
+      ? Math.round((Date.now() - state.interviewStartTime) / 1000)
+      : 0
+
+    // Get unique categories from requirements
+    const categories = [...new Set(state.requirements.map((r) => r.category))]
+
     set({
       isInterviewing: false,
       stage: 'complete'
-    }),
+    })
+
+    // Emit INTERVIEW_COMPLETED event
+    emitEvent('emitInterviewCompleted', {
+      requirementCount: state.requirements.length,
+      categories,
+      duration
+    })
+  },
 
   reset: () =>
     set({
       ...initialState,
       messages: [],
-      requirements: []
+      requirements: [],
+      interviewStartTime: null
     })
 }))
 

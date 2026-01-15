@@ -93,6 +93,58 @@ const nexusAPI = {
   getAgentStatus: (): Promise<unknown[]> => ipcRenderer.invoke('agents:status'),
 
   // ========================================
+  // Execution Control
+  // ========================================
+
+  /**
+   * Pause execution gracefully
+   * @param reason - Optional reason for pausing
+   * @returns Promise with success status
+   */
+  pauseExecution: (reason?: string): Promise<{ success: boolean }> =>
+    ipcRenderer.invoke('execution:pause', reason),
+
+  // ========================================
+  // Interview Events (BUILD-014)
+  // ========================================
+
+  /**
+   * Emit interview started event
+   */
+  emitInterviewStarted: (payload: {
+    projectName: string | null
+    mode: 'genesis' | 'evolution'
+  }): Promise<void> => ipcRenderer.invoke('interview:emit-started', payload),
+
+  /**
+   * Emit interview message event
+   */
+  emitInterviewMessage: (payload: {
+    messageId: string
+    role: 'user' | 'assistant'
+    content: string
+  }): Promise<void> => ipcRenderer.invoke('interview:emit-message', payload),
+
+  /**
+   * Emit interview requirement captured event
+   */
+  emitInterviewRequirement: (payload: {
+    requirementId: string
+    category: string
+    text: string
+    priority: string
+  }): Promise<void> => ipcRenderer.invoke('interview:emit-requirement', payload),
+
+  /**
+   * Emit interview completed event
+   */
+  emitInterviewCompleted: (payload: {
+    requirementCount: number
+    categories: string[]
+    duration: number
+  }): Promise<void> => ipcRenderer.invoke('interview:emit-completed', payload),
+
+  // ========================================
   // Event Subscriptions
   // ========================================
 

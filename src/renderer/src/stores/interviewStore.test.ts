@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import {
   useInterviewStore,
   useInterviewStage,
@@ -10,9 +10,27 @@ import {
 } from './interviewStore'
 import type { InterviewMessage, Requirement } from '../types/interview'
 
+// Mock window.nexusAPI for event emission tests
+const mockNexusAPI = {
+  emitInterviewStarted: vi.fn().mockResolvedValue(undefined),
+  emitInterviewMessage: vi.fn().mockResolvedValue(undefined),
+  emitInterviewRequirement: vi.fn().mockResolvedValue(undefined),
+  emitInterviewCompleted: vi.fn().mockResolvedValue(undefined)
+}
+
 describe('interviewStore', () => {
   beforeEach(() => {
     useInterviewStore.getState().reset()
+    // Setup mock before each test
+    ;(globalThis as unknown as { window: { nexusAPI: typeof mockNexusAPI } }).window = {
+      nexusAPI: mockNexusAPI
+    }
+    vi.clearAllMocks()
+  })
+
+  afterEach(() => {
+    // Cleanup mock
+    delete (globalThis as unknown as { window?: unknown }).window
   })
 
   describe('initial state', () => {
@@ -270,6 +288,113 @@ describe('interviewStore', () => {
       expect(useInterviewStore.getState().isInterviewing).toBe(false)
       useInterviewStore.getState().startInterview()
       expect(useInterviewStore.getState().isInterviewing).toBe(true)
+    })
+  })
+
+  describe('event emission (BUILD-014)', () => {
+    it('should emit INTERVIEW_STARTED when startInterview is called', () => {
+      useInterviewStore.getState().setProjectName('Test Project')
+      useInterviewStore.getState().startInterview()
+
+      expect(mockNexusAPI.emitInterviewStarted).toHaveBeenCalledTimes(1)
+      expect(mockNexusAPI.emitInterviewStarted).toHaveBeenCalledWith({
+        projectName: 'Test Project',
+        mode: 'genesis'
+      })
+    })
+
+    it('should emit INTERVIEW_MESSAGE when addMessage is called', () => {
+      const message: InterviewMessage = {
+        id: 'm1',
+        role: 'user',
+        content: 'Hello',
+        timestamp: new Date().toISOString()
+      }
+      useInterviewStore.getState().addMessage(message)
+
+      expect(mockNexusAPI.emitInterviewMessage).toHaveBeenCalledTimes(1)
+      expect(mockNexusAPI.emitInterviewMessage).toHaveBeenCalledWith({
+        messageId: 'm1',
+        role: 'user',
+        content: 'Hello'
+      })
+    })
+
+    it('should emit INTERVIEW_REQUIREMENT when addRequirement is called', () => {
+      const requirement: Requirement = {
+        id: 'r1',
+        category: 'functional',
+        text: 'User login',
+        priority: 'must',
+        extractedAt: new Date().toISOString(),
+        fromMessageId: 'm1'
+      }
+      useInterviewStore.getState().addRequirement(requirement)
+
+      expect(mockNexusAPI.emitInterviewRequirement).toHaveBeenCalledTimes(1)
+      expect(mockNexusAPI.emitInterviewRequirement).toHaveBeenCalledWith({
+        requirementId: 'r1',
+        category: 'functional',
+        text: 'User login',
+        priority: 'must'
+      })
+    })
+
+    it('should emit INTERVIEW_COMPLETED with correct duration and categories', () => {
+      // Start interview
+      useInterviewStore.getState().startInterview()
+
+      // Add some requirements
+      useInterviewStore.getState().addRequirement({
+        id: 'r1',
+        category: 'functional',
+        text: 'Req 1',
+        priority: 'must',
+        extractedAt: '',
+        fromMessageId: 'm1'
+      })
+      useInterviewStore.getState().addRequirement({
+        id: 'r2',
+        category: 'technical',
+        text: 'Req 2',
+        priority: 'should',
+        extractedAt: '',
+        fromMessageId: 'm2'
+      })
+
+      // Complete interview
+      useInterviewStore.getState().completeInterview()
+
+      expect(mockNexusAPI.emitInterviewCompleted).toHaveBeenCalledTimes(1)
+      const call = mockNexusAPI.emitInterviewCompleted.mock.calls[0][0]
+      expect(call.requirementCount).toBe(2)
+      expect(call.categories).toContain('functional')
+      expect(call.categories).toContain('technical')
+      expect(typeof call.duration).toBe('number')
+    })
+
+    it('should track interviewStartTime for duration calculation', () => {
+      useInterviewStore.getState().startInterview()
+      expect(useInterviewStore.getState().interviewStartTime).toBeTypeOf('number')
+    })
+
+    it('should handle missing window.nexusAPI gracefully', () => {
+      // Remove mock
+      delete (globalThis as unknown as { window?: unknown }).window
+
+      // These should not throw
+      expect(() => {
+        useInterviewStore.getState().startInterview()
+      }).not.toThrow()
+
+      expect(() => {
+        useInterviewStore.getState().addMessage({
+          id: 'm1',
+          role: 'user',
+          content: 'Test',
+          timestamp: ''
+        })
+      }).not.toThrow()
     })
   })
 })

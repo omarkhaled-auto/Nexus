@@ -1,6 +1,7 @@
 /**
  * IPC Handlers - Main Process
  * Phase 05-04: IPC handlers connecting renderer to orchestration layer
+ * Phase 06: Interview event handlers (BUILD-014)
  *
  * Security:
  * - Validates sender origin for all handlers
@@ -9,6 +10,7 @@
  */
 
 import { ipcMain, IpcMainInvokeEvent, BrowserWindow } from 'electron'
+import { EventBus } from '../../orchestration/events/EventBus'
 
 /**
  * Allowed origins for IPC communication
@@ -175,6 +177,162 @@ export function registerIpcHandlers(): void {
 
     return Array.from(state.agents.values())
   })
+
+  // Execution control
+  ipcMain.handle('execution:pause', async (event, reason?: string) => {
+    if (!validateSender(event)) {
+      throw new Error('Unauthorized IPC sender')
+    }
+
+    // Will be wired to NexusCoordinator.pause() when coordinator is available
+    // For now, emit event that execution was paused
+    if (eventForwardingWindow && !eventForwardingWindow.isDestroyed()) {
+      eventForwardingWindow.webContents.send('execution:paused', { reason })
+    }
+
+    return { success: true }
+  })
+
+  // ========================================
+  // Interview Events (BUILD-014)
+  // ========================================
+
+  ipcMain.handle(
+    'interview:emit-started',
+    async (
+      event,
+      payload: { projectName: string | null; mode: 'genesis' | 'evolution' }
+    ) => {
+      if (!validateSender(event)) {
+        throw new Error('Unauthorized IPC sender')
+      }
+
+      const eventBus = EventBus.getInstance()
+      const projectId = state.projectId || `interview-${Date.now()}`
+
+      eventBus.emit(
+        'interview:started',
+        {
+          projectId,
+          projectName: payload.projectName || 'Untitled Project',
+          mode: payload.mode
+        },
+        { source: 'InterviewUI' }
+      )
+    }
+  )
+
+  ipcMain.handle(
+    'interview:emit-message',
+    async (
+      event,
+      payload: { messageId: string; role: 'user' | 'assistant'; content: string }
+    ) => {
+      if (!validateSender(event)) {
+        throw new Error('Unauthorized IPC sender')
+      }
+
+      const eventBus = EventBus.getInstance()
+      const projectId = state.projectId || 'unknown'
+
+      eventBus.emit(
+        'interview:question-asked',
+        {
+          projectId,
+          questionId: payload.messageId,
+          question: payload.content,
+          category: payload.role === 'assistant' ? 'ai-response' : 'user-input'
+        },
+        { source: 'InterviewUI' }
+      )
+    }
+  )
+
+  ipcMain.handle(
+    'interview:emit-requirement',
+    async (
+      event,
+      payload: {
+        requirementId: string
+        category: string
+        text: string
+        priority: string
+      }
+    ) => {
+      if (!validateSender(event)) {
+        throw new Error('Unauthorized IPC sender')
+      }
+
+      const eventBus = EventBus.getInstance()
+      const projectId = state.projectId || 'unknown'
+
+      // Map frontend categories (underscores) to backend categories (hyphens)
+      const categoryMap: Record<string, string> = {
+        non_functional: 'non-functional',
+        user_story: 'business-logic',
+        constraint: 'technical'
+      }
+      const mappedCategory = categoryMap[payload.category] || payload.category
+
+      eventBus.emit(
+        'interview:requirement-captured',
+        {
+          projectId,
+          requirement: {
+            id: payload.requirementId,
+            projectId,
+            category: mappedCategory as
+              | 'functional'
+              | 'non-functional'
+              | 'ui-ux'
+              | 'technical'
+              | 'business-logic'
+              | 'integration',
+            description: payload.text,
+            priority: payload.priority as 'must' | 'should' | 'could' | 'wont',
+            userStories: [],
+            acceptanceCriteria: [],
+            linkedFeatures: [],
+            validated: false,
+            confidence: 1,
+            tags: [],
+            createdAt: new Date()
+          }
+        },
+        { source: 'InterviewUI' }
+      )
+    }
+  )
+
+  ipcMain.handle(
+    'interview:emit-completed',
+    async (
+      event,
+      payload: {
+        requirementCount: number
+        categories: string[]
+        duration: number
+      }
+    ) => {
+      if (!validateSender(event)) {
+        throw new Error('Unauthorized IPC sender')
+      }
+
+      const eventBus = EventBus.getInstance()
+      const projectId = state.projectId || 'unknown'
+
+      eventBus.emit(
+        'interview:completed',
+        {
+          projectId,
+          totalRequirements: payload.requirementCount,
+          categories: payload.categories,
+          duration: payload.duration
+        },
+        { source: 'InterviewUI' }
+      )
+    }
+  )
 }
 
 /**
