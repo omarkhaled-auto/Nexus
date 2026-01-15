@@ -18,7 +18,8 @@
     "rootDir": "src",
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "@renderer/*": ["src/renderer/src/*"]
     }
   },
   "include": ["src/**/*"],
