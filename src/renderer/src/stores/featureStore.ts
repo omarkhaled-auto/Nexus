@@ -1,28 +1,80 @@
 import { create } from 'zustand'
-import type { Feature, FeatureStatus, ColumnCounts } from '../types/feature'
+import type {
+  Feature,
+  FeatureStatus,
+  ColumnCounts,
+  FeaturePriority
+} from '../types/feature'
+import { EventBus } from '@/orchestration/events/EventBus'
+
+// WIP Limit for in_progress column
+const WIP_LIMIT = 3
+
+interface FeatureFilter {
+  search: string
+  priority: FeaturePriority[] | null
+  status: FeatureStatus[] | null
+}
 
 interface FeatureState {
   features: Feature[]
+  selectedFeatureId: string | null
+  filter: FeatureFilter
 
   // Actions
   setFeatures: (features: Feature[]) => void
   addFeature: (feature: Feature) => void
   updateFeature: (id: string, update: Partial<Feature>) => void
   removeFeature: (id: string) => void
-  moveFeature: (id: string, newStatus: FeatureStatus, newIndex?: number) => void
+  moveFeature: (id: string, newStatus: FeatureStatus, newIndex?: number) => boolean
   reorderFeatures: (columnId: FeatureStatus, oldIndex: number, newIndex: number) => void
+  selectFeature: (id: string | null) => void
+  setSearchFilter: (search: string) => void
+  setPriorityFilter: (priorities: FeaturePriority[] | null) => void
+  setStatusFilter: (statuses: FeatureStatus[] | null) => void
+  clearFilters: () => void
   reset: () => void
 }
 
-export const useFeatureStore = create<FeatureState>()((set) => ({
+export const useFeatureStore = create<FeatureState>()((set, get) => ({
   features: [],
+  selectedFeatureId: null,
+  filter: {
+    search: '',
+    priority: null,
+    status: null
+  },
 
   setFeatures: (features) => set({ features }),
 
-  addFeature: (feature) =>
+  addFeature: (feature) => {
     set((state) => ({
       features: [...state.features, feature]
-    })),
+    }))
+    // Emit FEATURE_CREATED event
+    const eventBus = EventBus.getInstance()
+    eventBus.emit(
+      'feature:created',
+      {
+        feature: {
+          id: feature.id,
+          projectId: 'current',
+          name: feature.title,
+          description: feature.description,
+          priority: feature.priority === 'critical' ? 'must' : feature.priority === 'high' ? 'should' : feature.priority === 'medium' ? 'could' : 'wont',
+          status: mapToEventFeatureStatus(feature.status),
+          complexity: feature.complexity === 'moderate' ? 'simple' : feature.complexity,
+          subFeatures: [],
+          estimatedTasks: feature.tasks.length,
+          completedTasks: 0,
+          createdAt: new Date(feature.createdAt),
+          updatedAt: new Date(feature.updatedAt)
+        },
+        projectId: 'current'
+      },
+      { source: 'featureStore' }
+    )
+  },
 
   updateFeature: (id, update) =>
     set((state) => ({
@@ -34,7 +86,22 @@ export const useFeatureStore = create<FeatureState>()((set) => ({
       features: state.features.filter((f) => f.id !== id)
     })),
 
-  moveFeature: (id, newStatus) =>
+  moveFeature: (id, newStatus) => {
+    const state = get()
+    const feature = state.features.find((f) => f.id === id)
+    if (!feature) return false
+
+    const oldStatus = feature.status
+
+    // WIP Limit enforcement: reject move to in_progress if at capacity
+    if (newStatus === 'in_progress' && oldStatus !== 'in_progress') {
+      const inProgressCount = state.features.filter((f) => f.status === 'in_progress').length
+      if (inProgressCount >= WIP_LIMIT) {
+        return false // Reject move - WIP limit exceeded
+      }
+    }
+
+    // Update the feature
     set((state) => ({
       features: state.features.map((f) =>
         f.id === id
@@ -45,7 +112,39 @@ export const useFeatureStore = create<FeatureState>()((set) => ({
             }
           : f
       )
-    })),
+    }))
+
+    // Emit EventBus events
+    const eventBus = EventBus.getInstance()
+
+    // Emit FEATURE_STATUS_CHANGED
+    eventBus.emit(
+      'feature:status-changed',
+      {
+        featureId: id,
+        projectId: 'current',
+        previousStatus: mapToEventFeatureStatus(oldStatus),
+        newStatus: mapToEventFeatureStatus(newStatus)
+      },
+      { source: 'featureStore' }
+    )
+
+    // Emit FEATURE_COMPLETED when moved to done
+    if (newStatus === 'done') {
+      eventBus.emit(
+        'feature:completed',
+        {
+          featureId: id,
+          projectId: 'current',
+          tasksCompleted: feature.tasks.length,
+          duration: 0 // Would need actual time tracking
+        },
+        { source: 'featureStore' }
+      )
+    }
+
+    return true
+  },
 
   reorderFeatures: (columnId, oldIndex, newIndex) =>
     set((state) => {
@@ -96,8 +195,61 @@ export const useFeatureStore = create<FeatureState>()((set) => ({
       return { features: result }
     }),
 
-  reset: () => set({ features: [] })
+  selectFeature: (id) => set({ selectedFeatureId: id }),
+
+  setSearchFilter: (search) =>
+    set((state) => ({
+      filter: { ...state.filter, search }
+    })),
+
+  setPriorityFilter: (priorities) =>
+    set((state) => ({
+      filter: { ...state.filter, priority: priorities }
+    })),
+
+  setStatusFilter: (statuses) =>
+    set((state) => ({
+      filter: { ...state.filter, status: statuses }
+    })),
+
+  clearFilters: () =>
+    set({
+      filter: {
+        search: '',
+        priority: null,
+        status: null
+      }
+    }),
+
+  reset: () =>
+    set({
+      features: [],
+      selectedFeatureId: null,
+      filter: {
+        search: '',
+        priority: null,
+        status: null
+      }
+    })
 }))
+
+/**
+ * Map renderer FeatureStatus to core FeatureStatus for EventBus payloads.
+ * The renderer uses snake_case (in_progress), core uses kebab-case (in-progress).
+ */
+function mapToEventFeatureStatus(
+  status: FeatureStatus
+): 'backlog' | 'in-progress' | 'ai-review' | 'human-review' | 'done' {
+  const map: Record<FeatureStatus, 'backlog' | 'in-progress' | 'ai-review' | 'human-review' | 'done'> = {
+    backlog: 'backlog',
+    planning: 'backlog', // planning maps to backlog in core types
+    in_progress: 'in-progress',
+    ai_review: 'ai-review',
+    human_review: 'human-review',
+    done: 'done'
+  }
+  return map[status]
+}
 
 // Selector hooks for optimized re-renders
 export const useFeatures = () => useFeatureStore((s) => s.features)
@@ -123,3 +275,40 @@ export const useColumnCounts = (): ColumnCounts =>
     human_review: s.features.filter((f) => f.status === 'human_review').length,
     done: s.features.filter((f) => f.status === 'done').length
   }))
+
+/** Returns the currently selected feature ID */
+export const useSelectedFeatureId = () => useFeatureStore((s) => s.selectedFeatureId)
+
+/** Returns the current filter state */
+export const useFeatureFilter = () => useFeatureStore((s) => s.filter)
+
+/** Returns features filtered by current filter state */
+export const useFilteredFeatures = () =>
+  useFeatureStore((s) => {
+    let filtered = s.features
+
+    // Filter by search (title + description)
+    if (s.filter.search) {
+      const searchLower = s.filter.search.toLowerCase()
+      filtered = filtered.filter(
+        (f) =>
+          f.title.toLowerCase().includes(searchLower) ||
+          f.description.toLowerCase().includes(searchLower)
+      )
+    }
+
+    // Filter by priority
+    if (s.filter.priority && s.filter.priority.length > 0) {
+      filtered = filtered.filter((f) => s.filter.priority!.includes(f.priority))
+    }
+
+    // Filter by status
+    if (s.filter.status && s.filter.status.length > 0) {
+      filtered = filtered.filter((f) => s.filter.status!.includes(f.status))
+    }
+
+    return filtered
+  })
+
+/** Export WIP_LIMIT for use in other components */
+export { WIP_LIMIT }
