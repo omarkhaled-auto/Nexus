@@ -4,6 +4,7 @@ export { useTaskStore, type Task } from './taskStore'
 export { useAgentStore, type AgentStatus } from './agentStore'
 export { useUIStore, type Toast } from './uiStore'
 export { useInterviewStore } from './interviewStore'
+export { useFeatureStore } from './featureStore'
 
 // Selector exports - projectStore
 export { useCurrentProject, useMode, useProjects } from './projectStore'
@@ -43,3 +44,12 @@ export {
   useLatestMessage,
   useProjectName
 } from './interviewStore'
+
+// Selector exports - featureStore
+export {
+  useFeatures,
+  useFeaturesByStatus,
+  useFeature,
+  useFeatureCount,
+  useColumnCounts
+} from './featureStore'

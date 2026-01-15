@@ -7,3 +7,12 @@ export type {
   InterviewMessage,
   InterviewData
 } from './interview'
+
+// Feature types
+export type {
+  FeatureStatus,
+  FeatureComplexity,
+  FeaturePriority,
+  Feature,
+  ColumnCounts
+} from './feature'
