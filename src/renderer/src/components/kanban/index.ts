@@ -1,3 +1,5 @@
 export { KanbanBoard, COLUMNS } from './KanbanBoard'
 export { KanbanColumn } from './KanbanColumn'
 export { FeatureCard } from './FeatureCard'
+export { ComplexityBadge } from './ComplexityBadge'
+export { ProgressIndicator } from './ProgressIndicator'
