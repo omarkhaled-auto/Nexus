@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { useShallow } from 'zustand/react/shallow'
 import type {
   OverviewMetrics,
   TimelineEvent,
@@ -90,12 +91,14 @@ export const useActiveAgentCount = () =>
   useMetricsStore((s) => s.agents.filter((a) => a.status === 'working').length)
 
 export const useTaskProgress = () =>
-  useMetricsStore((s) => {
-    if (!s.overview) return { completed: 0, total: 0, percent: 0 }
-    const { completedTasks, totalTasks } = s.overview
-    return {
-      completed: completedTasks,
-      total: totalTasks,
-      percent: totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
-    }
-  })
+  useMetricsStore(
+    useShallow((s) => {
+      if (!s.overview) return { completed: 0, total: 0, percent: 0 }
+      const { completedTasks, totalTasks } = s.overview
+      return {
+        completed: completedTasks,
+        total: totalTasks,
+        percent: totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
+      }
+    })
+  )
