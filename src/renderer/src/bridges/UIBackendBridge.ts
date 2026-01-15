@@ -13,6 +13,8 @@ import { useProjectStore } from '../stores/projectStore'
 import { useTaskStore, type Task } from '../stores/taskStore'
 import { useAgentStore, type AgentStatus } from '../stores/agentStore'
 import { useUIStore } from '../stores/uiStore'
+import { useMetricsStore } from '../stores/metricsStore'
+import type { OverviewMetrics, AgentMetrics, TimelineEvent, CostMetrics } from '../types/metrics'
 
 type Unsubscribe = () => void
 
@@ -88,6 +90,54 @@ class UIBackendBridge {
         console.log('Execution progress:', progress)
       })
       this.unsubscribers.push(unsubProgress)
+    }
+
+    // ========================================
+    // Dashboard Subscriptions (BUILD-016)
+    // ========================================
+
+    // Subscribe to metrics update events
+    if (window.nexusAPI?.onMetricsUpdate) {
+      const unsubMetrics = window.nexusAPI.onMetricsUpdate((metrics) => {
+        const typedMetrics = metrics as OverviewMetrics
+        if (typedMetrics) {
+          useMetricsStore.getState().setOverview(typedMetrics)
+        }
+      })
+      this.unsubscribers.push(unsubMetrics)
+    }
+
+    // Subscribe to agent status update events
+    if (window.nexusAPI?.onAgentStatusUpdate) {
+      const unsubAgentStatus = window.nexusAPI.onAgentStatusUpdate((status) => {
+        const typedStatus = status as AgentMetrics
+        if (typedStatus && typedStatus.id) {
+          useMetricsStore.getState().updateAgentMetrics(typedStatus.id, typedStatus)
+        }
+      })
+      this.unsubscribers.push(unsubAgentStatus)
+    }
+
+    // Subscribe to timeline event notifications
+    if (window.nexusAPI?.onTimelineEvent) {
+      const unsubTimeline = window.nexusAPI.onTimelineEvent((event) => {
+        const typedEvent = event as TimelineEvent
+        if (typedEvent && typedEvent.id) {
+          useMetricsStore.getState().addTimelineEvent(typedEvent)
+        }
+      })
+      this.unsubscribers.push(unsubTimeline)
+    }
+
+    // Subscribe to cost update events
+    if (window.nexusAPI?.onCostUpdate) {
+      const unsubCosts = window.nexusAPI.onCostUpdate((costs) => {
+        const typedCosts = costs as CostMetrics
+        if (typedCosts) {
+          useMetricsStore.getState().setCosts(typedCosts)
+        }
+      })
+      this.unsubscribers.push(unsubCosts)
     }
 
     this.initialized = true

@@ -211,6 +211,78 @@ const nexusAPI = {
       ipcRenderer.removeListener('execution:progress', handler)
     }
   },
+
+  // ========================================
+  // Dashboard Event Subscriptions (BUILD-016)
+  // ========================================
+
+  /**
+   * Subscribe to metrics update events
+   * @param callback - Called when overview metrics are updated
+   * @returns Unsubscribe function
+   *
+   * Security: Does not pass event object to callback
+   */
+  onMetricsUpdate: (callback: (metrics: unknown) => void): Unsubscribe => {
+    const handler = (_event: IpcRendererEvent, metrics: unknown): void => {
+      callback(metrics)
+    }
+    ipcRenderer.on('metrics:updated', handler)
+    return () => {
+      ipcRenderer.removeListener('metrics:updated', handler)
+    }
+  },
+
+  /**
+   * Subscribe to agent status update events
+   * @param callback - Called when agent metrics change
+   * @returns Unsubscribe function
+   *
+   * Security: Does not pass event object to callback
+   */
+  onAgentStatusUpdate: (callback: (status: unknown) => void): Unsubscribe => {
+    const handler = (_event: IpcRendererEvent, status: unknown): void => {
+      callback(status)
+    }
+    ipcRenderer.on('agent:metrics', handler)
+    return () => {
+      ipcRenderer.removeListener('agent:metrics', handler)
+    }
+  },
+
+  /**
+   * Subscribe to timeline event notifications
+   * @param callback - Called when new timeline events occur
+   * @returns Unsubscribe function
+   *
+   * Security: Does not pass event object to callback
+   */
+  onTimelineEvent: (callback: (event: unknown) => void): Unsubscribe => {
+    const handler = (_event: IpcRendererEvent, timelineEvent: unknown): void => {
+      callback(timelineEvent)
+    }
+    ipcRenderer.on('timeline:event', handler)
+    return () => {
+      ipcRenderer.removeListener('timeline:event', handler)
+    }
+  },
+
+  /**
+   * Subscribe to cost update events
+   * @param callback - Called when cost metrics change
+   * @returns Unsubscribe function
+   *
+   * Security: Does not pass event object to callback
+   */
+  onCostUpdate: (callback: (costs: unknown) => void): Unsubscribe => {
+    const handler = (_event: IpcRendererEvent, costs: unknown): void => {
+      callback(costs)
+    }
+    ipcRenderer.on('costs:updated', handler)
+    return () => {
+      ipcRenderer.removeListener('costs:updated', handler)
+    }
+  },
 }
 
 // Expose the API to the renderer process via contextBridge

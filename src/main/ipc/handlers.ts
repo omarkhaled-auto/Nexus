@@ -404,3 +404,51 @@ export function forwardExecutionProgress(
     eventForwardingWindow.webContents.send('execution:progress', progress)
   }
 }
+
+// ========================================
+// Dashboard Event Forwarding (BUILD-016)
+// ========================================
+
+/**
+ * Forward overview metrics update to the renderer
+ */
+export function forwardMetricsUpdate(
+  metrics: Record<string, unknown>
+): void {
+  if (eventForwardingWindow && !eventForwardingWindow.isDestroyed()) {
+    eventForwardingWindow.webContents.send('metrics:updated', metrics)
+  }
+}
+
+/**
+ * Forward agent metrics update to the renderer
+ */
+export function forwardAgentMetrics(
+  agentMetrics: Record<string, unknown>
+): void {
+  if (eventForwardingWindow && !eventForwardingWindow.isDestroyed()) {
+    eventForwardingWindow.webContents.send('agent:metrics', agentMetrics)
+  }
+}
+
+/**
+ * Forward timeline event to the renderer
+ */
+export function forwardTimelineEvent(
+  timelineEvent: Record<string, unknown>
+): void {
+  if (eventForwardingWindow && !eventForwardingWindow.isDestroyed()) {
+    eventForwardingWindow.webContents.send('timeline:event', timelineEvent)
+  }
+}
+
+/**
+ * Forward cost update to the renderer
+ */
+export function forwardCostUpdate(
+  costs: Record<string, unknown>
+): void {
+  if (eventForwardingWindow && !eventForwardingWindow.isDestroyed()) {
+    eventForwardingWindow.webContents.send('costs:updated', costs)
+  }
+}
