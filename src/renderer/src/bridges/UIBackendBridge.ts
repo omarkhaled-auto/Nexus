@@ -97,6 +97,13 @@ class UIBackendBridge {
    * Start Genesis mode - create new project from scratch
    */
   async startGenesis(): Promise<void> {
+    // Guard against missing nexusAPI
+    if (!window.nexusAPI?.startGenesis) {
+      console.warn('UIBackendBridge: startGenesis not available')
+      useProjectStore.getState().setMode('genesis')
+      return
+    }
+
     useUIStore.getState().setLoading(true)
     try {
       useProjectStore.getState().setMode('genesis')
@@ -118,6 +125,13 @@ class UIBackendBridge {
    * @param projectId - ID of project to evolve
    */
   async startEvolution(projectId: string): Promise<void> {
+    // Guard against missing nexusAPI
+    if (!window.nexusAPI?.startEvolution) {
+      console.warn('UIBackendBridge: startEvolution not available')
+      useProjectStore.getState().setMode('evolution')
+      return
+    }
+
     useUIStore.getState().setLoading(true)
     try {
       useProjectStore.getState().setMode('evolution')
@@ -138,6 +152,10 @@ class UIBackendBridge {
    * Load all tasks from backend
    */
   async loadTasks(): Promise<void> {
+    if (!window.nexusAPI?.getTasks) {
+      console.warn('UIBackendBridge: getTasks not available')
+      return
+    }
     const tasks = await window.nexusAPI.getTasks()
     useTaskStore.getState().setTasks(tasks as Task[])
   }
@@ -146,6 +164,10 @@ class UIBackendBridge {
    * Load agent status from backend
    */
   async loadAgentStatus(): Promise<void> {
+    if (!window.nexusAPI?.getAgentStatus) {
+      console.warn('UIBackendBridge: getAgentStatus not available')
+      return
+    }
     const agents = await window.nexusAPI.getAgentStatus()
     for (const agent of agents as AgentStatus[]) {
       useAgentStore.getState().setAgentStatus(agent)
@@ -158,6 +180,11 @@ class UIBackendBridge {
    * @param reason - Optional reason for pausing
    */
   async pauseExecution(reason?: string): Promise<void> {
+    if (!window.nexusAPI?.pauseExecution) {
+      console.warn('UIBackendBridge: pauseExecution not available')
+      return
+    }
+
     useUIStore.getState().setLoading(true)
     try {
       const result = await window.nexusAPI.pauseExecution(reason)

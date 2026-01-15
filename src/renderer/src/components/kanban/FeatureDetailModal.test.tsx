@@ -29,6 +29,22 @@ vi.mock('@renderer/components/ui/scroll-area', () => ({
   )
 }))
 
+// Mock Tabs - render all content for testing
+vi.mock('@renderer/components/ui/tabs', () => ({
+  Tabs: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="tabs">{children}</div>
+  ),
+  TabsList: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="tabs-list" role="tablist">{children}</div>
+  ),
+  TabsTrigger: ({ children, value }: { children: React.ReactNode; value: string }) => (
+    <button role="tab" data-value={value}>{children}</button>
+  ),
+  TabsContent: ({ children }: { children: React.ReactNode; value: string }) => (
+    <div data-testid="tab-content">{children}</div>
+  )
+}))
+
 function createTestFeature(overrides: Partial<Feature> = {}): Feature {
   const now = new Date().toISOString()
   return {
@@ -86,8 +102,9 @@ describe('FeatureDetailModal', () => {
     render(
       <FeatureDetailModal feature={feature} open={true} onOpenChange={vi.fn()} />
     )
-    // Should show Tasks section header
-    expect(screen.getByText(/Tasks/)).toBeInTheDocument()
+    // Should show Tasks tab and section header with count
+    expect(screen.getByRole('tab', { name: 'Tasks' })).toBeInTheDocument()
+    expect(screen.getByText(/Tasks \(\d+\)/)).toBeInTheDocument()
   })
 
   it('returns null when feature is null', () => {
@@ -147,5 +164,25 @@ describe('FeatureDetailModal', () => {
       <FeatureDetailModal feature={feature} open={true} onOpenChange={vi.fn()} />
     )
     expect(screen.getByText('XL')).toBeInTheDocument()
+  })
+
+  it('renders all four tabs', () => {
+    const feature = createTestFeature()
+    render(
+      <FeatureDetailModal feature={feature} open={true} onOpenChange={vi.fn()} />
+    )
+    expect(screen.getByRole('tab', { name: 'Info' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Tasks' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Feedback' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'History' })).toBeInTheDocument()
+  })
+
+  it('shows feedback placeholder in Feedback tab', () => {
+    const feature = createTestFeature()
+    render(
+      <FeatureDetailModal feature={feature} open={true} onOpenChange={vi.fn()} />
+    )
+    expect(screen.getByText('Review Feedback')).toBeInTheDocument()
+    expect(screen.getByText('No feedback yet')).toBeInTheDocument()
   })
 })

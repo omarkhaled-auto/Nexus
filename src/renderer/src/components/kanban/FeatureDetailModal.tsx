@@ -8,6 +8,7 @@ import {
   DialogDescription
 } from '@renderer/components/ui/dialog'
 import { ScrollArea } from '@renderer/components/ui/scroll-area'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@renderer/components/ui/tabs'
 import { ComplexityBadge } from './ComplexityBadge'
 import { ProgressIndicator } from './ProgressIndicator'
 import { AgentStatusIndicator } from './AgentStatusIndicator'
@@ -222,72 +223,96 @@ export function FeatureDetailModal({ feature, open, onOpenChange }: FeatureDetai
           <DialogDescription className="text-left">{feature.description}</DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[calc(85vh-140px)]">
-          <div className="space-y-4 pr-4">
-            {/* Status and Priority Row */}
-            <div className="flex items-center gap-4 border-t border-border pt-4">
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Status:</span>
-                <span
-                  className={cn(
-                    'rounded-full px-2.5 py-0.5 text-xs font-medium',
-                    STATUS_COLORS[feature.status]
-                  )}
-                >
-                  {formatStatus(feature.status)}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Priority:</span>
-                <div className="flex items-center gap-1.5">
-                  <div
-                    className={cn('h-2 w-2 rounded-full', PRIORITY_COLORS[feature.priority])}
-                  />
-                  <span className="text-sm capitalize">{feature.priority}</span>
-                </div>
-              </div>
-            </div>
+        <Tabs defaultValue="info" className="w-full">
+          <TabsList className="w-full justify-start">
+            <TabsTrigger value="info">Info</TabsTrigger>
+            <TabsTrigger value="tasks">Tasks</TabsTrigger>
+            <TabsTrigger value="feedback">Feedback</TabsTrigger>
+            <TabsTrigger value="history">History</TabsTrigger>
+          </TabsList>
 
-            {/* Progress */}
-            <div>
-              <ProgressIndicator progress={feature.progress} showLabel className="h-3" />
-            </div>
-
-            {/* Agent Status */}
-            <div className="pb-2">
-              <AgentStatusIndicator
-                agentId={feature.assignedAgent}
-                status={getAgentStatus(feature)}
-              />
-            </div>
-
-            {/* Tasks Section */}
-            <div className="border-t border-border pt-4">
-              <h4 className="mb-3 text-sm font-medium text-foreground">
-                Tasks ({tasks.length})
-              </h4>
-              <TaskList tasks={tasks} featureId={feature.id} />
-            </div>
-
-            {/* Activity Timeline */}
-            <div className="border-t border-border pt-4">
-              <h4 className="mb-3 text-sm font-medium text-foreground">Activity Timeline</h4>
-              {activities.length > 0 ? (
-                <div className="space-y-2">
-                  {activities.map((activity, idx) => (
-                    <div key={idx} className="flex items-center gap-3 text-sm">
-                      <span className="w-12 shrink-0 text-muted-foreground">{activity.time}</span>
-                      <div className="h-1.5 w-1.5 shrink-0 rounded-full bg-muted-foreground" />
-                      <span className="text-muted-foreground">{activity.event}</span>
+          <ScrollArea className="max-h-[calc(85vh-200px)]">
+            {/* Info Tab */}
+            <TabsContent value="info" className="pr-4">
+              <div className="space-y-4">
+                {/* Status and Priority Row */}
+                <div className="flex items-center gap-4 pt-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">Status:</span>
+                    <span
+                      className={cn(
+                        'rounded-full px-2.5 py-0.5 text-xs font-medium',
+                        STATUS_COLORS[feature.status]
+                      )}
+                    >
+                      {formatStatus(feature.status)}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">Priority:</span>
+                    <div className="flex items-center gap-1.5">
+                      <div
+                        className={cn('h-2 w-2 rounded-full', PRIORITY_COLORS[feature.priority])}
+                      />
+                      <span className="text-sm capitalize">{feature.priority}</span>
                     </div>
-                  ))}
+                  </div>
                 </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">No activity yet</p>
-              )}
-            </div>
-          </div>
-        </ScrollArea>
+
+                {/* Progress */}
+                <div>
+                  <ProgressIndicator progress={feature.progress} showLabel className="h-3" />
+                </div>
+
+                {/* Agent Status */}
+                <div className="pb-2">
+                  <AgentStatusIndicator
+                    agentId={feature.assignedAgent}
+                    status={getAgentStatus(feature)}
+                  />
+                </div>
+              </div>
+            </TabsContent>
+
+            {/* Tasks Tab */}
+            <TabsContent value="tasks" className="pr-4">
+              <div className="pt-2">
+                <h4 className="mb-3 text-sm font-medium text-foreground">
+                  Tasks ({tasks.length})
+                </h4>
+                <TaskList tasks={tasks} featureId={feature.id} />
+              </div>
+            </TabsContent>
+
+            {/* Feedback Tab */}
+            <TabsContent value="feedback" className="pr-4">
+              <div className="pt-2">
+                <h4 className="mb-3 text-sm font-medium text-foreground">Review Feedback</h4>
+                <p className="text-sm text-muted-foreground">No feedback yet</p>
+              </div>
+            </TabsContent>
+
+            {/* History Tab */}
+            <TabsContent value="history" className="pr-4">
+              <div className="pt-2">
+                <h4 className="mb-3 text-sm font-medium text-foreground">Activity Timeline</h4>
+                {activities.length > 0 ? (
+                  <div className="space-y-2">
+                    {activities.map((activity, idx) => (
+                      <div key={idx} className="flex items-center gap-3 text-sm">
+                        <span className="w-12 shrink-0 text-muted-foreground">{activity.time}</span>
+                        <div className="h-1.5 w-1.5 shrink-0 rounded-full bg-muted-foreground" />
+                        <span className="text-muted-foreground">{activity.event}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No activity yet</p>
+                )}
+              </div>
+            </TabsContent>
+          </ScrollArea>
+        </Tabs>
       </DialogContent>
     </Dialog>
   )
