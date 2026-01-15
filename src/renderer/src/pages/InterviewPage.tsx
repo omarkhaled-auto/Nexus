@@ -1,6 +1,5 @@
 import { useEffect, type ReactElement } from 'react';
-import { InterviewLayout } from '@renderer/components/interview/InterviewLayout';
-import { ChatPanel } from '@renderer/components/interview/ChatPanel';
+import { InterviewLayout, ChatPanel, RequirementsSidebar } from '@renderer/components/interview';
 import { useInterviewStore, useIsInterviewing } from '@renderer/stores/interviewStore';
 
 /**
@@ -23,16 +22,7 @@ export default function InterviewPage(): ReactElement {
   return (
     <InterviewLayout
       chatPanel={<ChatPanel />}
-      sidebarPanel={
-        <div className="h-full flex items-center justify-center p-6">
-          <div className="text-center text-muted-foreground">
-            <p className="text-sm">Requirements will appear here</p>
-            <p className="text-xs mt-1 text-muted-foreground/60">
-              As you describe your project
-            </p>
-          </div>
-        </div>
-      }
+      sidebarPanel={<RequirementsSidebar />}
     />
   );
 }
