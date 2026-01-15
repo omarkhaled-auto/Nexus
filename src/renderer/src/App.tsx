@@ -1,27 +1,81 @@
 import type { ReactElement } from 'react';
+import { createBrowserRouter, RouterProvider } from 'react-router';
 import { ThemeProvider } from './components/theme-provider';
-import { Button } from './components/ui/button';
-import { Card, CardHeader, CardTitle, CardDescription } from './components/ui/card';
+import { RootLayout } from './components/layout/RootLayout';
+import { ModeSelectorPage } from './pages/ModeSelectorPage';
+import { Suspense, lazy } from 'react';
+
+// Lazy load pages that aren't immediately needed
+const InterviewPage = lazy(() => import('./pages/InterviewPage'));
+const KanbanPage = lazy(() => import('./pages/KanbanPage'));
+const DashboardPage = lazy(() => import('./pages/DashboardPage'));
+
+/**
+ * Loading fallback component for lazy-loaded pages.
+ */
+function PageLoader(): ReactElement {
+  return (
+    <div className="flex items-center justify-center min-h-screen">
+      <div className="animate-pulse text-muted-foreground">Loading...</div>
+    </div>
+  );
+}
+
+/**
+ * Application router configuration.
+ *
+ * Routes:
+ * - / → Mode Selector (Genesis/Evolution cards)
+ * - /genesis → Interview Page (Phase 6)
+ * - /evolution → Kanban Page (Phase 7)
+ * - /dashboard → Dashboard Page (Phase 8)
+ */
+const router = createBrowserRouter([
+  {
+    path: '/',
+    element: <RootLayout />,
+    children: [
+      {
+        index: true,
+        element: <ModeSelectorPage />,
+      },
+      {
+        path: 'genesis',
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <InterviewPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'evolution',
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <KanbanPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'dashboard',
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <DashboardPage />
+          </Suspense>
+        ),
+      },
+    ],
+  },
+]);
 
 /**
  * Nexus Application Root Component
  *
- * Demonstrates shadcn/ui components with dark theme support.
- * Will be expanded in 05-03 through 05-05.
+ * Provides theme context and routing for the entire application.
  */
 function App(): ReactElement {
   return (
     <ThemeProvider defaultTheme="dark" storageKey="nexus-theme">
-      <div className="min-h-screen bg-background p-8">
-        <h1 className="text-2xl font-bold text-foreground mb-4">Nexus</h1>
-        <Card className="max-w-sm">
-          <CardHeader>
-            <CardTitle>Welcome</CardTitle>
-            <CardDescription>UI Foundation ready</CardDescription>
-          </CardHeader>
-        </Card>
-        <Button className="mt-4">Test Button</Button>
-      </div>
+      <RouterProvider router={router} />
     </ThemeProvider>
   );
 }
