@@ -14,6 +14,8 @@ const ACTIVE_STATUSES = ['Running tests', 'Fixing lint', 'Writing code', 'Analyz
 /**
  * AgentStatusIndicator - Shows AI agent assignment and current activity.
  * Displays agent with pulse animation when actively working.
+ *
+ * TODO: Connect to real agentStore for live agent status in integration phase
  */
 export function AgentStatusIndicator({ agentId, status }: AgentStatusIndicatorProps) {
   // If no agent assigned, show nothing or unassigned state
