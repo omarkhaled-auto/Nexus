@@ -16,3 +16,13 @@ export type {
   Feature,
   ColumnCounts
 } from './feature'
+
+// Metrics types
+export type {
+  AgentStatus,
+  TimelineEventType,
+  OverviewMetrics,
+  TimelineEvent,
+  AgentMetrics,
+  CostMetrics
+} from './metrics'

@@ -5,6 +5,7 @@ export { useAgentStore, type AgentStatus } from './agentStore'
 export { useUIStore, type Toast } from './uiStore'
 export { useInterviewStore } from './interviewStore'
 export { useFeatureStore } from './featureStore'
+export { useMetricsStore } from './metricsStore'
 
 // Selector exports - projectStore
 export { useCurrentProject, useMode, useProjects } from './projectStore'
@@ -53,3 +54,15 @@ export {
   useFeatureCount,
   useColumnCounts
 } from './featureStore'
+
+// Selector exports - metricsStore
+export {
+  useOverview,
+  useTimeline,
+  useAgentMetrics,
+  useCosts,
+  useIsMetricsLoading,
+  useActiveAgentCount,
+  useTaskProgress,
+  useLastUpdated
+} from './metricsStore'
