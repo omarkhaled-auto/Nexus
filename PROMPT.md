@@ -259,7 +259,7 @@ Go through each file in `src/infrastructure/analysis/codebase/`:
    - Converted interview:pause handler from async to sync (sessionManager.save is sync)
    - Removed await from sessionManager.load and loadByProject calls (they're sync)
 
-### Iteration 4 - More Manual Lint Fixes
+### Iteration 4 - More Manual Lint Fixes (Committed)
 
 **Starting errors:** 162
 **Ending errors:** 144
@@ -291,6 +291,18 @@ Go through each file in `src/infrastructure/analysis/codebase/`:
 7. **scripts/db-status.ts & migrate.ts:**
    - Removed await from client.close() (method is sync)
    - Added `: unknown` type to catch callback variables
+
+**Remaining error breakdown (144 errors):**
+| Error Type | Count |
+|------------|-------|
+| `no-unnecessary-condition` | 56 |
+| `no-unsafe-member-access` | 17 |
+| `no-explicit-any` | 14 |
+| `no-unsafe-assignment` | 12 |
+| `no-floating-promises` | 10 |
+| `no-unsafe-call` | 8 |
+| `no-deprecated` | 6 |
+| Other | 21 |
 
 ### Task FIX-B Completion Checklist
 - [ ] All `no-unused-vars` errors fixed
