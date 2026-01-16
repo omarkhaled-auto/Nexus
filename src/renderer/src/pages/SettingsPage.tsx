@@ -195,7 +195,7 @@ function ApiKeyInput({ provider, label }: ApiKeyInputProps): ReactElement {
           <input
             type={show ? 'text' : 'password'}
             value={value}
-            onChange={(e) => setValue(e.target.value)}
+            onChange={(e): void => { setValue(e.target.value) }}
             placeholder={hasKey ? 'API key is set' : 'Enter API key'}
             disabled={saving}
             className={cn(
@@ -208,19 +208,19 @@ function ApiKeyInput({ provider, label }: ApiKeyInputProps): ReactElement {
           />
           <button
             type="button"
-            onClick={() => setShow(!show)}
+            onClick={(): void => { setShow(!show) }}
             className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
           >
             {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
           </button>
         </div>
         {value && (
-          <Button onClick={handleSave} disabled={saving} size="sm">
+          <Button onClick={(): void => { void handleSave() }} disabled={saving} size="sm">
             {saving ? 'Saving...' : 'Save'}
           </Button>
         )}
         {hasKey && !value && (
-          <Button onClick={handleClear} disabled={saving} variant="destructive" size="sm">
+          <Button onClick={(): void => { void handleClear() }} disabled={saving} variant="destructive" size="sm">
             Clear
           </Button>
         )}
@@ -275,7 +275,7 @@ function LLMSettings({ settings, updateSetting }: SettingsTabProps): ReactElemen
             label="Default Provider"
             description="Primary LLM provider to use"
             value={settings.llm.defaultProvider}
-            onChange={(e) => updateSetting('llm', 'defaultProvider', e.target.value as LLMProvider)}
+            onChange={(e): void => { updateSetting('llm', 'defaultProvider', e.target.value as LLMProvider) }}
             options={[
               { value: 'claude', label: 'Claude (Anthropic)' },
               { value: 'gemini', label: 'Gemini (Google)' },
@@ -288,7 +288,7 @@ function LLMSettings({ settings, updateSetting }: SettingsTabProps): ReactElemen
             label="Default Model"
             description="Model identifier to use (e.g., claude-sonnet-4-20250514)"
             value={settings.llm.defaultModel}
-            onChange={(e) => updateSetting('llm', 'defaultModel', e.target.value)}
+            onChange={(e): void => { updateSetting('llm', 'defaultModel', e.target.value) }}
           />
 
           <Checkbox
@@ -296,7 +296,7 @@ function LLMSettings({ settings, updateSetting }: SettingsTabProps): ReactElemen
             label="Enable Fallback"
             description="Automatically try other providers if the primary fails"
             checked={settings.llm.fallbackEnabled}
-            onChange={(e) => updateSetting('llm', 'fallbackEnabled', e.target.checked)}
+            onChange={(e): void => { updateSetting('llm', 'fallbackEnabled', e.target.checked) }}
           />
         </CardContent>
       </Card>
@@ -323,7 +323,7 @@ function AgentSettings({ settings, updateSetting }: SettingsTabProps): ReactElem
             label="Max Parallel Agents"
             description="Maximum number of agents that can execute concurrently (1-10)"
             value={settings.agents.maxParallelAgents}
-            onChange={(e) => updateSetting('agents', 'maxParallelAgents', parseInt(e.target.value) || 1)}
+            onChange={(e): void => { updateSetting('agents', 'maxParallelAgents', parseInt(e.target.value) || 1) }}
           />
         </CardContent>
       </Card>
@@ -344,7 +344,7 @@ function AgentSettings({ settings, updateSetting }: SettingsTabProps): ReactElem
             label="Task Timeout (minutes)"
             description="Maximum time a single task can run before timing out"
             value={settings.agents.taskTimeoutMinutes}
-            onChange={(e) => updateSetting('agents', 'taskTimeoutMinutes', parseInt(e.target.value) || 5)}
+            onChange={(e): void => { updateSetting('agents', 'taskTimeoutMinutes', parseInt(e.target.value) || 5) }}
           />
 
           <Input
@@ -355,7 +355,7 @@ function AgentSettings({ settings, updateSetting }: SettingsTabProps): ReactElem
             label="Max Retries"
             description="Number of times to retry a failed task"
             value={settings.agents.maxRetries}
-            onChange={(e) => updateSetting('agents', 'maxRetries', parseInt(e.target.value) || 0)}
+            onChange={(e): void => { updateSetting('agents', 'maxRetries', parseInt(e.target.value) || 0) }}
           />
 
           <Checkbox
@@ -363,7 +363,7 @@ function AgentSettings({ settings, updateSetting }: SettingsTabProps): ReactElem
             label="Auto Retry on Failure"
             description="Automatically retry tasks when they fail"
             checked={settings.agents.autoRetryEnabled}
-            onChange={(e) => updateSetting('agents', 'autoRetryEnabled', e.target.checked)}
+            onChange={(e): void => { updateSetting('agents', 'autoRetryEnabled', e.target.checked) }}
           />
         </CardContent>
       </Card>
@@ -387,7 +387,7 @@ function CheckpointSettings({ settings, updateSetting }: SettingsTabProps): Reac
             label="Enable Auto-Checkpoint"
             description="Automatically create checkpoints at regular intervals"
             checked={settings.checkpoints.autoCheckpointEnabled}
-            onChange={(e) => updateSetting('checkpoints', 'autoCheckpointEnabled', e.target.checked)}
+            onChange={(e): void => { updateSetting('checkpoints', 'autoCheckpointEnabled', e.target.checked) }}
           />
 
           <Input
@@ -398,7 +398,7 @@ function CheckpointSettings({ settings, updateSetting }: SettingsTabProps): Reac
             label="Checkpoint Interval (minutes)"
             description="How often to create automatic checkpoints"
             value={settings.checkpoints.autoCheckpointIntervalMinutes}
-            onChange={(e) => updateSetting('checkpoints', 'autoCheckpointIntervalMinutes', parseInt(e.target.value) || 15)}
+            onChange={(e): void => { updateSetting('checkpoints', 'autoCheckpointIntervalMinutes', parseInt(e.target.value) || 15) }}
             disabled={!settings.checkpoints.autoCheckpointEnabled}
           />
 
@@ -410,7 +410,7 @@ function CheckpointSettings({ settings, updateSetting }: SettingsTabProps): Reac
             label="Max Checkpoints to Keep"
             description="Older checkpoints will be automatically deleted"
             value={settings.checkpoints.maxCheckpointsToKeep}
-            onChange={(e) => updateSetting('checkpoints', 'maxCheckpointsToKeep', parseInt(e.target.value) || 10)}
+            onChange={(e): void => { updateSetting('checkpoints', 'maxCheckpointsToKeep', parseInt(e.target.value) || 10) }}
           />
 
           <Checkbox
@@ -418,7 +418,7 @@ function CheckpointSettings({ settings, updateSetting }: SettingsTabProps): Reac
             label="Checkpoint on Feature Complete"
             description="Automatically create a checkpoint when a feature is marked complete"
             checked={settings.checkpoints.checkpointOnFeatureComplete}
-            onChange={(e) => updateSetting('checkpoints', 'checkpointOnFeatureComplete', e.target.checked)}
+            onChange={(e): void => { updateSetting('checkpoints', 'checkpointOnFeatureComplete', e.target.checked) }}
           />
         </CardContent>
       </Card>
@@ -446,7 +446,7 @@ function UISettings({ settings, updateSetting }: SettingsTabProps): ReactElement
               <button
                 key={theme.value}
                 type="button"
-                onClick={() => updateSetting('ui', 'theme', theme.value)}
+                onClick={(): void => { updateSetting('ui', 'theme', theme.value) }}
                 className={cn(
                   'flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-colors',
                   settings.ui.theme === theme.value
@@ -479,7 +479,7 @@ function UISettings({ settings, updateSetting }: SettingsTabProps): ReactElement
             label="Sidebar Width (px)"
             description="Width of the sidebar in pixels"
             value={settings.ui.sidebarWidth}
-            onChange={(e) => updateSetting('ui', 'sidebarWidth', parseInt(e.target.value) || 256)}
+            onChange={(e): void => { updateSetting('ui', 'sidebarWidth', parseInt(e.target.value) || 256) }}
           />
         </CardContent>
       </Card>
@@ -497,7 +497,7 @@ function UISettings({ settings, updateSetting }: SettingsTabProps): ReactElement
             label="Show Notifications"
             description="Display toast notifications for events"
             checked={settings.ui.showNotifications}
-            onChange={(e) => updateSetting('ui', 'showNotifications', e.target.checked)}
+            onChange={(e): void => { updateSetting('ui', 'showNotifications', e.target.checked) }}
           />
 
           <Input
@@ -509,7 +509,7 @@ function UISettings({ settings, updateSetting }: SettingsTabProps): ReactElement
             label="Notification Duration (ms)"
             description="How long notifications stay visible"
             value={settings.ui.notificationDuration}
-            onChange={(e) => updateSetting('ui', 'notificationDuration', parseInt(e.target.value) || 5000)}
+            onChange={(e): void => { updateSetting('ui', 'notificationDuration', parseInt(e.target.value) || 5000) }}
             disabled={!settings.ui.showNotifications}
           />
         </CardContent>
@@ -534,7 +534,7 @@ function ProjectSettings({ settings, updateSetting }: SettingsTabProps): ReactEl
             label="Default Language"
             description="Primary programming language for new projects"
             value={settings.project.defaultLanguage}
-            onChange={(e) => updateSetting('project', 'defaultLanguage', e.target.value)}
+            onChange={(e): void => { updateSetting('project', 'defaultLanguage', e.target.value) }}
             placeholder="e.g., TypeScript, Python, Go"
           />
 
@@ -543,7 +543,7 @@ function ProjectSettings({ settings, updateSetting }: SettingsTabProps): ReactEl
             label="Default Test Framework"
             description="Testing framework to use by default"
             value={settings.project.defaultTestFramework}
-            onChange={(e) => updateSetting('project', 'defaultTestFramework', e.target.value)}
+            onChange={(e): void => { updateSetting('project', 'defaultTestFramework', e.target.value) }}
             placeholder="e.g., Jest, Vitest, Pytest"
           />
 
@@ -552,7 +552,7 @@ function ProjectSettings({ settings, updateSetting }: SettingsTabProps): ReactEl
             label="Output Directory"
             description="Default directory for generated project files"
             value={settings.project.outputDirectory}
-            onChange={(e) => updateSetting('project', 'outputDirectory', e.target.value)}
+            onChange={(e): void => { updateSetting('project', 'outputDirectory', e.target.value) }}
             placeholder="e.g., ~/projects"
           />
         </CardContent>
@@ -574,7 +574,7 @@ export default function SettingsPage(): ReactElement {
 
   // Load settings on mount
   useEffect(() => {
-    loadSettings()
+    void loadSettings()
   }, [loadSettings])
 
   const handleSave = async (): Promise<void> => {
@@ -609,7 +609,7 @@ export default function SettingsPage(): ReactElement {
           {tabs.map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={(): void => { setActiveTab(tab.id) }}
               className={cn(
                 'w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors',
                 activeTab === tab.id
@@ -628,7 +628,7 @@ export default function SettingsPage(): ReactElement {
               variant="ghost"
               size="sm"
               className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10"
-              onClick={handleReset}
+              onClick={(): void => { void handleReset() }}
             >
               <RotateCcw className="w-4 h-4 mr-2" />
               Reset to Defaults
@@ -657,10 +657,10 @@ export default function SettingsPage(): ReactElement {
 
       {/* Footer with Save/Cancel */}
       <footer className="flex justify-end gap-2 p-4 border-t border-border bg-background">
-        <Button variant="outline" onClick={discardChanges} disabled={!isDirty}>
+        <Button variant="outline" onClick={(): void => { discardChanges() }} disabled={!isDirty}>
           Cancel
         </Button>
-        <Button onClick={handleSave} disabled={!isDirty}>
+        <Button onClick={(): void => { void handleSave() }} disabled={!isDirty}>
           Save Changes
         </Button>
       </footer>

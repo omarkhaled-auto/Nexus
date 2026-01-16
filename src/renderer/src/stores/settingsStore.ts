@@ -111,9 +111,7 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
     try {
       // Save each changed setting to main process
       for (const [category, changes] of Object.entries(pendingChanges)) {
-        if (!changes) continue
-
-        for (const [key, value] of Object.entries(changes)) {
+        for (const [key, value] of Object.entries(changes as Record<string, unknown>)) {
           const settingPath = `${category}.${key}`
           await window.nexusAPI.settings.set(settingPath, value)
         }
@@ -131,7 +129,7 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   discardChanges: () => {
     set({ pendingChanges: {}, isDirty: false })
     // Reload from main to ensure UI reflects stored state
-    get().loadSettings()
+    void get().loadSettings()
   },
 
   setApiKey: async (provider, key) => {
