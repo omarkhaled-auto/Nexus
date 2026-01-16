@@ -143,8 +143,11 @@ export abstract class BaseAnalyzer {
       const parts = file.relativePath.replace(/\\/g, '/').split('/');
       let path = '';
       for (let i = 0; i < parts.length - 1; i++) {
-        path = path ? `${path}/${parts[i]}` : parts[i];
-        dirs.add(path);
+        const part = parts[i];
+        if (part) {
+          path = path ? `${path}/${part}` : part;
+          dirs.add(path);
+        }
       }
     }
     return Array.from(dirs).sort();
@@ -230,7 +233,7 @@ export abstract class BaseAnalyzer {
     // First check for existing documentation
     const doc = this.extractJSDoc(symbol);
     if (doc && doc.length > 10) {
-      return doc.split('\n')[0]; // First line of documentation
+      return doc.split('\n')[0] ?? doc; // First line of documentation
     }
 
     // Infer from name patterns
