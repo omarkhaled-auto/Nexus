@@ -7,6 +7,7 @@ import { Suspense, lazy, useEffect } from 'react';
 import { useThemeEffect } from './hooks/useTheme';
 import { useSettingsStore } from './stores/settingsStore';
 import { Toaster } from 'sonner';
+import { KeyboardShortcutsModal } from './components/KeyboardShortcutsModal';
 
 // Lazy load pages that aren't immediately needed
 const InterviewPage = lazy(() => import('./pages/InterviewPage'));
@@ -123,6 +124,7 @@ function App(): ReactElement {
             duration: 4000,
           }}
         />
+        <KeyboardShortcutsModal />
       </SettingsInitializer>
     </ThemeProvider>
   );
