@@ -1009,8 +1009,8 @@ Complete tasks sequentially:
 - [x] `[TASK 13-01-C COMPLETE]` - Dependency Graph Builder ✅
 - [x] `[TASK 13-01-D COMPLETE]` - Reference Counter ✅
 - [x] `[TASK 13-01-E COMPLETE]` - RepoMapGenerator Core ✅
-- [ ] `[TASK 13-01-F COMPLETE]` - Formatter & Index
-- [ ] `[PLAN 13-01 COMPLETE]` - All tasks done
+- [x] `[TASK 13-01-F COMPLETE]` - Formatter & Index ✅
+- [x] `[PLAN 13-01 COMPLETE]` - All tasks done ✅
 
 ---
 
