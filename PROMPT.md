@@ -10,7 +10,7 @@
 
 | Issue | Count | Main Causes |
 |-------|-------|-------------|
-| **Lint Errors** | ~~337~~ ~~257~~ 209 | `no-unnecessary-condition`, `require-await`, `no-unused-vars` |
+| **Lint Errors** | ~~337~~ ~~257~~ ~~209~~ 175 | `no-unnecessary-condition`, `require-await`, `no-unused-vars` |
 
 ---
 
@@ -203,6 +203,36 @@ Go through each file in `src/infrastructure/analysis/codebase/`:
   },
 ],
 ```
+
+### Iteration 2 - Manual Lint Fixes (Completed)
+
+**Starting errors:** 209
+**Ending errors:** 175
+**Errors fixed:** 34
+
+**Changes made:**
+1. **no-unused-vars fixes:**
+   - Removed unused imports from TaskSchemaAdapter.ts (Task, TaskSize, TaskStatus)
+   - Removed StandardArea from QuestionGenerator.ts
+   - Removed LLMSettings, AgentSettings, CheckpointSettings, UISettings, ProjectSettings from settingsService.ts
+   - Removed Priority, TaskStatus, AgentStatus from events.ts
+   - Removed vi from CostTracker.test.tsx
+   - Removed Pause from EventRow.tsx
+   - Removed TimelineEventType from TaskTimeline.test.tsx
+   - Removed userEvent from FeatureDetailModal.test.tsx
+   - Prefixed unused variables with underscore: _overview, _otherFeatures, _task
+
+2. **require-await fixes:**
+   - Removed async from 27+ sync handlers in handlers.ts
+   - Removed async from 4 handlers in interview-handlers.ts
+   - Removed async from InterviewSessionManager.ts (save, load, loadByProject, delete)
+   - Removed async from NexusCoordinator.ts (initialize, start, resume)
+   - Removed async from DatabaseClient.ts (migrate, tables, ping, close)
+   - Removed async from UIBackendBridge.ts (initialize)
+   - Added await to async returns (checkpointManagerRef, humanReviewServiceRef)
+
+3. **restrict-template-expressions fixes:**
+   - Fixed TaskSchemaAdapter.ts template expressions with null coalescing
 
 ### Task FIX-B Completion Checklist
 - [ ] All `no-unused-vars` errors fixed
