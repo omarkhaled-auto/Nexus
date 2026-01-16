@@ -98,7 +98,7 @@ export function registerInterviewHandlers(
   // ========================================
   ipcMain.handle(
     'interview:resume',
-    async (event, sessionId: string): Promise<InterviewSession | null> => {
+    (event, sessionId: string): InterviewSession | null => {
       if (!validateSender(event)) {
         throw new Error('Unauthorized IPC sender');
       }

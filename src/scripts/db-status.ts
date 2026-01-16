@@ -54,7 +54,7 @@ async function main(): Promise<void> {
       }
     }
 
-    await client.close();
+    client.close();
     console.log('');
     console.log('========================================');
   } catch (error) {
@@ -65,7 +65,7 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch((error) => {
+main().catch((error: unknown) => {
   console.error('Unexpected error:', error);
   process.exit(1);
 });

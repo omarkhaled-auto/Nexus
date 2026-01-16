@@ -267,7 +267,7 @@ export function registerIpcHandlers(): void {
       if (!validateSender(event)) {
         throw new Error('Unauthorized IPC sender')
       }
-      if (!input || typeof input.name !== 'string' || !input.name) {
+      if (typeof input.name !== 'string' || !input.name) {
         throw new Error('Invalid project name')
       }
       if (input.mode !== 'genesis' && input.mode !== 'evolution') {

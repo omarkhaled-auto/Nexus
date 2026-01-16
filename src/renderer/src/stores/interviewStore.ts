@@ -40,11 +40,12 @@ const initialState = {
 /**
  * Safely emit event via IPC (only in Electron context)
  */
-function emitEvent<T>(method: keyof typeof window.nexusAPI, payload: T): void {
-  if (typeof window !== 'undefined' && window.nexusAPI) {
+function emitEvent(method: keyof typeof window.nexusAPI, payload: unknown): void {
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- defensive check for non-Electron environments
+  if (window.nexusAPI) {
     try {
        
-      const fn = window.nexusAPI[method] as (p: T) => Promise<void>
+      const fn = window.nexusAPI[method] as (p: unknown) => Promise<void>
       void fn(payload)
     } catch {
       // Silently ignore errors in event emission

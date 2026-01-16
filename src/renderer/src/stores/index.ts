@@ -2,6 +2,7 @@
 export { useProjectStore, type Project } from './projectStore'
 export { useTaskStore, type Task } from './taskStore'
 export { useAgentStore, type AgentStatus } from './agentStore'
+// eslint-disable-next-line @typescript-eslint/no-deprecated -- kept for backward compatibility
 export { useUIStore, type Toast } from './uiStore'
 export { useInterviewStore } from './interviewStore'
 export { useFeatureStore } from './featureStore'

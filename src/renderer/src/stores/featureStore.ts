@@ -14,7 +14,8 @@ const WIP_LIMIT = 3
  * Uses window.nexusAPI to communicate with main process EventBus
  */
 function emitEvent(channel: string, payload: unknown): void {
-  if (typeof window !== 'undefined' && window.nexusAPI?.emitEvent) {
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- defensive check for non-Electron environments
+  if (window.nexusAPI?.emitEvent) {
     try {
       void window.nexusAPI.emitEvent(channel, payload)
     } catch {
@@ -295,13 +296,15 @@ export const useFilteredFeatures = () =>
     }
 
     // Filter by priority
-    if (s.filter.priority && s.filter.priority.length > 0) {
-      filtered = filtered.filter((f) => s.filter.priority!.includes(f.priority))
+    const priorityFilter = s.filter.priority
+    if (priorityFilter && priorityFilter.length > 0) {
+      filtered = filtered.filter((f) => priorityFilter.includes(f.priority))
     }
 
     // Filter by status
-    if (s.filter.status && s.filter.status.length > 0) {
-      filtered = filtered.filter((f) => s.filter.status!.includes(f.status))
+    const statusFilter = s.filter.status
+    if (statusFilter && statusFilter.length > 0) {
+      filtered = filtered.filter((f) => statusFilter.includes(f.status))
     }
 
     return filtered
