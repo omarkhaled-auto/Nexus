@@ -6,6 +6,7 @@ export { useUIStore, type Toast } from './uiStore'
 export { useInterviewStore } from './interviewStore'
 export { useFeatureStore } from './featureStore'
 export { useMetricsStore } from './metricsStore'
+export { useSettingsStore } from './settingsStore'
 
 // Selector exports - projectStore
 export { useCurrentProject, useMode, useProjects } from './projectStore'
@@ -66,3 +67,13 @@ export {
   useTaskProgress,
   useLastUpdated
 } from './metricsStore'
+
+// Selector exports - settingsStore
+export {
+  useSettings,
+  useRawSettings,
+  useThemeSetting,
+  useHasApiKey,
+  useSettingsLoading,
+  useSettingsDirty
+} from './settingsStore'
