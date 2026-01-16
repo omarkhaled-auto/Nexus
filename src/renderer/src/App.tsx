@@ -3,7 +3,9 @@ import { createBrowserRouter, RouterProvider } from 'react-router';
 import { ThemeProvider } from './components/theme-provider';
 import { RootLayout } from './components/layout/RootLayout';
 import { ModeSelectorPage } from './pages/ModeSelectorPage';
-import { Suspense, lazy } from 'react';
+import { Suspense, lazy, useEffect } from 'react';
+import { useThemeEffect } from './hooks/useTheme';
+import { useSettingsStore } from './stores/settingsStore';
 
 // Lazy load pages that aren't immediately needed
 const InterviewPage = lazy(() => import('./pages/InterviewPage'));
@@ -78,14 +80,41 @@ const router = createBrowserRouter([
 ]);
 
 /**
+ * Settings and Theme Initializer
+ *
+ * Loads settings on mount and applies theme effect.
+ * This ensures settings-based theme is applied after initial load.
+ */
+function SettingsInitializer({ children }: { children: React.ReactNode }): ReactElement {
+  const loadSettings = useSettingsStore((s) => s.loadSettings);
+
+  // Load settings on mount (theme will be applied via useThemeEffect)
+  useEffect(() => {
+    // Only load if nexusAPI is available (Electron context)
+    if (typeof window.nexusAPI !== 'undefined') {
+      loadSettings();
+    }
+  }, [loadSettings]);
+
+  // Apply theme from settings (or system default if not loaded)
+  useThemeEffect();
+
+  return <>{children}</>;
+}
+
+/**
  * Nexus Application Root Component
  *
  * Provides theme context and routing for the entire application.
+ * Uses ThemeProvider for initial render (avoids flash) and
+ * SettingsInitializer for settings-based theme after load.
  */
 function App(): ReactElement {
   return (
     <ThemeProvider defaultTheme="dark" storageKey="nexus-theme">
-      <RouterProvider router={router} />
+      <SettingsInitializer>
+        <RouterProvider router={router} />
+      </SettingsInitializer>
     </ThemeProvider>
   );
 }
