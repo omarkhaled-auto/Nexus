@@ -408,52 +408,52 @@ Create a utility class for processing, filtering, grouping, and analyzing extrac
 ### Part A: Create SymbolExtractor Class
 Create `src/infrastructure/analysis/SymbolExtractor.ts`:
 
-- [ ] **SymbolExtractor Class**
+- [x] **SymbolExtractor Class**
 
-- [ ] **processSymbols(parseResults) Method**
-  - [ ] Merge symbols from all parse results
-  - [ ] Create Map keyed by unique symbol ID
-  - [ ] Return Map<string, SymbolEntry>
+- [x] **processSymbols(parseResults) Method**
+  - [x] Merge symbols from all parse results
+  - [x] Create Map keyed by unique symbol ID
+  - [x] Return Map<string, SymbolEntry>
 
-- [ ] **createSymbolKey(symbol) Method**
-  - [ ] Generate unique key: `${file}#${name}#${line}`
+- [x] **createSymbolKey(symbol) Method**
+  - [x] Generate unique key: `${file}#${name}#${line}`
 
-- [ ] **filterByKind(symbols, kind) Method**
-  - [ ] Return symbols matching specified SymbolKind
+- [x] **filterByKind(symbols, kind) Method**
+  - [x] Return symbols matching specified SymbolKind
 
-- [ ] **getExportedSymbols(symbols) Method**
-  - [ ] Return only symbols with `exported: true`
+- [x] **getExportedSymbols(symbols) Method**
+  - [x] Return only symbols with `exported: true`
 
-- [ ] **getTopLevelSymbols(symbols) Method**
-  - [ ] Return symbols with no `parentId`
+- [x] **getTopLevelSymbols(symbols) Method**
+  - [x] Return symbols with no `parentId`
 
-- [ ] **getChildSymbols(symbols, parentId) Method**
-  - [ ] Return symbols with matching `parentId`
+- [x] **getChildSymbols(symbols, parentId) Method**
+  - [x] Return symbols with matching `parentId`
 
-- [ ] **buildHierarchy(symbols) Method**
-  - [ ] Build tree structure: SymbolNode[] with children
-  - [ ] SymbolNode = { symbol: SymbolEntry, children: SymbolNode[] }
+- [x] **buildHierarchy(symbols) Method**
+  - [x] Build tree structure: SymbolNode[] with children
+  - [x] SymbolNode = { symbol: SymbolEntry, children: SymbolNode[] }
 
-- [ ] **groupByFile(symbols) Method**
-  - [ ] Return Map<string, SymbolEntry[]> grouped by file path
+- [x] **groupByFile(symbols) Method**
+  - [x] Return Map<string, SymbolEntry[]> grouped by file path
 
-- [ ] **groupByKind(symbols) Method**
-  - [ ] Return Map<SymbolKind, SymbolEntry[]> grouped by symbol kind
+- [x] **groupByKind(symbols) Method**
+  - [x] Return Map<SymbolKind, SymbolEntry[]> grouped by symbol kind
 
-- [ ] **searchByName(symbols, query) Method**
-  - [ ] Case-insensitive partial match on symbol name
-  - [ ] Return matching symbols
+- [x] **searchByName(symbols, query) Method**
+  - [x] Case-insensitive partial match on symbol name
+  - [x] Return matching symbols
 
-- [ ] **findByName(symbols, name) Method**
-  - [ ] Exact match on symbol name
-  - [ ] Return matching symbols (may be multiple across files)
+- [x] **findByName(symbols, name) Method**
+  - [x] Exact match on symbol name
+  - [x] Return matching symbols (may be multiple across files)
 
-- [ ] **findAtLocation(symbols, file, line) Method**
-  - [ ] Find symbol at specific file and line
-  - [ ] Line must be between symbol.line and symbol.endLine
+- [x] **findAtLocation(symbols, file, line) Method**
+  - [x] Find symbol at specific file and line
+  - [x] Line must be between symbol.line and symbol.endLine
 
-- [ ] **getStatistics(symbols) Method**
-  - [ ] Return SymbolStatistics:
+- [x] **getStatistics(symbols) Method**
+  - [x] Return SymbolStatistics:
     - total: number
     - byKind: Record<SymbolKind, number>
     - byFile: Record<string, number>
@@ -461,48 +461,48 @@ Create `src/infrastructure/analysis/SymbolExtractor.ts`:
     - documented: number
     - documentationCoverage: number (0-1)
 
-- [ ] **sortSymbols(symbols, criteria) Method**
-  - [ ] Sort by: 'name' | 'file' | 'references' | 'line'
-  - [ ] Return new sorted array
+- [x] **sortSymbols(symbols, criteria) Method**
+  - [x] Sort by: 'name' | 'file' | 'references' | 'line'
+  - [x] Return new sorted array
 
-- [ ] **deduplicate(symbols) Method**
-  - [ ] Remove duplicates based on symbol key
-  - [ ] Return deduplicated array
+- [x] **deduplicate(symbols) Method**
+  - [x] Remove duplicates based on symbol key
+  - [x] Return deduplicated array
 
-- [ ] **mergeSymbols(parseResults) Method**
-  - [ ] Collect all symbols from parse results
-  - [ ] Deduplicate
-  - [ ] Return merged array
+- [x] **mergeSymbols(parseResults) Method**
+  - [x] Collect all symbols from parse results
+  - [x] Deduplicate
+  - [x] Return merged array
 
 ### Part B: Export Types
-- [ ] Export `SymbolNode` interface
-- [ ] Export `SymbolStatistics` interface
+- [x] Export `SymbolNode` interface (already in types.ts)
+- [x] Export `SymbolStatistics` interface (already in types.ts)
 
 ### Part C: Create Tests
 Create `src/infrastructure/analysis/SymbolExtractor.test.ts`:
 
-- [ ] Test filtering by kind
-- [ ] Test getting exported symbols
-- [ ] Test getting top-level symbols
-- [ ] Test getting child symbols
-- [ ] Test building hierarchy
-- [ ] Test grouping by file
-- [ ] Test grouping by kind
-- [ ] Test searching by name (partial)
-- [ ] Test finding by name (exact)
-- [ ] Test finding at location
-- [ ] Test statistics calculation
-- [ ] Test sorting
-- [ ] Test deduplication
-- [ ] Test merging from multiple parse results
+- [x] Test filtering by kind
+- [x] Test getting exported symbols
+- [x] Test getting top-level symbols
+- [x] Test getting child symbols
+- [x] Test building hierarchy
+- [x] Test grouping by file
+- [x] Test grouping by kind
+- [x] Test searching by name (partial)
+- [x] Test finding by name (exact)
+- [x] Test finding at location
+- [x] Test statistics calculation
+- [x] Test sorting
+- [x] Test deduplication
+- [x] Test merging from multiple parse results
 
 ### Task 13-01-B Completion Checklist
-- [ ] `SymbolExtractor.ts` created (~200 lines)
-- [ ] `SymbolExtractor.test.ts` created (~150 lines)
-- [ ] All tests pass
-- [ ] TypeScript compiles
+- [x] `SymbolExtractor.ts` created (~270 lines)
+- [x] `SymbolExtractor.test.ts` created (~380 lines)
+- [x] All tests pass (42 tests)
+- [x] TypeScript compiles
 
-**[TASK 13-01-B COMPLETE]** ← Mark this when done, then proceed to Task 13-01-C
+**[TASK 13-01-B COMPLETE]** ✅ Completed on 2025-01-16
 
 ---
 
@@ -1005,7 +1005,7 @@ src/infrastructure/analysis/
 Complete tasks sequentially:
 
 - [x] `[TASK 13-01-A COMPLETE]` - Types & TreeSitter Parser Setup ✅
-- [ ] `[TASK 13-01-B COMPLETE]` - Symbol Extractor
+- [x] `[TASK 13-01-B COMPLETE]` - Symbol Extractor ✅
 - [ ] `[TASK 13-01-C COMPLETE]` - Dependency Graph Builder
 - [ ] `[TASK 13-01-D COMPLETE]` - Reference Counter
 - [ ] `[TASK 13-01-E COMPLETE]` - RepoMapGenerator Core
