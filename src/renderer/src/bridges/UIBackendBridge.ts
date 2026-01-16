@@ -55,6 +55,7 @@ class UIBackendBridge {
     if (this.initialized) return
 
     // Guard against missing nexusAPI (e.g., during tests or non-Electron context)
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Defensive runtime check
     if (!window.nexusAPI) {
       console.warn('UIBackendBridge: window.nexusAPI not available, skipping event subscriptions')
       this.initialized = true
@@ -62,9 +63,11 @@ class UIBackendBridge {
     }
 
     // Subscribe to task update events
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Defensive runtime check
     if (window.nexusAPI.onTaskUpdate) {
       const unsubTask = window.nexusAPI.onTaskUpdate((task) => {
         const typedTask = task as Task
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Defensive runtime check
         if (typedTask && typedTask.id) {
           useTaskStore.getState().updateTask(typedTask.id, typedTask)
         }
@@ -73,9 +76,11 @@ class UIBackendBridge {
     }
 
     // Subscribe to agent status events
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Defensive runtime check
     if (window.nexusAPI.onAgentStatus) {
       const unsubAgent = window.nexusAPI.onAgentStatus((status) => {
         const typedStatus = status as AgentStatus
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Defensive runtime check
         if (typedStatus && typedStatus.id) {
           useAgentStore.getState().setAgentStatus(typedStatus)
         }
@@ -84,6 +89,7 @@ class UIBackendBridge {
     }
 
     // Subscribe to execution progress events
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Defensive runtime check
     if (window.nexusAPI.onExecutionProgress) {
       const unsubProgress = window.nexusAPI.onExecutionProgress((progress) => {
         // Log progress for now - could update a progress store in future
@@ -97,9 +103,11 @@ class UIBackendBridge {
     // ========================================
 
     // Subscribe to metrics update events
-    if (window.nexusAPI?.onMetricsUpdate) {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Defensive runtime check
+    if (window.nexusAPI.onMetricsUpdate) {
       const unsubMetrics = window.nexusAPI.onMetricsUpdate((metrics) => {
         const typedMetrics = metrics as OverviewMetrics
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Defensive runtime check
         if (typedMetrics) {
           useMetricsStore.getState().setOverview(typedMetrics)
         }
@@ -108,9 +116,11 @@ class UIBackendBridge {
     }
 
     // Subscribe to agent status update events
-    if (window.nexusAPI?.onAgentStatusUpdate) {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Defensive runtime check
+    if (window.nexusAPI.onAgentStatusUpdate) {
       const unsubAgentStatus = window.nexusAPI.onAgentStatusUpdate((status) => {
         const typedStatus = status as AgentMetrics
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Defensive runtime check
         if (typedStatus && typedStatus.id) {
           useMetricsStore.getState().updateAgentMetrics(typedStatus.id, typedStatus)
         }
@@ -119,9 +129,11 @@ class UIBackendBridge {
     }
 
     // Subscribe to timeline event notifications
-    if (window.nexusAPI?.onTimelineEvent) {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Defensive runtime check
+    if (window.nexusAPI.onTimelineEvent) {
       const unsubTimeline = window.nexusAPI.onTimelineEvent((event) => {
         const typedEvent = event as TimelineEvent
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Defensive runtime check
         if (typedEvent && typedEvent.id) {
           useMetricsStore.getState().addTimelineEvent(typedEvent)
         }
@@ -130,9 +142,11 @@ class UIBackendBridge {
     }
 
     // Subscribe to cost update events
-    if (window.nexusAPI?.onCostUpdate) {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Defensive runtime check
+    if (window.nexusAPI.onCostUpdate) {
       const unsubCosts = window.nexusAPI.onCostUpdate((costs) => {
         const typedCosts = costs as CostMetrics
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Defensive runtime check
         if (typedCosts) {
           useMetricsStore.getState().setCosts(typedCosts)
         }
@@ -148,6 +162,7 @@ class UIBackendBridge {
    */
   async startGenesis(): Promise<void> {
     // Guard against missing nexusAPI
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Defensive runtime check
     if (!window.nexusAPI?.startGenesis) {
       console.warn('UIBackendBridge: startGenesis not available')
       useProjectStore.getState().setMode('genesis')
@@ -176,6 +191,7 @@ class UIBackendBridge {
    */
   async startEvolution(projectId: string): Promise<void> {
     // Guard against missing nexusAPI
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Defensive runtime check
     if (!window.nexusAPI?.startEvolution) {
       console.warn('UIBackendBridge: startEvolution not available')
       useProjectStore.getState().setMode('evolution')
@@ -202,6 +218,7 @@ class UIBackendBridge {
    * Load all tasks from backend
    */
   async loadTasks(): Promise<void> {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Defensive runtime check
     if (!window.nexusAPI?.getTasks) {
       console.warn('UIBackendBridge: getTasks not available')
       return
@@ -214,6 +231,7 @@ class UIBackendBridge {
    * Load agent status from backend
    */
   async loadAgentStatus(): Promise<void> {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Defensive runtime check
     if (!window.nexusAPI?.getAgentStatus) {
       console.warn('UIBackendBridge: getAgentStatus not available')
       return
@@ -230,6 +248,7 @@ class UIBackendBridge {
    * @param reason - Optional reason for pausing
    */
   async pauseExecution(reason?: string): Promise<void> {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Defensive runtime check
     if (!window.nexusAPI?.pauseExecution) {
       console.warn('UIBackendBridge: pauseExecution not available')
       return
