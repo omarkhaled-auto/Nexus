@@ -19,6 +19,15 @@ vi.mock('./clients/GeminiClient', () => ({
   })),
 }));
 
+vi.mock('./clients/ClaudeCodeCLIClient', () => ({
+  ClaudeCodeCLIClient: vi.fn().mockImplementation(() => ({
+    chat: vi.fn(),
+    chatStream: vi.fn(),
+    countTokens: vi.fn(),
+    isAvailable: vi.fn().mockResolvedValue(true),
+  })),
+}));
+
 describe('LLMProvider', () => {
   let provider: LLMProvider;
   let mockClaudeChat: ReturnType<typeof vi.fn>;
@@ -355,6 +364,155 @@ describe('LLMProvider', () => {
       const count = provider.countTokens('Hello world');
 
       expect(count).toBe(100);
+    });
+  });
+
+  describe('Claude Backend Selection', () => {
+    it('auto-selects API backend when anthropicApiKey is provided', async () => {
+      const { ClaudeClient } = await import('./clients/ClaudeClient');
+      vi.clearAllMocks();
+
+      new LLMProvider({
+        anthropicApiKey: 'test-key',
+        googleApiKey: 'test-google-key',
+      });
+
+      expect(ClaudeClient).toHaveBeenCalled();
+    });
+
+    it('auto-selects CLI backend when no anthropicApiKey provided', async () => {
+      const { ClaudeCodeCLIClient } = await import('./clients/ClaudeCodeCLIClient');
+      vi.clearAllMocks();
+
+      new LLMProvider({
+        googleApiKey: 'test-google-key',
+      });
+
+      expect(ClaudeCodeCLIClient).toHaveBeenCalled();
+    });
+
+    it('respects explicit claudeBackend: api selection', async () => {
+      const { ClaudeClient } = await import('./clients/ClaudeClient');
+      vi.clearAllMocks();
+
+      new LLMProvider({
+        claudeBackend: 'api',
+        anthropicApiKey: 'test-key',
+        googleApiKey: 'test-google-key',
+      });
+
+      expect(ClaudeClient).toHaveBeenCalled();
+    });
+
+    it('respects explicit claudeBackend: cli selection', async () => {
+      const { ClaudeCodeCLIClient } = await import('./clients/ClaudeCodeCLIClient');
+      vi.clearAllMocks();
+
+      new LLMProvider({
+        claudeBackend: 'cli',
+        googleApiKey: 'test-google-key',
+      });
+
+      expect(ClaudeCodeCLIClient).toHaveBeenCalled();
+    });
+
+    it('throws error when API backend selected without API key', () => {
+      expect(() =>
+        new LLMProvider({
+          claudeBackend: 'api',
+          googleApiKey: 'test-google-key',
+        })
+      ).toThrow('API backend requires anthropicApiKey');
+    });
+
+    it('returns correct backend type via getClaudeBackend()', () => {
+      const apiProvider = new LLMProvider({
+        anthropicApiKey: 'test-key',
+        googleApiKey: 'test-google-key',
+      });
+      expect(apiProvider.getClaudeBackend()).toBe('api');
+
+      const cliProvider = new LLMProvider({
+        googleApiKey: 'test-google-key',
+      });
+      expect(cliProvider.getClaudeBackend()).toBe('cli');
+    });
+
+    it('validateCLIBackend returns true for API backend', async () => {
+      const apiProvider = new LLMProvider({
+        anthropicApiKey: 'test-key',
+        googleApiKey: 'test-google-key',
+      });
+
+      const result = await apiProvider.validateCLIBackend();
+      expect(result).toBe(true);
+    });
+
+    it('validateCLIBackend calls isAvailable for CLI backend', async () => {
+      const { ClaudeCodeCLIClient } = await import('./clients/ClaudeCodeCLIClient');
+      const mockIsAvailable = vi.fn().mockResolvedValue(true);
+      vi.mocked(ClaudeCodeCLIClient).mockImplementation(() => ({
+        chat: vi.fn(),
+        chatStream: vi.fn(),
+        countTokens: vi.fn(),
+        isAvailable: mockIsAvailable,
+      }));
+
+      const cliProvider = new LLMProvider({
+        claudeBackend: 'cli',
+        googleApiKey: 'test-google-key',
+      });
+
+      const result = await cliProvider.validateCLIBackend();
+
+      expect(mockIsAvailable).toHaveBeenCalled();
+      expect(result).toBe(true);
+    });
+
+    it('getCLIClient throws when using API backend', () => {
+      const apiProvider = new LLMProvider({
+        anthropicApiKey: 'test-key',
+        googleApiKey: 'test-google-key',
+      });
+
+      expect(() => apiProvider.getCLIClient()).toThrow(
+        'getCLIClient() only available when using CLI backend'
+      );
+    });
+
+    it('getCLIClient returns client when using CLI backend', () => {
+      const cliProvider = new LLMProvider({
+        claudeBackend: 'cli',
+        googleApiKey: 'test-google-key',
+      });
+
+      const client = cliProvider.getCLIClient();
+      expect(client).toBeDefined();
+    });
+
+    it('passes cliConfig to ClaudeCodeCLIClient', async () => {
+      const { ClaudeCodeCLIClient } = await import('./clients/ClaudeCodeCLIClient');
+      vi.clearAllMocks();
+
+      const cliConfig = {
+        claudePath: '/custom/path/claude',
+        timeout: 60000,
+        maxRetries: 5,
+      };
+
+      new LLMProvider({
+        claudeBackend: 'cli',
+        googleApiKey: 'test-google-key',
+        cliConfig,
+      });
+
+      expect(ClaudeCodeCLIClient).toHaveBeenCalledWith(
+        expect.objectContaining({
+          claudePath: '/custom/path/claude',
+          timeout: 60000,
+          maxRetries: 5,
+        })
+      );
     });
   });
 });

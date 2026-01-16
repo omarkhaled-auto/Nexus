@@ -35,6 +35,10 @@ export type { ClaudeClientOptions } from './clients/ClaudeClient';
 export { GeminiClient, GeminiAPIError, GeminiRateLimitError, GeminiTimeoutError } from './clients/GeminiClient';
 export type { GeminiClientOptions } from './clients/GeminiClient';
 
+// Claude Code CLI Client (uses CLI instead of API)
+export { ClaudeCodeCLIClient, CLIError, CLINotFoundError } from './clients/ClaudeCodeCLIClient';
+export type { ClaudeCodeCLIConfig } from './clients/ClaudeCodeCLIClient';
+
 // Mock Clients (for testing)
 export { MockClaudeClient } from './clients/MockClaudeClient';
 export type { MockResponseConfig } from './clients/MockClaudeClient';
@@ -42,4 +46,4 @@ export { MockGeminiClient } from './clients/MockGeminiClient';
 
 // Provider
 export { LLMProvider } from './LLMProvider';
-export type { LLMProviderOptions } from './LLMProvider';
+export type { LLMProviderOptions, ClaudeBackend } from './LLMProvider';

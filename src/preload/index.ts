@@ -11,6 +11,7 @@
 
 import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
+import { interviewAPI } from './interview-api'
 
 /** Type-safe unsubscribe function */
 type Unsubscribe = () => void
@@ -283,6 +284,15 @@ const nexusAPI = {
       ipcRenderer.removeListener('costs:updated', handler)
     }
   },
+
+  // ========================================
+  // Interview Engine API (Phase 9)
+  // ========================================
+
+  /**
+   * Interview operations via InterviewEngine backend
+   */
+  interview: interviewAPI,
 }
 
 // Expose the API to the renderer process via contextBridge

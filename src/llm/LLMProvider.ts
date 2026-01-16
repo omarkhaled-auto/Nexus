@@ -1,5 +1,6 @@
 import { ClaudeClient } from './clients/ClaudeClient';
 import { GeminiClient } from './clients/GeminiClient';
+import { ClaudeCodeCLIClient, type ClaudeCodeCLIConfig } from './clients/ClaudeCodeCLIClient';
 import { MockClaudeClient, type MockResponseConfig } from './clients/MockClaudeClient';
 import { MockGeminiClient } from './clients/MockGeminiClient';
 import type {
@@ -15,8 +16,19 @@ import type {
 } from './types';
 import { DEFAULT_MODEL_CONFIGS, MODEL_PRICING } from './types';
 
+/**
+ * Claude backend type - API (direct) or CLI (via claude command)
+ */
+export type ClaudeBackend = 'api' | 'cli';
+
 export interface LLMProviderOptions {
-  anthropicApiKey: string;
+  /**
+   * Anthropic API key (required if claudeBackend is 'api')
+   */
+  anthropicApiKey?: string;
+  /**
+   * Google API key for Gemini
+   */
   googleApiKey: string;
   logger?: Logger;
   /**
@@ -31,6 +43,15 @@ export interface LLMProviderOptions {
     claude?: MockResponseConfig;
     gemini?: MockResponseConfig;
   };
+  /**
+   * Claude backend selection: 'api' for direct API, 'cli' for Claude Code CLI.
+   * Default: 'api' if anthropicApiKey provided, 'cli' otherwise.
+   */
+  claudeBackend?: ClaudeBackend;
+  /**
+   * Configuration for CLI backend (only used when claudeBackend is 'cli')
+   */
+  cliConfig?: ClaudeCodeCLIConfig;
 }
 
 /**
@@ -95,9 +116,19 @@ export class LLMProvider {
   private logger?: Logger;
   private usageStats: UsageStats;
   private readonly mockMode: boolean;
+  private readonly claudeBackend: ClaudeBackend;
 
   constructor(options: LLMProviderOptions) {
     this.mockMode = options.mockMode ?? false;
+
+    // Determine Claude backend
+    if (options.claudeBackend) {
+      this.claudeBackend = options.claudeBackend;
+    } else if (options.anthropicApiKey) {
+      this.claudeBackend = 'api';
+    } else {
+      this.claudeBackend = 'cli';
+    }
 
     if (this.mockMode) {
       // Use mock clients for testing
@@ -106,18 +137,31 @@ export class LLMProvider {
       this.logger = options.logger;
       this.logger?.info('LLMProvider initialized in MOCK MODE');
     } else {
-      // Use real clients
-      this.claudeClient = new ClaudeClient({
-        apiKey: options.anthropicApiKey,
-        logger: options.logger,
-      });
+      // Initialize Claude client based on backend selection
+      if (this.claudeBackend === 'api') {
+        if (!options.anthropicApiKey) {
+          throw new Error('API backend requires anthropicApiKey');
+        }
+        this.claudeClient = new ClaudeClient({
+          apiKey: options.anthropicApiKey,
+          logger: options.logger,
+        });
+        this.logger = options.logger;
+        this.logger?.info('LLMProvider initialized with Claude API backend');
+      } else {
+        // CLI backend
+        this.claudeClient = new ClaudeCodeCLIClient({
+          ...options.cliConfig,
+          logger: options.logger,
+        });
+        this.logger = options.logger;
+        this.logger?.info('LLMProvider initialized with Claude CLI backend');
+      }
 
       this.geminiClient = new GeminiClient({
         apiKey: options.googleApiKey,
         logger: options.logger,
       });
-
-      this.logger = options.logger;
     }
 
     this.usageStats = createEmptyUsageStats();
@@ -227,6 +271,37 @@ export class LLMProvider {
    */
   countTokens(content: string): number {
     return this.claudeClient.countTokens(content);
+  }
+
+  /**
+   * Get the current Claude backend type
+   */
+  getClaudeBackend(): ClaudeBackend {
+    return this.claudeBackend;
+  }
+
+  /**
+   * Check if CLI backend is available.
+   * Always returns true for API backend.
+   * For CLI backend, checks if claude command is accessible.
+   */
+  async validateCLIBackend(): Promise<boolean> {
+    if (this.claudeBackend !== 'cli') {
+      return true;
+    }
+    const cliClient = this.claudeClient as ClaudeCodeCLIClient;
+    return cliClient.isAvailable();
+  }
+
+  /**
+   * Get the Claude CLI client (if using CLI backend).
+   * Throws if not using CLI backend.
+   */
+  getCLIClient(): ClaudeCodeCLIClient {
+    if (this.claudeBackend !== 'cli') {
+      throw new Error('getCLIClient() only available when using CLI backend');
+    }
+    return this.claudeClient as ClaudeCodeCLIClient;
   }
 
   /**

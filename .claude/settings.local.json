@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\ndocs: initialize Nexus\n\nAutonomous AI application builder with Genesis and Evolution modes\n\nCreates PROJECT.md with requirements and constraints.\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(ls:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\ndocs\\(01\\): capture phase context\n\nPhase 1: Foundation\n- Vision and goals documented\n- Essential requirements identified\n- Scope boundaries defined\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "mcp__plugin_context7_context7__resolve-library-id",
+      "mcp__plugin_context7_context7__query-docs",
+      "WebFetch(domain:www.npmjs.com)",
+      "WebSearch",
+      "Bash(git commit:*)",
+      "Bash(pnpm drizzle-kit generate:*)",
+      "Bash(pnpm typecheck:*)",
+      "Bash(pnpm test:*)",
+      "Bash(move:*)",
+      "Bash(npm test:*)",
+      "Bash(npm install)",
+      "Bash(npm install:*)",
+      "Bash(npx vitest:*)",
+      "Skill(gsd:execute-plan)"
+    ]
+  }
+}
