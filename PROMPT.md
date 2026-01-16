@@ -1,410 +1,278 @@
-# Plan 13-01 FIX: Linting & Formatter Integration
+# Plan 13-02 FIX: Linting Errors
 
 ## Context
 - **Phase:** 13 - Context Enhancement & Level 4.0 Automation
-- **Plan:** 13-01 Repository Map Generator (FIX)
-- **Purpose:** Fix issues identified in Gemini review before proceeding to Plan 13-02
-- **Status:** Core implementation complete, needs cleanup
+- **Plan:** 13-02 Codebase Documentation Generator (FIX)
+- **Purpose:** Fix 337 lint errors identified in Gemini review
+- **Status:** Core implementation complete and tested (232 tests pass), needs lint cleanup
 
-## Issues to Fix
+## Issue to Fix
 
-Gemini review identified 3 issues:
-
-| Issue | Severity | Description |
-|-------|----------|-------------|
-| **Lint Errors** | HIGH | 412 linting errors, mostly `@typescript-eslint/no-unsafe-*` |
-| **Formatter Not Wired** | MEDIUM | RepoMapGenerator uses local `formatBasic` instead of RepoMapFormatter |
-| **Skipped Tests** | LOW | Some integration tests marked as skipped |
+| Issue | Count | Main Causes |
+|-------|-------|-------------|
+| **Lint Errors** | ~~337~~ ~~257~~ 209 | `no-unnecessary-condition`, `require-await`, `no-unused-vars` |
 
 ---
 
 ## Task Structure
 
 ```
-Task FIX-A: Fix Linting Errors ───────────► [TASK FIX-A COMPLETE] ✓
-                │
-                ▼
-Task FIX-B: Integrate RepoMapFormatter ───► [TASK FIX-B COMPLETE] ✓
-                │
-                ▼
-Task FIX-C: Review Skipped Tests ─────────► [TASK FIX-C COMPLETE] ✓
+Task FIX-A: Auto-fix Lint Errors ---------> [TASK FIX-A COMPLETE]
+                |
+                v
+Task FIX-B: Manual Lint Fixes ------------> [IN PROGRESS]
+                |
+                v
+Task FIX-C: Verify All Passes ------------> [PENDING]
 ```
 
 ---
 
-## ✅ COMPLETED WORK SUMMARY
-
-### Task FIX-A: Linting Errors (COMPLETED)
-- **Auto-fix applied**: Reduced errors from 412 to 336
-- **Core 6 analysis files**: All have 0 lint errors:
-  - TreeSitterParser.ts ✓
-  - SymbolExtractor.ts ✓
-  - DependencyGraphBuilder.ts ✓
-  - ReferenceCounter.ts ✓
-  - RepoMapGenerator.ts ✓
-  - RepoMapFormatter.ts ✓
-- **Remaining errors**: 336 errors in OTHER files (not the Plan 13-01 analysis module)
-
-### Task FIX-B: RepoMapFormatter Integration (COMPLETED)
-- **Changes made to RepoMapGenerator.ts**:
-  - Added import: `import { RepoMapFormatter } from './RepoMapFormatter';`
-  - Added private field: `private formatter: RepoMapFormatter;`
-  - Initialized in constructor: `this.formatter = new RepoMapFormatter();`
-  - Updated `formatForContext()` to use formatter - now throws error if no map generated
-  - Updated `getTokenCount()` to use formatter's estimateTokens method
-  - **Removed** the temporary `formatBasic()` method entirely
-  - Removed unused `DEFAULT_FORMAT_OPTIONS` import
-- **Test updated**: Changed test expectation from "empty string" to "throws error"
-- **All 21 RepoMapGenerator tests pass** ✓
-- **All 43 RepoMapFormatter tests pass** ✓
-
-### Task FIX-C: Skipped Tests Review (COMPLETED)
-- **Audit findings**:
-  1. `integration.test.ts` - Uses conditional skip (`describeIntegration`) based on WASM availability ✓
-  2. `TreeSitterParser.test.ts` - 16 tests skipped in integration block
-- **Documentation added**: Updated skip comment to explain reason:
-  "Skip: Requires WASM files and tests need fixes for namespace import/JSDoc parsing"
-- **Test count**: 445 passed, 16 skipped (as expected)
-- **Integration tests that run** (when WASM available): All pass in `integration.test.ts` and `codebase/integration.test.ts`
-
----
-
-## Final Verification Results
-
-```bash
-# Analysis module lint check
-npx eslint src/infrastructure/analysis/*.ts
-# Result: 0 errors ✓
-
-# Analysis module test check
-npm test src/infrastructure/analysis/
-# Result: 445 passed, 16 skipped ✓
-```
-
-**[PLAN 13-01 FIX COMPLETE]** ✓
-
----
-
-# Task FIX-A: Fix Linting Errors
+# Task FIX-A: Auto-fix Lint Errors
 
 ## Objective
-Reduce lint errors from 412 to 0 (or near-zero with justified suppressions).
+Apply automatic fixes to reduce error count.
 
 ## Requirements
 
-### Part A: Auto-fix What's Possible
-- [ ] Run: `npm run lint -- --fix`
-- [ ] Check how many errors remain after auto-fix
+- [x] Run: `npm run lint -- --fix`
+- [x] Check remaining error count
+- [x] Note which error types remain
 
-### Part B: Fix TreeSitterParser.ts Unsafe Types
+## Progress
 
-The `@typescript-eslint/no-unsafe-*` errors are expected when working with tree-sitter's dynamically typed AST. Handle these properly:
+### Iteration 1 - ESLint Config Update
+- Started with 257 errors (not 337 as originally documented)
+- Updated `eslint.config.js` to allow numbers and booleans in template expressions
+- Result: 209 errors remaining (48 errors fixed via config)
 
-- [ ] Create proper types for tree-sitter nodes where possible:
-  ```typescript
-  interface TreeSitterNode {
-    type: string;
-    text: string;
-    startPosition: { row: number; column: number };
-    endPosition: { row: number; column: number };
-    children: TreeSitterNode[];
-    namedChildren: TreeSitterNode[];
-    childForFieldName(name: string): TreeSitterNode | null;
-    // Add other methods as needed
-  }
-  ```
-
-- [ ] For unavoidable `any` from tree-sitter internals, use targeted suppressions:
-  ```typescript
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-  const node = cursor.currentNode;
-  ```
-
-- [ ] Group suppressions at the top of functions that heavily interact with tree-sitter:
-  ```typescript
-  private extractSymbols(tree: unknown, filePath: string): SymbolEntry[] {
-    /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call */
-    // ... tree-sitter interaction code
-    /* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call */
-  }
-  ```
-
-- [ ] Prefer block-level disables over file-level to keep safety elsewhere
-
-### Part C: Fix Other Files
-
-For non-tree-sitter files, fix errors properly (not with suppressions):
-
-- [ ] **SymbolExtractor.ts** - Add proper types
-- [ ] **DependencyGraphBuilder.ts** - Add proper types
-- [ ] **ReferenceCounter.ts** - Add proper types
-- [ ] **RepoMapGenerator.ts** - Add proper types
-- [ ] **RepoMapFormatter.ts** - Add proper types
-
-Common fixes:
-- Replace `any` with proper types or `unknown`
-- Add type guards where needed
-- Use type assertions sparingly and only when safe
-
-### Part D: Verify Lint Passes
-- [ ] Run: `npm run lint`
-- [ ] Confirm 0 errors (or only justified suppressions)
-- [ ] Document any remaining suppressions with comments explaining why
+### Error Breakdown (Current - 209 errors):
+| Error Type | Count |
+|------------|-------|
+| `no-unnecessary-condition` | 61 |
+| `require-await` | 32 |
+| `no-unused-vars` | 22 |
+| `no-unsafe-member-access` | 17 |
+| `no-explicit-any` | 14 |
+| `no-unsafe-assignment` | 12 |
+| `no-floating-promises` | 10 |
+| `no-unsafe-call` | 7 |
+| `no-non-null-assertion` | 6 |
+| `use-unknown-in-catch-callback-variable` | 4 |
+| `restrict-template-expressions` | 4 |
+| `no-unsafe-argument` | 4 |
+| `no-deprecated` | 4 |
+| Other | 12 |
 
 ### Task FIX-A Completion Checklist
-- [ ] Auto-fix applied
-- [ ] TreeSitterParser.ts unsafe types handled with targeted suppressions
-- [ ] Other files fixed with proper types
-- [ ] `npm run lint` passes with 0 errors
-- [ ] Any suppressions are documented
+- [x] Auto-fix applied (no auto-fixable errors)
+- [x] Remaining errors documented
 
-**[TASK FIX-A COMPLETE]** ← Mark this when done, then proceed to Task FIX-B
+**[TASK FIX-A COMPLETE]**
 
 ---
 
-# Task FIX-B: Integrate RepoMapFormatter
+# Task FIX-B: Manual Lint Fixes
 
 ## Objective
-Wire up RepoMapFormatter to RepoMapGenerator, removing the temporary `formatBasic` method.
+Fix remaining lint errors manually.
 
 ## Requirements
 
-### Part A: Update RepoMapGenerator.ts
+### Part A: Fix `no-unused-vars` Errors
 
-- [ ] Import RepoMapFormatter:
-  ```typescript
-  import { RepoMapFormatter } from './RepoMapFormatter';
-  ```
+Common causes and fixes:
 
-- [ ] Add formatter as private field:
-  ```typescript
-  private formatter: RepoMapFormatter;
-  ```
+1. **Unused function parameters** - Prefix with underscore:
+   ```typescript
+   // Before
+   analyze(options: AnalyzerOptions): Promise<Doc>
 
-- [ ] Initialize in constructor:
-  ```typescript
-  constructor(wasmBasePath?: string) {
-    // ... existing code
-    this.formatter = new RepoMapFormatter();
-  }
-  ```
+   // After (if options not used)
+   analyze(_options: AnalyzerOptions): Promise<Doc>
+   ```
 
-- [ ] Update `formatForContext` method to use formatter:
-  ```typescript
-  formatForContext(options?: FormatOptions): string {
-    if (!this.currentMap) {
-      throw new Error('No repo map generated. Call generate() first.');
-    }
-    return this.formatter.format(this.currentMap, options);
-  }
-  ```
+2. **Unused imports** - Remove them:
+   ```typescript
+   // Before
+   import { UsedType, UnusedType } from './types';
 
-- [ ] Remove the `formatBasic` private method entirely
+   // After
+   import { UsedType } from './types';
+   ```
 
-- [ ] Update any other methods that use `formatBasic` to use `this.formatter.format()`
+3. **Unused variables** - Remove or use them:
+   ```typescript
+   // Before
+   const result = doSomething();
+   return otherThing;
 
-### Part B: Verify Format Options Work
+   // After (if result not needed)
+   doSomething();
+   return otherThing;
+   ```
 
-- [ ] Test compact format (default):
-  ```typescript
-  generator.formatForContext(); // Should use compact
-  ```
+4. **Destructured but unused** - Prefix with underscore or remove:
+   ```typescript
+   // Before
+   const { used, unused } = obj;
 
-- [ ] Test detailed format:
-  ```typescript
-  generator.formatForContext({ style: 'detailed' });
-  ```
+   // After
+   const { used, unused: _unused } = obj;
+   // Or just
+   const { used } = obj;
+   ```
 
-- [ ] Test tree format:
-  ```typescript
-  generator.formatForContext({ style: 'tree' });
-  ```
+### Part B: Fix `restrict-template-expressions` Errors
 
-- [ ] Test token budget:
-  ```typescript
-  generator.formatForContext({ maxTokens: 2000 });
-  ```
+This error occurs when non-string values are used in template literals without explicit conversion.
 
-### Part C: Update Tests
+Common fixes:
 
-- [ ] Update `RepoMapGenerator.test.ts` to verify formatter integration
-- [ ] Add test for format style options
-- [ ] Verify existing tests still pass
+1. **Objects in templates** - Use JSON.stringify or specific property:
+   ```typescript
+   // Before
+   \`Error: \${error}\`
 
-### Part D: Update Index Exports (if needed)
+   // After
+   \`Error: \${error instanceof Error ? error.message : String(error)}\`
+   // Or
+   \`Error: \${JSON.stringify(error)}\`
+   ```
 
-- [ ] Ensure `formatRepoMapForContext` convenience function uses the formatter
-- [ ] Verify all exports work correctly
+2. **Numbers in templates** - Explicitly convert:
+   ```typescript
+   // Before
+   \`Count: \${count}\`
+
+   // After
+   \`Count: \${String(count)}\`
+   // Or (numbers are usually fine, may need config change)
+   \`Count: \${count.toString()}\`
+   ```
+
+3. **Possible undefined** - Add null check:
+   ```typescript
+   // Before
+   \`Name: \${item.name}\`
+
+   // After
+   \`Name: \${item.name ?? 'unknown'}\`
+   ```
+
+4. **Arrays in templates** - Join them:
+   ```typescript
+   // Before
+   \`Items: \${items}\`
+
+   // After
+   \`Items: \${items.join(', ')}\`
+   ```
+
+### Part C: Fix Files Systematically
+
+Go through each file in `src/infrastructure/analysis/codebase/`:
+
+- [ ] `types.ts` - Usually no lint issues
+- [ ] `BaseAnalyzer.ts`
+- [ ] `ArchitectureAnalyzer.ts`
+- [ ] `PatternsAnalyzer.ts`
+- [ ] `DependenciesAnalyzer.ts`
+- [ ] `APISurfaceAnalyzer.ts`
+- [ ] `DataFlowAnalyzer.ts`
+- [ ] `TestStrategyAnalyzer.ts`
+- [ ] `KnownIssuesAnalyzer.ts`
+- [ ] `CodebaseAnalyzer.ts`
+- [ ] `index.ts`
+- [ ] All test files (`*.test.ts`)
+
+### Part D: Consider ESLint Config Update (If Appropriate)
+
+~~If many \`restrict-template-expressions\` errors are for safe cases (like numbers), consider updating \`.eslintrc\`:~~
+
+**DONE** - Updated `eslint.config.js` to allow numbers and booleans in template expressions.
+
+```javascript
+'@typescript-eslint/restrict-template-expressions': [
+  'error',
+  {
+    allowNumber: true,
+    allowBoolean: true,
+    allowNullish: false,
+    allowAny: false,
+  },
+],
+```
 
 ### Task FIX-B Completion Checklist
-- [ ] RepoMapFormatter imported and initialized in RepoMapGenerator
-- [ ] `formatForContext` uses RepoMapFormatter
-- [ ] `formatBasic` method removed
-- [ ] All format styles work (compact, detailed, tree)
-- [ ] Token budget respected
-- [ ] Tests updated and passing
+- [ ] All `no-unused-vars` errors fixed
+- [ ] All `restrict-template-expressions` errors fixed
+- [ ] All other lint errors fixed
+- [ ] No new errors introduced
 
-**[TASK FIX-B COMPLETE]** ← Mark this when done, then proceed to Task FIX-C
+**[TASK FIX-B COMPLETE]** <- Mark this when done, then proceed to Task FIX-C
 
 ---
 
-# Task FIX-C: Review Skipped Tests
+# Task FIX-C: Verify All Passes
 
 ## Objective
-Ensure tests are only skipped for valid reasons (like requiring WASM in CI).
+Ensure everything still works after fixes.
 
 ## Requirements
 
-### Part A: Audit Skipped Tests
+- [ ] Run: `npm run lint`
+  - Expected: 0 errors
 
-- [ ] Find all `.skip` in test files:
+- [ ] Run: `npm run build`
+  - Expected: Success
+
+- [ ] Run: `npm test src/infrastructure/analysis/codebase/`
+  - Expected: 232 tests still pass
+
+- [ ] Quick functional check (if possible):
   ```bash
-  grep -r "\.skip" src/infrastructure/analysis/*.test.ts
+  npm test src/infrastructure/analysis/codebase/integration.test.ts
   ```
-
-- [ ] For each skipped test, determine if it should be:
-  1. **Enabled** - If it can run without WASM
-  2. **Conditionally skipped** - Skip only in CI, run locally
-  3. **Permanently skipped** - With documented reason
-
-### Part B: Fix or Document
-
-For tests that CAN run:
-- [ ] Remove `.skip` and ensure they pass
-
-For tests that need WASM (integration tests):
-- [ ] Use conditional skip based on environment:
-  ```typescript
-  const SKIP_WASM_TESTS = process.env.CI === 'true';
-  
-  describe.skipIf(SKIP_WASM_TESTS)('Integration tests', () => {
-    // Tests that need actual WASM parsing
-  });
-  ```
-
-- [ ] Or use Vitest's `describe.runIf`:
-  ```typescript
-  describe.runIf(!process.env.CI)('WASM Integration', () => {
-    // ...
-  });
-  ```
-
-For permanently skipped tests:
-- [ ] Add comment explaining why:
-  ```typescript
-  // Skip: Requires manual WASM file setup not available in automated tests
-  it.skip('should parse real TypeScript file', () => { ... });
-  ```
-
-### Part C: Run Full Test Suite
-
-- [ ] Run all tests: `npm test src/infrastructure/analysis/`
-- [ ] Verify no unexpected failures
-- [ ] Verify skipped tests are intentional
 
 ### Task FIX-C Completion Checklist
-- [ ] All skipped tests audited
-- [ ] Unnecessary skips removed
-- [ ] Remaining skips documented with reasons
-- [ ] Full test suite passes
-- [ ] Test count is reasonable (should still be 400+ tests)
+- [ ] `npm run lint` passes with 0 errors
+- [ ] `npm run build` succeeds
+- [ ] All 232 tests still pass
+- [ ] No regressions introduced
 
 **[TASK FIX-C COMPLETE]**
 
 ---
 
-## Final Verification
-
-After all fixes, run the complete verification:
-
-```bash
-# 1. Build check
-npm run build
-# Expected: Success, no errors
-
-# 2. Lint check  
-npm run lint
-# Expected: 0 errors (or only documented suppressions)
-
-# 3. Test check
-npm test src/infrastructure/analysis/
-# Expected: All tests pass (400+ tests)
-
-# 4. Functional check
-npx ts-node -e "
-import { generateRepoMap } from './src/infrastructure/analysis';
-generateRepoMap('.', { maxFiles: 50 }).then(map => {
-  console.log('✓ Files:', map.stats.totalFiles);
-  console.log('✓ Symbols:', map.stats.totalSymbols);
-}).catch(err => console.error('✗ Error:', err));
-"
-# Expected: Shows file and symbol counts
-```
-
----
-
 ## Success Criteria
 
-- [ ] `npm run build` - No errors
-- [ ] `npm run lint` - 0 errors (down from 412)
-- [ ] `npm test src/infrastructure/analysis/` - All pass
-- [ ] RepoMapFormatter fully integrated
-- [ ] No unjustified skipped tests
-- [ ] Code ready for Plan 13-02
+- [ ] `npm run lint` - 0 errors (down from 337)
+- [ ] `npm run build` - Success
+- [ ] `npm test src/infrastructure/analysis/codebase/` - 232 tests pass
+- [ ] Code ready for Plan 13-03
 
 ---
 
 ## Recommended Settings
 
 ```
---max-iterations 25
---completion-promise "PLAN_13_01_FIX_COMPLETE"
+--max-iterations 20
+--completion-promise "PLAN_13_02_FIX_COMPLETE"
 ```
 
 ## Task Completion Markers
 
-- [x] `[TASK FIX-A COMPLETE]` - Linting errors fixed ✓
-- [x] `[TASK FIX-B COMPLETE]` - Formatter integrated ✓
-- [x] `[TASK FIX-C COMPLETE]` - Skipped tests reviewed ✓
-- [x] `[PLAN 13-01 FIX COMPLETE]` - All fixes done ✓
----
-
-## Final Status Update
-
-**Verified Complete: 2025-01-16 21:52**
-**Re-verified: 2025-01-16 21:54**
-**Orchestrator Verification: 2025-01-16 21:57** - All checks pass, git clean, ready for next plan.
-
-Final verification run confirms all tasks complete:
-- `npx eslint src/infrastructure/analysis/*.ts`: **0 errors** ✓
-- `npm test src/infrastructure/analysis/`: **445 passed, 16 skipped** ✓
-
-**Note:** There are uncommitted lint auto-fixes in other files outside the analysis module scope (e.g., stores, components, IPC handlers). These are NOT part of Plan 13-01 and should be committed separately if desired.
-
-Ready to proceed to Plan 13-02.
-
-**PLAN_13_01_FIX_COMPLETE**
-
----
-
-## Orchestrator Final Confirmation
-
-**Date:** 2025-01-16 21:59
-**Status:** ✅ ORCHESTRATION COMPLETE
-
-All verification checks confirmed:
-- ✅ Git working tree is clean (nothing to commit)
-- ✅ All three fix tasks marked complete
-- ✅ Final verification passed (0 lint errors in analysis module, 445 tests pass)
-- ✅ Ready for Plan 13-02
-
-No further iterations required for this prompt.
+- [x] `[TASK FIX-A COMPLETE]` - Auto-fix applied
+- [ ] `[TASK FIX-B COMPLETE]` - Manual fixes done
+- [ ] `[TASK FIX-C COMPLETE]` - All verification passes
+- [ ] `[PLAN 13-02 FIX COMPLETE]` - Ready for Plan 13-03
 
 ---
 
 ## Notes
 
-- Prioritize proper typing over suppressions where possible
-- Tree-sitter interop will need some suppressions - that's OK
-- Document why any suppressions are necessary
-- After this fix, Plan 13-01 will be ready for Plan 13-02 dependency
+- The 232 tests passing means the logic is correct - we're just cleaning up code style
+- Prefer fixing over suppressing lint rules
+- If changing eslint config, ensure it matches existing Nexus patterns
+- After this fix, Plan 13-02 is complete and we can proceed to Plan 13-03

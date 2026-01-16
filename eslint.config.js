@@ -24,9 +24,19 @@ export default tseslint.config(
       ],
       '@typescript-eslint/consistent-type-imports': 'error',
       '@typescript-eslint/no-import-type-side-effects': 'error',
+      // Allow numbers and booleans in template expressions (common, safe patterns)
+      '@typescript-eslint/restrict-template-expressions': [
+        'error',
+        {
+          allowNumber: true,
+          allowBoolean: true,
+          allowNullish: false,
+          allowAny: false,
+        },
+      ],
     },
   },
   {
     ignores: ['dist/**', 'node_modules/**', 'coverage/**', '*.config.js', '*.config.ts', '**/*.test.ts'],
-  }
+  },
 );
