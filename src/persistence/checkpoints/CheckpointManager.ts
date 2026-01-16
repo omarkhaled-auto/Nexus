@@ -10,6 +10,7 @@ import { v4 as uuidv4 } from 'uuid';
 import type { DatabaseClient } from '../database/DatabaseClient';
 import type { StateManager, NexusState } from '../state/StateManager';
 import type { GitService } from '../../infrastructure/git/GitService';
+import type { EventBus } from '../../orchestration/events/EventBus';
 import {
   checkpoints,
   type Checkpoint,
@@ -70,7 +71,9 @@ export type AutoCheckpointTrigger =
   | 'phase_complete'
   | 'task_failed'
   | 'qa_exhausted'
-  | 'human_request';
+  | 'human_request'
+  | 'scheduled'
+  | 'feature_complete';
 
 /**
  * Options for restoring a checkpoint
@@ -97,6 +100,8 @@ export interface CheckpointManagerOptions {
   db: DatabaseClient;
   stateManager: StateManager;
   gitService: GitService;
+  eventBus?: EventBus;
+  maxCheckpoints?: number;
   logger?: Logger;
 }
 
@@ -117,12 +122,16 @@ export class CheckpointManager {
   private readonly db: DatabaseClient;
   private readonly stateManager: StateManager;
   private readonly gitService: GitService;
+  private readonly eventBus?: EventBus;
+  private readonly maxCheckpoints: number;
   private readonly logger?: Logger;
 
   constructor(options: CheckpointManagerOptions) {
     this.db = options.db;
     this.stateManager = options.stateManager;
     this.gitService = options.gitService;
+    this.eventBus = options.eventBus;
+    this.maxCheckpoints = options.maxCheckpoints ?? 50;
     this.logger = options.logger;
   }
 
@@ -183,6 +192,26 @@ export class CheckpointManager {
     };
 
     this.db.db.insert(checkpoints).values(newCheckpoint).run();
+
+    // Auto-prune old checkpoints
+    const pruned = this.pruneOldCheckpoints(projectId);
+    if (pruned > 0) {
+      this.log('info', `Pruned ${pruned} old checkpoints for project ${projectId}`);
+    }
+
+    // Emit event if eventBus provided
+    if (this.eventBus) {
+      this.eventBus.emit(
+        'system:checkpoint-created',
+        {
+          checkpointId,
+          projectId,
+          reason,
+          gitCommit: gitCommit ?? '',
+        },
+        { source: 'CheckpointManager' }
+      );
+    }
 
     return {
       id: checkpointId,
@@ -247,6 +276,19 @@ export class CheckpointManager {
         // Don't throw - state was restored, git restore is optional
       }
     }
+
+    // Emit event if eventBus provided
+    if (this.eventBus) {
+      this.eventBus.emit(
+        'system:checkpoint-restored',
+        {
+          checkpointId,
+          projectId: checkpoint.projectId,
+          gitCommit: checkpoint.gitCommit ?? '',
+        },
+        { source: 'CheckpointManager' }
+      );
+    }
   }
 
   /**
@@ -291,5 +333,34 @@ export class CheckpointManager {
   ): Promise<Checkpoint & { state: string }> {
     const reason = `Auto-checkpoint: ${trigger}`;
     return this.createCheckpoint(projectId, reason);
+  }
+
+  /**
+   * Prune old checkpoints beyond maxCheckpoints limit.
+   * Keeps the N most recent checkpoints and deletes the rest.
+   * @param projectId Project to prune checkpoints for
+   * @returns Number of checkpoints deleted
+   */
+  pruneOldCheckpoints(projectId: string): number {
+    // Get all checkpoints ordered by createdAt DESC (newest first)
+    const allCheckpoints = this.listCheckpoints(projectId);
+
+    // If count <= maxCheckpoints, nothing to prune
+    if (allCheckpoints.length <= this.maxCheckpoints) {
+      return 0;
+    }
+
+    // Delete checkpoints beyond maxCheckpoints (oldest ones)
+    const toDelete = allCheckpoints.slice(this.maxCheckpoints);
+    for (const cp of toDelete) {
+      this.deleteCheckpoint(cp.id);
+    }
+
+    this.log(
+      'debug',
+      `Pruned ${toDelete.length} checkpoints for project ${projectId}`
+    );
+
+    return toDelete.length;
   }
 }

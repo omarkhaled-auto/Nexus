@@ -7,6 +7,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { DatabaseClient } from '../database/DatabaseClient';
 import { StateManager, type NexusState } from '../state/StateManager';
+import { EventBus } from '../../orchestration/events/EventBus';
 import {
   CheckpointManager,
   CheckpointError,
@@ -386,6 +387,162 @@ describe('CheckpointManager', () => {
         logger,
       });
       expect(manager).toBeInstanceOf(CheckpointManager);
+    });
+
+    it('accepts optional eventBus and maxCheckpoints', () => {
+      EventBus.resetInstance();
+      const eventBus = EventBus.getInstance();
+      const manager = new CheckpointManager({
+        db,
+        stateManager,
+        gitService: mockGitService as never,
+        eventBus,
+        maxCheckpoints: 10,
+      });
+      expect(manager).toBeInstanceOf(CheckpointManager);
+    });
+  });
+
+  // ============================================================================
+  // Pruning
+  // ============================================================================
+
+  describe('pruneOldCheckpoints', () => {
+    it('removes oldest checkpoints when over limit', async () => {
+      // Create manager with maxCheckpoints = 3
+      const managerWithLimit = new CheckpointManager({
+        db,
+        stateManager,
+        gitService: mockGitService as never,
+        maxCheckpoints: 3,
+      });
+
+      const state = createTestState('proj-1');
+      await stateManager.saveState(state);
+
+      // Create 5 checkpoints (2 more than limit)
+      for (let i = 1; i <= 5; i++) {
+        await managerWithLimit.createCheckpoint('proj-1', `Checkpoint ${i}`);
+        // Small delay to ensure different timestamps
+        await new Promise((r) => setTimeout(r, 50));
+      }
+
+      // Should have exactly maxCheckpoints remaining
+      const remaining = managerWithLimit.listCheckpoints('proj-1');
+      expect(remaining).toHaveLength(3);
+    });
+
+    it('does nothing when under limit', async () => {
+      // Create manager with maxCheckpoints = 10
+      const managerWithLimit = new CheckpointManager({
+        db,
+        stateManager,
+        gitService: mockGitService as never,
+        maxCheckpoints: 10,
+      });
+
+      const state = createTestState('proj-1');
+      await stateManager.saveState(state);
+
+      // Create 3 checkpoints (well under limit)
+      await managerWithLimit.createCheckpoint('proj-1', 'Checkpoint 1');
+      await managerWithLimit.createCheckpoint('proj-1', 'Checkpoint 2');
+      await managerWithLimit.createCheckpoint('proj-1', 'Checkpoint 3');
+
+      const result = managerWithLimit.pruneOldCheckpoints('proj-1');
+      expect(result).toBe(0);
+
+      const remaining = managerWithLimit.listCheckpoints('proj-1');
+      expect(remaining).toHaveLength(3);
+    });
+  });
+
+  // ============================================================================
+  // EventBus Integration
+  // ============================================================================
+
+  describe('EventBus Integration', () => {
+    let eventBus: EventBus;
+    let managerWithEventBus: CheckpointManager;
+
+    beforeEach(() => {
+      EventBus.resetInstance();
+      eventBus = EventBus.getInstance();
+      managerWithEventBus = new CheckpointManager({
+        db,
+        stateManager,
+        gitService: mockGitService as never,
+        eventBus,
+      });
+    });
+
+    it('createCheckpoint emits event when eventBus provided', async () => {
+      const handler = vi.fn();
+      eventBus.on('system:checkpoint-created', handler);
+
+      const state = createTestState('proj-1');
+      await stateManager.saveState(state);
+
+      const checkpoint = await managerWithEventBus.createCheckpoint(
+        'proj-1',
+        'Test checkpoint'
+      );
+
+      expect(handler).toHaveBeenCalledTimes(1);
+      const event = handler.mock.calls[0][0];
+      expect(event.type).toBe('system:checkpoint-created');
+      expect(event.payload.checkpointId).toBe(checkpoint.id);
+      expect(event.payload.projectId).toBe('proj-1');
+      expect(event.payload.reason).toBe('Test checkpoint');
+    });
+
+    it('restoreCheckpoint emits event when eventBus provided', async () => {
+      const handler = vi.fn();
+      eventBus.on('system:checkpoint-restored', handler);
+
+      const state = createTestState('proj-1');
+      await stateManager.saveState(state);
+
+      const checkpoint = await managerWithEventBus.createCheckpoint(
+        'proj-1',
+        'Test checkpoint'
+      );
+
+      // Clear the handler to ignore the create event
+      handler.mockClear();
+
+      await managerWithEventBus.restoreCheckpoint(checkpoint.id);
+
+      expect(handler).toHaveBeenCalledTimes(1);
+      const event = handler.mock.calls[0][0];
+      expect(event.type).toBe('system:checkpoint-restored');
+      expect(event.payload.checkpointId).toBe(checkpoint.id);
+      expect(event.payload.projectId).toBe('proj-1');
+    });
+
+    it('createCheckpoint auto-prunes after insert', async () => {
+      // Create manager with maxCheckpoints = 2
+      const managerWithSmallLimit = new CheckpointManager({
+        db,
+        stateManager,
+        gitService: mockGitService as never,
+        eventBus,
+        maxCheckpoints: 2,
+      });
+
+      const state = createTestState('proj-1');
+      await stateManager.saveState(state);
+
+      // Create 3 checkpoints
+      await managerWithSmallLimit.createCheckpoint('proj-1', 'Checkpoint 1');
+      await new Promise((r) => setTimeout(r, 50));
+      await managerWithSmallLimit.createCheckpoint('proj-1', 'Checkpoint 2');
+      await new Promise((r) => setTimeout(r, 50));
+      await managerWithSmallLimit.createCheckpoint('proj-1', 'Checkpoint 3');
+
+      // Should have pruned to maxCheckpoints
+      const remaining = managerWithSmallLimit.listCheckpoints('proj-1');
+      expect(remaining).toHaveLength(2);
     });
   });
 });
