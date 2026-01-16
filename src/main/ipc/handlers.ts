@@ -2,6 +2,7 @@
  * IPC Handlers - Main Process
  * Phase 05-04: IPC handlers connecting renderer to orchestration layer
  * Phase 06: Interview event handlers (BUILD-014)
+ * Phase 10: Checkpoint and review handlers
  *
  * Security:
  * - Validates sender origin for all handlers
@@ -11,6 +12,8 @@
 
 import { ipcMain, IpcMainInvokeEvent, BrowserWindow } from 'electron'
 import { EventBus } from '../../orchestration/events/EventBus'
+import type { CheckpointManager } from '../../persistence/checkpoints/CheckpointManager'
+import type { HumanReviewService } from '../../orchestration/review/HumanReviewService'
 
 /**
  * Allowed origins for IPC communication
@@ -47,6 +50,157 @@ const state: OrchestrationState = {
   projects: new Map(),
   tasks: new Map(),
   agents: new Map(),
+}
+
+// Service references for checkpoint and review handlers
+let checkpointManagerRef: CheckpointManager | null = null
+let humanReviewServiceRef: HumanReviewService | null = null
+
+/**
+ * Register checkpoint and review IPC handlers
+ * Called after services are initialized
+ */
+export function registerCheckpointReviewHandlers(
+  checkpointManager: CheckpointManager,
+  humanReviewService: HumanReviewService
+): void {
+  checkpointManagerRef = checkpointManager
+  humanReviewServiceRef = humanReviewService
+
+  // ========================================
+  // Checkpoint Handlers (Phase 10)
+  // ========================================
+
+  ipcMain.handle('checkpoint:list', async (event, projectId: string) => {
+    if (!validateSender(event)) {
+      throw new Error('Unauthorized IPC sender')
+    }
+    if (typeof projectId !== 'string' || !projectId) {
+      throw new Error('Invalid projectId')
+    }
+    if (!checkpointManagerRef) {
+      throw new Error('CheckpointManager not initialized')
+    }
+
+    return checkpointManagerRef.listCheckpoints(projectId)
+  })
+
+  ipcMain.handle(
+    'checkpoint:create',
+    async (event, projectId: string, reason: string) => {
+      if (!validateSender(event)) {
+        throw new Error('Unauthorized IPC sender')
+      }
+      if (typeof projectId !== 'string' || !projectId) {
+        throw new Error('Invalid projectId')
+      }
+      if (typeof reason !== 'string' || !reason) {
+        throw new Error('Invalid reason')
+      }
+      if (!checkpointManagerRef) {
+        throw new Error('CheckpointManager not initialized')
+      }
+
+      return checkpointManagerRef.createCheckpoint(projectId, reason)
+    }
+  )
+
+  ipcMain.handle(
+    'checkpoint:restore',
+    async (event, checkpointId: string, restoreGit?: boolean) => {
+      if (!validateSender(event)) {
+        throw new Error('Unauthorized IPC sender')
+      }
+      if (typeof checkpointId !== 'string' || !checkpointId) {
+        throw new Error('Invalid checkpointId')
+      }
+      if (!checkpointManagerRef) {
+        throw new Error('CheckpointManager not initialized')
+      }
+
+      await checkpointManagerRef.restoreCheckpoint(checkpointId, { restoreGit })
+    }
+  )
+
+  ipcMain.handle('checkpoint:delete', async (event, checkpointId: string) => {
+    if (!validateSender(event)) {
+      throw new Error('Unauthorized IPC sender')
+    }
+    if (typeof checkpointId !== 'string' || !checkpointId) {
+      throw new Error('Invalid checkpointId')
+    }
+    if (!checkpointManagerRef) {
+      throw new Error('CheckpointManager not initialized')
+    }
+
+    checkpointManagerRef.deleteCheckpoint(checkpointId)
+  })
+
+  // ========================================
+  // Review Handlers (Phase 10)
+  // ========================================
+
+  ipcMain.handle('review:list', async (event) => {
+    if (!validateSender(event)) {
+      throw new Error('Unauthorized IPC sender')
+    }
+    if (!humanReviewServiceRef) {
+      throw new Error('HumanReviewService not initialized')
+    }
+
+    return humanReviewServiceRef.listPendingReviews()
+  })
+
+  ipcMain.handle('review:get', async (event, reviewId: string) => {
+    if (!validateSender(event)) {
+      throw new Error('Unauthorized IPC sender')
+    }
+    if (typeof reviewId !== 'string' || !reviewId) {
+      throw new Error('Invalid reviewId')
+    }
+    if (!humanReviewServiceRef) {
+      throw new Error('HumanReviewService not initialized')
+    }
+
+    return humanReviewServiceRef.getReview(reviewId)
+  })
+
+  ipcMain.handle(
+    'review:approve',
+    async (event, reviewId: string, resolution?: string) => {
+      if (!validateSender(event)) {
+        throw new Error('Unauthorized IPC sender')
+      }
+      if (typeof reviewId !== 'string' || !reviewId) {
+        throw new Error('Invalid reviewId')
+      }
+      if (!humanReviewServiceRef) {
+        throw new Error('HumanReviewService not initialized')
+      }
+
+      await humanReviewServiceRef.approveReview(reviewId, resolution)
+    }
+  )
+
+  ipcMain.handle(
+    'review:reject',
+    async (event, reviewId: string, feedback: string) => {
+      if (!validateSender(event)) {
+        throw new Error('Unauthorized IPC sender')
+      }
+      if (typeof reviewId !== 'string' || !reviewId) {
+        throw new Error('Invalid reviewId')
+      }
+      if (typeof feedback !== 'string' || !feedback) {
+        throw new Error('Invalid feedback')
+      }
+      if (!humanReviewServiceRef) {
+        throw new Error('HumanReviewService not initialized')
+      }
+
+      await humanReviewServiceRef.rejectReview(reviewId, feedback)
+    }
+  )
 }
 
 /**

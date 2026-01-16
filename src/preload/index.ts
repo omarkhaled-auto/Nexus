@@ -159,6 +159,81 @@ const nexusAPI = {
     ipcRenderer.invoke('eventbus:emit', channel, payload),
 
   // ========================================
+  // Checkpoint API (Phase 10)
+  // ========================================
+
+  /**
+   * List checkpoints for a project
+   * @param projectId - Project ID to list checkpoints for
+   * @returns Promise with array of checkpoints
+   */
+  checkpointList: (projectId: string): Promise<unknown[]> =>
+    ipcRenderer.invoke('checkpoint:list', projectId),
+
+  /**
+   * Create a new checkpoint
+   * @param projectId - Project ID to checkpoint
+   * @param reason - Reason for the checkpoint
+   * @returns Promise with created checkpoint
+   */
+  checkpointCreate: (projectId: string, reason: string): Promise<unknown> =>
+    ipcRenderer.invoke('checkpoint:create', projectId, reason),
+
+  /**
+   * Restore state from a checkpoint
+   * @param checkpointId - Checkpoint ID to restore
+   * @param restoreGit - Whether to also restore git state
+   * @returns Promise that resolves on success
+   */
+  checkpointRestore: (checkpointId: string, restoreGit?: boolean): Promise<void> =>
+    ipcRenderer.invoke('checkpoint:restore', checkpointId, restoreGit),
+
+  /**
+   * Delete a checkpoint
+   * @param checkpointId - Checkpoint ID to delete
+   * @returns Promise that resolves on success
+   */
+  checkpointDelete: (checkpointId: string): Promise<void> =>
+    ipcRenderer.invoke('checkpoint:delete', checkpointId),
+
+  // ========================================
+  // Review API (Phase 10)
+  // ========================================
+
+  /**
+   * List pending reviews
+   * @returns Promise with array of pending reviews
+   */
+  reviewList: (): Promise<unknown[]> =>
+    ipcRenderer.invoke('review:list'),
+
+  /**
+   * Get a specific review by ID
+   * @param reviewId - Review ID to get
+   * @returns Promise with review or undefined
+   */
+  reviewGet: (reviewId: string): Promise<unknown> =>
+    ipcRenderer.invoke('review:get', reviewId),
+
+  /**
+   * Approve a pending review
+   * @param reviewId - Review ID to approve
+   * @param resolution - Optional resolution notes
+   * @returns Promise that resolves on success
+   */
+  reviewApprove: (reviewId: string, resolution?: string): Promise<void> =>
+    ipcRenderer.invoke('review:approve', reviewId, resolution),
+
+  /**
+   * Reject a pending review
+   * @param reviewId - Review ID to reject
+   * @param feedback - Required feedback for rejection
+   * @returns Promise that resolves on success
+   */
+  reviewReject: (reviewId: string, feedback: string): Promise<void> =>
+    ipcRenderer.invoke('review:reject', reviewId, feedback),
+
+  // ========================================
   // Event Subscriptions
   // ========================================
 
