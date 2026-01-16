@@ -313,9 +313,10 @@ describe('RepoMapGenerator', () => {
   // ============================================================================
 
   describe('formatForContext', () => {
-    it('should return empty string when no map is generated', () => {
-      const formatted = generator.formatForContext();
-      expect(formatted).toBe('');
+    it('should throw error when no map is generated', () => {
+      expect(() => generator.formatForContext()).toThrow(
+        'No repo map generated. Call generate() first.'
+      );
     });
 
     it('should format repository map', async () => {

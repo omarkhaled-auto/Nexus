@@ -280,6 +280,7 @@ describe('TreeSitterParser', () => {
 
 // ============================================================================
 // Integration Tests (Real WASM Parsing)
+// Skip: Requires WASM files and tests need fixes for namespace import/JSDoc parsing
 // ============================================================================
 
 describe.skip('TreeSitterParser Integration', () => {

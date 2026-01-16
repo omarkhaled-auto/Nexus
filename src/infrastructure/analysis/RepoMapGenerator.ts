@@ -24,7 +24,7 @@ import type {
   SymbolUsage,
   FormatOptions,
 } from './types';
-import { DEFAULT_REPO_MAP_OPTIONS, DEFAULT_FORMAT_OPTIONS } from './types';
+import { DEFAULT_REPO_MAP_OPTIONS } from './types';
 import { TreeSitterParser, getParser as _getParser } from './TreeSitterParser';
 import { SymbolExtractor, getSymbolExtractor as _getSymbolExtractor } from './SymbolExtractor';
 import {
@@ -32,6 +32,7 @@ import {
   getDependencyGraphBuilder as _getDependencyGraphBuilder,
 } from './DependencyGraphBuilder';
 import { ReferenceCounter, getReferenceCounter as _getReferenceCounter } from './ReferenceCounter';
+import { RepoMapFormatter } from './RepoMapFormatter';
 
 /**
  * RepoMapGenerator - Main orchestrator for repository analysis
@@ -48,6 +49,9 @@ export class RepoMapGenerator implements IRepoMapGenerator {
 
   /** Reference counter instance */
   private referenceCounter: ReferenceCounter;
+
+  /** Repository map formatter instance */
+  private formatter: RepoMapFormatter;
 
   /** Current generated map */
   private currentMap: RepoMap | null = null;
@@ -67,6 +71,7 @@ export class RepoMapGenerator implements IRepoMapGenerator {
     this.symbolExtractor = new SymbolExtractor();
     this.dependencyBuilder = new DependencyGraphBuilder();
     this.referenceCounter = new ReferenceCounter();
+    this.formatter = new RepoMapFormatter();
   }
 
   // ============================================================================
@@ -336,16 +341,11 @@ export class RepoMapGenerator implements IRepoMapGenerator {
    * @returns Formatted string
    */
   formatForContext(options?: FormatOptions): string {
-    if (!this.currentMap) return '';
+    if (!this.currentMap) {
+      throw new Error('No repo map generated. Call generate() first.');
+    }
 
-    const mergedOptions: Required<FormatOptions> = {
-      ...DEFAULT_FORMAT_OPTIONS,
-      ...options,
-    };
-
-    // This will be delegated to RepoMapFormatter in Task 13-01-F
-    // For now, provide a basic implementation
-    return this.formatBasic(this.currentMap, mergedOptions);
+    return this.formatter.format(this.currentMap, options);
   }
 
   /**
@@ -353,9 +353,11 @@ export class RepoMapGenerator implements IRepoMapGenerator {
    * @returns Token count
    */
   getTokenCount(): number {
-    const formatted = this.formatForContext();
-    // Approximate: ~4 characters per token
-    return Math.ceil(formatted.length / 4);
+    if (!this.currentMap) {
+      return 0;
+    }
+    const formatted = this.formatter.format(this.currentMap);
+    return this.formatter.estimateTokens(formatted);
   }
 
   // ============================================================================
@@ -581,111 +583,6 @@ export class RepoMapGenerator implements IRepoMapGenerator {
       mostConnectedFiles,
       generationTime,
     };
-  }
-
-  // ============================================================================
-  // Private Helpers - Formatting (Basic)
-  // ============================================================================
-
-  /**
-   * Basic formatting implementation (will be replaced by RepoMapFormatter)
-   */
-  private formatBasic(
-    repoMap: RepoMap,
-    options: Required<FormatOptions>
-  ): string {
-    const lines: string[] = [];
-    lines.push('# Repository Map');
-    lines.push('');
-    lines.push(
-      `Generated: ${repoMap.generatedAt.toISOString().split('T')[0] ?? ''}`
-    );
-    lines.push(`Files: ${String(repoMap.stats.totalFiles)}`);
-    lines.push(`Symbols: ${String(repoMap.stats.totalSymbols)}`);
-    lines.push('');
-
-    // Group symbols by file
-    const byFile = this.symbolExtractor.groupByFile(repoMap.symbols);
-
-    // Sort files by symbol count (most symbols first)
-    const sortedFiles = Array.from(byFile.entries()).sort(
-      (a, b) => b[1].length - a[1].length
-    );
-
-    // Symbol prefixes
-    const prefixes: Record<SymbolKind, string> = {
-      class: '\u2295', // ⊕
-      interface: '\u25C7', // ◇
-      function: '\u0192', // ƒ
-      method: '\u00B7', // ·
-      property: '.', // .
-      variable: '\u2192', // →
-      constant: '\u2237', // ∷
-      type: '\u22A4', // ⊤
-      enum: '\u229E', // ⊞
-      enum_member: ' ', // indent
-      namespace: 'N',
-      module: 'M',
-    };
-
-    let tokenEstimate = lines.join('\n').length / 4;
-    const maxTokens = options.maxTokens;
-
-    for (const [file, symbols] of sortedFiles) {
-      const relativePath = relative(repoMap.projectPath, file);
-
-      // Check token budget
-      const fileHeader = `\n## ${relativePath}\n`;
-      if (tokenEstimate + fileHeader.length / 4 > maxTokens) {
-        lines.push('\n... (truncated)');
-        break;
-      }
-
-      lines.push('');
-      lines.push(`## ${relativePath}`);
-      tokenEstimate += fileHeader.length / 4;
-
-      // Sort symbols: top-level first, then by name
-      const sortedSymbols = [...symbols].sort((a, b) => {
-        // Top-level first
-        if (!a.parentId && b.parentId) return -1;
-        if (a.parentId && !b.parentId) return 1;
-        // By reference count
-        if (options.rankByReferences) {
-          if (b.references !== a.references) return b.references - a.references;
-        }
-        // Then by name
-        return a.name.localeCompare(b.name);
-      });
-
-      for (const symbol of sortedSymbols) {
-        const prefix = prefixes[symbol.kind] || '?';
-        const exportMark = symbol.exported ? '\u03B5' : ''; // ε
-        const indent = symbol.parentId ? '  ' : '';
-        const refCount =
-          options.rankByReferences && symbol.references > 0
-            ? ` (${String(symbol.references)})`
-            : '';
-
-        let line: string;
-        if (options.includeSignatures && symbol.signature !== symbol.name) {
-          line = `${indent}${prefix}${exportMark}${symbol.signature}${refCount}`;
-        } else {
-          line = `${indent}${prefix}${exportMark}${symbol.name}${refCount}`;
-        }
-
-        // Check token budget
-        if (tokenEstimate + line.length / 4 > maxTokens) {
-          lines.push('  ... (truncated)');
-          break;
-        }
-
-        lines.push(line);
-        tokenEstimate += line.length / 4;
-      }
-    }
-
-    return lines.join('\n');
   }
 
   /**
