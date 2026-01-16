@@ -694,121 +694,121 @@ Create the main orchestrator that ties all components together to generate compl
 ### Part A: Create RepoMapGenerator Class
 Create `src/infrastructure/analysis/RepoMapGenerator.ts`:
 
-- [ ] **RepoMapGenerator Class** implementing IRepoMapGenerator
-  - [ ] Private fields: parser, symbolExtractor, dependencyBuilder, referenceCounter, formatter
-  - [ ] Private fields: currentMap, initialized
+- [x] **RepoMapGenerator Class** implementing IRepoMapGenerator
+  - [x] Private fields: parser, symbolExtractor, dependencyBuilder, referenceCounter, formatter
+  - [x] Private fields: currentMap, initialized
 
-- [ ] **Constructor**
-  - [ ] Accept optional `wasmBasePath`
-  - [ ] Instantiate all component classes
+- [x] **Constructor**
+  - [x] Accept optional `wasmBasePath`
+  - [x] Instantiate all component classes
 
-- [ ] **initialize() Method**
-  - [ ] Initialize TreeSitterParser
-  - [ ] Set initialized flag
+- [x] **initialize() Method**
+  - [x] Initialize TreeSitterParser
+  - [x] Set initialized flag
 
-- [ ] **generate(projectPath, options?) Method** - MAIN METHOD
-  - [ ] Start timing
-  - [ ] Merge options with defaults
-  - [ ] Ensure initialized
-  - [ ] Find files using fast-glob with include/exclude patterns
-  - [ ] Filter by language if specified
-  - [ ] Limit to maxFiles
-  - [ ] Read file contents
-  - [ ] Parse all files with TreeSitterParser
-  - [ ] Build file entries with metadata
-  - [ ] Merge symbols using SymbolExtractor
-  - [ ] Build dependency graph
-  - [ ] Count references if enabled
-  - [ ] Calculate statistics
-  - [ ] Store as currentMap
-  - [ ] Return RepoMap
+- [x] **generate(projectPath, options?) Method** - MAIN METHOD
+  - [x] Start timing
+  - [x] Merge options with defaults
+  - [x] Ensure initialized
+  - [x] Find files using fast-glob with include/exclude patterns
+  - [x] Filter by language if specified
+  - [x] Limit to maxFiles
+  - [x] Read file contents
+  - [x] Parse all files with TreeSitterParser
+  - [x] Build file entries with metadata
+  - [x] Merge symbols using SymbolExtractor
+  - [x] Build dependency graph
+  - [x] Count references if enabled
+  - [x] Calculate statistics
+  - [x] Store as currentMap
+  - [x] Return RepoMap
 
-- [ ] **generateIncremental(projectPath, changedFiles) Method**
-  - [ ] If no currentMap, call generate()
-  - [ ] Re-parse only changed files
-  - [ ] Update symbols for changed files (keep unchanged)
-  - [ ] Rebuild dependency graph (needed for accuracy)
-  - [ ] Recount references
-  - [ ] Update statistics
-  - [ ] Return updated RepoMap
+- [x] **generateIncremental(projectPath, changedFiles) Method**
+  - [x] If no currentMap, call generate()
+  - [x] Re-parse only changed files
+  - [x] Update symbols for changed files (keep unchanged)
+  - [x] Rebuild dependency graph (needed for accuracy)
+  - [x] Recount references
+  - [x] Update statistics
+  - [x] Return updated RepoMap
 
-- [ ] **findSymbol(name) Method**
-  - [ ] Use SymbolExtractor.findByName on currentMap
-  - [ ] Return matching symbols
+- [x] **findSymbol(name) Method**
+  - [x] Use SymbolExtractor.findByName on currentMap
+  - [x] Return matching symbols
 
-- [ ] **findUsages(symbolName) Method**
-  - [ ] Search dependencies for imports of symbolName
-  - [ ] Return SymbolUsage[] with file, line, context
+- [x] **findUsages(symbolName) Method**
+  - [x] Search dependencies for imports of symbolName
+  - [x] Return SymbolUsage[] with file, line, context
 
-- [ ] **findImplementations(interfaceName) Method**
-  - [ ] Find classes with `implements InterfaceName` in signature
-  - [ ] Return matching class symbols
+- [x] **findImplementations(interfaceName) Method**
+  - [x] Find classes with `implements InterfaceName` in signature
+  - [x] Return matching class symbols
 
-- [ ] **getDependencies(file) Method**
-  - [ ] Delegate to DependencyGraphBuilder
+- [x] **getDependencies(file) Method**
+  - [x] Delegate to DependencyGraphBuilder
 
-- [ ] **getDependents(file) Method**
-  - [ ] Delegate to DependencyGraphBuilder
+- [x] **getDependents(file) Method**
+  - [x] Delegate to DependencyGraphBuilder
 
-- [ ] **formatForContext(options?) Method**
-  - [ ] Delegate to RepoMapFormatter
-  - [ ] Return formatted string
+- [x] **formatForContext(options?) Method**
+  - [x] Delegate to RepoMapFormatter (basic implementation, full in Task F)
+  - [x] Return formatted string
 
-- [ ] **getTokenCount() Method**
-  - [ ] Format and estimate tokens
+- [x] **getTokenCount() Method**
+  - [x] Format and estimate tokens
 
-- [ ] **getCurrentMap() Method**
-  - [ ] Return currentMap or null
+- [x] **getCurrentMap() Method**
+  - [x] Return currentMap or null
 
-- [ ] **clearCache() Method**
-  - [ ] Set currentMap to null
+- [x] **clearCache() Method**
+  - [x] Set currentMap to null
 
 ### Part B: Helper Methods
-- [ ] **findFiles(projectPath, options) Private Method**
-  - [ ] Use fast-glob with patterns
-  - [ ] Filter by language
-  - [ ] Return absolute paths
+- [x] **findFiles(projectPath, options) Private Method**
+  - [x] Use fast-glob with patterns
+  - [x] Filter by language
+  - [x] Return absolute paths
 
-- [ ] **parseAllFiles(files, maxFiles) Private Method**
-  - [ ] Read each file content
-  - [ ] Parse with TreeSitterParser
-  - [ ] Handle read errors gracefully
-  - [ ] Return ParseResult[]
+- [x] **parseAllFiles(files, maxFiles) Private Method**
+  - [x] Read each file content
+  - [x] Parse with TreeSitterParser
+  - [x] Handle read errors gracefully
+  - [x] Return ParseResult[]
 
-- [ ] **buildFileEntries(files, projectPath) Private Method**
-  - [ ] Get file stats (size, mtime)
-  - [ ] Count lines
-  - [ ] Detect language
-  - [ ] Return FileEntry[]
+- [x] **buildFileEntries(files, projectPath) Private Method**
+  - [x] Get file stats (size, mtime)
+  - [x] Count lines
+  - [x] Detect language
+  - [x] Return FileEntry[]
 
-- [ ] **calculateStats(...) Private Method**
-  - [ ] Compute all RepoMapStats fields
+- [x] **calculateStats(...) Private Method**
+  - [x] Compute all RepoMapStats fields
 
 ### Part C: Factory Function
-- [ ] **getRepoMapGenerator(wasmBasePath?) Function**
-  - [ ] Return singleton instance
+- [x] **getRepoMapGenerator(wasmBasePath?) Function**
+  - [x] Return singleton instance
 
 ### Part D: Create Tests
 Create `src/infrastructure/analysis/RepoMapGenerator.test.ts`:
 
-- [ ] Test initialization
-- [ ] Test generate with mock file system
-- [ ] Test incremental generation
-- [ ] Test findSymbol
-- [ ] Test findUsages
-- [ ] Test findImplementations
-- [ ] Test getDependencies/getDependents
-- [ ] Test formatForContext
-- [ ] Test statistics calculation
-- [ ] Test with various options
+- [x] Test initialization
+- [x] Test generate with mock file system
+- [x] Test incremental generation
+- [x] Test findSymbol
+- [x] Test findUsages
+- [x] Test findImplementations
+- [x] Test getDependencies/getDependents
+- [x] Test formatForContext
+- [x] Test statistics calculation
+- [x] Test with various options
 
 ### Task 13-01-E Completion Checklist
-- [ ] `RepoMapGenerator.ts` created (~350-400 lines)
-- [ ] `RepoMapGenerator.test.ts` created (~150 lines)
-- [ ] All tests pass
-- [ ] TypeScript compiles
+- [x] `RepoMapGenerator.ts` created (~480 lines)
+- [x] `RepoMapGenerator.test.ts` created (~350 lines)
+- [x] All tests pass (21 tests)
+- [x] TypeScript compiles
 
-**[TASK 13-01-E COMPLETE]** ← Mark this when done, then proceed to Task 13-01-F
+**[TASK 13-01-E COMPLETE]** ✅ Completed on 2025-01-16
 
 ---
 
@@ -1008,7 +1008,7 @@ Complete tasks sequentially:
 - [x] `[TASK 13-01-B COMPLETE]` - Symbol Extractor ✅
 - [x] `[TASK 13-01-C COMPLETE]` - Dependency Graph Builder ✅
 - [x] `[TASK 13-01-D COMPLETE]` - Reference Counter ✅
-- [ ] `[TASK 13-01-E COMPLETE]` - RepoMapGenerator Core
+- [x] `[TASK 13-01-E COMPLETE]` - RepoMapGenerator Core ✅
 - [ ] `[TASK 13-01-F COMPLETE]` - Formatter & Index
 - [ ] `[PLAN 13-01 COMPLETE]` - All tasks done
 
