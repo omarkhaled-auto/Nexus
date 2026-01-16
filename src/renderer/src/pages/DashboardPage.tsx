@@ -8,6 +8,7 @@ import {
   type ProgressDataPoint
 } from '../components/dashboard'
 import { AnimatedPage } from '../components/AnimatedPage'
+import { CardSkeleton } from '../components/ui/Skeleton'
 import { useMetricsStore, useIsMetricsLoading, useOverview } from '../stores'
 import type {
   OverviewMetrics,
@@ -208,19 +209,18 @@ export default function DashboardPage(): ReactElement {
         <CostTracker />
       </div>
 
-      {/* Loading overlay */}
-      {isLoading && (
-        <div className="absolute inset-0 bg-background/50 backdrop-blur-sm flex items-center justify-center z-10">
-          <div className="flex flex-col items-center gap-2">
-            <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-            <span className="text-sm text-muted-foreground">Loading dashboard...</span>
-          </div>
-        </div>
-      )}
-
-      {/* Overview Cards */}
+      {/* Overview Cards with loading skeletons */}
       <div className="flex-shrink-0">
-        <OverviewCards />
+        {isLoading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <CardSkeleton />
+            <CardSkeleton />
+            <CardSkeleton />
+            <CardSkeleton />
+          </div>
+        ) : (
+          <OverviewCards />
+        )}
       </div>
 
       {/* Middle row: Chart + Agents */}

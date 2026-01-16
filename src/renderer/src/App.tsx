@@ -3,6 +3,7 @@ import { createBrowserRouter, RouterProvider } from 'react-router';
 import { ThemeProvider } from './components/theme-provider';
 import { RootLayout } from './components/layout/RootLayout';
 import { ModeSelectorPage } from './pages/ModeSelectorPage';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { Suspense, lazy, useEffect } from 'react';
 import { useThemeEffect } from './hooks/useTheme';
 import { useSettingsStore } from './stores/settingsStore';
@@ -115,16 +116,18 @@ function App(): ReactElement {
   return (
     <ThemeProvider defaultTheme="dark" storageKey="nexus-theme">
       <SettingsInitializer>
-        <RouterProvider router={router} />
-        <Toaster
-          position="bottom-right"
-          richColors
-          closeButton
-          toastOptions={{
-            duration: 4000,
-          }}
-        />
-        <KeyboardShortcutsModal />
+        <ErrorBoundary>
+          <RouterProvider router={router} />
+          <Toaster
+            position="bottom-right"
+            richColors
+            closeButton
+            toastOptions={{
+              duration: 4000,
+            }}
+          />
+          <KeyboardShortcutsModal />
+        </ErrorBoundary>
       </SettingsInitializer>
     </ThemeProvider>
   );
