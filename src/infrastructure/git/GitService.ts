@@ -474,7 +474,7 @@ export class GitService {
 
     const args: string[] = [];
 
-    if (options?.ref1 && options?.ref2) {
+    if (options?.ref1 && options.ref2) {
       // Diff between two refs
       args.push(options.ref1, options.ref2);
     } else if (options?.staged) {
@@ -497,7 +497,7 @@ export class GitService {
 
     const args: string[] = [];
 
-    if (options?.ref1 && options?.ref2) {
+    if (options?.ref1 && options.ref2) {
       // Diff between two refs
       args.push(options.ref1, options.ref2);
     } else if (options?.staged) {
@@ -557,13 +557,13 @@ export class GitService {
       if (result.failed) {
         return {
           success: false,
-          conflicts: result.conflicts.map((c) => (typeof c === 'string' ? c : c.file ?? String(c))),
+          conflicts: result.conflicts.map((c) => (typeof c === 'string' ? c : (c as { file?: string }).file ?? JSON.stringify(c))),
         };
       }
 
       return {
         success: true,
-        mergeCommit: result.merges?.[0],
+        mergeCommit: result.merges[0],
       };
     } catch (error) {
       // Check for merge conflicts

@@ -208,13 +208,14 @@ export class WorktreeManager {
     const startTime = Date.now();
     await fse.ensureDir(this.worktreeDir);
 
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Intentional lock acquisition loop
     while (true) {
       try {
         // Try to create lock file exclusively
         await fse.writeFile(this.lockPath, String(process.pid), { flag: 'wx' });
         this.isLocked = true;
         return;
-      } catch (_error) {
+      } catch {
         // Lock file exists, check timeout
         if (Date.now() - startTime > LOCK_TIMEOUT) {
           // Force acquire lock if timeout exceeded (stale lock)
@@ -297,7 +298,7 @@ export class WorktreeManager {
     try {
       if (await fse.pathExists(this.registryPath)) {
         const content = await fse.readFile(this.registryPath, 'utf-8');
-        const raw = JSON.parse(content);
+        const raw = JSON.parse(content) as { lastUpdated: string; worktrees: Record<string, unknown> };
 
         // Convert date strings back to Date objects
         const registry: WorktreeRegistry = {
@@ -306,7 +307,7 @@ export class WorktreeManager {
           worktrees: {},
         };
 
-        for (const [taskId, info] of Object.entries(raw.worktrees as Record<string, unknown>)) {
+        for (const [taskId, info] of Object.entries(raw.worktrees)) {
           const worktreeRaw = info as Record<string, unknown>;
           registry.worktrees[taskId] = {
             ...worktreeRaw,
@@ -478,7 +479,8 @@ export class WorktreeManager {
       }
     }
 
-    // Update registry
+    // Update registry - remove worktree entry
+    // eslint-disable-next-line @typescript-eslint/no-dynamic-delete -- Registry uses dynamic task IDs
     delete registry.worktrees[taskId];
     await this.saveRegistry(registry);
   }

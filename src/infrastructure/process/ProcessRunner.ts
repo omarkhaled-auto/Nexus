@@ -251,7 +251,7 @@ export class ProcessRunner {
   /**
    * Convert execa output to string (handles various output types)
    */
-  private toStringOutput(output: string | string[] | Uint8Array | unknown[] | undefined): string {
+  private toStringOutput(output: string | string[] | Uint8Array | unknown[] | undefined | null): string {
     if (output === undefined || output === null) {
       return '';
     }
@@ -295,7 +295,7 @@ export class ProcessRunner {
     const timeoutId = setTimeout(() => {
       timedOut = true;
       if (pid > 0) {
-        this.killProcess(pid);
+        void this.killProcess(pid);
       }
     }, timeout);
 
@@ -305,6 +305,7 @@ export class ProcessRunner {
       const duration = Date.now() - startTime;
 
       // Check if process timed out
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- timedOut can be set asynchronously
       if (timedOut || result.timedOut) {
         throw new TimeoutError(
           `Command timed out after ${timeout}ms: ${command}`,
@@ -333,6 +334,7 @@ export class ProcessRunner {
         stderr,
         exitCode,
         duration,
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- isTerminated can be undefined
         killed: result.isTerminated ?? false,
       };
     } catch (error) {
@@ -348,6 +350,7 @@ export class ProcessRunner {
       }
 
       // Check if it was our timeout
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- timedOut can be set asynchronously
       if (timedOut) {
         throw new TimeoutError(
           `Command timed out after ${timeout}ms: ${command}`,
@@ -414,7 +417,7 @@ export class ProcessRunner {
     const timeoutId = setTimeout(() => {
       timedOut = true;
       if (pid > 0) {
-        this.killProcess(pid);
+        void this.killProcess(pid);
       }
     }, timeout);
 
@@ -439,6 +442,7 @@ export class ProcessRunner {
         const duration = Date.now() - startTime;
 
         // Check if process timed out
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- timedOut can be set asynchronously
         if (timedOut || result.timedOut) {
           throw new TimeoutError(
             `Command timed out after ${timeout}ms: ${command}`,
@@ -483,6 +487,7 @@ export class ProcessRunner {
         }
 
         // Check if it was our timeout
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- timedOut can be set asynchronously
         if (timedOut) {
           throw new TimeoutError(
             `Command timed out after ${timeout}ms: ${command}`,
@@ -509,6 +514,7 @@ export class ProcessRunner {
         }
 
         // If terminated (killed) or manually killed, return a result instead of throwing
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- manuallyKilled can be set externally
         if (execaError.isTerminated || manuallyKilled) {
           return {
             stdout: execaError.stdout ?? '',
