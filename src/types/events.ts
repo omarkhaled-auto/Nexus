@@ -12,7 +12,7 @@ export interface NexusEvent<T = unknown> {
   correlationId?: string; // For tracing related events
 }
 
-// All event types (48 total)
+// All event types (51 total)
 export type EventType =
   // Project lifecycle (8 events)
   | 'project:created'
@@ -70,6 +70,11 @@ export type EventType =
   | 'interview:completed'
   | 'interview:cancelled'
   | 'interview:saved'
+
+  // Human review events (3 events)
+  | 'review:requested'
+  | 'review:approved'
+  | 'review:rejected'
 
   // System events (4 events)
   | 'system:checkpoint-created'
@@ -372,6 +377,33 @@ export interface InterviewSavedPayload {
 }
 
 // ============================================
+// Human Review Event Payloads
+// ============================================
+
+export interface ReviewContext {
+  qaIterations?: number;
+  escalationReason?: string;
+  suggestedAction?: string;
+}
+
+export interface ReviewRequestedPayload {
+  reviewId: string;
+  taskId: string;
+  reason: 'qa_exhausted' | 'merge_conflict' | 'manual_request';
+  context: ReviewContext;
+}
+
+export interface ReviewApprovedPayload {
+  reviewId: string;
+  resolution?: string;
+}
+
+export interface ReviewRejectedPayload {
+  reviewId: string;
+  feedback: string;
+}
+
+// ============================================
 // System Event Payloads
 // ============================================
 
@@ -468,6 +500,11 @@ export interface EventPayloadMap {
   'interview:completed': InterviewCompletedPayload;
   'interview:cancelled': InterviewCancelledPayload;
   'interview:saved': InterviewSavedPayload;
+
+  // Human review events
+  'review:requested': ReviewRequestedPayload;
+  'review:approved': ReviewApprovedPayload;
+  'review:rejected': ReviewRejectedPayload;
 
   // System events
   'system:checkpoint-created': CheckpointCreatedPayload;
