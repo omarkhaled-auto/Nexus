@@ -6,9 +6,10 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     include: ['src/**/*.test.ts', 'src/**/*.test.tsx', 'tests/**/*.test.ts'],
-    // Use jsdom for renderer tests
+    // Use jsdom for renderer tests (both .ts and .tsx)
     environmentMatchGlobs: [
       ['src/renderer/**/*.test.tsx', 'jsdom'],
+      ['src/renderer/**/*.test.ts', 'jsdom'],
     ],
     // Setup files - global MSW setup + renderer-specific setup
     setupFiles: ['./vitest.setup.ts', './src/renderer/test-setup.ts'],
