@@ -23,7 +23,7 @@ None (no domain expertise files configured)
 - [x] **Phase 7: Kanban UI** - Evolution mode Kanban board, drag-drop (BUILD-015) ✓
 - [x] **Phase 8: Dashboard UI** - Progress metrics, agent status, event log (BUILD-016) ✓
 - [x] **Phase 9: Interview Engine** - InterviewEngine, RequirementExtractor, QuestionGenerator, session persistence ✓
-- [ ] **Phase 10: Evolution Mode** - Kanban board, feature management, drag-drop interface
+- [x] **Phase 10: Human Checkpoints** - HumanReviewService, CheckpointScheduler, IPC + UI components ✓
 - [ ] **Phase 11: Dashboard** - Progress metrics, agent status grid, event log, cost tracking
 - [ ] **Phase 12: Polish** - Human checkpoints, settings page, animations, integration testing
 
@@ -209,6 +209,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 7. Kanban UI | 4/4 | Complete | 2026-01-15 |
 | 8. Dashboard UI | 4/4 | Complete | 2026-01-16 |
 | 9. Interview Engine | 3/3 | Complete | 2026-01-16 |
-| 10. Human Checkpoints | 0/TBD | Not started | - |
+| 10. Human Checkpoints | 3/3 | Complete | 2026-01-16 |
 | 11. Integration & Testing | 0/TBD | Not started | - |
 | 12. Polish | 0/TBD | Not started | - |
