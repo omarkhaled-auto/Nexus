@@ -58,7 +58,7 @@ Task 13-02-D: Dependencies Analyzer ──────► [COMPLETE - 2025-01-16
 Task 13-02-E: API & Data Flow Analyzer ───► [COMPLETE - 2025-01-16]
                 │
                 ▼
-Task 13-02-F: Test & Issues Analyzer ─────► [TASK 13-02-F COMPLETE]
+Task 13-02-F: Test & Issues Analyzer ─────► [COMPLETE - 2025-01-16]
                 │
                 ▼
 Task 13-02-G: CodebaseAnalyzer & Index ───► [PLAN 13-02 COMPLETE]
@@ -531,99 +531,99 @@ Create analyzers for TEST_STRATEGY.md and KNOWN_ISSUES.md documentation.
 ### Part A: Create TestStrategyAnalyzer Class
 Create `src/infrastructure/analysis/codebase/TestStrategyAnalyzer.ts`:
 
-- [ ] **TestStrategyAnalyzer Class** extends BaseAnalyzer
+- [x] **TestStrategyAnalyzer Class** extends BaseAnalyzer
 
-- [ ] **analyze() Method** - Returns TestStrategyDoc
+- [x] **analyze() Method** - Returns TestStrategyDoc
 
-- [ ] **detectTestFrameworks() Private Method**
-  - [ ] Check for:
+- [x] **detectTestFrameworks() Private Method**
+  - [x] Check for:
     - Vitest (vitest.config.ts)
     - Jest (jest.config.js)
     - Playwright (playwright.config.ts)
     - Testing Library
-  - [ ] Return TestFramework[]
+  - [x] Return TestFramework[]
 
-- [ ] **analyzeTestTypes() Private Method**
-  - [ ] Count tests by pattern:
+- [x] **analyzeTestTypes() Private Method**
+  - [x] Count tests by pattern:
     - `*.test.ts` - Unit tests
     - `*.spec.ts` - Integration tests
     - `*.e2e.ts` or `e2e/` - E2E tests
     - `*.test.tsx` - Component tests
-  - [ ] Return TestTypeDoc[]
+  - [x] Return TestTypeDoc[]
 
-- [ ] **analyzeCoverage() Private Method**
-  - [ ] Read coverage config if exists
-  - [ ] Get target coverage
-  - [ ] List exclusions
-  - [ ] Return CoverageDoc
+- [x] **analyzeCoverage() Private Method**
+  - [x] Read coverage config if exists
+  - [x] Get target coverage
+  - [x] List exclusions
+  - [x] Return CoverageDoc
 
-- [ ] **detectTestPatterns() Private Method**
-  - [ ] Analyze test files for patterns:
+- [x] **detectTestPatterns() Private Method**
+  - [x] Analyze test files for patterns:
     - Arrange-Act-Assert
     - Given-When-Then
     - Mock patterns
     - Factory patterns for test data
-  - [ ] Return TestPatternDoc[]
+  - [x] Return TestPatternDoc[]
 
-- [ ] **toMarkdown(doc: TestStrategyDoc) Method**
-  - [ ] Generate TEST_STRATEGY.md content
+- [x] **toMarkdown(doc: TestStrategyDoc) Method**
+  - [x] Generate TEST_STRATEGY.md content
 
 ### Part B: Create KnownIssuesAnalyzer Class
 Create `src/infrastructure/analysis/codebase/KnownIssuesAnalyzer.ts`:
 
-- [ ] **KnownIssuesAnalyzer Class** extends BaseAnalyzer
+- [x] **KnownIssuesAnalyzer Class** extends BaseAnalyzer
 
-- [ ] **analyze() Method** - Returns KnownIssuesDoc
+- [x] **analyze() Method** - Returns KnownIssuesDoc
 
-- [ ] **findTechnicalDebt() Private Method**
-  - [ ] Search for comments:
+- [x] **findTechnicalDebt() Private Method**
+  - [x] Search for comments:
     - `// TODO:`
     - `// FIXME:`
     - `// HACK:`
     - `// XXX:`
     - `@deprecated`
-  - [ ] Extract location and description
-  - [ ] Assess severity based on keywords
-  - [ ] Return TechnicalDebtItem[]
+  - [x] Extract location and description
+  - [x] Assess severity based on keywords
+  - [x] Return TechnicalDebtItem[]
 
-- [ ] **detectLimitations() Private Method**
-  - [ ] Look for:
+- [x] **detectLimitations() Private Method**
+  - [x] Look for:
     - Skipped tests (`.skip`)
     - Disabled features
     - Platform-specific code
     - Known compatibility issues (like better-sqlite3)
-  - [ ] Return LimitationDoc[]
+  - [x] Return LimitationDoc[]
 
-- [ ] **findWorkarounds() Private Method**
-  - [ ] Search for workaround comments
-  - [ ] Look for temporary solutions
-  - [ ] Return WorkaroundDoc[]
+- [x] **findWorkarounds() Private Method**
+  - [x] Search for workaround comments
+  - [x] Look for temporary solutions
+  - [x] Return WorkaroundDoc[]
 
-- [ ] **suggestImprovements() Private Method**
-  - [ ] Based on analysis, suggest:
+- [x] **suggestImprovements() Private Method**
+  - [x] Based on analysis, suggest:
     - Missing tests
     - Code duplication opportunities
     - Performance improvements
     - Refactoring candidates
-  - [ ] Return FutureImprovementDoc[]
+  - [x] Return FutureImprovementDoc[]
 
-- [ ] **toMarkdown(doc: KnownIssuesDoc) Method**
-  - [ ] Generate KNOWN_ISSUES.md content
+- [x] **toMarkdown(doc: KnownIssuesDoc) Method**
+  - [x] Generate KNOWN_ISSUES.md content
 
 ### Part C: Create Tests
 Create tests for both analyzers:
 
-- [ ] `TestStrategyAnalyzer.test.ts` (~80 lines)
-- [ ] `KnownIssuesAnalyzer.test.ts` (~80 lines)
+- [x] `TestStrategyAnalyzer.test.ts` (~260 lines)
+- [x] `KnownIssuesAnalyzer.test.ts` (~300 lines)
 
 ### Task 13-02-F Completion Checklist
-- [ ] `TestStrategyAnalyzer.ts` created (~250 lines)
-- [ ] `KnownIssuesAnalyzer.ts` created (~250 lines)
-- [ ] Tests created for both
-- [ ] All tests pass
-- [ ] TypeScript compiles
+- [x] `TestStrategyAnalyzer.ts` created (~360 lines)
+- [x] `KnownIssuesAnalyzer.ts` created (~330 lines)
+- [x] Tests created for both
+- [x] All tests pass (40 new tests, 208 total in codebase module)
+- [x] TypeScript compiles
 
-**[TASK 13-02-F COMPLETE]** ← Mark this when done, then proceed to Task 13-02-G
+**[TASK 13-02-F COMPLETE]** - Completed on 2025-01-16
 
 ---
 
@@ -819,7 +819,7 @@ Complete tasks sequentially:
 - [x] `[TASK 13-02-C COMPLETE]` - Patterns Analyzer (completed 2025-01-16)
 - [x] `[TASK 13-02-D COMPLETE]` - Dependencies Analyzer (completed 2025-01-16)
 - [x] `[TASK 13-02-E COMPLETE]` - API Surface & Data Flow Analyzers (completed 2025-01-16)
-- [ ] `[TASK 13-02-F COMPLETE]` - Test Strategy & Known Issues Analyzers
+- [x] `[TASK 13-02-F COMPLETE]` - Test Strategy & Known Issues Analyzers (completed 2025-01-16)
 - [ ] `[TASK 13-02-G COMPLETE]` - CodebaseAnalyzer & Index
 - [ ] `[PLAN 13-02 COMPLETE]` - All tasks done
 
