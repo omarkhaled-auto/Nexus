@@ -142,7 +142,17 @@ describe('DashboardPage', () => {
         onMetricsUpdate: vi.fn(),
         onAgentStatusUpdate: vi.fn(),
         onTimelineEvent: vi.fn(),
-        onCostUpdate: vi.fn()
+        onCostUpdate: vi.fn(),
+        interview: {
+          start: vi.fn(),
+          sendMessage: vi.fn(),
+          getSession: vi.fn(),
+          resume: vi.fn(),
+          resumeByProject: vi.fn(),
+          end: vi.fn(),
+          pause: vi.fn(),
+          getGreeting: vi.fn()
+        }
       }
 
       useMetricsStore.setState({ isLoading: false })
