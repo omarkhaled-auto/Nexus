@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactElement } from 'react';
 import { InterviewLayout, ChatPanel, RequirementsSidebar } from '@renderer/components/interview';
 import { useInterviewStore, useIsInterviewing } from '@renderer/stores/interviewStore';
 import { useInterviewPersistence } from '@renderer/hooks';
+import { AnimatedPage } from '@renderer/components/AnimatedPage';
 import { RotateCcw, Check } from 'lucide-react';
 
 /**
@@ -85,7 +86,7 @@ export default function InterviewPage(): ReactElement {
   };
 
   return (
-    <div className="h-full flex flex-col">
+    <AnimatedPage className="h-full flex flex-col">
       {/* Resume Banner */}
       {showResumeBanner && (
         <div className="flex items-center justify-between px-6 py-3 bg-violet-500/10 border-b border-violet-500/20">
@@ -156,6 +157,6 @@ export default function InterviewPage(): ReactElement {
           </button>
         </div>
       )}
-    </div>
+    </AnimatedPage>
   );
 }

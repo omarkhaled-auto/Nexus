@@ -15,6 +15,7 @@ import { Eye, EyeOff, Key, Bot, Save, RotateCcw, Sun, Moon, Monitor, Settings2, 
 import { cn } from '@renderer/lib/utils'
 import { Button } from '@renderer/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@renderer/components/ui/card'
+import { AnimatedPage } from '@renderer/components/AnimatedPage'
 import {
   useSettingsStore,
   useSettings,
@@ -600,7 +601,7 @@ export default function SettingsPage(): ReactElement {
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <AnimatedPage className="flex flex-col h-full">
       {/* Main content area */}
       <div className="flex flex-1 overflow-hidden">
         {/* Left: Vertical tabs */}
@@ -664,6 +665,6 @@ export default function SettingsPage(): ReactElement {
           Save Changes
         </Button>
       </footer>
-    </div>
+    </AnimatedPage>
   )
 }

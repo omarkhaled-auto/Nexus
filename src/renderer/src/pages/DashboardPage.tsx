@@ -7,6 +7,7 @@ import {
   TaskTimeline,
   type ProgressDataPoint
 } from '../components/dashboard'
+import { AnimatedPage } from '../components/AnimatedPage'
 import { useMetricsStore, useIsMetricsLoading, useOverview } from '../stores'
 import type {
   OverviewMetrics,
@@ -197,7 +198,7 @@ export default function DashboardPage(): ReactElement {
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div className="flex flex-col h-full p-6 gap-6 overflow-auto">
+    <AnimatedPage className="flex flex-col h-full p-6 gap-6 overflow-auto">
       {/* Header */}
       <div className="flex items-center justify-between flex-shrink-0">
         <div>
@@ -236,6 +237,6 @@ export default function DashboardPage(): ReactElement {
       <div className="flex-1 min-h-[300px]">
         <TaskTimeline height={350} />
       </div>
-    </div>
+    </AnimatedPage>
   )
 }

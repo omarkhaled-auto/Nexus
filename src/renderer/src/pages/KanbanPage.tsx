@@ -1,6 +1,7 @@
 import type { ReactElement } from 'react'
 import { useEffect } from 'react'
 import { KanbanBoard, KanbanHeader } from '@renderer/components/kanban'
+import { AnimatedPage } from '@renderer/components/AnimatedPage'
 import { useFeatureStore } from '@renderer/stores/featureStore'
 import type { Feature } from '@renderer/types/feature'
 
@@ -102,7 +103,7 @@ export default function KanbanPage(): ReactElement {
   }, [features.length, setFeatures])
 
   return (
-    <div className="flex h-full flex-col">
+    <AnimatedPage className="flex h-full flex-col">
       {/* Header - fixed at top */}
       <KanbanHeader projectName="Nexus" />
 
@@ -110,6 +111,6 @@ export default function KanbanPage(): ReactElement {
       <div className="flex-1 overflow-auto">
         <KanbanBoard />
       </div>
-    </div>
+    </AnimatedPage>
   )
 }
