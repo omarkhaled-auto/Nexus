@@ -52,7 +52,7 @@ export class SymbolExtractor {
    * @returns Unique key string
    */
   createSymbolKey(symbol: SymbolEntry): string {
-    return `${symbol.file}#${symbol.name}#${symbol.line}`;
+    return `${symbol.file}#${symbol.name}#${String(symbol.line)}`;
   }
 
   // ============================================================================

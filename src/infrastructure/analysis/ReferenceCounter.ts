@@ -383,7 +383,7 @@ export class ReferenceCounter implements IReferenceCounter {
    * Create unique key for a symbol
    */
   private createSymbolKey(symbol: SymbolEntry): string {
-    return `${symbol.file}#${symbol.name}#${symbol.line}`;
+    return `${symbol.file}#${symbol.name}#${String(symbol.line)}`;
   }
 
   /**

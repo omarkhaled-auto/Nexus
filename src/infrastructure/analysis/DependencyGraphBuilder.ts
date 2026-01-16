@@ -7,7 +7,7 @@
  * @module infrastructure/analysis/DependencyGraphBuilder
  */
 
-import { extname } from 'path';
+import { extname as _extname } from 'path';
 import { posix } from 'path';
 import type {
   IDependencyGraphBuilder,
@@ -496,13 +496,13 @@ export class DependencyGraphBuilder implements IDependencyGraphBuilder {
     if (!this.dependentsMap.has(edge.to)) {
       this.dependentsMap.set(edge.to, new Set());
     }
-    this.dependentsMap.get(edge.to)!.add(edge.from);
+    this.dependentsMap.get(edge.to)?.add(edge.from);
 
     // Update dependencies map (what does this file import)
     if (!this.dependenciesMap.has(edge.from)) {
       this.dependenciesMap.set(edge.from, new Set());
     }
-    this.dependenciesMap.get(edge.from)!.add(edge.to);
+    this.dependenciesMap.get(edge.from)?.add(edge.to);
   }
 
   /**

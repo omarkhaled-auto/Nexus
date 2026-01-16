@@ -25,13 +25,13 @@ import type {
   FormatOptions,
 } from './types';
 import { DEFAULT_REPO_MAP_OPTIONS, DEFAULT_FORMAT_OPTIONS } from './types';
-import { TreeSitterParser, getParser } from './TreeSitterParser';
-import { SymbolExtractor, getSymbolExtractor } from './SymbolExtractor';
+import { TreeSitterParser, getParser as _getParser } from './TreeSitterParser';
+import { SymbolExtractor, getSymbolExtractor as _getSymbolExtractor } from './SymbolExtractor';
 import {
   DependencyGraphBuilder,
-  getDependencyGraphBuilder,
+  getDependencyGraphBuilder as _getDependencyGraphBuilder,
 } from './DependencyGraphBuilder';
-import { ReferenceCounter, getReferenceCounter } from './ReferenceCounter';
+import { ReferenceCounter, getReferenceCounter as _getReferenceCounter } from './ReferenceCounter';
 
 /**
  * RepoMapGenerator - Main orchestrator for repository analysis
@@ -598,10 +598,10 @@ export class RepoMapGenerator implements IRepoMapGenerator {
     lines.push('# Repository Map');
     lines.push('');
     lines.push(
-      `Generated: ${repoMap.generatedAt.toISOString().split('T')[0]}`
+      `Generated: ${repoMap.generatedAt.toISOString().split('T')[0] ?? ''}`
     );
-    lines.push(`Files: ${repoMap.stats.totalFiles}`);
-    lines.push(`Symbols: ${repoMap.stats.totalSymbols}`);
+    lines.push(`Files: ${String(repoMap.stats.totalFiles)}`);
+    lines.push(`Symbols: ${String(repoMap.stats.totalSymbols)}`);
     lines.push('');
 
     // Group symbols by file
@@ -664,7 +664,7 @@ export class RepoMapGenerator implements IRepoMapGenerator {
         const indent = symbol.parentId ? '  ' : '';
         const refCount =
           options.rankByReferences && symbol.references > 0
-            ? ` (${symbol.references})`
+            ? ` (${String(symbol.references)})`
             : '';
 
         let line: string;

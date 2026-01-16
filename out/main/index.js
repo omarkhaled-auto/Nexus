@@ -1,5 +1,6 @@
-import { app, session, ipcMain, BrowserWindow, shell } from "electron";
+import { app, session, ipcMain, BrowserWindow, safeStorage, shell } from "electron";
 import { join } from "path";
+import Store from "electron-store";
 import __cjs_mod__ from "node:module";
 const __filename = import.meta.filename;
 const __dirname = import.meta.dirname;
@@ -245,10 +246,10 @@ class EventBus {
     }
   }
 }
-const ALLOWED_ORIGINS = ["http://localhost:5173", "file://"];
-function validateSender(event) {
+const ALLOWED_ORIGINS$1 = ["http://localhost:5173", "file://"];
+function validateSender$1(event) {
   const url = event.sender.getURL();
-  return ALLOWED_ORIGINS.some((origin) => url.startsWith(origin));
+  return ALLOWED_ORIGINS$1.some((origin) => url.startsWith(origin));
 }
 const state = {
   mode: null,
@@ -259,7 +260,7 @@ const state = {
 };
 function registerIpcHandlers() {
   ipcMain.handle("mode:genesis", async (event) => {
-    if (!validateSender(event)) {
+    if (!validateSender$1(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     state.mode = "genesis";
@@ -273,7 +274,7 @@ function registerIpcHandlers() {
     return { success: true, projectId };
   });
   ipcMain.handle("mode:evolution", async (event, projectId) => {
-    if (!validateSender(event)) {
+    if (!validateSender$1(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     if (typeof projectId !== "string" || !projectId) {
@@ -287,7 +288,7 @@ function registerIpcHandlers() {
     return { success: true };
   });
   ipcMain.handle("project:get", async (event, id) => {
-    if (!validateSender(event)) {
+    if (!validateSender$1(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     if (typeof id !== "string" || !id) {
@@ -302,7 +303,7 @@ function registerIpcHandlers() {
   ipcMain.handle(
     "project:create",
     async (event, input) => {
-      if (!validateSender(event)) {
+      if (!validateSender$1(event)) {
         throw new Error("Unauthorized IPC sender");
       }
       if (!input || typeof input.name !== "string" || !input.name) {
@@ -318,7 +319,7 @@ function registerIpcHandlers() {
     }
   );
   ipcMain.handle("tasks:list", async (event) => {
-    if (!validateSender(event)) {
+    if (!validateSender$1(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     return Array.from(state.tasks.values());
@@ -326,7 +327,7 @@ function registerIpcHandlers() {
   ipcMain.handle(
     "task:update",
     async (event, id, update) => {
-      if (!validateSender(event)) {
+      if (!validateSender$1(event)) {
         throw new Error("Unauthorized IPC sender");
       }
       if (typeof id !== "string" || !id) {
@@ -347,13 +348,13 @@ function registerIpcHandlers() {
     }
   );
   ipcMain.handle("agents:status", async (event) => {
-    if (!validateSender(event)) {
+    if (!validateSender$1(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     return Array.from(state.agents.values());
   });
   ipcMain.handle("execution:pause", async (event, reason) => {
-    if (!validateSender(event)) {
+    if (!validateSender$1(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     if (eventForwardingWindow && !eventForwardingWindow.isDestroyed()) {
@@ -364,7 +365,7 @@ function registerIpcHandlers() {
   ipcMain.handle(
     "interview:emit-started",
     async (event, payload) => {
-      if (!validateSender(event)) {
+      if (!validateSender$1(event)) {
         throw new Error("Unauthorized IPC sender");
       }
       const eventBus = EventBus.getInstance();
@@ -383,7 +384,7 @@ function registerIpcHandlers() {
   ipcMain.handle(
     "interview:emit-message",
     async (event, payload) => {
-      if (!validateSender(event)) {
+      if (!validateSender$1(event)) {
         throw new Error("Unauthorized IPC sender");
       }
       const eventBus = EventBus.getInstance();
@@ -403,7 +404,7 @@ function registerIpcHandlers() {
   ipcMain.handle(
     "interview:emit-requirement",
     async (event, payload) => {
-      if (!validateSender(event)) {
+      if (!validateSender$1(event)) {
         throw new Error("Unauthorized IPC sender");
       }
       const eventBus = EventBus.getInstance();
@@ -440,7 +441,7 @@ function registerIpcHandlers() {
   ipcMain.handle(
     "interview:emit-completed",
     async (event, payload) => {
-      if (!validateSender(event)) {
+      if (!validateSender$1(event)) {
         throw new Error("Unauthorized IPC sender");
       }
       const eventBus = EventBus.getInstance();
@@ -460,7 +461,7 @@ function registerIpcHandlers() {
   ipcMain.handle(
     "eventbus:emit",
     async (event, channel, payload) => {
-      if (!validateSender(event)) {
+      if (!validateSender$1(event)) {
         throw new Error("Unauthorized IPC sender");
       }
       if (typeof channel !== "string" || !channel) {
@@ -638,6 +639,299 @@ function forwardTimelineEvent(timelineEvent) {
     eventForwardingWindow.webContents.send("timeline:event", timelineEvent);
   }
 }
+const defaults = {
+  llm: {
+    defaultProvider: "claude",
+    defaultModel: "claude-sonnet-4-20250514",
+    fallbackEnabled: true,
+    fallbackOrder: ["claude", "gemini", "openai"]
+  },
+  agents: {
+    maxParallelAgents: 4,
+    taskTimeoutMinutes: 30,
+    maxRetries: 3,
+    autoRetryEnabled: true
+  },
+  checkpoints: {
+    autoCheckpointEnabled: true,
+    autoCheckpointIntervalMinutes: 15,
+    maxCheckpointsToKeep: 10,
+    checkpointOnFeatureComplete: true
+  },
+  ui: {
+    theme: "system",
+    sidebarWidth: 280,
+    showNotifications: true,
+    notificationDuration: 5e3
+  },
+  project: {
+    defaultLanguage: "typescript",
+    defaultTestFramework: "vitest",
+    outputDirectory: "./output"
+  }
+};
+const schema = {
+  llm: {
+    type: "object",
+    properties: {
+      claudeApiKeyEncrypted: { type: "string" },
+      geminiApiKeyEncrypted: { type: "string" },
+      openaiApiKeyEncrypted: { type: "string" },
+      defaultProvider: { type: "string", enum: ["claude", "gemini", "openai"] },
+      defaultModel: { type: "string" },
+      fallbackEnabled: { type: "boolean" },
+      fallbackOrder: { type: "array", items: { type: "string" } }
+    },
+    default: defaults.llm
+  },
+  agents: {
+    type: "object",
+    properties: {
+      maxParallelAgents: { type: "number", minimum: 1, maximum: 10 },
+      taskTimeoutMinutes: { type: "number", minimum: 1, maximum: 120 },
+      maxRetries: { type: "number", minimum: 0, maximum: 10 },
+      autoRetryEnabled: { type: "boolean" }
+    },
+    default: defaults.agents
+  },
+  checkpoints: {
+    type: "object",
+    properties: {
+      autoCheckpointEnabled: { type: "boolean" },
+      autoCheckpointIntervalMinutes: { type: "number", minimum: 5, maximum: 60 },
+      maxCheckpointsToKeep: { type: "number", minimum: 1, maximum: 50 },
+      checkpointOnFeatureComplete: { type: "boolean" }
+    },
+    default: defaults.checkpoints
+  },
+  ui: {
+    type: "object",
+    properties: {
+      theme: { type: "string", enum: ["light", "dark", "system"] },
+      sidebarWidth: { type: "number", minimum: 200, maximum: 500 },
+      showNotifications: { type: "boolean" },
+      notificationDuration: { type: "number", minimum: 1e3, maximum: 3e4 }
+    },
+    default: defaults.ui
+  },
+  project: {
+    type: "object",
+    properties: {
+      defaultLanguage: { type: "string" },
+      defaultTestFramework: { type: "string" },
+      outputDirectory: { type: "string" }
+    },
+    default: defaults.project
+  }
+};
+class SettingsService {
+  store;
+  constructor() {
+    this.store = new Store({
+      name: "nexus-settings",
+      schema,
+      defaults,
+      clearInvalidConfig: true
+    });
+  }
+  /**
+   * Get all settings with public view (no encrypted keys)
+   * Returns hasXxxKey booleans instead of actual encrypted values
+   */
+  getAll() {
+    const llm = this.store.get("llm");
+    const agents = this.store.get("agents");
+    const checkpoints = this.store.get("checkpoints");
+    const ui = this.store.get("ui");
+    const project = this.store.get("project");
+    return {
+      llm: {
+        defaultProvider: llm.defaultProvider,
+        defaultModel: llm.defaultModel,
+        fallbackEnabled: llm.fallbackEnabled,
+        fallbackOrder: llm.fallbackOrder,
+        hasClaudeKey: !!llm.claudeApiKeyEncrypted,
+        hasGeminiKey: !!llm.geminiApiKeyEncrypted,
+        hasOpenaiKey: !!llm.openaiApiKeyEncrypted
+      },
+      agents,
+      checkpoints,
+      ui,
+      project
+    };
+  }
+  /**
+   * Get a single setting by dot-notation path
+   * @param key - Dot-notation path (e.g., 'llm.defaultProvider')
+   * @returns The setting value or undefined
+   */
+  get(key) {
+    if (key.includes("ApiKeyEncrypted")) {
+      console.warn("Cannot access encrypted API keys via get(). Use hasApiKey() instead.");
+      return void 0;
+    }
+    return this.store.get(key);
+  }
+  /**
+   * Set a single setting by dot-notation path
+   * @param key - Dot-notation path (e.g., 'ui.theme')
+   * @param value - The value to set
+   */
+  set(key, value) {
+    if (key.includes("ApiKeyEncrypted")) {
+      console.warn("Cannot set encrypted API keys via set(). Use setApiKey() instead.");
+      return;
+    }
+    this.store.set(key, value);
+  }
+  /**
+   * Securely set an API key using OS-level encryption
+   * @param provider - The LLM provider ('claude', 'gemini', or 'openai')
+   * @param plainKey - The plain text API key
+   * @returns true if successful, false if encryption unavailable
+   */
+  setApiKey(provider, plainKey) {
+    if (!safeStorage.isEncryptionAvailable()) {
+      console.error("safeStorage encryption not available on this system");
+      return false;
+    }
+    try {
+      const encrypted = safeStorage.encryptString(plainKey);
+      const base64 = encrypted.toString("base64");
+      this.store.set(`llm.${provider}ApiKeyEncrypted`, base64);
+      return true;
+    } catch (error) {
+      console.error(`Failed to encrypt ${provider} API key:`, error);
+      return false;
+    }
+  }
+  /**
+   * Get a decrypted API key
+   * @param provider - The LLM provider
+   * @returns The decrypted API key or null if not set/unavailable
+   */
+  getApiKey(provider) {
+    if (!safeStorage.isEncryptionAvailable()) {
+      console.error("safeStorage encryption not available on this system");
+      return null;
+    }
+    const base64 = this.store.get(`llm.${provider}ApiKeyEncrypted`);
+    if (!base64) {
+      return null;
+    }
+    try {
+      const encrypted = Buffer.from(base64, "base64");
+      return safeStorage.decryptString(encrypted);
+    } catch (error) {
+      console.error(`Failed to decrypt ${provider} API key:`, error);
+      return null;
+    }
+  }
+  /**
+   * Check if an API key is set for a provider
+   * @param provider - The LLM provider
+   * @returns true if a key is stored
+   */
+  hasApiKey(provider) {
+    const key = this.store.get(`llm.${provider}ApiKeyEncrypted`);
+    return !!key;
+  }
+  /**
+   * Clear an API key for a provider
+   * @param provider - The LLM provider
+   */
+  clearApiKey(provider) {
+    this.store.delete(`llm.${provider}ApiKeyEncrypted`);
+  }
+  /**
+   * Reset all settings to defaults
+   * This also clears all API keys
+   */
+  reset() {
+    this.store.clear();
+  }
+  /**
+   * Get the path to the settings file
+   * Useful for debugging
+   */
+  getStorePath() {
+    return this.store.path;
+  }
+}
+const settingsService = new SettingsService();
+const ALLOWED_ORIGINS = ["http://localhost:5173", "file://"];
+function validateSender(event) {
+  const url = event.sender.getURL();
+  return ALLOWED_ORIGINS.some((origin) => url.startsWith(origin));
+}
+function isValidProvider(provider) {
+  return provider === "claude" || provider === "gemini" || provider === "openai";
+}
+function registerSettingsHandlers() {
+  ipcMain.handle("settings:getAll", (event) => {
+    if (!validateSender(event)) {
+      throw new Error("Unauthorized IPC sender");
+    }
+    return settingsService.getAll();
+  });
+  ipcMain.handle("settings:get", (event, key) => {
+    if (!validateSender(event)) {
+      throw new Error("Unauthorized IPC sender");
+    }
+    if (typeof key !== "string" || !key) {
+      throw new Error("Invalid settings key");
+    }
+    return settingsService.get(key);
+  });
+  ipcMain.handle("settings:set", (event, key, value) => {
+    if (!validateSender(event)) {
+      throw new Error("Unauthorized IPC sender");
+    }
+    if (typeof key !== "string" || !key) {
+      throw new Error("Invalid settings key");
+    }
+    settingsService.set(key, value);
+    return true;
+  });
+  ipcMain.handle("settings:setApiKey", (event, provider, key) => {
+    if (!validateSender(event)) {
+      throw new Error("Unauthorized IPC sender");
+    }
+    if (!isValidProvider(provider)) {
+      throw new Error("Invalid LLM provider. Must be claude, gemini, or openai.");
+    }
+    if (typeof key !== "string" || !key) {
+      throw new Error("Invalid API key");
+    }
+    return settingsService.setApiKey(provider, key);
+  });
+  ipcMain.handle("settings:hasApiKey", (event, provider) => {
+    if (!validateSender(event)) {
+      throw new Error("Unauthorized IPC sender");
+    }
+    if (!isValidProvider(provider)) {
+      throw new Error("Invalid LLM provider. Must be claude, gemini, or openai.");
+    }
+    return settingsService.hasApiKey(provider);
+  });
+  ipcMain.handle("settings:clearApiKey", (event, provider) => {
+    if (!validateSender(event)) {
+      throw new Error("Unauthorized IPC sender");
+    }
+    if (!isValidProvider(provider)) {
+      throw new Error("Invalid LLM provider. Must be claude, gemini, or openai.");
+    }
+    settingsService.clearApiKey(provider);
+    return true;
+  });
+  ipcMain.handle("settings:reset", (event) => {
+    if (!validateSender(event)) {
+      throw new Error("Unauthorized IPC sender");
+    }
+    settingsService.reset();
+    return true;
+  });
+}
 let mainWindow = null;
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -670,6 +964,7 @@ function createWindow() {
 app.whenReady().then(() => {
   electronApp.setAppUserModelId("com.nexus.app");
   registerIpcHandlers();
+  registerSettingsHandlers();
   app.on("browser-window-created", (_, window) => {
     optimizer.watchWindowShortcuts(window);
   });

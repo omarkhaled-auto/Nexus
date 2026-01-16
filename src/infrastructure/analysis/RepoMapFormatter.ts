@@ -7,7 +7,7 @@
  * @module infrastructure/analysis/RepoMapFormatter
  */
 
-import { relative, dirname, basename } from 'path';
+import { relative, basename } from 'path';
 import type {
   IRepoMapFormatter,
   RepoMap,
@@ -21,7 +21,7 @@ import { DEFAULT_FORMAT_OPTIONS } from './types';
 /**
  * Formatted symbol with display information
  */
-interface FormattedSymbol {
+interface _FormattedSymbol {
   symbol: SymbolEntry;
   prefix: string;
   displayLine: string;
@@ -203,7 +203,7 @@ export class RepoMapFormatter implements IRepoMapFormatter {
     return [
       '# Repository Map',
       '',
-      `Files: ${repoMap.stats.totalFiles} | Symbols: ${repoMap.stats.totalSymbols} | Dependencies: ${repoMap.stats.totalDependencies}`,
+      `Files: ${String(repoMap.stats.totalFiles)} | Symbols: ${String(repoMap.stats.totalSymbols)} | Dependencies: ${String(repoMap.stats.totalDependencies)}`,
       '',
     ];
   }
@@ -220,7 +220,7 @@ export class RepoMapFormatter implements IRepoMapFormatter {
     const exportMark = symbol.exported ? '\u03B5' : ''; // ε
     const indent = symbol.parentId ? '  ' : '';
     const refCount =
-      rankByReferences && symbol.references > 0 ? ` (${symbol.references})` : '';
+      rankByReferences && symbol.references > 0 ? ` (${String(symbol.references)})` : '';
 
     let content: string;
     if (includeSignatures && symbol.signature !== symbol.name) {
@@ -258,9 +258,9 @@ export class RepoMapFormatter implements IRepoMapFormatter {
     lines.push(`## Summary`);
     lines.push(`- **Project:** ${repoMap.projectPath}`);
     lines.push(`- **Generated:** ${repoMap.generatedAt.toISOString()}`);
-    lines.push(`- **Files:** ${repoMap.stats.totalFiles}`);
-    lines.push(`- **Symbols:** ${repoMap.stats.totalSymbols}`);
-    lines.push(`- **Dependencies:** ${repoMap.stats.totalDependencies}`);
+    lines.push(`- **Files:** ${String(repoMap.stats.totalFiles)}`);
+    lines.push(`- **Symbols:** ${String(repoMap.stats.totalSymbols)}`);
+    lines.push(`- **Dependencies:** ${String(repoMap.stats.totalDependencies)}`);
     lines.push('');
 
     currentTokens = this.estimateTokens(lines.join('\n'));
@@ -269,7 +269,7 @@ export class RepoMapFormatter implements IRepoMapFormatter {
     lines.push('## Symbol Breakdown');
     for (const [kind, count] of Object.entries(repoMap.stats.symbolBreakdown)) {
       if (count > 0) {
-        lines.push(`- ${kind}: ${count}`);
+        lines.push(`- ${kind}: ${String(count)}`);
       }
     }
     lines.push('');
@@ -287,7 +287,7 @@ export class RepoMapFormatter implements IRepoMapFormatter {
         if (!bySource.has(from)) {
           bySource.set(from, []);
         }
-        bySource.get(from)!.push(to);
+        bySource.get(from)?.push(to);
       }
 
       for (const [from, targets] of bySource) {
@@ -296,7 +296,7 @@ export class RepoMapFormatter implements IRepoMapFormatter {
           depLines.push(`  - \`${this.normalizePath(target)}\``);
         }
         if (targets.length > 5) {
-          depLines.push(`  - ... and ${targets.length - 5} more`);
+          depLines.push(`  - ... and ${String(targets.length - 5)} more`);
         }
       }
 
@@ -319,7 +319,7 @@ export class RepoMapFormatter implements IRepoMapFormatter {
 
       const fileHeader = [`### ${relativePath}`];
       if (fileEntry) {
-        fileHeader.push(`*${fileEntry.lineCount} lines, ${fileEntry.symbolCount} symbols*`);
+        fileHeader.push(`*${String(fileEntry.lineCount)} lines, ${String(fileEntry.symbolCount)} symbols*`);
       }
       fileHeader.push('');
 
@@ -369,7 +369,7 @@ export class RepoMapFormatter implements IRepoMapFormatter {
     const exportMark = symbol.exported ? ' (exported)' : '';
     const refCount =
       rankByReferences && symbol.references > 0
-        ? ` [refs: ${symbol.references}]`
+        ? ` [refs: ${String(symbol.references)}]`
         : '';
 
     const indent = symbol.parentId ? '  ' : '';
@@ -415,7 +415,7 @@ export class RepoMapFormatter implements IRepoMapFormatter {
     // Header
     lines.push('# Repository Map (Tree)');
     lines.push('');
-    lines.push(`${repoMap.stats.totalFiles} files, ${repoMap.stats.totalSymbols} symbols`);
+    lines.push(`${String(repoMap.stats.totalFiles)} files, ${String(repoMap.stats.totalSymbols)} symbols`);
     lines.push('');
 
     currentTokens = this.estimateTokens(lines.join('\n'));
@@ -455,7 +455,7 @@ export class RepoMapFormatter implements IRepoMapFormatter {
     for (const file of repoMap.files) {
       const relativePath = this.normalizePath(relative(repoMap.projectPath, file.path));
       const parts = relativePath.split('/');
-      const fileName = parts.pop()!;
+      const fileName = parts.pop() ?? '';
 
       // Navigate/create directory structure
       let current = root;
@@ -471,7 +471,7 @@ export class RepoMapFormatter implements IRepoMapFormatter {
             files: [],
           });
         }
-        current = current.children.get(part)!;
+        current = current.children.get(part) ?? current;
       }
 
       // Add file
@@ -519,7 +519,7 @@ export class RepoMapFormatter implements IRepoMapFormatter {
       const childPrefix = prefix + (isLastItem ? '    ' : '\u2502   '); // │
 
       if (type === 'dir') {
-        const dir = item as DirectoryNode;
+        const dir = item;
         const line = `${prefix}${connector} ${dir.name}/`;
 
         if (tokens + this.estimateTokens(line) > maxTokens) {
@@ -565,7 +565,7 @@ export class RepoMapFormatter implements IRepoMapFormatter {
             const exportMark = symbol.exported ? '\u03B5' : '';
             const refCount =
               options.rankByReferences && symbol.references > 0
-                ? ` (${symbol.references})`
+                ? ` (${String(symbol.references)})`
                 : '';
             const symbolLine = `${childPrefix}    ${symbolPrefix}${exportMark}${symbol.name}${refCount}`;
 
@@ -579,7 +579,7 @@ export class RepoMapFormatter implements IRepoMapFormatter {
           }
 
           if (topLevelSymbols.length > 10) {
-            lines.push(`${childPrefix}    ... +${topLevelSymbols.length - 10} more`);
+            lines.push(`${childPrefix}    ... +${String(topLevelSymbols.length - 10)} more`);
           }
         }
       }
@@ -675,16 +675,16 @@ export class RepoMapFormatter implements IRepoMapFormatter {
     lines.push('# Repository Statistics');
     lines.push('');
     lines.push('## Overview');
-    lines.push(`- **Total Files:** ${stats.totalFiles}`);
-    lines.push(`- **Total Symbols:** ${stats.totalSymbols}`);
-    lines.push(`- **Total Dependencies:** ${stats.totalDependencies}`);
-    lines.push(`- **Generation Time:** ${stats.generationTime}ms`);
+    lines.push(`- **Total Files:** ${String(stats.totalFiles)}`);
+    lines.push(`- **Total Symbols:** ${String(stats.totalSymbols)}`);
+    lines.push(`- **Total Dependencies:** ${String(stats.totalDependencies)}`);
+    lines.push(`- **Generation Time:** ${String(stats.generationTime)}ms`);
     lines.push('');
 
     lines.push('## Language Breakdown');
     for (const [lang, count] of Object.entries(stats.languageBreakdown)) {
       if (count > 0) {
-        lines.push(`- **${lang}:** ${count} files`);
+        lines.push(`- **${lang}:** ${String(count)} files`);
       }
     }
     lines.push('');
@@ -692,7 +692,7 @@ export class RepoMapFormatter implements IRepoMapFormatter {
     lines.push('## Symbol Breakdown');
     for (const [kind, count] of Object.entries(stats.symbolBreakdown)) {
       if (count > 0) {
-        lines.push(`- **${kind}:** ${count}`);
+        lines.push(`- **${kind}:** ${String(count)}`);
       }
     }
     lines.push('');
@@ -700,7 +700,7 @@ export class RepoMapFormatter implements IRepoMapFormatter {
     if (stats.mostReferencedSymbols.length > 0) {
       lines.push('## Most Referenced Symbols');
       for (const { name, references } of stats.mostReferencedSymbols.slice(0, 10)) {
-        lines.push(`- **${name}:** ${references} references`);
+        lines.push(`- **${name}:** ${String(references)} references`);
       }
       lines.push('');
     }
@@ -709,7 +709,7 @@ export class RepoMapFormatter implements IRepoMapFormatter {
       lines.push('## Most Connected Files');
       for (const { file, connections } of stats.mostConnectedFiles.slice(0, 10)) {
         const relativePath = relative(repoMap.projectPath, file);
-        lines.push(`- **${this.normalizePath(relativePath)}:** ${connections} connections`);
+        lines.push(`- **${this.normalizePath(relativePath)}:** ${String(connections)} connections`);
       }
       lines.push('');
     }
@@ -756,7 +756,7 @@ export class RepoMapFormatter implements IRepoMapFormatter {
       if (!byFile.has(normalizedFile)) {
         byFile.set(normalizedFile, []);
       }
-      byFile.get(normalizedFile)!.push(symbol);
+      byFile.get(normalizedFile)?.push(symbol);
     }
     return byFile;
   }
@@ -766,7 +766,7 @@ export class RepoMapFormatter implements IRepoMapFormatter {
    */
   private sortFilesByImportance(
     byFile: Map<string, SymbolEntry[]>,
-    repoMap: RepoMap
+    _repoMap: RepoMap
   ): Array<{ file: string; symbols: SymbolEntry[] }> {
     const filesWithRefs = Array.from(byFile.entries()).map(([file, symbols]) => ({
       file,
