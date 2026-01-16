@@ -196,7 +196,7 @@ export class CheckpointManager {
     // Auto-prune old checkpoints
     const pruned = this.pruneOldCheckpoints(projectId);
     if (pruned > 0) {
-      this.log('info', `Pruned ${pruned} old checkpoints for project ${projectId}`);
+      this.log('info', `Pruned ${String(pruned)} old checkpoints for project ${projectId}`);
     }
 
     // Emit event if eventBus provided
@@ -358,7 +358,7 @@ export class CheckpointManager {
 
     this.log(
       'debug',
-      `Pruned ${toDelete.length} checkpoints for project ${projectId}`
+      `Pruned ${String(toDelete.length)} checkpoints for project ${projectId}`
     );
 
     return toDelete.length;
