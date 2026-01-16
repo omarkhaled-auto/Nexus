@@ -1,7 +1,7 @@
 import { app, BrowserWindow, shell } from 'electron';
 import { join } from 'path';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
-import { registerIpcHandlers, setupEventForwarding } from './ipc';
+import { registerIpcHandlers, registerSettingsHandlers, setupEventForwarding } from './ipc';
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -46,6 +46,7 @@ app.whenReady().then(() => {
 
   // Register IPC handlers before creating window
   registerIpcHandlers();
+  registerSettingsHandlers();
 
   // Default open or close DevTools by F12 in development
   // and ignore CommandOrControl + R in production.

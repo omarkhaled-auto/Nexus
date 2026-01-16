@@ -151,6 +151,15 @@ describe('DashboardPage', () => {
         onAgentStatusUpdate: vi.fn(),
         onTimelineEvent: vi.fn(),
         onCostUpdate: vi.fn(),
+        settings: {
+          getAll: vi.fn(),
+          get: vi.fn(),
+          set: vi.fn(),
+          setApiKey: vi.fn(),
+          hasApiKey: vi.fn(),
+          clearApiKey: vi.fn(),
+          reset: vi.fn()
+        },
         interview: {
           start: vi.fn(),
           sendMessage: vi.fn(),

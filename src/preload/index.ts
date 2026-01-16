@@ -1,6 +1,7 @@
 /**
  * Preload Script - Nexus API
  * Phase 05-04: Complete IPC bridge to main process
+ * Phase 12-01: Settings API for secure settings storage
  *
  * Security:
  * - Uses contextBridge to safely expose API to renderer
@@ -12,6 +13,7 @@
 import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 import { interviewAPI } from './interview-api'
+import type { NexusSettingsPublic, LLMProvider, SettingsAPI } from '../shared/types/settings'
 
 /** Type-safe unsubscribe function */
 type Unsubscribe = () => void
@@ -359,6 +361,71 @@ const nexusAPI = {
       ipcRenderer.removeListener('costs:updated', handler)
     }
   },
+
+  // ========================================
+  // Settings API (Phase 12-01)
+  // ========================================
+
+  /**
+   * Settings operations for secure settings storage
+   */
+  settings: {
+    /**
+     * Get all settings (public view with hasXxxKey flags)
+     * @returns Promise with all settings
+     */
+    getAll: (): Promise<NexusSettingsPublic> =>
+      ipcRenderer.invoke('settings:getAll'),
+
+    /**
+     * Get a single setting by dot-notation path
+     * @param key - Setting path (e.g., 'ui.theme')
+     * @returns Promise with setting value
+     */
+    get: (key: string): Promise<unknown> =>
+      ipcRenderer.invoke('settings:get', key),
+
+    /**
+     * Set a single setting by dot-notation path
+     * @param key - Setting path (e.g., 'ui.theme')
+     * @param value - New value
+     * @returns Promise with success status
+     */
+    set: (key: string, value: unknown): Promise<boolean> =>
+      ipcRenderer.invoke('settings:set', key, value),
+
+    /**
+     * Set an API key securely (encrypted via safeStorage)
+     * @param provider - LLM provider ('claude', 'gemini', 'openai')
+     * @param key - Plain text API key
+     * @returns Promise with success status
+     */
+    setApiKey: (provider: LLMProvider, key: string): Promise<boolean> =>
+      ipcRenderer.invoke('settings:setApiKey', provider, key),
+
+    /**
+     * Check if an API key is set for a provider
+     * @param provider - LLM provider
+     * @returns Promise with boolean
+     */
+    hasApiKey: (provider: LLMProvider): Promise<boolean> =>
+      ipcRenderer.invoke('settings:hasApiKey', provider),
+
+    /**
+     * Clear an API key for a provider
+     * @param provider - LLM provider
+     * @returns Promise with success status
+     */
+    clearApiKey: (provider: LLMProvider): Promise<boolean> =>
+      ipcRenderer.invoke('settings:clearApiKey', provider),
+
+    /**
+     * Reset all settings to defaults (also clears API keys)
+     * @returns Promise with success status
+     */
+    reset: (): Promise<boolean> =>
+      ipcRenderer.invoke('settings:reset'),
+  } satisfies SettingsAPI,
 
   // ========================================
   // Interview Engine API (Phase 9)
