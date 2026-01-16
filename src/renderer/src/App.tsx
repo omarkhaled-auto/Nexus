@@ -9,6 +9,7 @@ import { Suspense, lazy } from 'react';
 const InterviewPage = lazy(() => import('./pages/InterviewPage'));
 const KanbanPage = lazy(() => import('./pages/KanbanPage'));
 const DashboardPage = lazy(() => import('./pages/DashboardPage'));
+const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 
 /**
  * Loading fallback component for lazy-loaded pages.
@@ -29,6 +30,7 @@ function PageLoader(): ReactElement {
  * - /genesis → Interview Page (Phase 6)
  * - /evolution → Kanban Page (Phase 7)
  * - /dashboard → Dashboard Page (Phase 8)
+ * - /settings → Settings Page (Phase 12)
  */
 const router = createBrowserRouter([
   {
@@ -60,6 +62,14 @@ const router = createBrowserRouter([
         element: (
           <Suspense fallback={<PageLoader />}>
             <DashboardPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'settings',
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <SettingsPage />
           </Suspense>
         ),
       },
