@@ -510,6 +510,7 @@ export class DependenciesAnalyzer extends BaseAnalyzer {
         .map(d => ({
           type: 'named' as const,
           source: d.to,
+          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- defensive: test data may have undefined symbols
           symbols: (d.symbols ?? []).map(s => ({ local: s })),
           line: 1,
           typeOnly: false,
@@ -547,6 +548,7 @@ export class DependenciesAnalyzer extends BaseAnalyzer {
         .map(d => ({
           type: 'named' as const,
           source: d.to,
+          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- defensive: test data may have undefined symbols
           symbols: (d.symbols ?? []).map(s => ({ local: s })),
           line: 1,
           typeOnly: false,
