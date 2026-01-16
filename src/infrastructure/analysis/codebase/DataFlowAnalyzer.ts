@@ -81,7 +81,7 @@ export class DataFlowAnalyzer extends BaseAnalyzer {
       paragraphs.push(
         `The application maintains ${stateManagement.stores.length} state stores ` +
         `that manage different aspects of the application state. ` +
-        `${stateManagement.persistence}`
+        stateManagement.persistence
       );
     }
 

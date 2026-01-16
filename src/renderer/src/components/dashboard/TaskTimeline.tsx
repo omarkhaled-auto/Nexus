@@ -137,7 +137,7 @@ export function TaskTimeline({ className, height = 400 }: TaskTimelineProps) {
           {FILTERS.map((f) => (
             <button
               key={f.value}
-              onClick={() => setFilter(f.value)}
+              onClick={() => { setFilter(f.value); }}
               className={cn(
                 'px-3 py-1 rounded-full text-xs font-medium transition-colors',
                 filter === f.value

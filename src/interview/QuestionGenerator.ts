@@ -134,7 +134,7 @@ export class QuestionGenerator {
     const messages: Message[] = [
       { role: 'system', content: systemPrompt },
       ...context.conversationHistory.map((msg) => ({
-        role: msg.role as 'user' | 'assistant',
+        role: msg.role,
         content: msg.content,
       })),
     ];

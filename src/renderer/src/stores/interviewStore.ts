@@ -43,7 +43,7 @@ const initialState = {
 function emitEvent<T>(method: keyof typeof window.nexusAPI, payload: T): void {
   if (typeof window !== 'undefined' && window.nexusAPI) {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const fn = window.nexusAPI[method] as (p: T) => Promise<void>
       void fn(payload)
     } catch {
@@ -55,7 +55,7 @@ function emitEvent<T>(method: keyof typeof window.nexusAPI, payload: T): void {
 export const useInterviewStore = create<InterviewState>()((set, get) => ({
   ...initialState,
 
-  setStage: (stage) => set({ stage }),
+  setStage: (stage) => { set({ stage }); },
 
   addMessage: (message) => {
     set((state) => ({
@@ -71,9 +71,9 @@ export const useInterviewStore = create<InterviewState>()((set, get) => ({
   },
 
   updateMessage: (id, updates) =>
-    set((state) => ({
+    { set((state) => ({
       messages: state.messages.map((m) => (m.id === id ? { ...m, ...updates } : m))
-    })),
+    })); },
 
   addRequirement: (requirement) => {
     set((state) => ({
@@ -90,16 +90,16 @@ export const useInterviewStore = create<InterviewState>()((set, get) => ({
   },
 
   updateRequirement: (id, updates) =>
-    set((state) => ({
+    { set((state) => ({
       requirements: state.requirements.map((r) => (r.id === id ? { ...r, ...updates } : r))
-    })),
+    })); },
 
   removeRequirement: (id) =>
-    set((state) => ({
+    { set((state) => ({
       requirements: state.requirements.filter((r) => r.id !== id)
-    })),
+    })); },
 
-  setProjectName: (name) => set({ projectName: name }),
+  setProjectName: (name) => { set({ projectName: name }); },
 
   startInterview: () => {
     const state = get()
@@ -139,12 +139,12 @@ export const useInterviewStore = create<InterviewState>()((set, get) => ({
   },
 
   reset: () =>
-    set({
+    { set({
       ...initialState,
       messages: [],
       requirements: [],
       interviewStartTime: null
-    })
+    }); }
 }))
 
 // Selector hooks for optimized re-renders

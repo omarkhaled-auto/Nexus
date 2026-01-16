@@ -11,7 +11,8 @@
  * - Clean error handling with typed exceptions
  */
 
-import { simpleGit, SimpleGit, SimpleGitOptions } from 'simple-git';
+import type { SimpleGit, SimpleGitOptions } from 'simple-git';
+import { simpleGit } from 'simple-git';
 import { normalize } from 'pathe';
 
 // ============================================================================

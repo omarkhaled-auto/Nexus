@@ -43,7 +43,7 @@ export function CategorySection({
     <div className="border-b border-border/50 last:border-b-0">
       {/* Header - clickable to toggle */}
       <button
-        onClick={() => setIsExpanded(!isExpanded)}
+        onClick={() => { setIsExpanded(!isExpanded); }}
         className={cn(
           'flex w-full items-center gap-2 px-4 py-3 text-left transition-colors',
           'hover:bg-muted/50'

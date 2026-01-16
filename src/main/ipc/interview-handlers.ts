@@ -5,7 +5,8 @@
  * Follows same pattern as existing handlers in handlers.ts.
  */
 
-import { ipcMain, IpcMainInvokeEvent } from 'electron';
+import type { IpcMainInvokeEvent } from 'electron';
+import { ipcMain } from 'electron';
 import type { InterviewEngine, InterviewSession, ProcessMessageResult } from '../../interview';
 import type { InterviewSessionManager } from '../../interview';
 

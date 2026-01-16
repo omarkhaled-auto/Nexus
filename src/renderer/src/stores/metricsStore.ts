@@ -44,38 +44,38 @@ export const useMetricsStore = create<MetricsState>()((set) => ({
   ...initialState,
 
   setOverview: (overview) =>
-    set({
+    { set({
       overview,
       lastUpdated: new Date()
-    }),
+    }); },
 
   addTimelineEvent: (event) =>
-    set((state) => ({
+    { set((state) => ({
       timeline: [event, ...state.timeline].slice(0, TIMELINE_MAX_ITEMS),
       lastUpdated: new Date()
-    })),
+    })); },
 
   updateAgentMetrics: (agentId, update) =>
-    set((state) => ({
+    { set((state) => ({
       agents: state.agents.map((agent) =>
         agent.id === agentId
           ? { ...agent, ...update, lastActivity: new Date() }
           : agent
       ),
       lastUpdated: new Date()
-    })),
+    })); },
 
-  setAgents: (agents) => set({ agents }),
+  setAgents: (agents) => { set({ agents }); },
 
   setCosts: (costs) =>
-    set({
+    { set({
       costs,
       lastUpdated: new Date()
-    }),
+    }); },
 
-  setLoading: (isLoading) => set({ isLoading }),
+  setLoading: (isLoading) => { set({ isLoading }); },
 
-  reset: () => set(initialState)
+  reset: () => { set(initialState); }
 }))
 
 // Selector hooks for optimized re-renders

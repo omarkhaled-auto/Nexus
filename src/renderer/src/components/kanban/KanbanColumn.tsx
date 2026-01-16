@@ -57,7 +57,7 @@ export function KanbanColumn({ column, features, onFeatureClick }: KanbanColumnP
             <FeatureCard
               key={feature.id}
               feature={feature}
-              onClick={onFeatureClick ? () => onFeatureClick(feature) : undefined}
+              onClick={onFeatureClick ? () => { onFeatureClick(feature); } : undefined}
             />
           ))}
         </div>

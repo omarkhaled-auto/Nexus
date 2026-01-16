@@ -22,26 +22,26 @@ export const useAgentStore = create<AgentState>()((set, get) => ({
   agents: new Map(),
 
   setAgentStatus: (status) =>
-    set((state) => {
+    { set((state) => {
       const newAgents = new Map(state.agents)
       newAgents.set(status.id, status)
       return { agents: newAgents }
-    }),
+    }); },
   updateAgent: (id, update) =>
-    set((state) => {
+    { set((state) => {
       const newAgents = new Map(state.agents)
       const existing = newAgents.get(id)
       if (existing) {
         newAgents.set(id, { ...existing, ...update })
       }
       return { agents: newAgents }
-    }),
+    }); },
   removeAgent: (id) =>
-    set((state) => {
+    { set((state) => {
       const newAgents = new Map(state.agents)
       newAgents.delete(id)
       return { agents: newAgents }
-    }),
+    }); },
   getActiveCount: () => {
     let count = 0
     get().agents.forEach((a) => {
@@ -49,8 +49,8 @@ export const useAgentStore = create<AgentState>()((set, get) => ({
     })
     return count
   },
-  clearAgents: () => set({ agents: new Map() }),
-  reset: () => set({ agents: new Map() })
+  clearAgents: () => { set({ agents: new Map() }); },
+  reset: () => { set({ agents: new Map() }); }
 }))
 
 // Selector hooks for optimized re-renders

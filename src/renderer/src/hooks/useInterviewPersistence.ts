@@ -25,10 +25,10 @@ function debounce<T extends (...args: unknown[]) => void>(
 
   const debounced = ((...args: Parameters<T>) => {
     clearTimeout(timer);
-    timer = setTimeout(() => fn(...args), delay);
+    timer = setTimeout(() => { fn(...args); }, delay);
   }) as T & { cancel: () => void };
 
-  debounced.cancel = () => clearTimeout(timer);
+  debounced.cancel = () => { clearTimeout(timer); };
 
   return debounced;
 }

@@ -97,7 +97,7 @@ export function StageProgress({
             <button
               key={stage}
               type="button"
-              onClick={() => handleStageClick(stage, index)}
+              onClick={() => { handleStageClick(stage, index); }}
               disabled={!isClickable}
               className={`
                 relative z-10 flex items-center justify-center

@@ -61,8 +61,8 @@ export function RequirementCard({ requirement, isNew = false }: RequirementCardP
         isNew && 'animate-in fade-in slide-in-from-right-2 duration-500',
         isNew && 'ring-2 ring-violet-500/50 shadow-[0_0_15px_rgba(139,92,246,0.3)]'
       )}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      onMouseEnter={() => { setIsHovered(true); }}
+      onMouseLeave={() => { setIsHovered(false); }}
     >
       {/* Category icon */}
       <div className="flex items-start gap-2">

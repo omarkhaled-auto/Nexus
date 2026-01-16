@@ -56,7 +56,7 @@ export function RequirementsSidebar(): ReactElement {
         });
       }, 2000);
 
-      return () => clearTimeout(timeout);
+      return () => { clearTimeout(timeout); };
     }
 
     prevRequirements.current = current;

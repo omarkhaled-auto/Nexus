@@ -25,19 +25,19 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
   tasks: [],
   selectedTaskId: null,
 
-  setTasks: (tasks) => set({ tasks }),
-  addTask: (task) => set((state) => ({ tasks: [...state.tasks, task] })),
+  setTasks: (tasks) => { set({ tasks }); },
+  addTask: (task) => { set((state) => ({ tasks: [...state.tasks, task] })); },
   updateTask: (id, update) =>
-    set((state) => ({
+    { set((state) => ({
       tasks: state.tasks.map((t) => (t.id === id ? { ...t, ...update } : t))
-    })),
+    })); },
   removeTask: (id) =>
-    set((state) => ({
+    { set((state) => ({
       tasks: state.tasks.filter((t) => t.id !== id)
-    })),
-  selectTask: (id) => set({ selectedTaskId: id }),
+    })); },
+  selectTask: (id) => { set({ selectedTaskId: id }); },
   getTask: (id) => get().tasks.find((t) => t.id === id),
-  reset: () => set({ tasks: [], selectedTaskId: null })
+  reset: () => { set({ tasks: [], selectedTaskId: null }); }
 }))
 
 // Selector hooks for optimized re-renders

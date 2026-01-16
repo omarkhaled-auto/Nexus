@@ -19,7 +19,7 @@
 import { join, normalize } from 'pathe';
 import fse from 'fs-extra';
 import { execaCommand } from 'execa';
-import { GitService } from './GitService';
+import type { GitService } from './GitService';
 
 // ============================================================================
 // Custom Error Types

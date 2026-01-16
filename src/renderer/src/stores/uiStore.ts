@@ -39,18 +39,18 @@ const initialState = {
 export const useUIStore = create<UIState>()((set) => ({
   ...initialState,
 
-  toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
-  setSidebar: (open) => set({ sidebarOpen: open }),
-  setLoading: (loading) => set({ isLoading: loading }),
-  setError: (error) => set({ error }),
-  clearError: () => set({ error: null }),
-  addToast: (toast) => set((state) => ({ toasts: [...state.toasts, toast] })),
+  toggleSidebar: () => { set((state) => ({ sidebarOpen: !state.sidebarOpen })); },
+  setSidebar: (open) => { set({ sidebarOpen: open }); },
+  setLoading: (loading) => { set({ isLoading: loading }); },
+  setError: (error) => { set({ error }); },
+  clearError: () => { set({ error: null }); },
+  addToast: (toast) => { set((state) => ({ toasts: [...state.toasts, toast] })); },
   removeToast: (id) =>
-    set((state) => ({
+    { set((state) => ({
       toasts: state.toasts.filter((t) => t.id !== id)
-    })),
-  setShowShortcuts: (show) => set({ showShortcuts: show }),
-  reset: () => set({ ...initialState, toasts: [], showShortcuts: false })
+    })); },
+  setShowShortcuts: (show) => { set({ showShortcuts: show }); },
+  reset: () => { set({ ...initialState, toasts: [], showShortcuts: false }); }
 }))
 
 // Selector hooks for optimized re-renders

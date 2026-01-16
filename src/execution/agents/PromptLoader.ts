@@ -124,11 +124,11 @@ export function loadPrompt(agentType: AgentType): string {
       prompt = prompt.replace(/^#\s+.*\n+/, '');
     } catch {
       // Fall back to default if read fails
-      prompt = DEFAULT_PROMPTS[agentType as keyof typeof DEFAULT_PROMPTS];
+      prompt = DEFAULT_PROMPTS[agentType];
     }
   } else {
     // Use built-in default
-    prompt = DEFAULT_PROMPTS[agentType as keyof typeof DEFAULT_PROMPTS];
+    prompt = DEFAULT_PROMPTS[agentType];
   }
 
   // Cache the result

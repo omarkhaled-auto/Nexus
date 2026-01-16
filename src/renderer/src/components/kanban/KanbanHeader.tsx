@@ -66,7 +66,7 @@ export function KanbanHeader({ projectName, onNewFeature }: KanbanHeaderProps) {
             type="text"
             placeholder="Search features..."
             value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
+            onChange={(e) => { setSearchInput(e.target.value); }}
             className="h-9 w-64 rounded-md border border-input bg-background pl-9 pr-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
           />
         </div>

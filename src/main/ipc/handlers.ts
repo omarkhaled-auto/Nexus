@@ -10,7 +10,8 @@
  * - Uses invoke pattern (request-response)
  */
 
-import { ipcMain, IpcMainInvokeEvent, BrowserWindow } from 'electron'
+import type { IpcMainInvokeEvent, BrowserWindow } from 'electron';
+import { ipcMain } from 'electron'
 import { EventBus } from '../../orchestration/events/EventBus'
 import type { CheckpointManager } from '../../persistence/checkpoints/CheckpointManager'
 import type { HumanReviewService } from '../../orchestration/review/HumanReviewService'

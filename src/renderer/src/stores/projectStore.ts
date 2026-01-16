@@ -28,11 +28,11 @@ const initialState = {
 export const useProjectStore = create<ProjectState>()((set) => ({
   ...initialState,
 
-  setProject: (project) => set({ currentProject: project }),
-  setMode: (mode) => set({ mode }),
-  addProject: (project) => set((state) => ({ projects: [...state.projects, project] })),
-  clearProject: () => set({ currentProject: null, mode: null }),
-  reset: () => set({ ...initialState, projects: [] })
+  setProject: (project) => { set({ currentProject: project }); },
+  setMode: (mode) => { set({ mode }); },
+  addProject: (project) => { set((state) => ({ projects: [...state.projects, project] })); },
+  clearProject: () => { set({ currentProject: null, mode: null }); },
+  reset: () => { set({ ...initialState, projects: [] }); }
 }))
 
 // Selector hooks for optimized re-renders

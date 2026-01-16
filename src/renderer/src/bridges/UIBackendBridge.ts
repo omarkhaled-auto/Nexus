@@ -261,7 +261,7 @@ class UIBackendBridge {
    * Cleanup subscriptions
    */
   cleanup(): void {
-    this.unsubscribers.forEach((unsub) => unsub())
+    this.unsubscribers.forEach((unsub) => { unsub(); })
     this.unsubscribers = []
     this.initialized = false
   }

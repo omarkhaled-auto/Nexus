@@ -58,7 +58,7 @@ export const useFeatureStore = create<FeatureState>()((set, get) => ({
     status: null
   },
 
-  setFeatures: (features) => set({ features }),
+  setFeatures: (features) => { set({ features }); },
 
   addFeature: (feature) => {
     set((state) => ({
@@ -85,14 +85,14 @@ export const useFeatureStore = create<FeatureState>()((set, get) => ({
   },
 
   updateFeature: (id, update) =>
-    set((state) => ({
+    { set((state) => ({
       features: state.features.map((f) => (f.id === id ? { ...f, ...update } : f))
-    })),
+    })); },
 
   removeFeature: (id) =>
-    set((state) => ({
+    { set((state) => ({
       features: state.features.filter((f) => f.id !== id)
-    })),
+    })); },
 
   moveFeature: (id, newStatus) => {
     const state = get()
@@ -144,7 +144,7 @@ export const useFeatureStore = create<FeatureState>()((set, get) => ({
   },
 
   reorderFeatures: (columnId, oldIndex, newIndex) =>
-    set((state) => {
+    { set((state) => {
       // Get features in the target column
       const columnFeatures = state.features.filter((f) => f.status === columnId)
       const otherFeatures = state.features.filter((f) => f.status !== columnId)
@@ -190,36 +190,36 @@ export const useFeatureStore = create<FeatureState>()((set, get) => ({
       }
 
       return { features: result }
-    }),
+    }); },
 
-  selectFeature: (id) => set({ selectedFeatureId: id }),
+  selectFeature: (id) => { set({ selectedFeatureId: id }); },
 
   setSearchFilter: (search) =>
-    set((state) => ({
+    { set((state) => ({
       filter: { ...state.filter, search }
-    })),
+    })); },
 
   setPriorityFilter: (priorities) =>
-    set((state) => ({
+    { set((state) => ({
       filter: { ...state.filter, priority: priorities }
-    })),
+    })); },
 
   setStatusFilter: (statuses) =>
-    set((state) => ({
+    { set((state) => ({
       filter: { ...state.filter, status: statuses }
-    })),
+    })); },
 
   clearFilters: () =>
-    set({
+    { set({
       filter: {
         search: '',
         priority: null,
         status: null
       }
-    }),
+    }); },
 
   reset: () =>
-    set({
+    { set({
       features: [],
       selectedFeatureId: null,
       filter: {
@@ -227,7 +227,7 @@ export const useFeatureStore = create<FeatureState>()((set, get) => ({
         priority: null,
         status: null
       }
-    })
+    }); }
 }))
 
 /**

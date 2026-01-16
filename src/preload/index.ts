@@ -10,7 +10,8 @@
  * - Returns unsubscribe functions for cleanup
  */
 
-import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron'
+import type { IpcRendererEvent } from 'electron';
+import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 import { interviewAPI } from './interview-api'
 import type { NexusSettingsPublic, LLMProvider, SettingsAPI } from '../shared/types/settings'

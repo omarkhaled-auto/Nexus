@@ -139,11 +139,11 @@ class SettingsService {
    * Returns hasXxxKey booleans instead of actual encrypted values
    */
   getAll(): NexusSettingsPublic {
-    const llm = this.store.get('llm') as LLMSettings
-    const agents = this.store.get('agents') as AgentSettings
-    const checkpoints = this.store.get('checkpoints') as CheckpointSettings
-    const ui = this.store.get('ui') as UISettings
-    const project = this.store.get('project') as ProjectSettings
+    const llm = this.store.get('llm')
+    const agents = this.store.get('agents')
+    const checkpoints = this.store.get('checkpoints')
+    const ui = this.store.get('ui')
+    const project = this.store.get('project')
 
     return {
       llm: {
@@ -224,7 +224,7 @@ class SettingsService {
       return null
     }
 
-    const base64 = this.store.get(`llm.${provider}ApiKeyEncrypted`) as string | undefined
+    const base64 = this.store.get(`llm.${provider}ApiKeyEncrypted`)
     if (!base64) {
       return null
     }
@@ -244,7 +244,7 @@ class SettingsService {
    * @returns true if a key is stored
    */
   hasApiKey(provider: LLMProvider): boolean {
-    const key = this.store.get(`llm.${provider}ApiKeyEncrypted`) as string | undefined
+    const key = this.store.get(`llm.${provider}ApiKeyEncrypted`)
     return !!key
   }
 

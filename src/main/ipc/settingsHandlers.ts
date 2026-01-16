@@ -6,7 +6,8 @@
  * All handlers validate sender origin for security.
  */
 
-import { ipcMain, IpcMainInvokeEvent } from 'electron'
+import type { IpcMainInvokeEvent } from 'electron';
+import { ipcMain } from 'electron'
 import { settingsService } from '../services/settingsService'
 import type { LLMProvider } from '../../shared/types/settings'
 
