@@ -610,47 +610,47 @@ Count how many times each symbol is referenced across the codebase and calculate
 ### Part A: Create ReferenceCounter Class
 Create `src/infrastructure/analysis/ReferenceCounter.ts`:
 
-- [ ] **ReferenceCounter Class**
-  - [ ] Private fields: `referenceCounts` Map, `importanceScores` Map, `symbolIndex` Map
+- [x] **ReferenceCounter Class**
+  - [x] Private fields: `referenceCounts` Map, `importanceScores` Map, `symbolIndex` Map
 
-- [ ] **count(symbols, parseResults) Method**
-  - [ ] Build symbol index for fast lookup
-  - [ ] Count references from imports in each file
-  - [ ] Update symbol.references field
-  - [ ] Return Map<symbolKey, count>
+- [x] **count(symbols, parseResults) Method**
+  - [x] Build symbol index for fast lookup
+  - [x] Count references from imports in each file
+  - [x] Update symbol.references field
+  - [x] Return Map<symbolKey, count>
 
-- [ ] **getTopReferenced(n) Method**
-  - [ ] Return top N most referenced symbols
-  - [ ] Sorted by reference count descending
+- [x] **getTopReferenced(n) Method**
+  - [x] Return top N most referenced symbols
+  - [x] Sorted by reference count descending
 
-- [ ] **calculateImportance(symbols, dependencies) Method**
-  - [ ] Implement PageRank-style algorithm
-  - [ ] Symbols referenced by important files are more important
-  - [ ] Iterate ~20 times for convergence
-  - [ ] Normalize scores to 0-1 range
-  - [ ] Return Map<symbolKey, importance>
+- [x] **calculateImportance(symbols, dependencies) Method**
+  - [x] Implement PageRank-style algorithm
+  - [x] Symbols referenced by important files are more important
+  - [x] Iterate ~20 times for convergence
+  - [x] Normalize scores to 0-1 range
+  - [x] Return Map<symbolKey, importance>
 
-- [ ] **getRankedSymbols(symbols, dependencies) Method**
-  - [ ] Calculate both reference counts and importance
-  - [ ] Return combined ranking:
+- [x] **getRankedSymbols(symbols, dependencies) Method**
+  - [x] Calculate both reference counts and importance
+  - [x] Return combined ranking:
     - RankedSymbol = { symbol, referenceCount, importanceScore, combinedScore }
-  - [ ] Combined score = 0.6 * normalized_refs + 0.4 * importance
+  - [x] Combined score = 0.6 * normalized_refs + 0.4 * importance
 
-- [ ] **getReferencingSources(symbolKey, dependencies) Method**
-  - [ ] Return list of files that reference this symbol
+- [x] **getReferencingSources(symbolKey, dependencies) Method**
+  - [x] Return list of files that reference this symbol
 
-- [ ] **getClusteringCoefficient(symbol, dependencies) Method**
-  - [ ] Calculate how interconnected referencing files are
-  - [ ] Return 0-1 coefficient
+- [x] **getClusteringCoefficient(symbol, dependencies) Method**
+  - [x] Calculate how interconnected referencing files are
+  - [x] Return 0-1 coefficient
 
-- [ ] **getReferenceCount(symbol) Method**
-  - [ ] Get reference count for a symbol
+- [x] **getReferenceCount(symbol) Method**
+  - [x] Get reference count for a symbol
 
-- [ ] **getImportanceScore(symbol) Method**
-  - [ ] Get importance score for a symbol
+- [x] **getImportanceScore(symbol) Method**
+  - [x] Get importance score for a symbol
 
-- [ ] **getStatistics(symbols) Method**
-  - [ ] Return ReferenceStatistics:
+- [x] **getStatistics(symbols) Method**
+  - [x] Return ReferenceStatistics:
     - totalReferences: number
     - averageReferences: number
     - maxReferences: number
@@ -659,28 +659,28 @@ Create `src/infrastructure/analysis/ReferenceCounter.ts`:
     - coveragePercent: number
 
 ### Part B: Export Types
-- [ ] Export `RankedSymbol` interface
-- [ ] Export `ReferenceStatistics` interface
+- [x] Export `RankedSymbol` interface
+- [x] Export `ReferenceStatistics` interface
 
 ### Part C: Create Tests
 Create `src/infrastructure/analysis/ReferenceCounter.test.ts`:
 
-- [ ] Test counting references from imports
-- [ ] Test getting top referenced symbols
-- [ ] Test importance calculation
-- [ ] Test combined ranking
-- [ ] Test finding referencing sources
-- [ ] Test statistics calculation
-- [ ] Test with empty inputs
-- [ ] Test with circular references
+- [x] Test counting references from imports
+- [x] Test getting top referenced symbols
+- [x] Test importance calculation
+- [x] Test combined ranking
+- [x] Test finding referencing sources
+- [x] Test statistics calculation
+- [x] Test with empty inputs
+- [x] Test with circular references
 
 ### Task 13-01-D Completion Checklist
-- [ ] `ReferenceCounter.ts` created (~300 lines)
-- [ ] `ReferenceCounter.test.ts` created (~100 lines)
-- [ ] All tests pass
-- [ ] TypeScript compiles
+- [x] `ReferenceCounter.ts` created (~330 lines)
+- [x] `ReferenceCounter.test.ts` created (~490 lines)
+- [x] All tests pass (31 tests)
+- [x] TypeScript compiles
 
-**[TASK 13-01-D COMPLETE]** ← Mark this when done, then proceed to Task 13-01-E
+**[TASK 13-01-D COMPLETE]** ✅ Completed on 2025-01-16
 
 ---
 
@@ -1007,7 +1007,7 @@ Complete tasks sequentially:
 - [x] `[TASK 13-01-A COMPLETE]` - Types & TreeSitter Parser Setup ✅
 - [x] `[TASK 13-01-B COMPLETE]` - Symbol Extractor ✅
 - [x] `[TASK 13-01-C COMPLETE]` - Dependency Graph Builder ✅
-- [ ] `[TASK 13-01-D COMPLETE]` - Reference Counter
+- [x] `[TASK 13-01-D COMPLETE]` - Reference Counter ✅
 - [ ] `[TASK 13-01-E COMPLETE]` - RepoMapGenerator Core
 - [ ] `[TASK 13-01-F COMPLETE]` - Formatter & Index
 - [ ] `[PLAN 13-01 COMPLETE]` - All tasks done
