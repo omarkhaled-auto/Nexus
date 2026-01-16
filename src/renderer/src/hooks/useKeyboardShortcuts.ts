@@ -25,7 +25,7 @@ export function useGlobalShortcuts(): void {
     'mod+n',
     (e) => {
       e.preventDefault()
-      navigate('/genesis')
+      void navigate('/genesis')
       toast.info('Starting new project...')
     },
     { preventDefault: true }
@@ -47,7 +47,7 @@ export function useGlobalShortcuts(): void {
     'mod+,',
     (e) => {
       e.preventDefault()
-      navigate('/settings')
+      void navigate('/settings')
     },
     { preventDefault: true }
   )
