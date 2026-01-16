@@ -10,7 +10,7 @@
 
 | Issue | Count | Main Causes |
 |-------|-------|-------------|
-| **Lint Errors** | ~~337~~ ~~257~~ ~~209~~ 175 | `no-unnecessary-condition`, `require-await`, `no-unused-vars` |
+| **Lint Errors** | ~~337~~ ~~257~~ ~~209~~ ~~175~~ 162 | `no-unnecessary-condition`, `require-await`, `no-unused-vars` |
 
 ---
 
@@ -233,6 +233,31 @@ Go through each file in `src/infrastructure/analysis/codebase/`:
 
 3. **restrict-template-expressions fixes:**
    - Fixed TaskSchemaAdapter.ts template expressions with null coalescing
+
+### Iteration 3 - More Manual Lint Fixes
+
+**Starting errors:** 175
+**Ending errors:** 162
+**Errors fixed:** 13
+
+**Changes made:**
+1. **no-unused-vars fixes:**
+   - Removed unused 'type' import from QuestionGenerator.ts
+   - Prefixed 'isFuture' with underscore in StageProgress.tsx
+   - Prefixed 'error' with underscore in WorktreeManager.ts catch block
+   - Prefixed 'options' with underscore in ClaudeCodeCLIClient.ts
+
+2. **restrict-template-expressions fixes:**
+   - Fixed CLIError template by converting code to String()
+
+3. **require-await / await-thenable fixes:**
+   - Converted checkpoint:list handler from async to sync (listCheckpoints is sync)
+   - Converted checkpoint:delete handler from async to sync (deleteCheckpoint is sync)
+   - Converted review:list handler from async to sync (listPendingReviews is sync)
+   - Converted review:get handler from async to sync (getReview is sync)
+   - Converted interview:end handler from async to sync (sessionManager.save is sync)
+   - Converted interview:pause handler from async to sync (sessionManager.save is sync)
+   - Removed await from sessionManager.load and loadByProject calls (they're sync)
 
 ### Task FIX-B Completion Checklist
 - [ ] All `no-unused-vars` errors fixed
