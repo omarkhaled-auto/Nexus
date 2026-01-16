@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-01-14)
 
 **Core value:** Enable anyone to build production-quality software by describing what they want in natural language
-**Current focus:** Phase 10 — Human Checkpoints ✓ COMPLETE
+**Current focus:** Phase 11 — Integration & Testing (In Progress)
 
 ## Current Position
 
-Phase: 10 of 12 (Human Checkpoints) ✓ COMPLETE
-Plan: 3 of 3 in current phase
-Status: Phase complete, ready for Phase 11
-Last activity: 2026-01-16 — Completed Phase 10 (3 plans, 8 tasks, 61 tests)
+Phase: 11 of 12 (Integration & Testing)
+Plan: 1 of TBD in current phase
+Status: In progress
+Last activity: 2026-01-16 — Completed 11-01-PLAN.md (Test Infrastructure Setup)
 
-Progress: █████████░ 83%
+Progress: █████████░ 84%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 37
+- Total plans completed: 38
 - Average duration: ~17 min/plan
-- Total execution time: ~10.5 hours
+- Total execution time: ~10.6 hours
 
 **By Phase:**
 
@@ -37,9 +37,10 @@ Progress: █████████░ 83%
 | 8. Dashboard UI | 4/4 | ~30min | ~8min |
 | 9. Interview Engine | 3/3 | ~1h | ~20min |
 | 10. Human Checkpoints | 3/3 | ~1h | ~20min |
+| 11. Integration & Testing | 1/TBD | ~8min | ~8min |
 
 **Recent Trend:**
-- Last 5 plans: 09-02, 09-03, 10-01, 10-02, 10-03
+- Last 5 plans: 09-03, 10-01, 10-02, 10-03, 11-01
 - Trend: Consistent execution with sequential dependency chain
 
 ## Accumulated Context
@@ -82,6 +83,8 @@ Recent decisions affecting current work:
 | 10-01 | Sessions table for review persistence | Follow existing pattern from InterviewSessionManager |
 | 10-02 | Prune on create (keep N most recent) | Prevent unbounded checkpoint growth |
 | 10-02 | setInterval + EventBus for scheduling | Time-based + event-driven checkpoint triggers |
+| 11-01 | MSW over vi.mock for API mocking | Network-level mocking more realistic than import mocking |
+| 11-01 | test.extend fixtures over beforeEach | Composable, type-safe, automatic cleanup |
 
 ### Deferred Issues
 
@@ -102,6 +105,6 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-01-16
-Stopped at: Completed Phase 10 (Human Checkpoints)
+Stopped at: Completed 11-01-PLAN.md (Test Infrastructure Setup)
 Resume file: None
-Next action: Plan Phase 11 - /gsd:plan-phase 11
+Next action: Execute next plan - /gsd:execute-plan .planning/phases/11-integration-testing/11-02-PLAN.md
