@@ -46,6 +46,7 @@ tmp/
 temp/
 *.tmp
 tmpclaude-*
+__test_output__/
 
 # Build artifacts
 *.tsbuildinfo
