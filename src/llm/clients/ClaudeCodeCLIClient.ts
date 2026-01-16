@@ -354,8 +354,8 @@ export class ClaudeCodeCLIClient implements LLMClient {
         result;
 
       const usage: TokenUsage = {
-        inputTokens: (json.inputTokens as number) ?? (json.input_tokens as number) ?? 0,
-        outputTokens: (json.outputTokens as number) ?? (json.output_tokens as number) ?? 0,
+        inputTokens: Number(json.inputTokens ?? json.input_tokens ?? 0),
+        outputTokens: Number(json.outputTokens ?? json.output_tokens ?? 0),
         totalTokens: 0,
       };
       usage.totalTokens = usage.inputTokens + usage.outputTokens;
@@ -404,9 +404,9 @@ export class ClaudeCodeCLIClient implements LLMClient {
         if (tc && typeof tc === 'object') {
           const call = tc as Record<string, unknown>;
           toolCalls.push({
-            id: (call.id as string) ?? `cli_tool_${Date.now()}`,
+            id: typeof call.id === 'string' ? call.id : `cli_tool_${Date.now()}`,
             name: call.name as string,
-            arguments: (call.arguments as Record<string, unknown>) ?? (call.input as Record<string, unknown>) ?? {},
+            arguments: (call.arguments ?? call.input ?? {}) as Record<string, unknown>,
           });
         }
       }

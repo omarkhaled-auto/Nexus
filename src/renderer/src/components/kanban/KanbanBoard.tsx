@@ -108,9 +108,11 @@ export function KanbanBoard() {
     if (!draggedFeature) return
 
     // Determine target column from drop location
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- dnd-kit sortable uses any type for containerId
+    const sortableContainerId = over.data.current?.sortable?.containerId as FeatureStatus | undefined
     const overColumnId =
       (over.data.current?.columnId as FeatureStatus | undefined) ||
-      (over.data.current?.sortable?.containerId as FeatureStatus | undefined) ||
+      sortableContainerId ||
       (over.id as FeatureStatus)
 
     // Check if dropping on a column or a feature
@@ -184,7 +186,7 @@ export function KanbanBoard() {
       <FeatureDetailModal
         feature={selectedFeature}
         open={!!selectedFeature}
-        onOpenChange={(open) => !open && setSelectedFeature(null)}
+        onOpenChange={(open) => { if (!open) setSelectedFeature(null) }}
       />
     </>
   )

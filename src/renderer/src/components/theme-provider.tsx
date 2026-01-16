@@ -21,7 +21,7 @@ export function ThemeProvider({
   storageKey = 'nexus-theme',
 }: ThemeProviderProps) {
   const [theme, setTheme] = useState<Theme>(
-    () => (localStorage.getItem(storageKey) as Theme) || defaultTheme
+    () => (localStorage.getItem(storageKey) as Theme | null) ?? defaultTheme
   );
 
   useEffect(() => {

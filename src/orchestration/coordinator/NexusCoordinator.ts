@@ -1,5 +1,10 @@
 // NexusCoordinator - Main Orchestration Loop
 // Phase 04-02: Full implementation
+//
+// Note: This file uses `any` typed external services (QALoopEngine, WorktreeManager, etc.)
+// to avoid circular dependencies. The unsafe-* lint rules are disabled for lines that
+// interact with these services.
+/* eslint-disable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument */
 
 import type {
   INexusCoordinator,
@@ -27,6 +32,7 @@ import type {
 /**
  * NexusCoordinator constructor options
  */
+/* eslint-disable @typescript-eslint/no-explicit-any -- These types come from other modules to avoid circular dependencies */
 export interface NexusCoordinatorOptions {
   taskQueue: ITaskQueue;
   agentPool: IAgentPool;
@@ -39,6 +45,7 @@ export interface NexusCoordinatorOptions {
   mergerRunner?: any; // MergerRunner for merging task branches
   agentWorktreeBridge?: any; // AgentWorktreeBridge for worktree management
 }
+/* eslint-enable @typescript-eslint/no-explicit-any */
 
 /**
  * NexusCoordinator is the main orchestration entry point.
@@ -59,11 +66,13 @@ export class NexusCoordinator implements INexusCoordinator {
   private readonly decomposer: ITaskDecomposer;
   private readonly resolver: IDependencyResolver;
   private readonly estimator: ITimeEstimator;
+  /* eslint-disable @typescript-eslint/no-explicit-any -- External service types to avoid circular dependencies */
   private readonly qaEngine: any;
   private readonly worktreeManager: any;
   private readonly checkpointManager: any;
   private readonly mergerRunner?: any;
   private readonly agentWorktreeBridge?: any;
+  /* eslint-enable @typescript-eslint/no-explicit-any */
 
   // State
   private state: CoordinatorState = 'idle';
@@ -88,11 +97,13 @@ export class NexusCoordinator implements INexusCoordinator {
     this.decomposer = options.decomposer;
     this.resolver = options.resolver;
     this.estimator = options.estimator;
+    /* eslint-disable @typescript-eslint/no-unsafe-assignment -- any-typed services from options */
     this.qaEngine = options.qaEngine;
     this.worktreeManager = options.worktreeManager;
     this.checkpointManager = options.checkpointManager;
     this.mergerRunner = options.mergerRunner;
     this.agentWorktreeBridge = options.agentWorktreeBridge;
+    /* eslint-enable @typescript-eslint/no-unsafe-assignment */
   }
 
   /**
@@ -267,6 +278,7 @@ export class NexusCoordinator implements INexusCoordinator {
    * Create a checkpoint for later resumption
    */
   async createCheckpoint(name?: string): Promise<Checkpoint> {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- checkpointManager is any-typed
     const checkpoint = await this.checkpointManager.create({
       name,
       projectId: this.projectConfig?.projectId,
@@ -308,7 +320,10 @@ export class NexusCoordinator implements INexusCoordinator {
    */
   private async runOrchestrationLoop(): Promise<void> {
     try {
-      const config = this.projectConfig!;
+      if (!this.projectConfig) {
+        throw new Error('Project configuration not initialized');
+      }
+      const config = this.projectConfig;
 
       // HOTFIX #5 - Issue 4: Genesis/Evolution mode branching
       // Different modes have different decomposition strategies
@@ -346,10 +361,9 @@ export class NexusCoordinator implements INexusCoordinator {
         this.emitEvent('wave:started', { waveId: waveIndex });
 
         const wave = this.waves[waveIndex];
-        if (wave) {
-          await this.processWave(wave);
-        }
+        await this.processWave(wave);
 
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- stopRequested can be mutated during processWave
         if (!this.stopRequested) {
           this.emitEvent('wave:completed', { waveId: waveIndex });
 
@@ -382,6 +396,7 @@ export class NexusCoordinator implements INexusCoordinator {
       this.emitEvent('orchestration:mode', { mode: 'genesis', reason: 'Full decomposition from requirements' });
 
       for (const feature of features) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Feature type mismatch with decomposer
         const tasks = await this.decomposer.decompose(feature as any);
         allTasks.push(...tasks);
       }
@@ -402,6 +417,7 @@ export class NexusCoordinator implements INexusCoordinator {
           updatedAt: new Date(),
           projectId: config.projectId,
         };
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Mock feature type mismatch with decomposer
         const tasks = await this.decomposer.decompose(mockFeature as any);
         allTasks.push(...tasks);
       }
@@ -413,6 +429,7 @@ export class NexusCoordinator implements INexusCoordinator {
       // TODO: In future, implement analyzeExistingCode() to understand current state
       // For now, use same decomposition but flag for evolution-aware handling
       for (const feature of features) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Feature type mismatch with decomposer
         const tasks = await this.decomposer.decompose(feature as any);
 
         // Tag tasks as evolution-mode for downstream handling
@@ -471,9 +488,11 @@ export class NexusCoordinator implements INexusCoordinator {
         // Wait for all running tasks to complete
         await Promise.all(runningTasks.values());
         // Wait for resume
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- pauseRequested/stopRequested are mutated asynchronously
         while (this.pauseRequested && !this.stopRequested) {
           await new Promise(resolve => setTimeout(resolve, 50));
         }
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- stopRequested can be set during pause wait
         if (this.stopRequested) break;
       }
 
@@ -489,6 +508,7 @@ export class NexusCoordinator implements INexusCoordinator {
 
       // Try to assign tasks to agents
       for (const _task of waveReadyTasks) {
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- stopRequested/pauseRequested mutated asynchronously
         if (this.stopRequested || this.pauseRequested) break;
 
         // Check if we have an available agent or can spawn one
@@ -514,7 +534,9 @@ export class NexusCoordinator implements INexusCoordinator {
         // Create worktree for isolation
         let worktreePath: string | undefined;
         try {
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- worktreeManager is any-typed
           const worktree = await this.worktreeManager.createWorktree(dequeuedTask.id);
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- worktree.path is any
           worktreePath = worktree.path;
         } catch {
           // Continue without worktree
@@ -529,7 +551,7 @@ export class NexusCoordinator implements INexusCoordinator {
         runningTasks.set(dequeuedTask.id, taskPromise);
 
         // Remove from running when complete
-        taskPromise.finally(() => {
+        void taskPromise.finally(() => {
           runningTasks.delete(dequeuedTask.id);
         });
       }
@@ -555,6 +577,7 @@ export class NexusCoordinator implements INexusCoordinator {
 
     try {
       // Run QA loop
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- qaEngine is any-typed
       const result = await this.qaEngine.run(
         {
           id: task.id,

@@ -16,7 +16,7 @@ import { ensureDirSync } from 'fs-extra';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-async function main(): Promise<void> {
+function main(): void {
   const dbPath = process.env.DATABASE_PATH || './data/nexus.db';
   const migrationsDir = join(__dirname, '../persistence/database/migrations');
 
@@ -33,13 +33,13 @@ async function main(): Promise<void> {
   console.log('Running migrations...');
 
   try {
-    const client = await DatabaseClient.create({
+    const client = DatabaseClient.create({
       path: dbPath,
       migrationsDir,
     });
 
     // Get health status
-    const health = await client.health();
+    const health = client.health();
 
     console.log('');
     console.log('Migration complete!');
@@ -68,7 +68,4 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch((error: unknown) => {
-  console.error('Unexpected error:', error);
-  process.exit(1);
-});
+main();

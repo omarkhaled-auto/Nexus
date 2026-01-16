@@ -71,12 +71,12 @@ export class DatabaseClient {
    * @param options - Configuration options
    * @returns Initialized DatabaseClient
    */
-  static async create(options: DatabaseClientOptions): Promise<DatabaseClient> {
+  static create(options: DatabaseClientOptions): DatabaseClient {
     const client = new DatabaseClient(options);
 
     // Run migrations if directory provided
     if (options.migrationsDir) {
-      await client.migrate(options.migrationsDir);
+      client.migrate(options.migrationsDir);
     }
 
     return client;
@@ -88,7 +88,7 @@ export class DatabaseClient {
    * @param migrationsDir - Optional migrations directory
    * @returns In-memory DatabaseClient
    */
-  static async createInMemory(migrationsDir?: string): Promise<DatabaseClient> {
+  static createInMemory(migrationsDir?: string): DatabaseClient {
     return DatabaseClient.create({
       path: ':memory:',
       migrationsDir,
@@ -145,7 +145,7 @@ export class DatabaseClient {
    *
    * @returns Health status object
    */
-  async health(): Promise<DatabaseHealthStatus> {
+  health(): DatabaseHealthStatus {
     try {
       // Test basic connectivity
       this.sqlite.prepare('SELECT 1').get();
@@ -155,7 +155,7 @@ export class DatabaseClient {
         journal_mode: string;
       }[];
       const walMode =
-        journalMode[0]?.journal_mode?.toLowerCase() === 'wal';
+        journalMode[0]?.journal_mode.toLowerCase() === 'wal';
 
       // Check foreign keys
       const foreignKeys = this.sqlite.pragma('foreign_keys') as {
@@ -164,7 +164,7 @@ export class DatabaseClient {
       const foreignKeysEnabled = foreignKeys[0]?.foreign_keys === 1;
 
       // Get tables
-      const tables = await this.tables();
+      const tables = this.tables();
 
       return {
         healthy: true,

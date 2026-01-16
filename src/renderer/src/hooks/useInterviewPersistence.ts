@@ -97,7 +97,7 @@ export function useInterviewPersistence() {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (!saved) return null;
 
-      const state: SavedDraft = JSON.parse(saved);
+      const state = JSON.parse(saved) as SavedDraft;
 
       // Check if draft has expired
       const savedAt = new Date(state.savedAt);

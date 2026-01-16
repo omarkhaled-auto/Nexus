@@ -196,7 +196,7 @@ export default function DashboardPage(): ReactElement {
 
     // Mark loading complete (whether demo or real data)
     setLoading(false)
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [])
 
   return (
     <AnimatedPage className="flex flex-col h-full p-6 gap-6 overflow-auto">

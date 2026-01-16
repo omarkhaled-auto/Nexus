@@ -14,7 +14,7 @@ export function RootLayout(): ReactElement {
 
   useEffect(() => {
     // Initialize bridge when app loads
-    uiBackendBridge.initialize().catch(console.error);
+    uiBackendBridge.initialize();
 
     return () => {
       uiBackendBridge.cleanup();

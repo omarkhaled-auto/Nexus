@@ -47,7 +47,8 @@ export class TaskQueue implements ITaskQueue {
     if (!this.waveIndex.has(wave)) {
       this.waveIndex.set(wave, new Set());
     }
-    this.waveIndex.get(wave)!.add(queuedTask.id);
+    const waveSet = this.waveIndex.get(wave);
+    if (waveSet) waveSet.add(queuedTask.id);
   }
 
   /**

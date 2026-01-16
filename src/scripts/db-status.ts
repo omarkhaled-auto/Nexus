@@ -12,7 +12,7 @@
 import { DatabaseClient } from '../persistence/database/DatabaseClient';
 import { existsSync } from 'fs-extra';
 
-async function main(): Promise<void> {
+function main(): void {
   const dbPath = process.env.DATABASE_PATH || './data/nexus.db';
 
   console.log('========================================');
@@ -30,11 +30,11 @@ async function main(): Promise<void> {
   }
 
   try {
-    const client = await DatabaseClient.create({
+    const client = DatabaseClient.create({
       path: dbPath,
     });
 
-    const health = await client.health();
+    const health = client.health();
 
     console.log('');
     console.log('Connection: OK');
@@ -65,7 +65,4 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch((error: unknown) => {
-  console.error('Unexpected error:', error);
-  process.exit(1);
-});
+main();

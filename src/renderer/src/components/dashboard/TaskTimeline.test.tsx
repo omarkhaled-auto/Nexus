@@ -204,7 +204,9 @@ describe('TaskTimeline', () => {
       useMetricsStore.getState().addTimelineEvent(createTestEvent())
       render(<TaskTimeline />)
 
-      const listContainer = screen.getByTestId('virtuoso-list').parentElement!
+      const virtuosoList = screen.getByTestId('virtuoso-list')
+      const listContainer = virtuosoList.parentElement
+      if (!listContainer) throw new Error('Parent element not found')
       fireEvent.mouseEnter(listContainer)
 
       expect(screen.getByText('Auto-scroll paused')).toBeInTheDocument()
@@ -214,7 +216,9 @@ describe('TaskTimeline', () => {
       useMetricsStore.getState().addTimelineEvent(createTestEvent())
       render(<TaskTimeline />)
 
-      const listContainer = screen.getByTestId('virtuoso-list').parentElement!
+      const virtuosoList = screen.getByTestId('virtuoso-list')
+      const listContainer = virtuosoList.parentElement
+      if (!listContainer) throw new Error('Parent element not found')
       fireEvent.mouseEnter(listContainer)
       fireEvent.mouseLeave(listContainer)
 

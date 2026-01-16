@@ -510,7 +510,7 @@ export class DependenciesAnalyzer extends BaseAnalyzer {
         .map(d => ({
           type: 'named' as const,
           source: d.to,
-          symbols: d.symbols.map(s => ({ local: s })),
+          symbols: (d.symbols ?? []).map(s => ({ local: s })),
           line: 1,
           typeOnly: false,
         })),
@@ -547,7 +547,7 @@ export class DependenciesAnalyzer extends BaseAnalyzer {
         .map(d => ({
           type: 'named' as const,
           source: d.to,
-          symbols: d.symbols.map(s => ({ local: s })),
+          symbols: (d.symbols ?? []).map(s => ({ local: s })),
           line: 1,
           typeOnly: false,
         })),

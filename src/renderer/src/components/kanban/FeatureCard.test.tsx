@@ -108,6 +108,7 @@ describe('FeatureCard', () => {
   it('does not show QA iterations when undefined', () => {
     const feature = createTestFeature()
     // Ensure qaIterations is undefined
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access -- test needs to delete optional property
     delete (feature as any).qaIterations
     render(<FeatureCard feature={feature} />)
     expect(screen.queryByText(/QA:/)).not.toBeInTheDocument()

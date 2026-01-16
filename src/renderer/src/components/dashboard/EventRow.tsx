@@ -53,7 +53,8 @@ export interface EventRowProps {
  */
 export function EventRow({ event, className }: EventRowProps) {
   const { type, title, timestamp, metadata } = event
-  const iconConfig = EVENT_ICONS[type] || { icon: AlertCircle, className: 'text-muted-foreground' }
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- type may have unknown value at runtime
+  const iconConfig = EVENT_ICONS[type] ?? { icon: AlertCircle, className: 'text-muted-foreground' }
   const Icon = iconConfig.icon
 
   return (
@@ -75,7 +76,7 @@ export function EventRow({ event, className }: EventRowProps) {
       <span className="flex-1 text-sm truncate">{title}</span>
 
       {/* Agent name if present */}
-      {metadata?.agentId && (
+      {metadata.agentId && (
         <span className="text-xs text-muted-foreground flex-shrink-0">
           {formatAgentName(metadata.agentId)}
         </span>
