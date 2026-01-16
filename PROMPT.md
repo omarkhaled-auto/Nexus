@@ -10,7 +10,7 @@
 
 | Issue | Count | Main Causes |
 |-------|-------|-------------|
-| **Lint Errors** | ~~337~~ ~~257~~ ~~209~~ ~~175~~ ~~162~~ ~~144~~ ~~116~~ 99 | `no-unnecessary-condition`, `no-unsafe-member-access`, `no-explicit-any` |
+| **Lint Errors** | ~~337~~ ~~257~~ ~~209~~ ~~175~~ ~~162~~ ~~144~~ ~~116~~ ~~99~~ 78 | `no-unnecessary-condition`, `no-unsafe-member-access`, `no-explicit-any` |
 
 ---
 
@@ -370,6 +370,27 @@ Go through each file in `src/infrastructure/analysis/codebase/`:
 | `no-floating-promises` | ~6 |
 | `no-unsafe-call` | ~8 |
 | Other | ~16 |
+
+### Iteration 7 - Infrastructure Lint Fixes (Committed)
+
+**Starting errors:** 99
+**Ending errors:** 78
+**Errors fixed:** 21
+
+**Changes made:**
+1. **GitService.ts:**
+   - Removed unnecessary optional chains (`options?.ref1 && options?.ref2` → `options?.ref1 && options.ref2`)
+   - Fixed no-base-to-string error by casting and using JSON.stringify for conflict objects
+
+2. **WorktreeManager.ts:**
+   - Added eslint-disable for intentional `while(true)` lock acquisition loop
+   - Typed JSON.parse result to avoid unsafe any assignments
+   - Added eslint-disable for dynamic delete (registry uses dynamic task IDs)
+   - Removed unused `_error` variable in catch block
+
+3. **ProcessRunner.ts:**
+   - Added `void` before `this.killProcess(pid)` calls in setTimeout callbacks
+   - Added eslint-disable comments for timeout-related conditions (can be set asynchronously)
 
 ### Task FIX-B Completion Checklist
 - [ ] All `no-unused-vars` errors fixed
