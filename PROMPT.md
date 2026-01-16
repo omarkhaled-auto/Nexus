@@ -516,56 +516,56 @@ Build a dependency graph from import/export relationships between files.
 ### Part A: Create DependencyGraphBuilder Class
 Create `src/infrastructure/analysis/DependencyGraphBuilder.ts`:
 
-- [ ] **DependencyGraphBuilder Class**
-  - [ ] Private fields: `edges`, `dependentsMap`, `dependenciesMap`, `fileAliases`
+- [x] **DependencyGraphBuilder Class**
+  - [x] Private fields: `edges`, `dependentsMap`, `dependenciesMap`, `fileAliases`
 
-- [ ] **build(parseResults, projectPath) Method**
-  - [ ] Reset internal state
-  - [ ] Collect all file paths for resolution
-  - [ ] For each parse result, process imports and re-exports
-  - [ ] Create DependencyEdge for each valid import
-  - [ ] Skip external modules (npm packages)
-  - [ ] Return array of DependencyEdge
+- [x] **build(parseResults, projectPath) Method**
+  - [x] Reset internal state
+  - [x] Collect all file paths for resolution
+  - [x] For each parse result, process imports and re-exports
+  - [x] Create DependencyEdge for each valid import
+  - [x] Skip external modules (npm packages)
+  - [x] Return array of DependencyEdge
 
-- [ ] **resolveImport(importPath, fromFile, projectPath) Method**
-  - [ ] Handle relative imports (`./`, `../`)
-  - [ ] Handle path aliases (`@/` → `src/`)
-  - [ ] Resolve to absolute path
-  - [ ] Try extensions: .ts, .tsx, .js, .jsx
-  - [ ] Try index files: index.ts, index.tsx, etc.
-  - [ ] Return resolved path or null
+- [x] **resolveImport(importPath, fromFile, projectPath) Method**
+  - [x] Handle relative imports (`./`, `../`)
+  - [x] Handle path aliases (`@/` → `src/`)
+  - [x] Resolve to absolute path
+  - [x] Try extensions: .ts, .tsx, .js, .jsx
+  - [x] Try index files: index.ts, index.tsx, etc.
+  - [x] Return resolved path or null
 
-- [ ] **isExternalModule(source) Private Method**
-  - [ ] Return true if module is from npm (not starting with `.` or `/`)
-  - [ ] Handle scoped packages (`@scope/package`)
+- [x] **isExternalModule(source) Private Method**
+  - [x] Return true if module is from npm (not starting with `.` or `/`)
+  - [x] Handle scoped packages (`@scope/package`)
 
-- [ ] **registerAlias(alias, target) Method**
-  - [ ] Register custom path aliases
-  - [ ] Used for tsconfig paths support
+- [x] **registerAlias(alias, target) Method**
+  - [x] Register custom path aliases
+  - [x] Used for tsconfig paths support
 
-- [ ] **getDependents(filePath) Method**
-  - [ ] Return files that import the given file
+- [x] **getDependents(filePath) Method**
+  - [x] Return files that import the given file
 
-- [ ] **getDependencies(filePath) Method**
-  - [ ] Return files that the given file imports
+- [x] **getDependencies(filePath) Method**
+  - [x] Return files that the given file imports
 
-- [ ] **getEdgesForFile(filePath) Method**
-  - [ ] Return all edges involving the file (in or out)
+- [x] **getEdgesForFile(filePath) Method**
+  - [x] Return all edges involving the file (in or out)
 
-- [ ] **findCircularDependencies() Method**
-  - [ ] Use DFS to find cycles in dependency graph
-  - [ ] Return array of cycles (each cycle is string[])
+- [x] **findCircularDependencies() Method**
+  - [x] Use DFS to find cycles in dependency graph
+  - [x] Return array of cycles (each cycle is string[])
 
-- [ ] **getSortedByConnections() Method**
-  - [ ] Return files sorted by total connection count (most connected first)
-  - [ ] Return Array<{ file: string; connections: number }>
+- [x] **getSortedByConnections() Method**
+  - [x] Return files sorted by total connection count (most connected first)
+  - [x] Return Array<{ file: string; connections: number }>
 
-- [ ] **calculateDepth(filePath) Method**
-  - [ ] Calculate longest dependency chain from file
-  - [ ] Used for understanding module depth
+- [x] **calculateDepth(filePath) Method**
+  - [x] Calculate longest dependency chain from file
+  - [x] Used for understanding module depth
 
-- [ ] **getStatistics() Method**
-  - [ ] Return DependencyGraphStats:
+- [x] **getStatistics() Method**
+  - [x] Return DependencyGraphStats:
     - totalFiles: number
     - totalEdges: number
     - edgesByType: Record<DependencyType, number>
@@ -573,30 +573,30 @@ Create `src/infrastructure/analysis/DependencyGraphBuilder.ts`:
     - mostConnectedFiles: Array<{ file, connections }>
 
 ### Part B: Export Types
-- [ ] Export `DependencyGraphStats` interface
+- [x] Export `DependencyGraphStats` interface (already in types.ts)
 
 ### Part C: Create Tests
 Create `src/infrastructure/analysis/DependencyGraphBuilder.test.ts`:
 
-- [ ] Test building graph from parse results
-- [ ] Test resolving relative imports
-- [ ] Test resolving with extensions
-- [ ] Test resolving index files
-- [ ] Test detecting external modules
-- [ ] Test path alias registration and resolution
-- [ ] Test getting dependents
-- [ ] Test getting dependencies
-- [ ] Test finding circular dependencies
-- [ ] Test sorting by connections
-- [ ] Test statistics calculation
+- [x] Test building graph from parse results
+- [x] Test resolving relative imports
+- [x] Test resolving with extensions
+- [x] Test resolving index files
+- [x] Test detecting external modules
+- [x] Test path alias registration and resolution
+- [x] Test getting dependents
+- [x] Test getting dependencies
+- [x] Test finding circular dependencies
+- [x] Test sorting by connections
+- [x] Test statistics calculation
 
 ### Task 13-01-C Completion Checklist
-- [ ] `DependencyGraphBuilder.ts` created (~350-400 lines)
-- [ ] `DependencyGraphBuilder.test.ts` created (~150 lines)
-- [ ] All tests pass
-- [ ] TypeScript compiles
+- [x] `DependencyGraphBuilder.ts` created (~560 lines)
+- [x] `DependencyGraphBuilder.test.ts` created (~775 lines)
+- [x] All tests pass (33 tests)
+- [x] TypeScript compiles
 
-**[TASK 13-01-C COMPLETE]** ← Mark this when done, then proceed to Task 13-01-D
+**[TASK 13-01-C COMPLETE]** ✅ Completed on 2025-01-16
 
 ---
 
@@ -1006,7 +1006,7 @@ Complete tasks sequentially:
 
 - [x] `[TASK 13-01-A COMPLETE]` - Types & TreeSitter Parser Setup ✅
 - [x] `[TASK 13-01-B COMPLETE]` - Symbol Extractor ✅
-- [ ] `[TASK 13-01-C COMPLETE]` - Dependency Graph Builder
+- [x] `[TASK 13-01-C COMPLETE]` - Dependency Graph Builder ✅
 - [ ] `[TASK 13-01-D COMPLETE]` - Reference Counter
 - [ ] `[TASK 13-01-E COMPLETE]` - RepoMapGenerator Core
 - [ ] `[TASK 13-01-F COMPLETE]` - Formatter & Index
