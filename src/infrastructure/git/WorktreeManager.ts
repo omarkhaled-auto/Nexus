@@ -214,7 +214,7 @@ export class WorktreeManager {
         await fse.writeFile(this.lockPath, String(process.pid), { flag: 'wx' });
         this.isLocked = true;
         return;
-      } catch (error) {
+      } catch (_error) {
         // Lock file exists, check timeout
         if (Date.now() - startTime > LOCK_TIMEOUT) {
           // Force acquire lock if timeout exceeded (stale lock)

@@ -90,7 +90,7 @@ export function StageProgress({
         {STAGES.map((stage, index) => {
           const isCompleted = index < currentIndex;
           const isCurrent = index === currentIndex;
-          const isFuture = index > currentIndex;
+          const _isFuture = index > currentIndex;
           const isClickable = allowBackNavigation && isCompleted;
 
           return (

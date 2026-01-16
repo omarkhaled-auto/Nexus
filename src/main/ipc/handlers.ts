@@ -72,7 +72,7 @@ export function registerCheckpointReviewHandlers(
   // Checkpoint Handlers (Phase 10)
   // ========================================
 
-  ipcMain.handle('checkpoint:list', async (event, projectId: string) => {
+  ipcMain.handle('checkpoint:list', (event, projectId: string) => {
     if (!validateSender(event)) {
       throw new Error('Unauthorized IPC sender')
     }
@@ -123,7 +123,7 @@ export function registerCheckpointReviewHandlers(
     }
   )
 
-  ipcMain.handle('checkpoint:delete', async (event, checkpointId: string) => {
+  ipcMain.handle('checkpoint:delete', (event, checkpointId: string) => {
     if (!validateSender(event)) {
       throw new Error('Unauthorized IPC sender')
     }
@@ -134,14 +134,14 @@ export function registerCheckpointReviewHandlers(
       throw new Error('CheckpointManager not initialized')
     }
 
-    await checkpointManagerRef.deleteCheckpoint(checkpointId)
+    checkpointManagerRef.deleteCheckpoint(checkpointId)
   })
 
   // ========================================
   // Review Handlers (Phase 10)
   // ========================================
 
-  ipcMain.handle('review:list', async (event) => {
+  ipcMain.handle('review:list', (event) => {
     if (!validateSender(event)) {
       throw new Error('Unauthorized IPC sender')
     }
@@ -152,7 +152,7 @@ export function registerCheckpointReviewHandlers(
     return humanReviewServiceRef.listPendingReviews()
   })
 
-  ipcMain.handle('review:get', async (event, reviewId: string) => {
+  ipcMain.handle('review:get', (event, reviewId: string) => {
     if (!validateSender(event)) {
       throw new Error('Unauthorized IPC sender')
     }

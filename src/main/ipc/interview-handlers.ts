@@ -106,7 +106,7 @@ export function registerInterviewHandlers(
         throw new Error('Invalid sessionId');
       }
 
-      const session = await sessionManager.load(sessionId);
+      const session = sessionManager.load(sessionId);
       if (session) {
         sessionManager.startAutoSave(session);
       }
@@ -127,7 +127,7 @@ export function registerInterviewHandlers(
         throw new Error('Invalid projectId');
       }
 
-      const session = await sessionManager.loadByProject(projectId);
+      const session = sessionManager.loadByProject(projectId);
       if (session) {
         sessionManager.startAutoSave(session);
       }
@@ -140,7 +140,7 @@ export function registerInterviewHandlers(
   // ========================================
   ipcMain.handle(
     'interview:end',
-    async (event, sessionId: string): Promise<void> => {
+    (event, sessionId: string): void => {
       if (!validateSender(event)) {
         throw new Error('Unauthorized IPC sender');
       }
@@ -153,7 +153,7 @@ export function registerInterviewHandlers(
 
       const session = interviewEngine.getSession(sessionId);
       if (session) {
-        await sessionManager.save(session);
+        sessionManager.save(session);
       }
     }
   );
@@ -163,7 +163,7 @@ export function registerInterviewHandlers(
   // ========================================
   ipcMain.handle(
     'interview:pause',
-    async (event, sessionId: string): Promise<void> => {
+    (event, sessionId: string): void => {
       if (!validateSender(event)) {
         throw new Error('Unauthorized IPC sender');
       }
@@ -176,7 +176,7 @@ export function registerInterviewHandlers(
 
       const session = interviewEngine.getSession(sessionId);
       if (session) {
-        await sessionManager.save(session);
+        sessionManager.save(session);
       }
     }
   );

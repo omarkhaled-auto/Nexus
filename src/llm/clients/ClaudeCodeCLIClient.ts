@@ -293,7 +293,7 @@ export class ClaudeCodeCLIClient implements LLMClient {
           this.config.logger?.debug('Claude CLI completed successfully');
           resolve(stdout);
         } else {
-          reject(new CLIError(`Claude CLI exited with code ${code}: ${stderr}`, code));
+          reject(new CLIError(`Claude CLI exited with code ${String(code)}: ${stderr}`, code));
         }
       });
 
@@ -342,7 +342,7 @@ export class ClaudeCodeCLIClient implements LLMClient {
   /**
    * Parse CLI output to LLMResponse.
    */
-  private parseResponse(result: string, options?: ChatOptions): LLMResponse {
+  private parseResponse(result: string, _options?: ChatOptions): LLMResponse {
     try {
       // Try to parse as JSON first (if --output-format json was used)
       const json = JSON.parse(result) as Record<string, unknown>;

@@ -9,7 +9,7 @@
 
 import type { LLMClient, Message, ChatOptions } from '../llm';
 import type { ExtractedRequirement } from './types';
-import { INTERVIEWER_SYSTEM_PROMPT, STANDARD_AREAS, type, getGapSuggestionPrompt } from './prompts/interviewer';
+import { INTERVIEWER_SYSTEM_PROMPT, STANDARD_AREAS, getGapSuggestionPrompt } from './prompts/interviewer';
 
 /**
  * Logger interface for optional logging
