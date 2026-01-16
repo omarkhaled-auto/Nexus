@@ -434,20 +434,26 @@ export class InterviewEngine {
    * Emit requirement captured event
    */
   private emitRequirementEvent(session: InterviewSession, requirement: ExtractedRequirement): void {
-    // Create a Requirement-like object for the event
+    // Map category to RequirementsDB format
+    const mappedCategory = CATEGORY_MAPPING[requirement.category] || 'functional';
+
+    // Create a Requirement object for the event
     this.eventBus.emit('interview:requirement-captured', {
       projectId: session.projectId,
       requirement: {
         id: requirement.id,
         projectId: session.projectId,
-        category: requirement.category,
+        category: mappedCategory,
         description: requirement.text,
         priority: requirement.priority,
-        status: 'draft',
         source: `interview:${session.id}`,
+        userStories: [],
+        acceptanceCriteria: [],
         linkedFeatures: [],
+        validated: false,
+        confidence: requirement.confidence,
+        tags: requirement.area ? [requirement.area] : [],
         createdAt: new Date(),
-        updatedAt: new Date(),
       },
     });
   }

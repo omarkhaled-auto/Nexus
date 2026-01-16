@@ -99,6 +99,7 @@ export class RequirementExtractor {
 
     while ((match = requirementRegex.exec(responseText)) !== null) {
       const block = match[1];
+      if (!block) continue;
       const parsed = this.parseRequirementBlock(block, sourceMessageId);
 
       if (parsed) {
@@ -182,7 +183,7 @@ export class RequirementExtractor {
   private extractTag(content: string, tag: string): string | null {
     const regex = new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`);
     const match = content.match(regex);
-    return match ? match[1].trim() : null;
+    return match?.[1] ? match[1].trim() : null;
   }
 
   /**
