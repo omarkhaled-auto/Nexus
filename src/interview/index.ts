@@ -34,6 +34,9 @@ export type {
   ProcessMessageResult,
 } from './InterviewEngine';
 
+export { InterviewSessionManager } from './InterviewSessionManager';
+export type { InterviewSessionManagerOptions } from './InterviewSessionManager';
+
 // Prompts
 export {
   INTERVIEWER_SYSTEM_PROMPT,
