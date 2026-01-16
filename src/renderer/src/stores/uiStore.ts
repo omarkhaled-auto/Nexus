@@ -15,6 +15,7 @@ interface UIState {
   isLoading: boolean
   error: string | null
   toasts: Toast[]
+  showShortcuts: boolean
 
   toggleSidebar: () => void
   setSidebar: (open: boolean) => void
@@ -23,6 +24,7 @@ interface UIState {
   clearError: () => void
   addToast: (toast: Toast) => void
   removeToast: (id: string) => void
+  setShowShortcuts: (show: boolean) => void
   reset: () => void
 }
 
@@ -30,7 +32,8 @@ const initialState = {
   sidebarOpen: true,
   isLoading: false,
   error: null as string | null,
-  toasts: [] as Toast[]
+  toasts: [] as Toast[],
+  showShortcuts: false,
 }
 
 export const useUIStore = create<UIState>()((set) => ({
@@ -46,7 +49,8 @@ export const useUIStore = create<UIState>()((set) => ({
     set((state) => ({
       toasts: state.toasts.filter((t) => t.id !== id)
     })),
-  reset: () => set({ ...initialState, toasts: [] })
+  setShowShortcuts: (show) => set({ showShortcuts: show }),
+  reset: () => set({ ...initialState, toasts: [], showShortcuts: false })
 }))
 
 // Selector hooks for optimized re-renders
@@ -54,6 +58,7 @@ export const useSidebarOpen = () => useUIStore((s) => s.sidebarOpen)
 export const useIsLoading = () => useUIStore((s) => s.isLoading)
 export const useError = () => useUIStore((s) => s.error)
 export const useToasts = () => useUIStore((s) => s.toasts)
+export const useShowShortcuts = () => useUIStore((s) => s.showShortcuts)
 
 /** Returns true if there is an active error */
 export const useHasError = () => useUIStore((s) => s.error !== null)
