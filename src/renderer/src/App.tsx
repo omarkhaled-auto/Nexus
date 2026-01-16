@@ -6,6 +6,7 @@ import { ModeSelectorPage } from './pages/ModeSelectorPage';
 import { Suspense, lazy, useEffect } from 'react';
 import { useThemeEffect } from './hooks/useTheme';
 import { useSettingsStore } from './stores/settingsStore';
+import { Toaster } from 'sonner';
 
 // Lazy load pages that aren't immediately needed
 const InterviewPage = lazy(() => import('./pages/InterviewPage'));
@@ -114,6 +115,14 @@ function App(): ReactElement {
     <ThemeProvider defaultTheme="dark" storageKey="nexus-theme">
       <SettingsInitializer>
         <RouterProvider router={router} />
+        <Toaster
+          position="bottom-right"
+          richColors
+          closeButton
+          toastOptions={{
+            duration: 4000,
+          }}
+        />
       </SettingsInitializer>
     </ThemeProvider>
   );

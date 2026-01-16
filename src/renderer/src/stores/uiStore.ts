@@ -1,5 +1,9 @@
 import { create } from 'zustand'
 
+/**
+ * @deprecated Use sonner toast instead: import { toast } from '@/lib/toast'
+ * This interface is kept for backward compatibility.
+ */
 export interface Toast {
   id: string
   message: string
