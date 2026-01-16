@@ -270,6 +270,7 @@ export function registerIpcHandlers(): void {
       if (typeof input.name !== 'string' || !input.name) {
         throw new Error('Invalid project name')
       }
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Defensive check for runtime safety
       if (input.mode !== 'genesis' && input.mode !== 'evolution') {
         throw new Error('Invalid project mode')
       }

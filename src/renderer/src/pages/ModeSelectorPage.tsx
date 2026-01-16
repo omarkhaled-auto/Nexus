@@ -23,19 +23,19 @@ export function ModeSelectorPage(): ReactElement {
 
   const handleGenesisClick = (): void => {
     // Navigate immediately for responsive UX
-    navigate('/genesis');
+    void navigate('/genesis');
     // Fire backend call as side effect (non-blocking)
-    uiBackendBridge.startGenesis().catch((error) => {
+    void uiBackendBridge.startGenesis().catch((error: unknown) => {
       console.error('Failed to start Genesis:', error);
     });
   };
 
   const handleEvolutionClick = (): void => {
     // Navigate immediately for responsive UX
-    navigate('/evolution');
+    void navigate('/evolution');
     // Fire backend call as side effect (non-blocking)
     // TODO: In production, show project selector first
-    uiBackendBridge.startEvolution('placeholder-project').catch((error) => {
+    void uiBackendBridge.startEvolution('placeholder-project').catch((error: unknown) => {
       console.error('Failed to start Evolution:', error);
     });
   };

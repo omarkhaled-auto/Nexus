@@ -119,7 +119,7 @@ export function registerInterviewHandlers(
   // ========================================
   ipcMain.handle(
     'interview:resumeByProject',
-    async (event, projectId: string): Promise<InterviewSession | null> => {
+    (event, projectId: string): InterviewSession | null => {
       if (!validateSender(event)) {
         throw new Error('Unauthorized IPC sender');
       }

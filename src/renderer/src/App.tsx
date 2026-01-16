@@ -95,7 +95,7 @@ function SettingsInitializer({ children }: { children: React.ReactNode }): React
   useEffect(() => {
     // Only load if nexusAPI is available (Electron context)
     if (typeof window.nexusAPI !== 'undefined') {
-      loadSettings();
+      void loadSettings();
     }
   }, [loadSettings]);
 

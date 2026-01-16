@@ -10,7 +10,7 @@
 
 | Issue | Count | Main Causes |
 |-------|-------|-------------|
-| **Lint Errors** | ~~337~~ ~~257~~ ~~209~~ ~~175~~ ~~162~~ ~~144~~ 116 | `no-unnecessary-condition`, `no-unsafe-member-access`, `no-explicit-any` |
+| **Lint Errors** | ~~337~~ ~~257~~ ~~209~~ ~~175~~ ~~162~~ ~~144~~ ~~116~~ 99 | `no-unnecessary-condition`, `no-unsafe-member-access`, `no-explicit-any` |
 
 ---
 
@@ -330,6 +330,46 @@ Go through each file in `src/infrastructure/analysis/codebase/`:
 | `no-unsafe-call` | 8 |
 | `no-deprecated` | 6 |
 | Other | 21 |
+
+### Iteration 6 - More Lint Fixes (Committed)
+
+**Starting errors:** 116
+**Ending errors:** 99
+**Errors fixed:** 17
+
+**Changes made:**
+1. **interview-handlers.ts:**
+   - Removed async from `interview:resumeByProject` handler (sessionManager.loadByProject is sync)
+
+2. **handlers.ts:**
+   - Added eslint-disable comment for defensive mode check
+
+3. **dialog.tsx:**
+   - Replaced deprecated `React.ElementRef` with `React.ComponentRef` (4 occurrences)
+
+4. **scroll-area.tsx:**
+   - Replaced deprecated `React.ElementRef` with `React.ComponentRef` (2 occurrences)
+
+5. **ModeSelectorPage.tsx:**
+   - Added `void` before `navigate()` calls (react-router v7 returns Promise)
+   - Added `: unknown` type to catch callback variables
+
+6. **App.tsx:**
+   - Added `void` before `loadSettings()` call
+
+7. **main.ts:**
+   - Added `void` before `shell.openExternal()`, `mainWindow.loadURL()`, `mainWindow.loadFile()`, and `app.whenReady().then()`
+
+**Remaining error breakdown (99 errors):**
+| Error Type | Count |
+|------------|-------|
+| `no-unnecessary-condition` | ~26 |
+| `no-unsafe-member-access` | ~17 |
+| `no-explicit-any` | ~14 |
+| `no-unsafe-assignment` | ~12 |
+| `no-floating-promises` | ~6 |
+| `no-unsafe-call` | ~8 |
+| Other | ~16 |
 
 ### Task FIX-B Completion Checklist
 - [ ] All `no-unused-vars` errors fixed
