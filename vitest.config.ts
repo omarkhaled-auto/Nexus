@@ -5,17 +5,17 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
+    include: ['src/**/*.test.ts', 'src/**/*.test.tsx', 'tests/**/*.test.ts'],
     // Use jsdom for renderer tests
     environmentMatchGlobs: [
       ['src/renderer/**/*.test.tsx', 'jsdom'],
     ],
-    // Setup files for renderer tests
-    setupFiles: ['./src/renderer/test-setup.ts'],
+    // Setup files - global MSW setup + renderer-specific setup
+    setupFiles: ['./vitest.setup.ts', './src/renderer/test-setup.ts'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
-      exclude: ['node_modules', 'dist', '**/*.test.ts', '**/*.test.tsx', 'config/**'],
+      exclude: ['node_modules', 'dist', '**/*.test.ts', '**/*.test.tsx', 'config/**', 'tests/**'],
     },
     // Mock browser APIs not available in jsdom
     deps: {
