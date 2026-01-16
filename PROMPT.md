@@ -1,1034 +1,845 @@
-# Plan 13-01: Repository Map Generator
+# Plan 13-02: Codebase Documentation Generator
 
 ## Context
 - **Phase:** 13 - Context Enhancement & Level 4.0 Automation
-- **Plan:** 1 of 8 (Repository Map Generator)
-- **Purpose:** Build tree-sitter based repository mapping to enable agents to understand codebase structure, find symbols, and identify dependencies
+- **Plan:** 2 of 8 (Codebase Documentation Generator)
+- **Purpose:** Auto-generate 7 comprehensive documentation files that give agents deep understanding of codebase architecture, patterns, and conventions before they start coding
 - **Input:** 
-  - `PHASE_13_CONTEXT_ENHANCEMENT_PLAN.md` (comprehensive plan with interfaces)
-  - `07_NEXUS_MASTER_BOOK.md` (architecture reference, ~8,200 lines)
-  - `05_ARCHITECTURE_BLUEPRINT.md` (layer definitions, ~18,700 lines)
-  - Existing Nexus codebase in `src/`
-- **Output:** `src/infrastructure/analysis/` module with 9 files
-- **Philosophy:** Agents can't fix what they can't find. The repo map gives every agent a complete picture of the codebase before they start working.
+  - `PHASE_13_CONTEXT_ENHANCEMENT_PLAN.md` (Plan 13-02 section)
+  - `src/infrastructure/analysis/` (RepoMapGenerator from Plan 13-01)
+  - `07_NEXUS_MASTER_BOOK.md` (architecture reference)
+  - `05_ARCHITECTURE_BLUEPRINT.md` (layer definitions)
+  - Existing Nexus codebase
+- **Output:** `src/infrastructure/analysis/codebase/` module + `.nexus/codebase/*.md` generated docs
+- **Philosophy:** Agents work better when they understand the "why" behind code, not just the "what". These docs capture architectural intent, patterns, and tribal knowledge.
 
 ## Pre-Requisites
-- [ ] Read `PHASE_13_CONTEXT_ENHANCEMENT_PLAN.md` - Plan 13-01 section for interfaces and specs
-- [ ] Review `src/infrastructure/` directory structure for existing patterns
-- [ ] Review `src/types/` for existing type conventions
-- [ ] Check `package.json` for existing dependencies
-- [ ] Understand the 7-layer architecture from `07_NEXUS_MASTER_BOOK.md` Section 2.3
+- [ ] Verify Plan 13-01 is complete: `src/infrastructure/analysis/` exists with RepoMapGenerator
+- [ ] Read `PHASE_13_CONTEXT_ENHANCEMENT_PLAN.md` - Plan 13-02 section
+- [ ] Review `src/infrastructure/analysis/index.ts` for available exports
+- [ ] Review existing Nexus documentation patterns
+- [ ] Understand the 7-layer architecture from Master Book
 
-## Technology Decision
+## Dependency on Plan 13-01
 
-**Use `web-tree-sitter` (WASM-based) instead of native tree-sitter:**
-- No native modules = no Electron rebuild issues (same problem as better-sqlite3)
-- Works in both main and renderer processes
-- Multi-language support for future expansion
-
-**Required npm packages:**
-```bash
-npm install web-tree-sitter@0.24.7 fast-glob
-npm install -D @anthropic-ai/claude-code tree-sitter-typescript tree-sitter-javascript
+This plan uses the RepoMapGenerator from Plan 13-01:
+```typescript
+import { 
+  RepoMapGenerator, 
+  RepoMap, 
+  SymbolEntry, 
+  DependencyEdge 
+} from '../analysis';
 ```
 
-Note: Use version 0.24.7 of web-tree-sitter for TypeScript compatibility (0.25+ has type export issues).
+The RepoMap provides:
+- All symbols (classes, functions, interfaces, types)
+- All dependencies (imports/exports between files)
+- File metadata (size, line count)
+- Reference counts for importance ranking
 
 ## Task Structure
 
-This plan is divided into **6 sequential tasks**. Complete each task fully before moving to the next.
+This plan is divided into **7 sequential tasks**. Complete each task fully before moving to the next.
 
 ```
-Task 13-01-A: Types & Parser Setup ───────► [TASK 13-01-A COMPLETE]
+Task 13-02-A: Types & Base Analyzer ──────► [TASK 13-02-A COMPLETE]
                 │
                 ▼
-Task 13-01-B: Symbol Extractor ───────────► [TASK 13-01-B COMPLETE]
+Task 13-02-B: Architecture Analyzer ──────► [TASK 13-02-B COMPLETE]
                 │
                 ▼
-Task 13-01-C: Dependency Graph Builder ───► [TASK 13-01-C COMPLETE]
+Task 13-02-C: Patterns Analyzer ──────────► [TASK 13-02-C COMPLETE]
                 │
                 ▼
-Task 13-01-D: Reference Counter ──────────► [TASK 13-01-D COMPLETE]
+Task 13-02-D: Dependencies Analyzer ──────► [TASK 13-02-D COMPLETE]
                 │
                 ▼
-Task 13-01-E: RepoMapGenerator Core ──────► [TASK 13-01-E COMPLETE]
+Task 13-02-E: API & Data Flow Analyzer ───► [TASK 13-02-E COMPLETE]
                 │
                 ▼
-Task 13-01-F: Formatter & Index ──────────► [PLAN 13-01 COMPLETE]
+Task 13-02-F: Test & Issues Analyzer ─────► [TASK 13-02-F COMPLETE]
+                │
+                ▼
+Task 13-02-G: CodebaseAnalyzer & Index ───► [PLAN 13-02 COMPLETE]
 ```
 
 ---
 
-# Task 13-01-A: Types & TreeSitter Parser Setup
+# Task 13-02-A: Types & Base Analyzer
 
 ## Objective
-Install dependencies, create comprehensive type definitions, and implement the WASM-based TreeSitter parser wrapper.
+Create type definitions and the base analyzer infrastructure for generating codebase documentation.
 
 ## Requirements
 
-### Part A: Install Dependencies
-- [x] Run: `npm install web-tree-sitter@0.24.7 fast-glob`
-- [x] Run: `npm install -D tree-sitter-typescript tree-sitter-javascript`
-- [x] Verify packages added to `package.json`
-- [x] Note: Do NOT install native `tree-sitter` package (causes Electron issues)
+### Part A: Create Directory Structure
+- [x] Create directory: `src/infrastructure/analysis/codebase/`
+- [x] This extends the analysis module from Plan 13-01
 
-### Part B: Create Directory Structure
-- [x] Create directory: `src/infrastructure/analysis/`
-- [x] This module lives in Layer 7 (Infrastructure) per architecture
+### Part B: Create Types File
+Create `src/infrastructure/analysis/codebase/types.ts`:
 
-### Part C: Create Types File
-Create `src/infrastructure/analysis/types.ts` with these type definitions:
-
-- [x] **RepoMap Interface** - Main output containing all extracted data
-  ```typescript
-  interface RepoMap {
-    projectPath: string;
-    generatedAt: Date;
-    files: FileEntry[];
-    symbols: SymbolEntry[];
-    dependencies: DependencyEdge[];
-    stats: RepoMapStats;
-  }
-  ```
-
-- [x] **FileEntry Interface** - Metadata about each file
-  ```typescript
-  interface FileEntry {
-    path: string;
-    relativePath: string;
-    language: SupportedLanguage;
-    size: number;
-    lastModified: Date;
-    symbolCount: number;
-    lineCount: number;
-  }
-  ```
-
-- [x] **SymbolEntry Interface** - Extracted symbol information
-  ```typescript
-  interface SymbolEntry {
-    id: string;
-    name: string;
-    kind: SymbolKind;
-    file: string;
-    line: number;
-    endLine: number;
-    column: number;
-    signature: string;
-    documentation?: string;
-    references: number;
-    exported: boolean;
-    parentId?: string;
-    modifiers: SymbolModifier[];
-  }
-  ```
-
-- [x] **SymbolKind Type** - All symbol types we extract
-  ```typescript
-  type SymbolKind = 'class' | 'interface' | 'function' | 'method' | 'property' | 
-                    'variable' | 'constant' | 'type' | 'enum' | 'enum_member' | 
-                    'namespace' | 'module';
-  ```
-
-- [x] **SymbolModifier Type**
-  ```typescript
-  type SymbolModifier = 'async' | 'static' | 'private' | 'protected' | 'public' | 
-                        'readonly' | 'abstract' | 'override' | 'export' | 'default';
-  ```
-
-- [x] **DependencyEdge Interface** - Import/export relationships
-  ```typescript
-  interface DependencyEdge {
-    from: string;
-    to: string;
-    type: DependencyType;
-    symbols: string[];
-    statement?: string;
-    line?: number;
-  }
-  ```
-
-- [x] **DependencyType Type**
-  ```typescript
-  type DependencyType = 'import' | 'require' | 'dynamic' | 'export_from' | 
-                        'type_import' | 'side_effect';
-  ```
-
-- [x] **ImportStatement Interface**
-  ```typescript
-  interface ImportStatement {
-    type: 'named' | 'default' | 'namespace' | 'side_effect' | 'dynamic' | 'require';
-    source: string;
-    symbols: Array<{ local: string; imported?: string }>;
-    line: number;
-    typeOnly: boolean;
-  }
-  ```
-
-- [x] **ExportStatement Interface**
-  ```typescript
-  interface ExportStatement {
-    type: 'named' | 'default' | 'all' | 're_export';
-    symbols: Array<{ local: string; exported?: string }>;
-    source?: string;
-    line: number;
-  }
-  ```
-
-- [x] **ParseResult Interface**
-  ```typescript
-  interface ParseResult {
-    success: boolean;
-    file: string;
-    symbols: SymbolEntry[];
-    imports: ImportStatement[];
-    exports: ExportStatement[];
-    errors: ParseError[];
-    parseTime: number;
-  }
-  ```
-
-- [x] **ParseError Interface**
-  ```typescript
-  interface ParseError {
-    message: string;
-    line: number;
-    column: number;
-    nodeType?: string;
-  }
-  ```
-
-- [x] **RepoMapOptions Interface** - Configuration for generation
-  ```typescript
-  interface RepoMapOptions {
-    includePatterns?: string[];
-    excludePatterns?: string[];
-    maxFiles?: number;
-    maxTokens?: number;
-    languages?: SupportedLanguage[];
-    extractDocs?: boolean;
-    countReferences?: boolean;
-    basePath?: string;
-  }
-  ```
-
-- [x] **DEFAULT_REPO_MAP_OPTIONS Constant**
-  ```typescript
-  const DEFAULT_REPO_MAP_OPTIONS: Required<RepoMapOptions> = {
-    includePatterns: ['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx'],
-    excludePatterns: ['node_modules/**', 'dist/**', 'build/**', '.git/**', 
-                      'coverage/**', '**/*.test.*', '**/*.spec.*', '**/*.d.ts'],
-    maxFiles: 500,
-    maxTokens: 4000,
-    languages: ['typescript', 'javascript'],
-    extractDocs: true,
-    countReferences: true,
-    basePath: '',
-  };
-  ```
-
-- [x] **FormatOptions Interface**
-  ```typescript
-  interface FormatOptions {
-    maxTokens?: number;
-    includeSignatures?: boolean;
-    includeDocstrings?: boolean;
-    rankByReferences?: boolean;
-    groupByFile?: boolean;
-    includeDependencies?: boolean;
-    style?: 'compact' | 'detailed' | 'tree';
-  }
-  ```
-
-- [x] **RepoMapStats Interface**
-  ```typescript
-  interface RepoMapStats {
-    totalFiles: number;
-    totalSymbols: number;
-    totalDependencies: number;
-    languageBreakdown: Record<SupportedLanguage, number>;
-    symbolBreakdown: Record<SymbolKind, number>;
-    largestFiles: string[];
-    mostReferencedSymbols: Array<{ name: string; file: string; references: number }>;
-    mostConnectedFiles: Array<{ file: string; connections: number }>;
-    generationTime: number;
-  }
-  ```
-
-- [x] **SupportedLanguage Type**
-  ```typescript
-  type SupportedLanguage = 'typescript' | 'javascript';
-  ```
-
-- [x] **Interface Definitions** for main classes (IRepoMapGenerator, ITreeSitterParser, etc.)
-
+- [x] **CodebaseDocumentation Interface** - All 7 docs together
+- [x] **ArchitectureDoc Interface**
+- [x] **LayerDescription Interface**
+- [x] **ComponentDescription Interface**
+- [x] **EntryPointDescription Interface**
+- [x] **DesignDecision Interface**
+- [x] **PatternsDoc Interface**
+- [x] **PatternDescription Interface**
+- [x] **PatternExample Interface**
+- [x] **NamingConvention Interface**
+- [x] **FileOrganizationRule Interface**
+- [x] **DependenciesDoc Interface**
+- [x] **ExternalDependency Interface**
+- [x] **InternalModule Interface**
+- [x] **CircularDependency Interface**
+- [x] **APISurfaceDoc Interface**
+- [x] **InterfaceDoc, ClassDoc, FunctionDoc, TypeDoc Interfaces**
+- [x] **PropertyDoc, MethodDoc, ParameterDoc Interfaces**
+- [x] **IPCChannelDoc Interface** (for Electron)
+- [x] **DataFlowDoc Interface**
+- [x] **StateManagementDoc Interface**
+- [x] **DataStoreDoc Interface**
+- [x] **EventFlowDoc Interface**
+- [x] **DataTransformationDoc Interface**
+- [x] **TestStrategyDoc Interface**
+- [x] **TestFramework, TestTypeDoc, CoverageDoc, TestPatternDoc Interfaces**
+- [x] **KnownIssuesDoc Interface**
+- [x] **TechnicalDebtItem, LimitationDoc, WorkaroundDoc, FutureImprovementDoc Interfaces**
+- [x] **AnalyzerOptions Interface**
+- [x] **DEFAULT_ANALYZER_OPTIONS Constant**
 - [x] Export all types
 
-### Part D: Create TreeSitterParser
-Create `src/infrastructure/analysis/TreeSitterParser.ts`:
-
-- [x] **TreeSitterParser Class** implementing ITreeSitterParser
-  - [x] Constructor accepts optional `wasmBasePath` for WASM file location
-  - [x] Private fields: `Parser`, `languages` Map, `initialized` boolean
-  
-- [x] **initialize() Method**
-  - [x] Dynamic import of `web-tree-sitter`
-  - [x] Call `Parser.init()` 
-  - [x] Load TypeScript WASM from `node_modules/tree-sitter-typescript/tree-sitter-typescript.wasm`
-  - [x] Load JavaScript WASM from `node_modules/tree-sitter-javascript/tree-sitter-javascript.wasm`
-  - [x] Store languages in Map
-  
-- [x] **isReady() Method** - Returns initialization state
-
-- [x] **getSupportedLanguages() Method** - Returns `['typescript', 'javascript']`
-
-- [x] **detectLanguage(filePath) Method**
-  - [x] `.ts`, `.tsx`, `.mts` → `'typescript'`
-  - [x] `.js`, `.jsx`, `.mjs` → `'javascript'`
-  - [x] Other → `null`
-
-- [x] **parseFile(filePath, content) Method**
-  - [x] Detect language from extension
-  - [x] Get parser for language
-  - [x] Parse content to AST
-  - [x] Extract symbols using `extractSymbols()` helper
-  - [x] Extract imports using `extractImports()` helper
-  - [x] Extract exports using `extractExports()` helper
-  - [x] Find syntax errors using `findErrors()` helper
-  - [x] Return ParseResult
-
-- [x] **parseFiles(files) Method** - Parse multiple files in sequence
-
-- [x] **extractSymbols() Private Helper**
-  - [x] Walk AST using tree-sitter cursor
-  - [x] Identify symbol node types:
-    - `function_declaration`, `arrow_function` → function
-    - `method_definition` → method
-    - `class_declaration` → class
-    - `interface_declaration` → interface
-    - `type_alias_declaration` → type
-    - `enum_declaration` → enum
-    - `variable_declarator` → variable
-    - `property_signature`, `public_field_definition` → property
-  - [x] Extract name, signature, modifiers, documentation
-  - [x] Track parent-child relationships (methods inside classes)
-
-- [x] **extractImports() Private Helper**
-  - [x] Find `import_statement` nodes
-  - [x] Parse named imports: `import { a, b } from './mod'`
-  - [x] Parse default imports: `import X from './mod'`
-  - [x] Parse namespace imports: `import * as X from './mod'`
-  - [x] Parse side-effect imports: `import './styles.css'`
-  - [x] Parse type imports: `import type { T } from './types'`
-  - [x] Track source module and imported symbols
-
-- [x] **extractExports() Private Helper**
-  - [x] Find `export_statement` nodes
-  - [x] Parse named exports: `export { a, b }`
-  - [x] Parse default exports: `export default X`
-  - [x] Parse re-exports: `export { a } from './mod'`
-  - [x] Parse export all: `export * from './mod'`
-
-- [x] **buildSignature() Private Helper**
-  - [x] For functions: `name(param: type): returnType`
-  - [x] For classes: `class Name extends Base implements Interface`
-  - [x] For types: `type Name = Definition` (truncated if long)
-
-- [x] **extractDocumentation() Private Helper**
-  - [x] Look for preceding JSDoc comment (`/** ... */`)
-  - [x] Clean up asterisks and whitespace
-  - [x] Return cleaned documentation string
-
-- [x] **findErrors() Private Helper**
-  - [x] Find nodes of type `ERROR` or `MISSING`
-  - [x] Return as ParseError array
-
-- [x] **getParser() Factory Function** - Singleton access
-
-### Part E: Create Parser Tests
-Create `src/infrastructure/analysis/TreeSitterParser.test.ts`:
-
-- [x] **Mock web-tree-sitter** for unit testing (avoid WASM loading)
-
-- [x] **Initialization Tests**
-  - [x] Should not be ready before initialization
-  - [x] Should be ready after initialization
-  - [x] Should support TypeScript and JavaScript
-
-- [x] **Language Detection Tests**
-  - [x] Detect TypeScript from .ts, .tsx, .mts
-  - [x] Detect JavaScript from .js, .jsx, .mjs
-  - [x] Return null for unsupported extensions (.css, .json, .md)
-  - [x] Handle paths with directories
-
-- [x] **Parse Result Structure Tests**
-  - [x] Return error for unsupported file types
-  - [x] Return proper ParseResult structure
-  - [x] Handle empty files
-
-- [x] **parseFiles Tests**
-  - [x] Parse multiple files
-  - [x] Handle empty array
-
-- [x] **Integration Tests (marked .skip for CI)**
-  - [x] Extract function declarations
-  - [x] Extract classes with methods
-  - [x] Extract interfaces
-  - [x] Extract type aliases
-  - [x] Extract enums
-  - [x] Extract arrow functions
-  - [x] Extract named imports
-  - [x] Extract default imports
-  - [x] Extract namespace imports
-  - [x] Extract side-effect imports
-  - [x] Extract type-only imports
-  - [x] Extract JSDoc documentation
-  - [x] Detect syntax errors
-
-### Task 13-01-A Completion Checklist
-- [x] Dependencies installed (web-tree-sitter, fast-glob, tree-sitter grammars)
-- [x] Directory `src/infrastructure/analysis/` created
-- [x] `types.ts` created with ALL interfaces and types (~400-500 lines)
-- [x] `TreeSitterParser.ts` created with full implementation (~500-600 lines)
-- [x] `TreeSitterParser.test.ts` created with comprehensive tests (~300 lines)
-- [x] All unit tests pass: `npm test src/infrastructure/analysis/TreeSitterParser.test.ts`
-- [x] TypeScript compiles without errors: `npm run build`
-
-**[TASK 13-01-A COMPLETE]** ✅ Completed on 2025-01-16
-
----
-
-# Task 13-01-B: Symbol Extractor
-
-## Objective
-Create a utility class for processing, filtering, grouping, and analyzing extracted symbols.
-
-## Requirements
-
-### Part A: Create SymbolExtractor Class
-Create `src/infrastructure/analysis/SymbolExtractor.ts`:
-
-- [x] **SymbolExtractor Class**
-
-- [x] **processSymbols(parseResults) Method**
-  - [x] Merge symbols from all parse results
-  - [x] Create Map keyed by unique symbol ID
-  - [x] Return Map<string, SymbolEntry>
-
-- [x] **createSymbolKey(symbol) Method**
-  - [x] Generate unique key: `${file}#${name}#${line}`
-
-- [x] **filterByKind(symbols, kind) Method**
-  - [x] Return symbols matching specified SymbolKind
-
-- [x] **getExportedSymbols(symbols) Method**
-  - [x] Return only symbols with `exported: true`
-
-- [x] **getTopLevelSymbols(symbols) Method**
-  - [x] Return symbols with no `parentId`
-
-- [x] **getChildSymbols(symbols, parentId) Method**
-  - [x] Return symbols with matching `parentId`
-
-- [x] **buildHierarchy(symbols) Method**
-  - [x] Build tree structure: SymbolNode[] with children
-  - [x] SymbolNode = { symbol: SymbolEntry, children: SymbolNode[] }
-
-- [x] **groupByFile(symbols) Method**
-  - [x] Return Map<string, SymbolEntry[]> grouped by file path
-
-- [x] **groupByKind(symbols) Method**
-  - [x] Return Map<SymbolKind, SymbolEntry[]> grouped by symbol kind
-
-- [x] **searchByName(symbols, query) Method**
-  - [x] Case-insensitive partial match on symbol name
-  - [x] Return matching symbols
-
-- [x] **findByName(symbols, name) Method**
-  - [x] Exact match on symbol name
-  - [x] Return matching symbols (may be multiple across files)
-
-- [x] **findAtLocation(symbols, file, line) Method**
-  - [x] Find symbol at specific file and line
-  - [x] Line must be between symbol.line and symbol.endLine
-
-- [x] **getStatistics(symbols) Method**
-  - [x] Return SymbolStatistics:
-    - total: number
-    - byKind: Record<SymbolKind, number>
-    - byFile: Record<string, number>
-    - exported: number
-    - documented: number
-    - documentationCoverage: number (0-1)
-
-- [x] **sortSymbols(symbols, criteria) Method**
-  - [x] Sort by: 'name' | 'file' | 'references' | 'line'
-  - [x] Return new sorted array
-
-- [x] **deduplicate(symbols) Method**
-  - [x] Remove duplicates based on symbol key
-  - [x] Return deduplicated array
-
-- [x] **mergeSymbols(parseResults) Method**
-  - [x] Collect all symbols from parse results
-  - [x] Deduplicate
-  - [x] Return merged array
-
-### Part B: Export Types
-- [x] Export `SymbolNode` interface (already in types.ts)
-- [x] Export `SymbolStatistics` interface (already in types.ts)
-
-### Part C: Create Tests
-Create `src/infrastructure/analysis/SymbolExtractor.test.ts`:
-
-- [x] Test filtering by kind
-- [x] Test getting exported symbols
-- [x] Test getting top-level symbols
-- [x] Test getting child symbols
-- [x] Test building hierarchy
-- [x] Test grouping by file
-- [x] Test grouping by kind
-- [x] Test searching by name (partial)
-- [x] Test finding by name (exact)
-- [x] Test finding at location
-- [x] Test statistics calculation
-- [x] Test sorting
-- [x] Test deduplication
-- [x] Test merging from multiple parse results
-
-### Task 13-01-B Completion Checklist
-- [x] `SymbolExtractor.ts` created (~270 lines)
-- [x] `SymbolExtractor.test.ts` created (~380 lines)
-- [x] All tests pass (42 tests)
-- [x] TypeScript compiles
-
-**[TASK 13-01-B COMPLETE]** ✅ Completed on 2025-01-16
-
----
-
-# Task 13-01-C: Dependency Graph Builder
-
-## Objective
-Build a dependency graph from import/export relationships between files.
-
-## Requirements
-
-### Part A: Create DependencyGraphBuilder Class
-Create `src/infrastructure/analysis/DependencyGraphBuilder.ts`:
-
-- [x] **DependencyGraphBuilder Class**
-  - [x] Private fields: `edges`, `dependentsMap`, `dependenciesMap`, `fileAliases`
-
-- [x] **build(parseResults, projectPath) Method**
-  - [x] Reset internal state
-  - [x] Collect all file paths for resolution
-  - [x] For each parse result, process imports and re-exports
-  - [x] Create DependencyEdge for each valid import
-  - [x] Skip external modules (npm packages)
-  - [x] Return array of DependencyEdge
-
-- [x] **resolveImport(importPath, fromFile, projectPath) Method**
-  - [x] Handle relative imports (`./`, `../`)
-  - [x] Handle path aliases (`@/` → `src/`)
-  - [x] Resolve to absolute path
-  - [x] Try extensions: .ts, .tsx, .js, .jsx
-  - [x] Try index files: index.ts, index.tsx, etc.
-  - [x] Return resolved path or null
-
-- [x] **isExternalModule(source) Private Method**
-  - [x] Return true if module is from npm (not starting with `.` or `/`)
-  - [x] Handle scoped packages (`@scope/package`)
-
-- [x] **registerAlias(alias, target) Method**
-  - [x] Register custom path aliases
-  - [x] Used for tsconfig paths support
-
-- [x] **getDependents(filePath) Method**
-  - [x] Return files that import the given file
-
-- [x] **getDependencies(filePath) Method**
-  - [x] Return files that the given file imports
-
-- [x] **getEdgesForFile(filePath) Method**
-  - [x] Return all edges involving the file (in or out)
-
-- [x] **findCircularDependencies() Method**
-  - [x] Use DFS to find cycles in dependency graph
-  - [x] Return array of cycles (each cycle is string[])
-
-- [x] **getSortedByConnections() Method**
-  - [x] Return files sorted by total connection count (most connected first)
-  - [x] Return Array<{ file: string; connections: number }>
-
-- [x] **calculateDepth(filePath) Method**
-  - [x] Calculate longest dependency chain from file
-  - [x] Used for understanding module depth
-
-- [x] **getStatistics() Method**
-  - [x] Return DependencyGraphStats:
-    - totalFiles: number
-    - totalEdges: number
-    - edgesByType: Record<DependencyType, number>
-    - circularDependencies: number
-    - mostConnectedFiles: Array<{ file, connections }>
-
-### Part B: Export Types
-- [x] Export `DependencyGraphStats` interface (already in types.ts)
-
-### Part C: Create Tests
-Create `src/infrastructure/analysis/DependencyGraphBuilder.test.ts`:
-
-- [x] Test building graph from parse results
-- [x] Test resolving relative imports
-- [x] Test resolving with extensions
-- [x] Test resolving index files
-- [x] Test detecting external modules
-- [x] Test path alias registration and resolution
-- [x] Test getting dependents
-- [x] Test getting dependencies
-- [x] Test finding circular dependencies
-- [x] Test sorting by connections
-- [x] Test statistics calculation
-
-### Task 13-01-C Completion Checklist
-- [x] `DependencyGraphBuilder.ts` created (~560 lines)
-- [x] `DependencyGraphBuilder.test.ts` created (~775 lines)
-- [x] All tests pass (33 tests)
-- [x] TypeScript compiles
-
-**[TASK 13-01-C COMPLETE]** ✅ Completed on 2025-01-16
-
----
-
-# Task 13-01-D: Reference Counter
-
-## Objective
-Count how many times each symbol is referenced across the codebase and calculate importance scores.
-
-## Requirements
-
-### Part A: Create ReferenceCounter Class
-Create `src/infrastructure/analysis/ReferenceCounter.ts`:
-
-- [x] **ReferenceCounter Class**
-  - [x] Private fields: `referenceCounts` Map, `importanceScores` Map, `symbolIndex` Map
-
-- [x] **count(symbols, parseResults) Method**
-  - [x] Build symbol index for fast lookup
-  - [x] Count references from imports in each file
-  - [x] Update symbol.references field
-  - [x] Return Map<symbolKey, count>
-
-- [x] **getTopReferenced(n) Method**
-  - [x] Return top N most referenced symbols
-  - [x] Sorted by reference count descending
-
-- [x] **calculateImportance(symbols, dependencies) Method**
-  - [x] Implement PageRank-style algorithm
-  - [x] Symbols referenced by important files are more important
-  - [x] Iterate ~20 times for convergence
-  - [x] Normalize scores to 0-1 range
-  - [x] Return Map<symbolKey, importance>
-
-- [x] **getRankedSymbols(symbols, dependencies) Method**
-  - [x] Calculate both reference counts and importance
-  - [x] Return combined ranking:
-    - RankedSymbol = { symbol, referenceCount, importanceScore, combinedScore }
-  - [x] Combined score = 0.6 * normalized_refs + 0.4 * importance
-
-- [x] **getReferencingSources(symbolKey, dependencies) Method**
-  - [x] Return list of files that reference this symbol
-
-- [x] **getClusteringCoefficient(symbol, dependencies) Method**
-  - [x] Calculate how interconnected referencing files are
-  - [x] Return 0-1 coefficient
-
-- [x] **getReferenceCount(symbol) Method**
-  - [x] Get reference count for a symbol
-
-- [x] **getImportanceScore(symbol) Method**
-  - [x] Get importance score for a symbol
-
-- [x] **getStatistics(symbols) Method**
-  - [x] Return ReferenceStatistics:
-    - totalReferences: number
-    - averageReferences: number
-    - maxReferences: number
-    - symbolsWithReferences: number
-    - orphanedExports: number (exported but never referenced)
-    - coveragePercent: number
-
-### Part B: Export Types
-- [x] Export `RankedSymbol` interface
-- [x] Export `ReferenceStatistics` interface
-
-### Part C: Create Tests
-Create `src/infrastructure/analysis/ReferenceCounter.test.ts`:
-
-- [x] Test counting references from imports
-- [x] Test getting top referenced symbols
-- [x] Test importance calculation
-- [x] Test combined ranking
-- [x] Test finding referencing sources
-- [x] Test statistics calculation
-- [x] Test with empty inputs
-- [x] Test with circular references
-
-### Task 13-01-D Completion Checklist
-- [x] `ReferenceCounter.ts` created (~330 lines)
-- [x] `ReferenceCounter.test.ts` created (~490 lines)
-- [x] All tests pass (31 tests)
-- [x] TypeScript compiles
-
-**[TASK 13-01-D COMPLETE]** ✅ Completed on 2025-01-16
-
----
-
-# Task 13-01-E: RepoMapGenerator Core
-
-## Objective
-Create the main orchestrator that ties all components together to generate complete repository maps.
-
-## Requirements
-
-### Part A: Create RepoMapGenerator Class
-Create `src/infrastructure/analysis/RepoMapGenerator.ts`:
-
-- [x] **RepoMapGenerator Class** implementing IRepoMapGenerator
-  - [x] Private fields: parser, symbolExtractor, dependencyBuilder, referenceCounter, formatter
-  - [x] Private fields: currentMap, initialized
-
-- [x] **Constructor**
-  - [x] Accept optional `wasmBasePath`
-  - [x] Instantiate all component classes
-
-- [x] **initialize() Method**
-  - [x] Initialize TreeSitterParser
-  - [x] Set initialized flag
-
-- [x] **generate(projectPath, options?) Method** - MAIN METHOD
-  - [x] Start timing
-  - [x] Merge options with defaults
-  - [x] Ensure initialized
-  - [x] Find files using fast-glob with include/exclude patterns
-  - [x] Filter by language if specified
-  - [x] Limit to maxFiles
-  - [x] Read file contents
-  - [x] Parse all files with TreeSitterParser
-  - [x] Build file entries with metadata
-  - [x] Merge symbols using SymbolExtractor
-  - [x] Build dependency graph
-  - [x] Count references if enabled
-  - [x] Calculate statistics
-  - [x] Store as currentMap
-  - [x] Return RepoMap
-
-- [x] **generateIncremental(projectPath, changedFiles) Method**
-  - [x] If no currentMap, call generate()
-  - [x] Re-parse only changed files
-  - [x] Update symbols for changed files (keep unchanged)
-  - [x] Rebuild dependency graph (needed for accuracy)
-  - [x] Recount references
-  - [x] Update statistics
-  - [x] Return updated RepoMap
-
-- [x] **findSymbol(name) Method**
-  - [x] Use SymbolExtractor.findByName on currentMap
-  - [x] Return matching symbols
-
-- [x] **findUsages(symbolName) Method**
-  - [x] Search dependencies for imports of symbolName
-  - [x] Return SymbolUsage[] with file, line, context
-
-- [x] **findImplementations(interfaceName) Method**
-  - [x] Find classes with `implements InterfaceName` in signature
-  - [x] Return matching class symbols
-
-- [x] **getDependencies(file) Method**
-  - [x] Delegate to DependencyGraphBuilder
-
-- [x] **getDependents(file) Method**
-  - [x] Delegate to DependencyGraphBuilder
-
-- [x] **formatForContext(options?) Method**
-  - [x] Delegate to RepoMapFormatter (basic implementation, full in Task F)
-  - [x] Return formatted string
-
-- [x] **getTokenCount() Method**
-  - [x] Format and estimate tokens
-
-- [x] **getCurrentMap() Method**
-  - [x] Return currentMap or null
-
-- [x] **clearCache() Method**
-  - [x] Set currentMap to null
-
-### Part B: Helper Methods
-- [x] **findFiles(projectPath, options) Private Method**
-  - [x] Use fast-glob with patterns
-  - [x] Filter by language
-  - [x] Return absolute paths
-
-- [x] **parseAllFiles(files, maxFiles) Private Method**
-  - [x] Read each file content
-  - [x] Parse with TreeSitterParser
-  - [x] Handle read errors gracefully
-  - [x] Return ParseResult[]
-
-- [x] **buildFileEntries(files, projectPath) Private Method**
-  - [x] Get file stats (size, mtime)
-  - [x] Count lines
-  - [x] Detect language
-  - [x] Return FileEntry[]
-
-- [x] **calculateStats(...) Private Method**
-  - [x] Compute all RepoMapStats fields
-
-### Part C: Factory Function
-- [x] **getRepoMapGenerator(wasmBasePath?) Function**
-  - [x] Return singleton instance
+### Part C: Create Base Analyzer Class
+Create `src/infrastructure/analysis/codebase/BaseAnalyzer.ts`:
+
+- [x] **BaseAnalyzer Abstract Class**
+- [x] **getSymbolsByKind(kind) Method**
+- [x] **getExportedSymbols() Method**
+- [x] **getFilesInDirectory(dir) Method**
+- [x] **getDependenciesOf(file) Method**
+- [x] **getDependentsOf(file) Method**
+- [x] **extractJSDoc(symbol) Method**
+- [x] **inferPurpose(symbol) Method**
+- [x] **generateMermaidDiagram(type, data) Method**
 
 ### Part D: Create Tests
-Create `src/infrastructure/analysis/RepoMapGenerator.test.ts`:
+Create `src/infrastructure/analysis/codebase/BaseAnalyzer.test.ts`:
 
-- [x] Test initialization
-- [x] Test generate with mock file system
-- [x] Test incremental generation
-- [x] Test findSymbol
-- [x] Test findUsages
-- [x] Test findImplementations
-- [x] Test getDependencies/getDependents
-- [x] Test formatForContext
-- [x] Test statistics calculation
-- [x] Test with various options
+- [x] Test getSymbolsByKind
+- [x] Test getExportedSymbols
+- [x] Test getFilesInDirectory
+- [x] Test getDependenciesOf
+- [x] Test getDependentsOf
+- [x] Test inferPurpose
+- [x] Test Mermaid diagram generation
 
-### Task 13-01-E Completion Checklist
-- [x] `RepoMapGenerator.ts` created (~480 lines)
-- [x] `RepoMapGenerator.test.ts` created (~350 lines)
-- [x] All tests pass (21 tests)
+### Task 13-02-A Completion Checklist
+- [x] Directory `src/infrastructure/analysis/codebase/` created
+- [x] `types.ts` created with ALL interfaces (~480 lines)
+- [x] `BaseAnalyzer.ts` created (~350 lines)
+- [x] `BaseAnalyzer.test.ts` created (~300 lines)
+- [x] All tests pass (27 tests)
 - [x] TypeScript compiles
 
-**[TASK 13-01-E COMPLETE]** ✅ Completed on 2025-01-16
+**[TASK 13-02-A COMPLETE]** - Completed on 2025-01-16
 
 ---
 
-# Task 13-01-F: Formatter & Index
+# Task 13-02-B: Architecture Analyzer
 
 ## Objective
-Create the formatter for outputting repo maps in different formats and create the module index.
+Create analyzer that generates ARCHITECTURE.md documenting system layers, components, and design decisions.
 
 ## Requirements
 
-### Part A: Create RepoMapFormatter Class
-Create `src/infrastructure/analysis/RepoMapFormatter.ts`:
+### Part A: Create ArchitectureAnalyzer Class
+Create `src/infrastructure/analysis/codebase/ArchitectureAnalyzer.ts`:
 
-- [ ] **RepoMapFormatter Class** implementing IRepoMapFormatter
-  - [ ] Static constant: CHARS_PER_TOKEN = 4 (approximate)
+- [ ] **ArchitectureAnalyzer Class** extends BaseAnalyzer
 
-- [ ] **format(repoMap, options?) Method**
-  - [ ] Dispatch to style-specific formatter
-  - [ ] Styles: 'compact', 'detailed', 'tree'
+- [ ] **analyze() Method** - Returns ArchitectureDoc
+  - [ ] Generate overview
+  - [ ] Detect and document layers
+  - [ ] Identify key components
+  - [ ] Find entry points
+  - [ ] Infer design decisions
 
-- [ ] **formatCompact(repoMap, options) Private Method**
-  - [ ] Minimal tokens, maximum info density
-  - [ ] Sort symbols by references if rankByReferences
-  - [ ] Select symbols to fit maxTokens budget
-  - [ ] Group by file if groupByFile
-  - [ ] Output format:
-    ```
-    # Repository Map
-    
-    ## src/services/AuthService.ts
-    ⊕εAuthService (15)
-      · validateUser(user: User): boolean (8)
-      · hashPassword(password: string): string (3)
-    
-    ## src/types/user.ts
-    ◇εUser
-    ⊤εUserRole = 'admin' | 'user'
-    ```
-  - [ ] Symbol prefixes:
-    - `⊕` class
-    - `◇` interface
-    - `ƒ` function
-    - `·` method (indented)
-    - `.` property (indented)
-    - `→` variable
-    - `∷` constant
-    - `⊤` type
-    - `⊞` enum
-  - [ ] `ε` marker for exported
-  - [ ] `(N)` suffix for reference count
+- [ ] **generateOverview() Private Method**
+  - [ ] Count files, symbols, dependencies
+  - [ ] Identify main technologies (React, Electron, etc.)
+  - [ ] Generate 2-3 paragraph overview
 
-- [ ] **formatDetailed(repoMap, options) Private Method**
-  - [ ] More verbose output
-  - [ ] Include full signatures
-  - [ ] Include documentation
-  - [ ] Include dependency section
+- [ ] **detectLayers() Private Method**
+  - [ ] Analyze directory structure
+  - [ ] Look for layer patterns:
+    - `src/ui/` → UI Layer
+    - `src/orchestration/` → Orchestration Layer
+    - `src/planning/` → Planning Layer
+    - `src/execution/` → Execution Layer
+    - `src/quality/` → Quality Layer
+    - `src/persistence/` → Persistence Layer
+    - `src/infrastructure/` → Infrastructure Layer
+  - [ ] For each layer, identify:
+    - Purpose (inferred from contents)
+    - Key files
+    - Dependencies on other layers
+  - [ ] Return LayerDescription[]
 
-- [ ] **formatTree(repoMap, options) Private Method**
-  - [ ] Directory tree structure
-  - [ ] Show files with symbols nested
-  - [ ] Use tree characters: `├──`, `└──`, `│`
+- [ ] **identifyKeyComponents() Private Method**
+  - [ ] Find classes/functions with high reference counts
+  - [ ] Find exported symbols from index files
+  - [ ] For each, document:
+    - Purpose (from JSDoc or inferred)
+    - Public API
+    - Dependencies and dependents
+  - [ ] Return top 20 ComponentDescription[]
 
-- [ ] **estimateTokens(text) Method**
-  - [ ] Return Math.ceil(text.length / CHARS_PER_TOKEN)
+- [ ] **findEntryPoints() Private Method**
+  - [ ] Look for:
+    - `main.ts` - Electron main process
+    - `renderer.ts` - Renderer entry
+    - `preload.ts` - Preload script
+    - `index.ts` in src/ - Main exports
+  - [ ] Document each entry point type
+  - [ ] Return EntryPointDescription[]
 
-- [ ] **truncateToFit(repoMap, maxTokens) Method**
-  - [ ] Format with compact style
-  - [ ] Truncate if over budget
-  - [ ] Add "... (truncated)" indicator
+- [ ] **inferDesignDecisions() Private Method**
+  - [ ] Analyze patterns to infer decisions:
+    - State management approach (Zustand stores)
+    - Database choice (SQLite)
+    - Testing framework (Vitest)
+    - UI framework (React)
+    - Build tool (Vite/Electron-Vite)
+  - [ ] Generate rationale based on context
+  - [ ] Return DesignDecision[]
 
-- [ ] **selectSymbolsForBudget(symbols, maxTokens, includeSignatures) Private Method**
-  - [ ] Estimate tokens per symbol
-  - [ ] Add symbols until budget exhausted
-  - [ ] Return selected symbols
+- [ ] **toMarkdown(doc: ArchitectureDoc) Method**
+  - [ ] Generate ARCHITECTURE.md content
+  - [ ] Include:
+    - Title and generation timestamp
+    - Overview section
+    - Layer diagram (Mermaid)
+    - Layer descriptions
+    - Key components table
+    - Entry points section
+    - Design decisions section
 
-- [ ] **getSymbolPrefix(kind) Private Method**
-  - [ ] Return appropriate Unicode prefix
+### Part B: Create Tests
+Create `src/infrastructure/analysis/codebase/ArchitectureAnalyzer.test.ts`:
 
-- [ ] **truncateSignature(signature, maxLength) Private Method**
-  - [ ] Truncate long signatures with "..."
+- [ ] Test layer detection
+- [ ] Test component identification
+- [ ] Test entry point detection
+- [ ] Test design decision inference
+- [ ] Test Markdown generation
 
-- [ ] **formatStats(repoMap) Method**
-  - [ ] Return formatted statistics summary
-
-### Part B: Create Index File
-Create `src/infrastructure/analysis/index.ts`:
-
-- [ ] Export all types from `./types`
-- [ ] Export TreeSitterParser and getParser
-- [ ] Export SymbolExtractor and its types
-- [ ] Export DependencyGraphBuilder and its types
-- [ ] Export ReferenceCounter and its types
-- [ ] Export RepoMapGenerator and getRepoMapGenerator
-- [ ] Export RepoMapFormatter
-
-- [ ] **createRepoMapGenerator(wasmBasePath?) Convenience Function**
-  - [ ] Create and initialize generator
-  - [ ] Return ready-to-use instance
-
-- [ ] **generateRepoMap(projectPath, options?) Convenience Function**
-  - [ ] Create generator, generate, return map
-
-- [ ] **formatRepoMapForContext(projectPath, maxTokens) Convenience Function**
-  - [ ] Generate and format in one call
-
-### Part C: Create Formatter Tests
-Create `src/infrastructure/analysis/RepoMapFormatter.test.ts`:
-
-- [ ] Test compact format output
-- [ ] Test detailed format output
-- [ ] Test tree format output
-- [ ] Test token estimation
-- [ ] Test truncation to fit budget
-- [ ] Test symbol selection for budget
-- [ ] Test symbol prefixes
-- [ ] Test signature truncation
-- [ ] Test stats formatting
-
-### Part D: Integration Test
-Create `src/infrastructure/analysis/integration.test.ts`:
-
-- [ ] Test full pipeline: generate → format → verify output
-- [ ] Test with actual Nexus source files (skip in CI if needed)
-- [ ] Verify token budget is respected
-- [ ] Verify all symbol types are extracted
-
-### Task 13-01-F Completion Checklist
-- [ ] `RepoMapFormatter.ts` created (~400 lines)
-- [ ] `RepoMapFormatter.test.ts` created (~100 lines)
-- [ ] `index.ts` created with all exports (~70 lines)
-- [ ] `integration.test.ts` created (~50 lines)
+### Task 13-02-B Completion Checklist
+- [ ] `ArchitectureAnalyzer.ts` created (~300 lines)
+- [ ] `ArchitectureAnalyzer.test.ts` created (~100 lines)
 - [ ] All tests pass
 - [ ] TypeScript compiles
-- [ ] ESLint passes
 
-**[TASK 13-01-F COMPLETE]**
+**[TASK 13-02-B COMPLETE]** ← Mark this when done, then proceed to Task 13-02-C
+
+---
+
+# Task 13-02-C: Patterns Analyzer
+
+## Objective
+Create analyzer that generates PATTERNS.md documenting coding patterns, conventions, and file organization.
+
+## Requirements
+
+### Part A: Create PatternsAnalyzer Class
+Create `src/infrastructure/analysis/codebase/PatternsAnalyzer.ts`:
+
+- [ ] **PatternsAnalyzer Class** extends BaseAnalyzer
+
+- [ ] **analyze() Method** - Returns PatternsDoc
+
+- [ ] **detectArchitecturalPatterns() Private Method**
+  - [ ] Look for common patterns:
+    - **Repository Pattern**: Classes ending in `Repository`, `DB`, `Store`
+    - **Service Pattern**: Classes ending in `Service`
+    - **Factory Pattern**: Functions/classes with `create`, `build`, `make`
+    - **Singleton Pattern**: `getInstance()` methods, module-level instances
+    - **Observer Pattern**: `EventBus`, `EventEmitter`, `subscribe`
+    - **Strategy Pattern**: Interface + multiple implementations
+    - **Adapter Pattern**: Classes ending in `Adapter`
+    - **Bridge Pattern**: Classes ending in `Bridge`
+  - [ ] For each found, provide example files
+  - [ ] Return PatternDescription[]
+
+- [ ] **detectCodingPatterns() Private Method**
+  - [ ] Analyze code for patterns:
+    - **Async/Await usage**: Look for async functions
+    - **Error handling**: Try/catch patterns
+    - **Type guards**: `is` prefix functions
+    - **Builder pattern**: Fluent interfaces with `return this`
+    - **Dependency injection**: Constructor parameters
+  - [ ] Provide examples
+  - [ ] Return PatternDescription[]
+
+- [ ] **detectNamingConventions() Private Method**
+  - [ ] Analyze symbol names to detect:
+    - Class naming (PascalCase)
+    - Interface naming (I prefix or not)
+    - Function naming (camelCase)
+    - Constant naming (UPPER_SNAKE_CASE)
+    - File naming (kebab-case, PascalCase, etc.)
+    - Test file naming (*.test.ts)
+  - [ ] Provide examples
+  - [ ] Return NamingConvention[]
+
+- [ ] **detectFileOrganization() Private Method**
+  - [ ] Analyze file structure:
+    - Test file location (co-located vs __tests__)
+    - Type file patterns (types.ts per module)
+    - Index file usage
+    - Config file locations
+  - [ ] Return FileOrganizationRule[]
+
+- [ ] **toMarkdown(doc: PatternsDoc) Method**
+  - [ ] Generate PATTERNS.md content
+  - [ ] Include:
+    - Overview
+    - Architectural patterns with examples
+    - Coding patterns with examples
+    - Naming conventions table
+    - File organization rules
+
+### Part B: Create Tests
+Create `src/infrastructure/analysis/codebase/PatternsAnalyzer.test.ts`:
+
+- [ ] Test architectural pattern detection
+- [ ] Test coding pattern detection
+- [ ] Test naming convention detection
+- [ ] Test file organization detection
+- [ ] Test Markdown generation
+
+### Task 13-02-C Completion Checklist
+- [ ] `PatternsAnalyzer.ts` created (~350 lines)
+- [ ] `PatternsAnalyzer.test.ts` created (~100 lines)
+- [ ] All tests pass
+- [ ] TypeScript compiles
+
+**[TASK 13-02-C COMPLETE]** ← Mark this when done, then proceed to Task 13-02-D
+
+---
+
+# Task 13-02-D: Dependencies Analyzer
+
+## Objective
+Create analyzer that generates DEPENDENCIES.md documenting external and internal dependencies.
+
+## Requirements
+
+### Part A: Create DependenciesAnalyzer Class
+Create `src/infrastructure/analysis/codebase/DependenciesAnalyzer.ts`:
+
+- [ ] **DependenciesAnalyzer Class** extends BaseAnalyzer
+
+- [ ] **analyze() Method** - Returns DependenciesDoc
+
+- [ ] **analyzeExternalDependencies() Private Method**
+  - [ ] Read package.json
+  - [ ] For each dependency:
+    - Get name and version
+    - Infer purpose from name
+    - Find files that import it
+    - Determine if critical (core functionality)
+  - [ ] Categorize:
+    - Runtime dependencies
+    - Dev dependencies
+    - Peer dependencies
+  - [ ] Return ExternalDependency[]
+
+- [ ] **analyzeInternalModules() Private Method**
+  - [ ] Find all index.ts files (module entry points)
+  - [ ] For each module:
+    - List exports
+    - Find importers
+    - Find imports
+  - [ ] Return InternalModule[]
+
+- [ ] **generateDependencyGraph() Private Method**
+  - [ ] Create Mermaid flowchart showing:
+    - Layer dependencies
+    - Key module dependencies
+  - [ ] Keep graph readable (max 20 nodes)
+  - [ ] Return Mermaid string
+
+- [ ] **findCircularDependencies() Private Method**
+  - [ ] Use DependencyGraphBuilder.findCircularDependencies()
+  - [ ] Assess severity:
+    - Same layer: low
+    - Adjacent layers: medium
+    - Distant layers: high
+  - [ ] Suggest fixes
+  - [ ] Return CircularDependency[]
+
+- [ ] **toMarkdown(doc: DependenciesDoc) Method**
+  - [ ] Generate DEPENDENCIES.md content
+  - [ ] Include:
+    - Overview
+    - External dependencies table (name, version, purpose, critical?)
+    - Internal modules table
+    - Dependency graph (Mermaid)
+    - Circular dependencies section with suggestions
+
+### Part B: Create Tests
+Create `src/infrastructure/analysis/codebase/DependenciesAnalyzer.test.ts`:
+
+- [ ] Test external dependency analysis
+- [ ] Test internal module detection
+- [ ] Test dependency graph generation
+- [ ] Test circular dependency detection
+- [ ] Test Markdown generation
+
+### Task 13-02-D Completion Checklist
+- [ ] `DependenciesAnalyzer.ts` created (~300 lines)
+- [ ] `DependenciesAnalyzer.test.ts` created (~100 lines)
+- [ ] All tests pass
+- [ ] TypeScript compiles
+
+**[TASK 13-02-D COMPLETE]** ← Mark this when done, then proceed to Task 13-02-E
+
+---
+
+# Task 13-02-E: API Surface & Data Flow Analyzers
+
+## Objective
+Create analyzers for API_SURFACE.md and DATA_FLOW.md documentation.
+
+## Requirements
+
+### Part A: Create APISurfaceAnalyzer Class
+Create `src/infrastructure/analysis/codebase/APISurfaceAnalyzer.ts`:
+
+- [ ] **APISurfaceAnalyzer Class** extends BaseAnalyzer
+
+- [ ] **analyze() Method** - Returns APISurfaceDoc
+
+- [ ] **documentInterfaces() Private Method**
+  - [ ] Find all exported interfaces
+  - [ ] For each interface:
+    - Extract properties with types
+    - Extract methods if any
+    - Get JSDoc description
+    - Find extends relationships
+  - [ ] Return InterfaceDoc[]
+
+- [ ] **documentClasses() Private Method**
+  - [ ] Find all exported classes
+  - [ ] For each class:
+    - Extract constructor signature
+    - Extract public properties
+    - Extract public methods
+    - Get extends/implements
+  - [ ] Return ClassDoc[]
+
+- [ ] **documentFunctions() Private Method**
+  - [ ] Find all exported functions
+  - [ ] For each function:
+    - Get full signature
+    - Extract parameters with types
+    - Get return type
+    - Get JSDoc description
+  - [ ] Return FunctionDoc[]
+
+- [ ] **documentTypes() Private Method**
+  - [ ] Find all exported type aliases
+  - [ ] For each type:
+    - Get definition
+    - Get JSDoc description
+  - [ ] Return TypeDoc[]
+
+- [ ] **documentIPCChannels() Private Method** (Electron-specific)
+  - [ ] Search for `ipcMain.handle`, `ipcRenderer.invoke`
+  - [ ] Extract channel names
+  - [ ] Infer payload types
+  - [ ] Return IPCChannelDoc[]
+
+- [ ] **toMarkdown(doc: APISurfaceDoc) Method**
+  - [ ] Generate API_SURFACE.md content
+
+### Part B: Create DataFlowAnalyzer Class
+Create `src/infrastructure/analysis/codebase/DataFlowAnalyzer.ts`:
+
+- [ ] **DataFlowAnalyzer Class** extends BaseAnalyzer
+
+- [ ] **analyze() Method** - Returns DataFlowDoc
+
+- [ ] **analyzeStateManagement() Private Method**
+  - [ ] Find Zustand stores (look for `create` from zustand)
+  - [ ] For each store:
+    - Extract state properties
+    - Extract actions
+    - Find components that subscribe
+  - [ ] Return StateManagementDoc
+
+- [ ] **analyzeDataStores() Private Method**
+  - [ ] Find database connections (SQLite)
+  - [ ] Find in-memory stores
+  - [ ] Find file-based storage
+  - [ ] Return DataStoreDoc[]
+
+- [ ] **analyzeEventFlows() Private Method**
+  - [ ] Find EventBus usage
+  - [ ] Find event emitters
+  - [ ] Trace event flow from trigger to handlers
+  - [ ] Generate sequence diagrams
+  - [ ] Return EventFlowDoc[]
+
+- [ ] **analyzeDataTransformations() Private Method**
+  - [ ] Find adapter files
+  - [ ] Find transformer functions
+  - [ ] Document input → output transformations
+  - [ ] Return DataTransformationDoc[]
+
+- [ ] **toMarkdown(doc: DataFlowDoc) Method**
+  - [ ] Generate DATA_FLOW.md content
+  - [ ] Include state diagrams, event flows
+
+### Part C: Create Tests
+Create tests for both analyzers:
+
+- [ ] `APISurfaceAnalyzer.test.ts` (~80 lines)
+- [ ] `DataFlowAnalyzer.test.ts` (~80 lines)
+
+### Task 13-02-E Completion Checklist
+- [ ] `APISurfaceAnalyzer.ts` created (~300 lines)
+- [ ] `DataFlowAnalyzer.ts` created (~300 lines)
+- [ ] Tests created for both
+- [ ] All tests pass
+- [ ] TypeScript compiles
+
+**[TASK 13-02-E COMPLETE]** ← Mark this when done, then proceed to Task 13-02-F
+
+---
+
+# Task 13-02-F: Test Strategy & Known Issues Analyzers
+
+## Objective
+Create analyzers for TEST_STRATEGY.md and KNOWN_ISSUES.md documentation.
+
+## Requirements
+
+### Part A: Create TestStrategyAnalyzer Class
+Create `src/infrastructure/analysis/codebase/TestStrategyAnalyzer.ts`:
+
+- [ ] **TestStrategyAnalyzer Class** extends BaseAnalyzer
+
+- [ ] **analyze() Method** - Returns TestStrategyDoc
+
+- [ ] **detectTestFrameworks() Private Method**
+  - [ ] Check for:
+    - Vitest (vitest.config.ts)
+    - Jest (jest.config.js)
+    - Playwright (playwright.config.ts)
+    - Testing Library
+  - [ ] Return TestFramework[]
+
+- [ ] **analyzeTestTypes() Private Method**
+  - [ ] Count tests by pattern:
+    - `*.test.ts` - Unit tests
+    - `*.spec.ts` - Integration tests
+    - `*.e2e.ts` or `e2e/` - E2E tests
+    - `*.test.tsx` - Component tests
+  - [ ] Return TestTypeDoc[]
+
+- [ ] **analyzeCoverage() Private Method**
+  - [ ] Read coverage config if exists
+  - [ ] Get target coverage
+  - [ ] List exclusions
+  - [ ] Return CoverageDoc
+
+- [ ] **detectTestPatterns() Private Method**
+  - [ ] Analyze test files for patterns:
+    - Arrange-Act-Assert
+    - Given-When-Then
+    - Mock patterns
+    - Factory patterns for test data
+  - [ ] Return TestPatternDoc[]
+
+- [ ] **toMarkdown(doc: TestStrategyDoc) Method**
+  - [ ] Generate TEST_STRATEGY.md content
+
+### Part B: Create KnownIssuesAnalyzer Class
+Create `src/infrastructure/analysis/codebase/KnownIssuesAnalyzer.ts`:
+
+- [ ] **KnownIssuesAnalyzer Class** extends BaseAnalyzer
+
+- [ ] **analyze() Method** - Returns KnownIssuesDoc
+
+- [ ] **findTechnicalDebt() Private Method**
+  - [ ] Search for comments:
+    - `// TODO:`
+    - `// FIXME:`
+    - `// HACK:`
+    - `// XXX:`
+    - `@deprecated`
+  - [ ] Extract location and description
+  - [ ] Assess severity based on keywords
+  - [ ] Return TechnicalDebtItem[]
+
+- [ ] **detectLimitations() Private Method**
+  - [ ] Look for:
+    - Skipped tests (`.skip`)
+    - Disabled features
+    - Platform-specific code
+    - Known compatibility issues (like better-sqlite3)
+  - [ ] Return LimitationDoc[]
+
+- [ ] **findWorkarounds() Private Method**
+  - [ ] Search for workaround comments
+  - [ ] Look for temporary solutions
+  - [ ] Return WorkaroundDoc[]
+
+- [ ] **suggestImprovements() Private Method**
+  - [ ] Based on analysis, suggest:
+    - Missing tests
+    - Code duplication opportunities
+    - Performance improvements
+    - Refactoring candidates
+  - [ ] Return FutureImprovementDoc[]
+
+- [ ] **toMarkdown(doc: KnownIssuesDoc) Method**
+  - [ ] Generate KNOWN_ISSUES.md content
+
+### Part C: Create Tests
+Create tests for both analyzers:
+
+- [ ] `TestStrategyAnalyzer.test.ts` (~80 lines)
+- [ ] `KnownIssuesAnalyzer.test.ts` (~80 lines)
+
+### Task 13-02-F Completion Checklist
+- [ ] `TestStrategyAnalyzer.ts` created (~250 lines)
+- [ ] `KnownIssuesAnalyzer.ts` created (~250 lines)
+- [ ] Tests created for both
+- [ ] All tests pass
+- [ ] TypeScript compiles
+
+**[TASK 13-02-F COMPLETE]** ← Mark this when done, then proceed to Task 13-02-G
+
+---
+
+# Task 13-02-G: CodebaseAnalyzer & Index
+
+## Objective
+Create the main CodebaseAnalyzer orchestrator and module index.
+
+## Requirements
+
+### Part A: Create CodebaseAnalyzer Class
+Create `src/infrastructure/analysis/codebase/CodebaseAnalyzer.ts`:
+
+- [ ] **CodebaseAnalyzer Class** implementing ICodebaseAnalyzer
+  - [ ] Private fields: repoMapGenerator, all 6 analyzers
+  - [ ] Private fields: currentDocs, options
+
+- [ ] **Constructor**
+  - [ ] Accept optional wasmBasePath
+  - [ ] Instantiate RepoMapGenerator
+
+- [ ] **analyze(projectPath, options?) Method** - MAIN METHOD
+  - [ ] Generate RepoMap first
+  - [ ] Instantiate all 6 analyzers with repoMap
+  - [ ] Run each analyzer:
+    1. ArchitectureAnalyzer → architecture
+    2. PatternsAnalyzer → patterns
+    3. DependenciesAnalyzer → dependencies
+    4. APISurfaceAnalyzer → apiSurface
+    5. DataFlowAnalyzer → dataFlow
+    6. TestStrategyAnalyzer → testStrategy
+    7. KnownIssuesAnalyzer → knownIssues
+  - [ ] Combine into CodebaseDocumentation
+  - [ ] Store as currentDocs
+  - [ ] Return documentation
+
+- [ ] **generateArchitecture() Method**
+  - [ ] Run only ArchitectureAnalyzer
+  - [ ] Return ArchitectureDoc
+
+- [ ] **saveDocs(outputDir?) Method**
+  - [ ] Default outputDir: `.nexus/codebase/`
+  - [ ] Create directory if not exists
+  - [ ] Generate and save all 7 markdown files:
+    1. ARCHITECTURE.md
+    2. PATTERNS.md
+    3. DEPENDENCIES.md
+    4. API_SURFACE.md
+    5. DATA_FLOW.md
+    6. TEST_STRATEGY.md
+    7. KNOWN_ISSUES.md
+  - [ ] Also save combined `index.md` with links to all
+
+- [ ] **updateDocs(changedFiles) Method**
+  - [ ] Re-analyze only affected parts
+  - [ ] Update relevant documentation
+  - [ ] Re-save affected files
+
+- [ ] **getDocsForContext(maxTokens?) Method**
+  - [ ] Return condensed version of all docs
+  - [ ] Fit within token budget
+  - [ ] Prioritize architecture and patterns
+
+- [ ] **getCurrentDocs() Method**
+  - [ ] Return currentDocs or null
+
+### Part B: Create Index File
+Create `src/infrastructure/analysis/codebase/index.ts`:
+
+- [ ] Export all types from `./types`
+- [ ] Export BaseAnalyzer
+- [ ] Export all 6 analyzers
+- [ ] Export CodebaseAnalyzer
+- [ ] Export convenience functions:
+  - [ ] `analyzeCodebase(projectPath, options?)`
+  - [ ] `generateCodebaseDocs(projectPath, outputDir?)`
+
+### Part C: Update Parent Index
+Update `src/infrastructure/analysis/index.ts`:
+
+- [ ] Add export: `export * from './codebase'`
+
+### Part D: Create Integration Test
+Create `src/infrastructure/analysis/codebase/integration.test.ts`:
+
+- [ ] Test full pipeline:
+  - [ ] Analyze Nexus codebase
+  - [ ] Verify all 7 docs generated
+  - [ ] Verify Markdown is valid
+  - [ ] Verify docs are useful (contain real content)
+- [ ] Test saveDocs creates files
+- [ ] Test updateDocs with changed files
+
+### Part E: Create README
+Create `src/infrastructure/analysis/codebase/README.md`:
+
+- [ ] Document module purpose
+- [ ] Document usage examples
+- [ ] Document each analyzer's output
+- [ ] Document customization options
+
+### Task 13-02-G Completion Checklist
+- [ ] `CodebaseAnalyzer.ts` created (~300 lines)
+- [ ] `index.ts` created (~50 lines)
+- [ ] Parent `analysis/index.ts` updated
+- [ ] `integration.test.ts` created (~100 lines)
+- [ ] `README.md` created (~100 lines)
+- [ ] All tests pass
+- [ ] TypeScript compiles
+- [ ] Can generate docs for Nexus itself
+
+**[TASK 13-02-G COMPLETE]**
 
 ---
 
 ## Output File Structure
 
-After completion, `src/infrastructure/analysis/` should contain:
+After completion, `src/infrastructure/analysis/codebase/` should contain:
 
 ```
-src/infrastructure/analysis/
-├── index.ts                          # Module exports (~70 lines)
-├── types.ts                          # All type definitions (~450 lines)
-├── TreeSitterParser.ts               # WASM parser wrapper (~550 lines)
-├── TreeSitterParser.test.ts          # Parser tests (~300 lines)
-├── SymbolExtractor.ts                # Symbol processing (~200 lines)
-├── SymbolExtractor.test.ts           # Extractor tests (~150 lines)
-├── DependencyGraphBuilder.ts         # Import graph (~380 lines)
-├── DependencyGraphBuilder.test.ts    # Graph tests (~150 lines)
-├── ReferenceCounter.ts               # Reference counting (~300 lines)
-├── ReferenceCounter.test.ts          # Counter tests (~100 lines)
-├── RepoMapGenerator.ts               # Main orchestrator (~380 lines)
-├── RepoMapGenerator.test.ts          # Generator tests (~150 lines)
-├── RepoMapFormatter.ts               # Context formatting (~400 lines)
-├── RepoMapFormatter.test.ts          # Formatter tests (~100 lines)
-└── integration.test.ts               # End-to-end tests (~50 lines)
+src/infrastructure/analysis/codebase/
+├── index.ts                          # Module exports (~50 lines)
+├── types.ts                          # All type definitions (~400 lines)
+├── README.md                         # Documentation (~100 lines)
+├── BaseAnalyzer.ts                   # Base class (~150 lines)
+├── BaseAnalyzer.test.ts              # Tests (~100 lines)
+├── ArchitectureAnalyzer.ts           # Architecture docs (~300 lines)
+├── ArchitectureAnalyzer.test.ts      # Tests (~100 lines)
+├── PatternsAnalyzer.ts               # Patterns docs (~350 lines)
+├── PatternsAnalyzer.test.ts          # Tests (~100 lines)
+├── DependenciesAnalyzer.ts           # Dependencies docs (~300 lines)
+├── DependenciesAnalyzer.test.ts      # Tests (~100 lines)
+├── APISurfaceAnalyzer.ts             # API docs (~300 lines)
+├── APISurfaceAnalyzer.test.ts        # Tests (~80 lines)
+├── DataFlowAnalyzer.ts               # Data flow docs (~300 lines)
+├── DataFlowAnalyzer.test.ts          # Tests (~80 lines)
+├── TestStrategyAnalyzer.ts           # Test docs (~250 lines)
+├── TestStrategyAnalyzer.test.ts      # Tests (~80 lines)
+├── KnownIssuesAnalyzer.ts            # Issues docs (~250 lines)
+├── KnownIssuesAnalyzer.test.ts       # Tests (~80 lines)
+├── CodebaseAnalyzer.ts               # Main orchestrator (~300 lines)
+└── integration.test.ts               # E2E tests (~100 lines)
                                       ─────────────────────────────
-                                      Total: ~3,700 lines
+                                      Total: ~3,900 lines
+```
+
+Generated docs in `.nexus/codebase/`:
+```
+.nexus/codebase/
+├── index.md                          # Links to all docs
+├── ARCHITECTURE.md                   # System architecture
+├── PATTERNS.md                       # Coding patterns
+├── DEPENDENCIES.md                   # Dependency analysis
+├── API_SURFACE.md                    # Public API docs
+├── DATA_FLOW.md                      # Data flow documentation
+├── TEST_STRATEGY.md                  # Testing approach
+└── KNOWN_ISSUES.md                   # Tech debt & issues
 ```
 
 ---
 
 ## Success Criteria
 
-- [ ] All 6 tasks completed with markers checked
-- [ ] All files created in `src/infrastructure/analysis/`
-- [ ] Dependencies installed: `web-tree-sitter`, `fast-glob`, tree-sitter grammars
-- [ ] All unit tests pass: `npm test src/infrastructure/analysis/`
+- [ ] All 7 tasks completed with markers checked
+- [ ] All files created in `src/infrastructure/analysis/codebase/`
+- [ ] All unit tests pass: `npm test src/infrastructure/analysis/codebase/`
 - [ ] TypeScript compiles: `npm run build`
 - [ ] ESLint passes: `npm run lint`
-- [ ] Can generate repo map for Nexus itself:
+- [ ] Can generate docs for Nexus:
   ```typescript
-  const map = await generateRepoMap('.', { maxTokens: 4000 });
-  console.log(map.stats.totalSymbols); // Should be > 100
+  import { generateCodebaseDocs } from './infrastructure/analysis';
+  await generateCodebaseDocs('.', '.nexus/codebase');
   ```
-- [ ] Formatted output fits token budget
-- [ ] **Total lines: ~3,500-4,000**
+- [ ] All 7 markdown files generated in `.nexus/codebase/`
+- [ ] Generated docs contain meaningful content (not empty)
+- [ ] **Total lines: ~3,800-4,200**
 
 ---
 
 ## Recommended Settings
 
 ```
---max-iterations 60
---completion-promise "PLAN_13_01_COMPLETE"
+--max-iterations 65
+--completion-promise "PLAN_13_02_COMPLETE"
 ```
 
 ## Task Completion Markers
 
 Complete tasks sequentially:
 
-- [x] `[TASK 13-01-A COMPLETE]` - Types & TreeSitter Parser Setup ✅
-- [x] `[TASK 13-01-B COMPLETE]` - Symbol Extractor ✅
-- [x] `[TASK 13-01-C COMPLETE]` - Dependency Graph Builder ✅
-- [x] `[TASK 13-01-D COMPLETE]` - Reference Counter ✅
-- [x] `[TASK 13-01-E COMPLETE]` - RepoMapGenerator Core ✅
-- [x] `[TASK 13-01-F COMPLETE]` - Formatter & Index ✅
-- [x] `[PLAN 13-01 COMPLETE]` - All tasks done ✅
+- [x] `[TASK 13-02-A COMPLETE]` - Types & Base Analyzer (completed 2025-01-16)
+- [ ] `[TASK 13-02-B COMPLETE]` - Architecture Analyzer
+- [ ] `[TASK 13-02-C COMPLETE]` - Patterns Analyzer
+- [ ] `[TASK 13-02-D COMPLETE]` - Dependencies Analyzer
+- [ ] `[TASK 13-02-E COMPLETE]` - API Surface & Data Flow Analyzers
+- [ ] `[TASK 13-02-F COMPLETE]` - Test Strategy & Known Issues Analyzers
+- [ ] `[TASK 13-02-G COMPLETE]` - CodebaseAnalyzer & Index
+- [ ] `[PLAN 13-02 COMPLETE]` - All tasks done
 
 ---
 
 ## Notes
 
 - Complete each task FULLY before marking complete
-- Reference `PHASE_13_CONTEXT_ENHANCEMENT_PLAN.md` for detailed interface specs
-- Follow existing Nexus patterns in `src/infrastructure/` for consistency
-- Use the existing test patterns from other Nexus test files
-- The WASM files are in `node_modules/` after npm install
-- web-tree-sitter 0.24.7 is critical for TypeScript type compatibility
-- This module lives in Layer 7 (Infrastructure) per the 7-layer architecture
-- After completion, this enables Plan 13-02 (Codebase Analyzer) and Plan 13-03 (Code Memory)
+- This plan DEPENDS on Plan 13-01 (RepoMapGenerator)
+- Reference `PHASE_13_CONTEXT_ENHANCEMENT_PLAN.md` for detailed specs
+- Follow existing Nexus patterns for consistency
+- The analyzers infer information - they don't require perfect accuracy
+- Generated docs are for agent context, not human documentation
+- After completion, agents will have deep codebase understanding
 
 ## Reference Files
 
 For existing patterns, examine:
-- `src/infrastructure/git/GitService.ts` - Service pattern
-- `src/infrastructure/file-system/FileSystemService.ts` - File operations
-- `src/types/` - Type definition patterns
-- `vitest.config.ts` - Test configuration
+- `src/infrastructure/analysis/` - Plan 13-01 code
+- `src/infrastructure/analysis/types.ts` - Type patterns
+- `src/infrastructure/analysis/RepoMapGenerator.ts` - Orchestrator pattern
+- `07_NEXUS_MASTER_BOOK.md` - Layer definitions
+- `05_ARCHITECTURE_BLUEPRINT.md` - Component specifications
