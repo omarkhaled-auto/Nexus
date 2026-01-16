@@ -98,7 +98,7 @@ export class NexusCoordinator implements INexusCoordinator {
   /**
    * Initialize coordinator with project configuration
    */
-  async initialize(config: ProjectConfig): Promise<void> {
+  initialize(config: ProjectConfig): void {
     this.projectConfig = config;
     this.state = 'idle';
     this.currentPhase = 'planning';
@@ -115,7 +115,7 @@ export class NexusCoordinator implements INexusCoordinator {
   /**
    * Start orchestration for a project
    */
-  async start(projectId: string): Promise<void> {
+  start(projectId: string): void {
     if (!this.projectConfig) {
       throw new Error('Coordinator not initialized');
     }
@@ -152,7 +152,7 @@ export class NexusCoordinator implements INexusCoordinator {
   /**
    * Resume from paused state
    */
-  async resume(): Promise<void> {
+  resume(): void {
     if (this.state !== 'paused') {
       return;
     }
@@ -488,7 +488,7 @@ export class NexusCoordinator implements INexusCoordinator {
       const waveReadyTasks = readyTasks.filter(t => t.waveId === wave.id);
 
       // Try to assign tasks to agents
-      for (const task of waveReadyTasks) {
+      for (const _task of waveReadyTasks) {
         if (this.stopRequested || this.pauseRequested) break;
 
         // Check if we have an available agent or can spawn one

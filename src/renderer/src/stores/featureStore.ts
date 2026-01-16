@@ -147,7 +147,7 @@ export const useFeatureStore = create<FeatureState>()((set, get) => ({
     { set((state) => {
       // Get features in the target column
       const columnFeatures = state.features.filter((f) => f.status === columnId)
-      const otherFeatures = state.features.filter((f) => f.status !== columnId)
+      const _otherFeatures = state.features.filter((f) => f.status !== columnId)
 
       // Validate indices
       if (

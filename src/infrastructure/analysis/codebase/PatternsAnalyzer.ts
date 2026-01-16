@@ -206,7 +206,7 @@ export class PatternsAnalyzer extends BaseAnalyzer {
    * Perform patterns analysis
    * @returns Patterns documentation
    */
-  async analyze(): Promise<PatternsDoc> {
+  analyze(): PatternsDoc {
     const architecturalPatterns = this.detectArchitecturalPatterns();
     const codingPatterns = this.detectCodingPatterns();
     const namingConventions = this.detectNamingConventions();
@@ -238,8 +238,8 @@ export class PatternsAnalyzer extends BaseAnalyzer {
     const paragraphs: string[] = [];
 
     paragraphs.push(
-      `This codebase follows ${archPatterns.length} architectural patterns and ` +
-      `${codePatterns.length} coding patterns. The following document describes ` +
+      `This codebase follows ${String(archPatterns.length)} architectural patterns and ` +
+      `${String(codePatterns.length)} coding patterns. The following document describes ` +
       `the patterns detected in the codebase along with examples.`
     );
 
@@ -254,7 +254,7 @@ export class PatternsAnalyzer extends BaseAnalyzer {
     if (conventions.length > 0) {
       paragraphs.push(
         `The codebase follows consistent naming conventions with ` +
-        `${conventions.length} documented rules for naming different code elements.`
+        `${String(conventions.length)} documented rules for naming different code elements.`
       );
     }
 
@@ -326,7 +326,7 @@ export class PatternsAnalyzer extends BaseAnalyzer {
 
         examples.push({
           file: symbol.file,
-          lines: `${symbol.line}-${symbol.endLine || symbol.line}`,
+          lines: `${String(symbol.line)}-${String(symbol.endLine || symbol.line)}`,
           description: this.inferPurpose(symbol),
         });
 

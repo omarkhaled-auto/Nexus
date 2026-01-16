@@ -168,8 +168,8 @@ export class DependenciesAnalyzer extends BaseAnalyzer {
       try {
         // Read from file system if we have the path
         const { readFile } = await import('fs/promises');
-        const { resolve } = await import('path');
-        const fullPath = resolve(this.options.projectPath, 'package.json');
+        const path = await import('path');
+        const fullPath = path.resolve(this.options.projectPath, 'package.json');
         const content = await readFile(fullPath, 'utf-8');
         this.packageJson = JSON.parse(content) as PackageJsonContent;
       } catch {
@@ -197,13 +197,13 @@ export class DependenciesAnalyzer extends BaseAnalyzer {
     const paragraphs: string[] = [];
 
     paragraphs.push(
-      `This codebase manages ${externalCount} external npm dependencies and ${internalModuleCount} internal modules. ` +
+      `This codebase manages ${String(externalCount)} external npm dependencies and ${String(internalModuleCount)} internal modules. ` +
       `The dependency structure follows a layered architecture with clear module boundaries.`
     );
 
     if (circularCount > 0) {
       paragraphs.push(
-        `**Note:** ${circularCount} circular dependencies were detected. ` +
+        `**Note:** ${String(circularCount)} circular dependencies were detected. ` +
         `See the Circular Dependencies section for details and suggested fixes.`
       );
     } else {
@@ -510,7 +510,7 @@ export class DependenciesAnalyzer extends BaseAnalyzer {
         .map(d => ({
           type: 'named' as const,
           source: d.to,
-          symbols: (d.symbols || []).map(s => ({ local: s })),
+          symbols: d.symbols.map(s => ({ local: s })),
           line: 1,
           typeOnly: false,
         })),
@@ -547,7 +547,7 @@ export class DependenciesAnalyzer extends BaseAnalyzer {
         .map(d => ({
           type: 'named' as const,
           source: d.to,
-          symbols: (d.symbols || []).map(s => ({ local: s })),
+          symbols: d.symbols.map(s => ({ local: s })),
           line: 1,
           typeOnly: false,
         })),
@@ -586,7 +586,7 @@ export class DependenciesAnalyzer extends BaseAnalyzer {
    */
   private suggestCycleFix(cycle: string[]): string {
     if (cycle.length === 2) {
-      return `Extract shared functionality into a new module that both ${cycle[0]} and ${cycle[1]} can import.`;
+      return `Extract shared functionality into a new module that both ${cycle[0] ?? 'file1'} and ${cycle[1] ?? 'file2'} can import.`;
     }
 
     const layers = new Set(cycle.map(f => this.getLayerForFile(f)).filter(Boolean));
@@ -650,13 +650,13 @@ export class DependenciesAnalyzer extends BaseAnalyzer {
             lines.push(`- \`${exp}\``);
           }
           if (mod.exports.length > 10) {
-            lines.push(`- ... and ${mod.exports.length - 10} more`);
+            lines.push(`- ... and ${String(mod.exports.length - 10)} more`);
           }
           lines.push('');
         }
 
         if (mod.importedBy.length > 0) {
-          lines.push(`**Imported by:** ${mod.importedBy.length} file(s)`);
+          lines.push(`**Imported by:** ${String(mod.importedBy.length)} file(s)`);
           lines.push('');
         }
       }
@@ -676,11 +676,11 @@ export class DependenciesAnalyzer extends BaseAnalyzer {
     lines.push('');
 
     if (doc.circularDependencies.length > 0) {
-      lines.push(`Found ${doc.circularDependencies.length} circular dependencies:`);
+      lines.push(`Found ${String(doc.circularDependencies.length)} circular dependencies:`);
       lines.push('');
 
       doc.circularDependencies.forEach((cd, i) => {
-        lines.push(`### Cycle ${i + 1} (${cd.severity} severity)`);
+        lines.push(`### Cycle ${String(i + 1)} (${cd.severity} severity)`);
         lines.push('');
         lines.push('```');
         lines.push(cd.cycle.join(' -> '));

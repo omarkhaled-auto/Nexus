@@ -1,6 +1,6 @@
-import type { Project, Feature, Requirement, ProjectStatus, FeatureStatus, Priority } from './core';
-import type { Task, TaskStatus, TaskResult, QAResult } from './task';
-import type { Agent, AgentType, AgentStatus } from './agent';
+import type { Project, Feature, Requirement, ProjectStatus, FeatureStatus } from './core';
+import type { Task, TaskResult, QAResult } from './task';
+import type { Agent, AgentType } from './agent';
 
 // Base event structure
 export interface NexusEvent<T = unknown> {

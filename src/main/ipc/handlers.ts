@@ -102,7 +102,7 @@ export function registerCheckpointReviewHandlers(
         throw new Error('CheckpointManager not initialized')
       }
 
-      return checkpointManagerRef.createCheckpoint(projectId, reason)
+      return await checkpointManagerRef.createCheckpoint(projectId, reason)
     }
   )
 
@@ -134,7 +134,7 @@ export function registerCheckpointReviewHandlers(
       throw new Error('CheckpointManager not initialized')
     }
 
-    checkpointManagerRef.deleteCheckpoint(checkpointId)
+    await checkpointManagerRef.deleteCheckpoint(checkpointId)
   })
 
   // ========================================
@@ -210,7 +210,7 @@ export function registerCheckpointReviewHandlers(
  */
 export function registerIpcHandlers(): void {
   // Mode operations
-  ipcMain.handle('mode:genesis', async (event) => {
+  ipcMain.handle('mode:genesis', (event) => {
     if (!validateSender(event)) {
       throw new Error('Unauthorized IPC sender')
     }
@@ -227,7 +227,7 @@ export function registerIpcHandlers(): void {
     return { success: true, projectId }
   })
 
-  ipcMain.handle('mode:evolution', async (event, projectId: string) => {
+  ipcMain.handle('mode:evolution', (event, projectId: string) => {
     if (!validateSender(event)) {
       throw new Error('Unauthorized IPC sender')
     }
@@ -247,7 +247,7 @@ export function registerIpcHandlers(): void {
   })
 
   // Project operations
-  ipcMain.handle('project:get', async (event, id: string) => {
+  ipcMain.handle('project:get', (event, id: string) => {
     if (!validateSender(event)) {
       throw new Error('Unauthorized IPC sender')
     }
@@ -263,12 +263,7 @@ export function registerIpcHandlers(): void {
     return project
   })
 
-  ipcMain.handle(
-    'project:create',
-    async (
-      event,
-      input: { name: string; mode: 'genesis' | 'evolution' }
-    ) => {
+  ipcMain.handle('project:create', (event, input: { name: string; mode: 'genesis' | 'evolution' }) => {
       if (!validateSender(event)) {
         throw new Error('Unauthorized IPC sender')
       }
@@ -288,7 +283,7 @@ export function registerIpcHandlers(): void {
   )
 
   // Task operations
-  ipcMain.handle('tasks:list', async (event) => {
+  ipcMain.handle('tasks:list', (event) => {
     if (!validateSender(event)) {
       throw new Error('Unauthorized IPC sender')
     }
@@ -296,9 +291,7 @@ export function registerIpcHandlers(): void {
     return Array.from(state.tasks.values())
   })
 
-  ipcMain.handle(
-    'task:update',
-    async (event, id: string, update: Record<string, unknown>) => {
+  ipcMain.handle('task:update', (event, id: string, update: Record<string, unknown>) => {
       if (!validateSender(event)) {
         throw new Error('Unauthorized IPC sender')
       }
@@ -325,7 +318,7 @@ export function registerIpcHandlers(): void {
   )
 
   // Agent operations
-  ipcMain.handle('agents:status', async (event) => {
+  ipcMain.handle('agents:status', (event) => {
     if (!validateSender(event)) {
       throw new Error('Unauthorized IPC sender')
     }
@@ -334,7 +327,7 @@ export function registerIpcHandlers(): void {
   })
 
   // Execution control
-  ipcMain.handle('execution:pause', async (event, reason?: string) => {
+  ipcMain.handle('execution:pause', (event, reason?: string) => {
     if (!validateSender(event)) {
       throw new Error('Unauthorized IPC sender')
     }
@@ -352,12 +345,7 @@ export function registerIpcHandlers(): void {
   // Interview Events (BUILD-014)
   // ========================================
 
-  ipcMain.handle(
-    'interview:emit-started',
-    async (
-      event,
-      payload: { projectName: string | null; mode: 'genesis' | 'evolution' }
-    ) => {
+  ipcMain.handle('interview:emit-started', (event, payload: { projectName: string | null; mode: 'genesis' | 'evolution' }) => {
       if (!validateSender(event)) {
         throw new Error('Unauthorized IPC sender')
       }
@@ -377,12 +365,7 @@ export function registerIpcHandlers(): void {
     }
   )
 
-  ipcMain.handle(
-    'interview:emit-message',
-    async (
-      event,
-      payload: { messageId: string; role: 'user' | 'assistant'; content: string }
-    ) => {
+  ipcMain.handle('interview:emit-message', (event, payload: { messageId: string; role: 'user' | 'assistant'; content: string }) => {
       if (!validateSender(event)) {
         throw new Error('Unauthorized IPC sender')
       }
@@ -403,17 +386,7 @@ export function registerIpcHandlers(): void {
     }
   )
 
-  ipcMain.handle(
-    'interview:emit-requirement',
-    async (
-      event,
-      payload: {
-        requirementId: string
-        category: string
-        text: string
-        priority: string
-      }
-    ) => {
+  ipcMain.handle('interview:emit-requirement', (event, payload: { requirementId: string; category: string; text: string; priority: string }) => {
       if (!validateSender(event)) {
         throw new Error('Unauthorized IPC sender')
       }
@@ -459,16 +432,7 @@ export function registerIpcHandlers(): void {
     }
   )
 
-  ipcMain.handle(
-    'interview:emit-completed',
-    async (
-      event,
-      payload: {
-        requirementCount: number
-        categories: string[]
-        duration: number
-      }
-    ) => {
+  ipcMain.handle('interview:emit-completed', (event, payload: { requirementCount: number; categories: string[]; duration: number }) => {
       if (!validateSender(event)) {
         throw new Error('Unauthorized IPC sender')
       }
@@ -493,9 +457,7 @@ export function registerIpcHandlers(): void {
   // Generic Event Emission (BUILD-015)
   // ========================================
 
-  ipcMain.handle(
-    'eventbus:emit',
-    async (event, channel: string, payload: unknown) => {
+  ipcMain.handle('eventbus:emit', (event, channel: string, payload: unknown) => {
       if (!validateSender(event)) {
         throw new Error('Unauthorized IPC sender')
       }

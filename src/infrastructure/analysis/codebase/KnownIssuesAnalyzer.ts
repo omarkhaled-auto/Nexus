@@ -19,7 +19,7 @@ import type {
 /**
  * Patterns for detecting technical debt comments
  */
-const DEBT_PATTERNS: Array<{
+const _DEBT_PATTERNS: Array<{
   pattern: RegExp;
   severity: TechnicalDebtItem['severity'];
   prefix: string;
@@ -52,8 +52,8 @@ export class KnownIssuesAnalyzer extends BaseAnalyzer {
    * Perform known issues analysis
    * @returns Known issues documentation
    */
-  async analyze(): Promise<KnownIssuesDoc> {
-    const technicalDebt = await this.findTechnicalDebt();
+  analyze(): KnownIssuesDoc {
+    const technicalDebt = this.findTechnicalDebt();
     const limitations = this.detectLimitations();
     const workarounds = this.findWorkarounds();
     const futureImprovements = this.suggestImprovements(technicalDebt, limitations);
@@ -90,19 +90,19 @@ export class KnownIssuesAnalyzer extends BaseAnalyzer {
       );
     } else {
       paragraphs.push(
-        `This document tracks ${debt.length} technical debt items, ${limitations.length} known limitations, ` +
-        `and ${workarounds.length} workarounds in the codebase.`
+        `This document tracks ${String(debt.length)} technical debt items, ${String(limitations.length)} known limitations, ` +
+        `and ${String(workarounds.length)} workarounds in the codebase.`
       );
 
       if (highSeverityCount > 0) {
         paragraphs.push(
-          `**Action Required:** ${highSeverityCount} high-severity item(s) require immediate attention.`
+          `**Action Required:** ${String(highSeverityCount)} high-severity item(s) require immediate attention.`
         );
       }
 
       if (mediumSeverityCount > 0 || lowSeverityCount > 0) {
         paragraphs.push(
-          `There are ${mediumSeverityCount} medium-severity and ${lowSeverityCount} low-severity items ` +
+          `There are ${String(mediumSeverityCount)} medium-severity and ${String(lowSeverityCount)} low-severity items ` +
           `that should be addressed during regular maintenance cycles.`
         );
       }
@@ -114,7 +114,7 @@ export class KnownIssuesAnalyzer extends BaseAnalyzer {
   /**
    * Find technical debt by scanning for TODO, FIXME, HACK comments
    */
-  private async findTechnicalDebt(): Promise<TechnicalDebtItem[]> {
+  private findTechnicalDebt(): TechnicalDebtItem[] {
     const debtItems: TechnicalDebtItem[] = [];
     let idCounter = 1;
 
@@ -123,9 +123,9 @@ export class KnownIssuesAnalyzer extends BaseAnalyzer {
       if (symbol.documentation?.includes('@deprecated')) {
         const description = this.extractDeprecationMessage(symbol.documentation);
         debtItems.push({
-          id: `DEBT-${idCounter++}`,
+          id: `DEBT-${String(idCounter++)}`,
           description: `Deprecated: ${symbol.name} - ${description}`,
-          location: `${symbol.file}:${symbol.line}`,
+          location: `${symbol.file}:${String(symbol.line)}`,
           severity: 'medium',
           effort: 'medium',
           suggestion: `Remove or replace deprecated ${symbol.kind} "${symbol.name}"`,
@@ -143,7 +143,7 @@ export class KnownIssuesAnalyzer extends BaseAnalyzer {
 
       if (fileName.includes('temp') && !fileName.includes('template')) {
         debtItems.push({
-          id: `DEBT-${idCounter++}`,
+          id: `DEBT-${String(idCounter++)}`,
           description: 'Temporary file that should be removed or refactored',
           location: file.relativePath,
           severity: 'low',
@@ -154,7 +154,7 @@ export class KnownIssuesAnalyzer extends BaseAnalyzer {
 
       if (fileName.includes('.old.') || fileName.endsWith('.old')) {
         debtItems.push({
-          id: `DEBT-${idCounter++}`,
+          id: `DEBT-${String(idCounter++)}`,
           description: 'Old/legacy file that should be removed',
           location: file.relativePath,
           severity: 'low',
@@ -165,7 +165,7 @@ export class KnownIssuesAnalyzer extends BaseAnalyzer {
 
       if (fileName.includes('.bak') || fileName.includes('.backup')) {
         debtItems.push({
-          id: `DEBT-${idCounter++}`,
+          id: `DEBT-${String(idCounter++)}`,
           description: 'Backup file in repository',
           location: file.relativePath,
           severity: 'low',
@@ -277,7 +277,7 @@ export class KnownIssuesAnalyzer extends BaseAnalyzer {
         workarounds.push({
           issue: `Temporary implementation: ${symbol.name}`,
           workaround: `${symbol.kind} "${symbol.name}" implements a temporary solution`,
-          location: `${symbol.file}:${symbol.line}`,
+          location: `${symbol.file}:${String(symbol.line)}`,
           permanent: false,
         });
       }
@@ -291,7 +291,7 @@ export class KnownIssuesAnalyzer extends BaseAnalyzer {
    */
   private suggestImprovements(
     debt: TechnicalDebtItem[],
-    limitations: LimitationDoc[]
+    _limitations: LimitationDoc[]
   ): FutureImprovementDoc[] {
     const improvements: FutureImprovementDoc[] = [];
 

@@ -4,7 +4,7 @@ import {
   XCircle,
   RefreshCw,
   Play,
-  Pause,
+  
   AlertCircle,
   Bot,
   Flag,

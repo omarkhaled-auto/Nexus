@@ -156,7 +156,7 @@ function generateDemoData(): {
  */
 export default function DashboardPage(): ReactElement {
   const isLoading = useIsMetricsLoading()
-  const overview = useOverview()
+  const _overview = useOverview()
   const { setOverview, setAgents, setCosts, setLoading, addTimelineEvent } =
     useMetricsStore.getState()
 

@@ -109,7 +109,7 @@ export class ArchitectureAnalyzer extends BaseAnalyzer {
    * Perform architecture analysis
    * @returns Architecture documentation
    */
-  async analyze(): Promise<ArchitectureDoc> {
+  analyze(): ArchitectureDoc {
     const overview = this.generateOverview();
     const layers = this.detectLayers();
     const keyComponents = this.identifyKeyComponents();
@@ -150,9 +150,9 @@ export class ArchitectureAnalyzer extends BaseAnalyzer {
     // First paragraph - project type and scale
     paragraphs.push(
       `This codebase is a ${technologies.length > 0 ? technologies.slice(0, 3).join('/') + ' ' : ''}application ` +
-      `consisting of ${fileCount} source files containing ${symbolCount} symbols. ` +
+      `consisting of ${String(fileCount)} source files containing ${String(symbolCount)} symbols. ` +
       `The project follows a ${layerCount > 3 ? 'multi-layered' : 'modular'} architecture ` +
-      `with ${dependencyCount} inter-file dependencies.`
+      `with ${String(dependencyCount)} inter-file dependencies.`
     );
 
     // Second paragraph - key technologies
@@ -168,7 +168,7 @@ export class ArchitectureAnalyzer extends BaseAnalyzer {
     // Third paragraph - architectural style
     if (layerCount >= 5) {
       paragraphs.push(
-        `The architecture follows a clean separation of concerns with ${layerCount} distinct layers, ` +
+        `The architecture follows a clean separation of concerns with ${String(layerCount)} distinct layers, ` +
         `enabling independent development and testing of each layer. ` +
         `Dependencies flow downward through the layer hierarchy, minimizing coupling.`
       );
@@ -185,7 +185,7 @@ export class ArchitectureAnalyzer extends BaseAnalyzer {
 
     // Check file extensions and imports
     const allFiles = this.repoMap.files.map(f => f.relativePath.toLowerCase());
-    const allSymbols = this.repoMap.symbols.map(s => s.signature?.toLowerCase() || '');
+    const allSymbols = this.repoMap.symbols.map(s => s.signature.toLowerCase() || '');
 
     for (const tech of TECHNOLOGY_PATTERNS) {
       const found = tech.patterns.some(pattern => {
@@ -571,7 +571,7 @@ export class ArchitectureAnalyzer extends BaseAnalyzer {
       lines.push('');
 
       for (const layer of doc.layers) {
-        lines.push(`#### ${layer.number}. ${layer.name}`);
+        lines.push(`#### ${String(layer.number)}. ${layer.name}`);
         lines.push('');
         lines.push(`**Purpose:** ${layer.purpose}`);
         lines.push('');
@@ -683,8 +683,8 @@ export class ArchitectureAnalyzer extends BaseAnalyzer {
    */
   private generateLayerDiagram(layers: LayerDescription[]): string {
     const nodes = layers.map(layer => ({
-      id: `L${layer.number}`,
-      label: `${layer.number}. ${layer.name}`,
+      id: `L${String(layer.number)}`,
+      label: `${String(layer.number)}. ${layer.name}`,
       shape: 'rectangle' as const,
     }));
 
@@ -696,8 +696,8 @@ export class ArchitectureAnalyzer extends BaseAnalyzer {
       const nextLayer = layers[i + 1];
       if (currentLayer && nextLayer) {
         edges.push({
-          from: `L${currentLayer.number}`,
-          to: `L${nextLayer.number}`,
+          from: `L${String(currentLayer.number)}`,
+          to: `L${String(nextLayer.number)}`,
           style: 'solid',
         });
       }

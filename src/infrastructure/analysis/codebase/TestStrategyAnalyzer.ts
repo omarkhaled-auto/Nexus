@@ -63,11 +63,11 @@ export class TestStrategyAnalyzer extends BaseAnalyzer {
    * Perform test strategy analysis
    * @returns Test strategy documentation
    */
-  async analyze(): Promise<TestStrategyDoc> {
+  analyze(): TestStrategyDoc {
     const overview = this.generateOverview();
     const frameworks = this.detectTestFrameworks();
     const testTypes = this.analyzeTestTypes();
-    const coverage = await this.analyzeCoverage();
+    const coverage = this.analyzeCoverage();
     const testPatterns = this.detectTestPatterns();
 
     return {
@@ -97,17 +97,19 @@ export class TestStrategyAnalyzer extends BaseAnalyzer {
       );
     } else {
       paragraphs.push(
-        `This codebase has ${testCount} test file(s) using ${frameworkNames}. ` +
+        `This codebase has ${String(testCount)} test file(s) using ${frameworkNames}. ` +
         `Tests are organized to validate functionality at multiple levels of the application.`
       );
     }
 
     // Add framework-specific information
     if (frameworks.length > 0) {
-      const primaryFramework = frameworks[0]!;
-      paragraphs.push(
-        `The primary testing framework is ${primaryFramework.name}, which provides ${primaryFramework.purpose.toLowerCase()}.`
-      );
+      const primaryFramework = frameworks[0];
+      if (primaryFramework) {
+        paragraphs.push(
+          `The primary testing framework is ${primaryFramework.name}, which provides ${primaryFramework.purpose.toLowerCase()}.`
+        );
+      }
     }
 
     return paragraphs.join('\n\n');
@@ -240,7 +242,7 @@ export class TestStrategyAnalyzer extends BaseAnalyzer {
     const hasE2eDir = files.some(f => f.includes('e2e/') || f.includes('/e2e'));
     const isColocated = files.some(f => {
       const parts = f.split('/');
-      const fileName = parts[parts.length - 1];
+      const _fileName = parts[parts.length - 1];
       const dirPath = parts.slice(0, -1).join('/');
       // Check if there's a source file in the same directory
       return this.repoMap.files.some(src =>
@@ -278,7 +280,7 @@ export class TestStrategyAnalyzer extends BaseAnalyzer {
   /**
    * Analyze coverage configuration
    */
-  private async analyzeCoverage(): Promise<CoverageDoc> {
+  private analyzeCoverage(): CoverageDoc {
     // Default coverage doc
     const coverage: CoverageDoc = {
       target: 80, // Default target
@@ -286,7 +288,7 @@ export class TestStrategyAnalyzer extends BaseAnalyzer {
     };
 
     // Try to read coverage config from vitest.config or jest.config
-    const configFiles = this.repoMap.files.filter(f =>
+    const _configFiles = this.repoMap.files.filter(f =>
       f.relativePath.includes('vitest.config') ||
       f.relativePath.includes('jest.config')
     );
@@ -449,7 +451,7 @@ export class TestStrategyAnalyzer extends BaseAnalyzer {
       lines.push('|------|----------|---------|-------|');
 
       for (const testType of doc.testTypes) {
-        lines.push(`| ${testType.type} | ${testType.location} | \`${testType.namingPattern}\` | ${testType.count} |`);
+        lines.push(`| ${testType.type} | ${testType.location} | \`${testType.namingPattern}\` | ${String(testType.count)} |`);
       }
     } else {
       lines.push('No test files detected in the codebase.');
@@ -459,11 +461,11 @@ export class TestStrategyAnalyzer extends BaseAnalyzer {
     // Coverage
     lines.push('## Coverage Configuration');
     lines.push('');
-    lines.push(`**Target Coverage:** ${doc.coverage.target}%`);
+    lines.push(`**Target Coverage:** ${String(doc.coverage.target)}%`);
     lines.push('');
 
     if (doc.coverage.current !== undefined) {
-      lines.push(`**Current Coverage:** ${doc.coverage.current}%`);
+      lines.push(`**Current Coverage:** ${String(doc.coverage.current)}%`);
       lines.push('');
     }
 

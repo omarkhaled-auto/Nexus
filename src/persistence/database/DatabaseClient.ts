@@ -116,7 +116,7 @@ export class DatabaseClient {
    *
    * @param migrationsDir - Path to migrations folder
    */
-  async migrate(migrationsDir: string): Promise<void> {
+  migrate(migrationsDir: string): void {
     try {
       migrate(this._db, { migrationsFolder: migrationsDir });
     } catch (error) {
@@ -131,7 +131,7 @@ export class DatabaseClient {
    *
    * @returns Array of table names
    */
-  async tables(): Promise<string[]> {
+  tables(): string[] {
     const result = this.sqlite
       .prepare(
         "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '__%'"
@@ -187,7 +187,7 @@ export class DatabaseClient {
    *
    * @returns true if database is responsive
    */
-  async ping(): Promise<boolean> {
+  ping(): boolean {
     try {
       this.sqlite.prepare('SELECT 1').get();
       return true;
@@ -222,7 +222,7 @@ export class DatabaseClient {
   /**
    * Close the database connection.
    */
-  async close(): Promise<void> {
+  close(): void {
     try {
       // Checkpoint WAL before closing
       if (this.options.path !== ':memory:') {

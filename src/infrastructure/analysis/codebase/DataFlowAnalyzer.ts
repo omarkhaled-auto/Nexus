@@ -38,7 +38,7 @@ export class DataFlowAnalyzer extends BaseAnalyzer {
    * Perform data flow analysis
    * @returns Data flow documentation
    */
-  async analyze(): Promise<DataFlowDoc> {
+  analyze(): DataFlowDoc {
     const stateManagement = this.analyzeStateManagement();
     const dataStores = this.analyzeDataStores();
     const eventFlows = this.analyzeEventFlows();
@@ -74,12 +74,12 @@ export class DataFlowAnalyzer extends BaseAnalyzer {
     paragraphs.push(
       `This document describes how data flows through the application. ` +
       `The system uses ${stateManagement.approach} for UI state management ` +
-      `and ${dataStores.length} data stores for persistence.`
+      `and ${String(dataStores.length)} data stores for persistence.`
     );
 
     if (stateManagement.stores.length > 0) {
       paragraphs.push(
-        `The application maintains ${stateManagement.stores.length} state stores ` +
+        `The application maintains ${String(stateManagement.stores.length)} state stores ` +
         `that manage different aspects of the application state. ` +
         stateManagement.persistence
       );
@@ -87,14 +87,14 @@ export class DataFlowAnalyzer extends BaseAnalyzer {
 
     if (eventFlows.length > 0) {
       paragraphs.push(
-        `Event-driven communication is used in ${eventFlows.length} flows, ` +
+        `Event-driven communication is used in ${String(eventFlows.length)} flows, ` +
         `enabling loose coupling between components.`
       );
     }
 
     if (transformations.length > 0) {
       paragraphs.push(
-        `Data transformations are handled by ${transformations.length} adapters/transformers ` +
+        `Data transformations are handled by ${String(transformations.length)} adapters/transformers ` +
         `that convert between different data formats.`
       );
     }
@@ -139,7 +139,7 @@ export class DataFlowAnalyzer extends BaseAnalyzer {
 
     // Check for persistence
     const hasPersist = this.repoMap.symbols.some(s =>
-      s.signature?.includes('persist') ||
+      s.signature.includes('persist') ||
       s.name.includes('persist')
     );
 
@@ -317,7 +317,7 @@ export class DataFlowAnalyzer extends BaseAnalyzer {
 
     // Check for IndexedDB
     const hasIndexedDB = this.repoMap.symbols.some(s =>
-      s.signature?.includes('indexedDB') ||
+      s.signature.includes('indexedDB') ||
       s.name.includes('IndexedDB') ||
       s.name.includes('IDB')
     );
@@ -351,7 +351,7 @@ export class DataFlowAnalyzer extends BaseAnalyzer {
     const hasFileStorage = this.repoMap.symbols.some(s =>
       s.name.includes('FileStore') ||
       s.name.includes('FileStorage') ||
-      (s.signature?.includes('writeFile') && s.signature?.includes('JSON'))
+      (s.signature.includes('writeFile') && s.signature.includes('JSON'))
     );
 
     if (hasFileStorage) {
@@ -419,7 +419,7 @@ export class DataFlowAnalyzer extends BaseAnalyzer {
     const seenEvents = new Set<string>();
 
     // Look for EventBus, EventEmitter, or similar patterns
-    const eventSymbols = this.repoMap.symbols.filter(s =>
+    const _eventSymbols = this.repoMap.symbols.filter(s =>
       s.name.includes('Event') ||
       s.name.includes('event') ||
       s.name === 'emit' ||
@@ -547,8 +547,8 @@ export class DataFlowAnalyzer extends BaseAnalyzer {
 
     // Look for IPC channel patterns
     const ipcSymbols = this.repoMap.symbols.filter(s =>
-      s.signature?.includes('ipcMain') ||
-      s.signature?.includes('ipcRenderer') ||
+      s.signature.includes('ipcMain') ||
+      s.signature.includes('ipcRenderer') ||
       s.file.includes('preload') ||
       s.file.includes('ipc')
     );
@@ -577,8 +577,8 @@ export class DataFlowAnalyzer extends BaseAnalyzer {
       { id: 'source', label: 'Source' },
       { id: 'event', label: eventName },
       ...handlers.slice(0, 3).map((h, i) => ({
-        id: `handler${i}`,
-        label: h.split(' ')[0] || `Handler ${i + 1}`,
+        id: `handler${String(i)}`,
+        label: h.split(' ')[0] || `Handler ${String(i + 1)}`,
       })),
     ];
 
@@ -586,7 +586,7 @@ export class DataFlowAnalyzer extends BaseAnalyzer {
       { from: 'source', to: 'event', label: 'emit', type: 'sync' as const },
       ...handlers.slice(0, 3).map((_, i) => ({
         from: 'event',
-        to: `handler${i}`,
+        to: `handler${String(i)}`,
         label: 'notify',
         type: 'async' as const,
       })),

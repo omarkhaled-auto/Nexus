@@ -3,7 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { TaskTimeline } from './TaskTimeline'
 import { useMetricsStore } from '@renderer/stores/metricsStore'
-import type { TimelineEvent, TimelineEventType } from '@renderer/types/metrics'
+import type { TimelineEvent } from '@renderer/types/metrics'
 
 // Mock react-virtuoso to simplify testing
 vi.mock('react-virtuoso', () => ({

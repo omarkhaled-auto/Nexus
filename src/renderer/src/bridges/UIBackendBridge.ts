@@ -51,7 +51,7 @@ class UIBackendBridge {
    * Initialize the bridge - subscribe to backend events
    * Safe to call multiple times (idempotent)
    */
-  async initialize(): Promise<void> {
+  initialize(): void {
     if (this.initialized) return
 
     // Guard against missing nexusAPI (e.g., during tests or non-Electron context)

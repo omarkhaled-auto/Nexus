@@ -1,7 +1,7 @@
 // TaskSchemaAdapter - Convert between GSD XML task format and Nexus Task interface
 // Hotfix #5 - Issue 1
 
-import type { Task, TaskType, TaskSize, TaskStatus } from '../types/task';
+import type { TaskType } from '../types/task';
 import type { PlanningTask } from '../planning/types';
 
 /**
@@ -63,8 +63,8 @@ export class TaskSchemaAdapter {
     let taskIndex = 0;
 
     while ((match = taskRegex.exec(xmlContent)) !== null) {
-      const attributes = match[1];
-      const content = match[2];
+      const attributes = match[1] ?? "";
+      const content = match[2] ?? "";
 
       try {
         const gsdTask = this.parseGSDTask(`<task ${attributes}>${content}</task>`);
@@ -84,7 +84,7 @@ export class TaskSchemaAdapter {
    * Convert Nexus tasks to GSD XML format
    */
   toGSDPlan(tasks: PlanningTask[]): string {
-    if (!tasks || tasks.length === 0) {
+    if (tasks.length === 0) {
       return '<tasks>\n</tasks>';
     }
 
@@ -241,7 +241,7 @@ export class TaskSchemaAdapter {
       : '';
 
     const done = task.testCriteria && task.testCriteria.length > 0
-      ? `\n    <done>${task.testCriteria[0]}</done>`
+      ? `\n    <done>${task.testCriteria[0] ?? ''}</done>`
       : '';
 
     const verify = task.testCriteria && task.testCriteria.length > 1

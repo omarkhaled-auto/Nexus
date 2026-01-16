@@ -17,11 +17,6 @@ import { safeStorage } from 'electron'
 import type {
   NexusSettings,
   NexusSettingsPublic,
-  LLMSettings,
-  AgentSettings,
-  CheckpointSettings,
-  UISettings,
-  ProjectSettings,
   LLMProvider
 } from '../../shared/types/settings'
 

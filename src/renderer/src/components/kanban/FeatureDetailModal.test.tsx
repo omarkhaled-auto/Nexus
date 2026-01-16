@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { FeatureDetailModal } from './FeatureDetailModal'
 import { useTaskStore } from '@renderer/stores/taskStore'
 import type { Feature } from '@renderer/types/feature'

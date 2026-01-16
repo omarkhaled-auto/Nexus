@@ -41,7 +41,7 @@ export function registerInterviewHandlers(
   // ========================================
   ipcMain.handle(
     'interview:start',
-    async (event, projectId: string): Promise<InterviewSession> => {
+    (event, projectId: string): InterviewSession => {
       if (!validateSender(event)) {
         throw new Error('Unauthorized IPC sender');
       }
@@ -60,11 +60,7 @@ export function registerInterviewHandlers(
   // ========================================
   ipcMain.handle(
     'interview:sendMessage',
-    async (
-      event,
-      sessionId: string,
-      message: string
-    ): Promise<ProcessMessageResult> => {
+    (event, sessionId: string, message: string): ProcessMessageResult => {
       if (!validateSender(event)) {
         throw new Error('Unauthorized IPC sender');
       }
@@ -85,7 +81,7 @@ export function registerInterviewHandlers(
   // ========================================
   ipcMain.handle(
     'interview:getSession',
-    async (event, sessionId: string): Promise<InterviewSession | null> => {
+    (event, sessionId: string): InterviewSession | null => {
       if (!validateSender(event)) {
         throw new Error('Unauthorized IPC sender');
       }
@@ -190,7 +186,7 @@ export function registerInterviewHandlers(
   // ========================================
   ipcMain.handle(
     'interview:getGreeting',
-    async (event): Promise<string> => {
+    (event): string => {
       if (!validateSender(event)) {
         throw new Error('Unauthorized IPC sender');
       }

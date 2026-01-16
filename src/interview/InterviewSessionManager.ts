@@ -91,7 +91,7 @@ export class InterviewSessionManager {
    *
    * @param session The session to save
    */
-  async save(session: InterviewSession): Promise<void> {
+  save(session: InterviewSession): void {
     const serialized = this.serializeSession(session);
     const now = new Date();
 
@@ -143,7 +143,7 @@ export class InterviewSessionManager {
    * @param sessionId The session ID to load
    * @returns The session or null if not found
    */
-  async load(sessionId: string): Promise<InterviewSession | null> {
+  load(sessionId: string): InterviewSession | null {
     const row = this.db.db
       .select()
       .from(sessions)
@@ -168,7 +168,7 @@ export class InterviewSessionManager {
    * @param projectId The project ID
    * @returns The active session or null if none found
    */
-  async loadByProject(projectId: string): Promise<InterviewSession | null> {
+  loadByProject(projectId: string): InterviewSession | null {
     const row = this.db.db
       .select()
       .from(sessions)
@@ -194,7 +194,7 @@ export class InterviewSessionManager {
    *
    * @param sessionId The session ID to delete
    */
-  async delete(sessionId: string): Promise<void> {
+  delete(sessionId: string): void {
     this.db.db
       .delete(sessions)
       .where(
@@ -223,7 +223,7 @@ export class InterviewSessionManager {
     // Start the interval
     this.autoSaveTimer = setInterval(() => {
       if (this.currentSession) {
-        void this.save(this.currentSession);
+        this.save(this.currentSession);
         this.logger?.debug('Auto-saved interview session', {
           sessionId: this.currentSession.id,
         });

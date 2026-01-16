@@ -1,0 +1,469 @@
+
+> nexus@0.1.0 lint
+> eslint src/
+
+
+D:\Dev\Nexus\src\adapters\TaskSchemaAdapter.ts
+    4:15  error  'Task' is defined but never used. Allowed unused vars must match /^_/u        @typescript-eslint/no-unused-vars
+    4:31  error  'TaskSize' is defined but never used. Allowed unused vars must match /^_/u    @typescript-eslint/no-unused-vars
+    4:41  error  'TaskStatus' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+   70:52  error  Invalid type "string | undefined" of template literal expression              @typescript-eslint/restrict-template-expressions
+   70:66  error  Invalid type "string | undefined" of template literal expression              @typescript-eslint/restrict-template-expressions
+   87:9   error  Unnecessary conditional, value is always falsy                                @typescript-eslint/no-unnecessary-condition
+  165:52  error  Invalid type "number" of template literal expression                          @typescript-eslint/restrict-template-expressions
+  169:44  error  Invalid type "number" of template literal expression                          @typescript-eslint/restrict-template-expressions
+  220:19  error  Invalid type "number" of template literal expression                          @typescript-eslint/restrict-template-expressions
+  244:24  error  Invalid type "string | undefined" of template literal expression              @typescript-eslint/restrict-template-expressions
+  310:22  error  Invalid type "number" of template literal expression                          @typescript-eslint/restrict-template-expressions
+  319:28  error  Invalid type "number" of template literal expression                          @typescript-eslint/restrict-template-expressions
+
+D:\Dev\Nexus\src\infrastructure\analysis\codebase\APISurfaceAnalyzer.ts
+   46:3   error  Async method 'analyze' has no 'await' expression                                                    @typescript-eslint/require-await
+   86:32  error  Invalid type "number" of template literal expression                                                @typescript-eslint/restrict-template-expressions
+   87:10  error  Invalid type "number" of template literal expression                                                @typescript-eslint/restrict-template-expressions
+   87:43  error  Invalid type "number" of template literal expression                                                @typescript-eslint/restrict-template-expressions
+   88:10  error  Invalid type "number" of template literal expression                                                @typescript-eslint/restrict-template-expressions
+   88:45  error  Invalid type "number" of template literal expression                                                @typescript-eslint/restrict-template-expressions
+   94:17  error  Invalid type "number" of template literal expression                                                @typescript-eslint/restrict-template-expressions
+  162:19  error  Unnecessary conditional, expected left-hand side of `??` operator to be possibly null or undefined  @typescript-eslint/no-unnecessary-condition
+  162:33  error  Unnecessary optional chain on a non-nullish value                                                   @typescript-eslint/no-unnecessary-condition
+  297:19  error  Unnecessary conditional, expected left-hand side of `??` operator to be possibly null or undefined  @typescript-eslint/no-unnecessary-condition
+  297:33  error  Unnecessary optional chain on a non-nullish value                                                   @typescript-eslint/no-unnecessary-condition
+  465:11  error  'ipcFiles' is assigned a value but never used. Allowed unused vars must match /^_/u                 @typescript-eslint/no-unused-vars
+
+D:\Dev\Nexus\src\infrastructure\analysis\codebase\ArchitectureAnalyzer.ts
+  112:3   error  Async method 'analyze' has no 'await' expression      @typescript-eslint/require-await
+  153:24  error  Invalid type "number" of template literal expression  @typescript-eslint/restrict-template-expressions
+  153:61  error  Invalid type "number" of template literal expression  @typescript-eslint/restrict-template-expressions
+  155:15  error  Invalid type "number" of template literal expression  @typescript-eslint/restrict-template-expressions
+  171:73  error  Invalid type "number" of template literal expression  @typescript-eslint/restrict-template-expressions
+  188:65  error  Unnecessary optional chain on a non-nullish value     @typescript-eslint/no-unnecessary-condition
+  574:28  error  Invalid type "number" of template literal expression  @typescript-eslint/restrict-template-expressions
+  686:15  error  Invalid type "number" of template literal expression  @typescript-eslint/restrict-template-expressions
+  687:17  error  Invalid type "number" of template literal expression  @typescript-eslint/restrict-template-expressions
+  699:21  error  Invalid type "number" of template literal expression  @typescript-eslint/restrict-template-expressions
+  700:19  error  Invalid type "number" of template literal expression  @typescript-eslint/restrict-template-expressions
+
+D:\Dev\Nexus\src\infrastructure\analysis\codebase\DataFlowAnalyzer.ts
+   41:3   error  Async method 'analyze' has no 'await' expression                                         @typescript-eslint/require-await
+   77:14  error  Invalid type "number" of template literal expression                                     @typescript-eslint/restrict-template-expressions
+   82:38  error  Invalid type "number" of template literal expression                                     @typescript-eslint/restrict-template-expressions
+   90:50  error  Invalid type "number" of template literal expression                                     @typescript-eslint/restrict-template-expressions
+   97:48  error  Invalid type "number" of template literal expression                                     @typescript-eslint/restrict-template-expressions
+  142:18  error  Unnecessary optional chain on a non-nullish value                                        @typescript-eslint/no-unnecessary-condition
+  320:18  error  Unnecessary optional chain on a non-nullish value                                        @typescript-eslint/no-unnecessary-condition
+  354:19  error  Unnecessary optional chain on a non-nullish value                                        @typescript-eslint/no-unnecessary-condition
+  354:57  error  Unnecessary optional chain on a non-nullish value                                        @typescript-eslint/no-unnecessary-condition
+  422:11  error  'eventSymbols' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  550:18  error  Unnecessary optional chain on a non-nullish value                                        @typescript-eslint/no-unnecessary-condition
+  551:18  error  Unnecessary optional chain on a non-nullish value                                        @typescript-eslint/no-unnecessary-condition
+  580:23  error  Invalid type "number" of template literal expression                                     @typescript-eslint/restrict-template-expressions
+  581:46  error  Invalid type "number" of template literal expression                                     @typescript-eslint/restrict-template-expressions
+  589:23  error  Invalid type "number" of template literal expression                                     @typescript-eslint/restrict-template-expressions
+
+D:\Dev\Nexus\src\infrastructure\analysis\codebase\DependenciesAnalyzer.ts
+  171:17  error  A method that is not declared with `this: void` may cause unintentional scoping of `this` when separated from its object.
+Consider using an arrow function or explicitly `.bind()`ing the method to avoid calling the method with an unintended `this` value. 
+If a function does not access `this`, it can be annotated with `this: void`  @typescript-eslint/unbound-method
+  200:32  error  Invalid type "number" of template literal expression                                                                                                                                                                                                                                                                                        @typescript-eslint/restrict-template-expressions
+  200:79  error  Invalid type "number" of template literal expression                                                                                                                                                                                                                                                                                        @typescript-eslint/restrict-template-expressions
+  206:22  error  Invalid type "number" of template literal expression                                                                                                                                                                                                                                                                                        @typescript-eslint/restrict-template-expressions
+  513:21  error  Unnecessary conditional, value is always truthy                                                                                                                                                                                                                                                                                             @typescript-eslint/no-unnecessary-condition
+  550:21  error  Unnecessary conditional, value is always truthy                                                                                                                                                                                                                                                                                             @typescript-eslint/no-unnecessary-condition
+  589:74  error  Invalid type "string | undefined" of template literal expression                                                                                                                                                                                                                                                                            @typescript-eslint/restrict-template-expressions
+  589:90  error  Invalid type "string | undefined" of template literal expression                                                                                                                                                                                                                                                                            @typescript-eslint/restrict-template-expressions
+  653:37  error  Invalid type "number" of template literal expression                                                                                                                                                                                                                                                                                        @typescript-eslint/restrict-template-expressions
+  659:42  error  Invalid type "number" of template literal expression                                                                                                                                                                                                                                                                                        @typescript-eslint/restrict-template-expressions
+  679:27  error  Invalid type "number" of template literal expression                                                                                                                                                                                                                                                                                        @typescript-eslint/restrict-template-expressions
+  683:33  error  Invalid type "number" of template literal expression                                                                                                                                                                                                                                                                                        @typescript-eslint/restrict-template-expressions
+
+D:\Dev\Nexus\src\infrastructure\analysis\codebase\KnownIssuesAnalyzer.ts
+   22:7   error  'DEBT_PATTERNS' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+   93:33  error  Invalid type "number" of template literal expression                                      @typescript-eslint/restrict-template-expressions
+   93:70  error  Invalid type "number" of template literal expression                                      @typescript-eslint/restrict-template-expressions
+   94:16  error  Invalid type "number" of template literal expression                                      @typescript-eslint/restrict-template-expressions
+   99:35  error  Invalid type "number" of template literal expression                                      @typescript-eslint/restrict-template-expressions
+  105:24  error  Invalid type "number" of template literal expression                                      @typescript-eslint/restrict-template-expressions
+  105:67  error  Invalid type "number" of template literal expression                                      @typescript-eslint/restrict-template-expressions
+  117:3   error  Async method 'findTechnicalDebt' has no 'await' expression                                @typescript-eslint/require-await
+  126:23  error  Invalid type "number" of template literal expression                                      @typescript-eslint/restrict-template-expressions
+  128:39  error  Invalid type "number" of template literal expression                                      @typescript-eslint/restrict-template-expressions
+  146:23  error  Invalid type "number" of template literal expression                                      @typescript-eslint/restrict-template-expressions
+  157:23  error  Invalid type "number" of template literal expression                                      @typescript-eslint/restrict-template-expressions
+  168:23  error  Invalid type "number" of template literal expression                                      @typescript-eslint/restrict-template-expressions
+  280:39  error  Invalid type "number" of template literal expression                                      @typescript-eslint/restrict-template-expressions
+  294:5   error  'limitations' is defined but never used. Allowed unused args must match /^_/u             @typescript-eslint/no-unused-vars
+
+D:\Dev\Nexus\src\infrastructure\analysis\codebase\PatternsAnalyzer.ts
+  209:3   error  Async method 'analyze' has no 'await' expression      @typescript-eslint/require-await
+  241:32  error  Invalid type "number" of template literal expression  @typescript-eslint/restrict-template-expressions
+  242:10  error  Invalid type "number" of template literal expression  @typescript-eslint/restrict-template-expressions
+  257:12  error  Invalid type "number" of template literal expression  @typescript-eslint/restrict-template-expressions
+  329:21  error  Invalid type "number" of template literal expression  @typescript-eslint/restrict-template-expressions
+  329:36  error  Invalid type "number" of template literal expression  @typescript-eslint/restrict-template-expressions
+
+D:\Dev\Nexus\src\infrastructure\analysis\codebase\TestStrategyAnalyzer.ts
+  100:30  error  Invalid type "number" of template literal expression                                    @typescript-eslint/restrict-template-expressions
+  107:32  error  Forbidden non-null assertion                                                            @typescript-eslint/no-non-null-assertion
+  243:13  error  'fileName' is assigned a value but never used. Allowed unused vars must match /^_/u     @typescript-eslint/no-unused-vars
+  281:3   error  Async method 'analyzeCoverage' has no 'await' expression                                @typescript-eslint/require-await
+  289:11  error  'configFiles' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  452:99  error  Invalid type "number" of template literal expression                                    @typescript-eslint/restrict-template-expressions
+  462:40  error  Invalid type "number" of template literal expression                                    @typescript-eslint/restrict-template-expressions
+  466:43  error  Invalid type "number" of template literal expression                                    @typescript-eslint/restrict-template-expressions
+
+D:\Dev\Nexus\src\infrastructure\git\GitService.ts
+  449:57  error  Invalid type "number" of template literal expression                                       @typescript-eslint/restrict-template-expressions
+  477:33  error  Unnecessary optional chain on a non-nullish value                                          @typescript-eslint/no-unnecessary-condition
+  500:33  error  Unnecessary optional chain on a non-nullish value                                          @typescript-eslint/no-unnecessary-condition
+  560:96  error  'c' will use Object's default stringification format ('[object Object]') when stringified  @typescript-eslint/no-base-to-string
+  566:35  error  Unnecessary optional chain on a non-nullish value                                          @typescript-eslint/no-unnecessary-condition
+
+D:\Dev\Nexus\src\infrastructure\git\WorktreeManager.ts
+  211:12  error  Unnecessary conditional, value is always truthy                                         @typescript-eslint/no-unnecessary-condition
+  217:16  error  'error' is defined but never used                                                       @typescript-eslint/no-unused-vars
+  282:36  error  Invalid type "number" of template literal expression                                    @typescript-eslint/restrict-template-expressions
+  300:15  error  Unsafe assignment of an `any` value                                                     @typescript-eslint/no-unsafe-assignment
+  303:15  error  Unsafe assignment of an `any` value                                                     @typescript-eslint/no-unsafe-assignment
+  305:33  error  Unsafe argument of type `any` assigned to a parameter of type `string | number | Date`  @typescript-eslint/no-unsafe-argument
+  305:37  error  Unsafe member access .lastUpdated on an `any` value                                     @typescript-eslint/no-unsafe-member-access
+  309:57  error  Unsafe member access .worktrees on an `any` value                                       @typescript-eslint/no-unsafe-member-access
+  482:31  error  Do not delete dynamically computed property keys                                        @typescript-eslint/no-dynamic-delete
+
+D:\Dev\Nexus\src\infrastructure\process\ProcessRunner.ts
+  255:33  error  Unnecessary conditional, the types have no overlap                                                                                                                  @typescript-eslint/no-unnecessary-condition
+  298:9   error  Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator  @typescript-eslint/no-floating-promises
+  308:11  error  Unnecessary conditional, value is always falsy                                                                                                                      @typescript-eslint/no-unnecessary-condition
+  310:38  error  Invalid type "number" of template literal expression                                                                                                                @typescript-eslint/restrict-template-expressions
+  323:44  error  Invalid type "number" of template literal expression                                                                                                                @typescript-eslint/restrict-template-expressions
+  336:17  error  Unnecessary conditional, expected left-hand side of `??` operator to be possibly null or undefined                                                                  @typescript-eslint/no-unnecessary-condition
+  351:11  error  Unnecessary conditional, value is always falsy                                                                                                                      @typescript-eslint/no-unnecessary-condition
+  353:38  error  Invalid type "number" of template literal expression                                                                                                                @typescript-eslint/restrict-template-expressions
+  417:9   error  Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator  @typescript-eslint/no-floating-promises
+  442:13  error  Unnecessary conditional, value is always falsy                                                                                                                      @typescript-eslint/no-unnecessary-condition
+  444:40  error  Invalid type "number" of template literal expression                                                                                                                @typescript-eslint/restrict-template-expressions
+  458:46  error  Invalid type "number" of template literal expression                                                                                                                @typescript-eslint/restrict-template-expressions
+  486:13  error  Unnecessary conditional, value is always falsy                                                                                                                      @typescript-eslint/no-unnecessary-condition
+  488:40  error  Invalid type "number" of template literal expression                                                                                                                @typescript-eslint/restrict-template-expressions
+  512:40  error  Unnecessary conditional, value is always falsy                                                                                                                      @typescript-eslint/no-unnecessary-condition
+  534:44  error  Invalid type "number" of template literal expression                                                                                                                @typescript-eslint/restrict-template-expressions
+  555:55  error  Invalid type "number" of template literal expression                                                                                                                @typescript-eslint/restrict-template-expressions
+  561:53  error  Invalid type "number" of template literal expression                                                                                                                @typescript-eslint/restrict-template-expressions
+
+D:\Dev\Nexus\src\interview\InterviewSessionManager.ts
+   94:3  error  Async method 'save' has no 'await' expression           @typescript-eslint/require-await
+  146:3  error  Async method 'load' has no 'await' expression           @typescript-eslint/require-await
+  171:3  error  Async method 'loadByProject' has no 'await' expression  @typescript-eslint/require-await
+  197:3  error  Async method 'delete' has no 'await' expression         @typescript-eslint/require-await
+
+D:\Dev\Nexus\src\interview\QuestionGenerator.ts
+  15:8  error  'StandardArea' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+D:\Dev\Nexus\src\llm\clients\ClaudeCodeCLIClient.ts
+  245:26  error  Invalid type "number" of template literal expression                                                @typescript-eslint/restrict-template-expressions
+  245:41  error  Invalid type "number" of template literal expression                                                @typescript-eslint/restrict-template-expressions
+  287:63  error  Invalid type "number" of template literal expression                                                @typescript-eslint/restrict-template-expressions
+  296:62  error  Invalid type "number | null" of template literal expression                                         @typescript-eslint/restrict-template-expressions
+  345:41  error  'options' is defined but never used. Allowed unused args must match /^_/u                           @typescript-eslint/no-unused-vars
+  357:22  error  Unnecessary conditional, expected left-hand side of `??` operator to be possibly null or undefined  @typescript-eslint/no-unnecessary-condition
+  357:23  error  Unnecessary conditional, expected left-hand side of `??` operator to be possibly null or undefined  @typescript-eslint/no-unnecessary-condition
+  358:23  error  Unnecessary conditional, expected left-hand side of `??` operator to be possibly null or undefined  @typescript-eslint/no-unnecessary-condition
+  358:24  error  Unnecessary conditional, expected left-hand side of `??` operator to be possibly null or undefined  @typescript-eslint/no-unnecessary-condition
+  407:18  error  Unnecessary conditional, expected left-hand side of `??` operator to be possibly null or undefined  @typescript-eslint/no-unnecessary-condition
+  407:52  error  Invalid type "number" of template literal expression                                                @typescript-eslint/restrict-template-expressions
+  409:24  error  Unnecessary conditional, expected left-hand side of `??` operator to be possibly null or undefined  @typescript-eslint/no-unnecessary-condition
+  409:25  error  Unnecessary conditional, expected left-hand side of `??` operator to be possibly null or undefined  @typescript-eslint/no-unnecessary-condition
+
+D:\Dev\Nexus\src\llm\clients\MockClaudeClient.ts
+  118:30  error  Invalid type "number" of template literal expression  @typescript-eslint/restrict-template-expressions
+
+D:\Dev\Nexus\src\llm\clients\MockGeminiClient.ts
+  118:37  error  Invalid type "number" of template literal expression  @typescript-eslint/restrict-template-expressions
+
+D:\Dev\Nexus\src\main\ipc\handlers.ts
+   75:70  error  Async arrow function has no 'await' expression                                                     @typescript-eslint/require-await
+  126:75  error  Async arrow function has no 'await' expression                                                     @typescript-eslint/require-await
+  144:47  error  Async arrow function has no 'await' expression                                                     @typescript-eslint/require-await
+  155:64  error  Async arrow function has no 'await' expression                                                     @typescript-eslint/require-await
+  213:48  error  Async arrow function has no 'await' expression                                                     @typescript-eslint/require-await
+  219:34  error  Invalid type "number" of template literal expression                                               @typescript-eslint/restrict-template-expressions
+  223:32  error  Invalid type "number" of template literal expression                                               @typescript-eslint/restrict-template-expressions
+  230:69  error  Async arrow function has no 'await' expression                                                     @typescript-eslint/require-await
+  250:59  error  Async arrow function has no 'await' expression                                                     @typescript-eslint/require-await
+  271:7   error  Async arrow function has no 'await' expression                                                     @typescript-eslint/require-await
+  275:11  error  Unnecessary conditional, value is always falsy                                                     @typescript-eslint/no-unnecessary-condition
+  278:39  error  Unnecessary conditional, comparison is always false, since `"evolution" !== "evolution"` is false  @typescript-eslint/no-unnecessary-condition
+  282:29  error  Invalid type "number" of template literal expression                                               @typescript-eslint/restrict-template-expressions
+  291:46  error  Async arrow function has no 'await' expression                                                     @typescript-eslint/require-await
+  301:64  error  Async arrow function has no 'await' expression                                                     @typescript-eslint/require-await
+  328:49  error  Async arrow function has no 'await' expression                                                     @typescript-eslint/require-await
+  337:68  error  Async arrow function has no 'await' expression                                                     @typescript-eslint/require-await
+  360:7   error  Async arrow function has no 'await' expression                                                     @typescript-eslint/require-await
+  366:57  error  Invalid type "number" of template literal expression                                               @typescript-eslint/restrict-template-expressions
+  385:7   error  Async arrow function has no 'await' expression                                                     @typescript-eslint/require-await
+  416:7   error  Async arrow function has no 'await' expression                                                     @typescript-eslint/require-await
+  471:7   error  Async arrow function has no 'await' expression                                                     @typescript-eslint/require-await
+  498:54  error  Async arrow function has no 'await' expression                                                     @typescript-eslint/require-await
+  575:30  error  Invalid type "number" of template literal expression                                               @typescript-eslint/restrict-template-expressions
+
+D:\Dev\Nexus\src\main\ipc\interview-handlers.ts
+   44:65  error  Async arrow function has no 'await' expression  @typescript-eslint/require-await
+   88:72  error  Async arrow function has no 'await' expression  @typescript-eslint/require-await
+  193:36  error  Async arrow function has no 'await' expression  @typescript-eslint/require-await
+
+D:\Dev\Nexus\src\main\main.ts
+  29:5  error  Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator  @typescript-eslint/no-floating-promises
+  36:5  error  Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator  @typescript-eslint/no-floating-promises
+  38:5  error  Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator  @typescript-eslint/no-floating-promises
+  43:1  error  Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator  @typescript-eslint/no-floating-promises
+
+D:\Dev\Nexus\src\main\services\settingsService.ts
+  20:3  error  'LLMSettings' is defined but never used. Allowed unused vars must match /^_/u         @typescript-eslint/no-unused-vars
+  21:3  error  'AgentSettings' is defined but never used. Allowed unused vars must match /^_/u       @typescript-eslint/no-unused-vars
+  22:3  error  'CheckpointSettings' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  23:3  error  'UISettings' is defined but never used. Allowed unused vars must match /^_/u          @typescript-eslint/no-unused-vars
+  24:3  error  'ProjectSettings' is defined but never used. Allowed unused vars must match /^_/u     @typescript-eslint/no-unused-vars
+
+D:\Dev\Nexus\src\orchestration\agents\AgentPool.ts
+  33:19  error  Invalid type "number" of template literal expression  @typescript-eslint/restrict-template-expressions
+
+D:\Dev\Nexus\src\orchestration\coordinator\NexusCoordinator.ts
+   36:13  error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+   37:20  error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+   38:22  error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+   39:18  error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+   40:25  error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+   62:30  error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+   63:37  error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+   64:39  error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+   65:35  error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+   66:42  error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+   91:5   error  Unsafe assignment of an `any` value                                                                                                                                 @typescript-eslint/no-unsafe-assignment
+   92:5   error  Unsafe assignment of an `any` value                                                                                                                                 @typescript-eslint/no-unsafe-assignment
+   93:5   error  Unsafe assignment of an `any` value                                                                                                                                 @typescript-eslint/no-unsafe-assignment
+   94:5   error  Unsafe assignment of an `any` value                                                                                                                                 @typescript-eslint/no-unsafe-assignment
+   95:5   error  Unsafe assignment of an `any` value                                                                                                                                 @typescript-eslint/no-unsafe-assignment
+  101:3   error  Async method 'initialize' has no 'await' expression                                                                                                                 @typescript-eslint/require-await
+  118:3   error  Async method 'start' has no 'await' expression                                                                                                                      @typescript-eslint/require-await
+  155:3   error  Async method 'resume' has no 'await' expression                                                                                                                     @typescript-eslint/require-await
+  270:11  error  Unsafe assignment of an `any` value                                                                                                                                 @typescript-eslint/no-unsafe-assignment
+  270:30  error  Unsafe call of an `any` typed value                                                                                                                                 @typescript-eslint/no-unsafe-call
+  270:53  error  Unsafe member access .create on an `any` value                                                                                                                      @typescript-eslint/no-unsafe-member-access
+  279:69  error  Unsafe member access .id on an `any` value                                                                                                                          @typescript-eslint/no-unsafe-member-access
+  281:5   error  Unsafe return of a value of type `any`                                                                                                                              @typescript-eslint/no-unsafe-return
+  311:22  error  Forbidden non-null assertion                                                                                                                                        @typescript-eslint/no-non-null-assertion
+  353:13  error  Unnecessary conditional, value is always truthy                                                                                                                     @typescript-eslint/no-unnecessary-condition
+  385:55  error  Unsafe argument of type `any` assigned to a parameter of type `Feature`                                                                                             @typescript-eslint/no-unsafe-argument
+  385:66  error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  405:55  error  Unsafe argument of type `any` assigned to a parameter of type `Feature`                                                                                             @typescript-eslint/no-unsafe-argument
+  405:70  error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  416:55  error  Unsafe argument of type `any` assigned to a parameter of type `Feature`                                                                                             @typescript-eslint/no-unsafe-argument
+  416:66  error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  437:38  error  Invalid type "number" of template literal expression                                                                                                                @typescript-eslint/restrict-template-expressions
+  439:13  error  Unsafe call of an `any` typed value                                                                                                                                 @typescript-eslint/no-unsafe-call
+  439:36  error  Unsafe member access .create on an `any` value                                                                                                                      @typescript-eslint/no-unsafe-member-access
+  474:16  error  Unnecessary conditional, value is always truthy                                                                                                                     @typescript-eslint/no-unnecessary-condition
+  474:39  error  Unnecessary conditional, value is always truthy                                                                                                                     @typescript-eslint/no-unnecessary-condition
+  477:13  error  Unnecessary conditional, value is always falsy                                                                                                                      @typescript-eslint/no-unnecessary-condition
+  491:18  error  'task' is assigned a value but never used. Allowed unused vars must match /^_/u                                                                                     @typescript-eslint/no-unused-vars
+  492:13  error  Unnecessary conditional, value is always falsy                                                                                                                      @typescript-eslint/no-unnecessary-condition
+  517:17  error  Unsafe assignment of an `any` value                                                                                                                                 @typescript-eslint/no-unsafe-assignment
+  517:34  error  Unsafe call of an `any` typed value                                                                                                                                 @typescript-eslint/no-unsafe-call
+  517:55  error  Unsafe member access .createWorktree on an `any` value                                                                                                              @typescript-eslint/no-unsafe-member-access
+  518:11  error  Unsafe assignment of an `any` value                                                                                                                                 @typescript-eslint/no-unsafe-assignment
+  518:35  error  Unsafe member access .path on an `any` value                                                                                                                        @typescript-eslint/no-unsafe-member-access
+  532:9   error  Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator  @typescript-eslint/no-floating-promises
+  558:13  error  Unsafe assignment of an `any` value                                                                                                                                 @typescript-eslint/no-unsafe-assignment
+  558:28  error  Unsafe call of an `any` typed value                                                                                                                                 @typescript-eslint/no-unsafe-call
+  558:42  error  Unsafe member access .run on an `any` value                                                                                                                         @typescript-eslint/no-unsafe-member-access
+  569:18  error  Unsafe member access .success on an `any` value                                                                                                                     @typescript-eslint/no-unsafe-member-access
+  574:19  error  Unsafe call of an `any` typed value                                                                                                                                 @typescript-eslint/no-unsafe-call
+  574:37  error  Unsafe member access .merge on an `any` value                                                                                                                       @typescript-eslint/no-unsafe-member-access
+  588:25  error  Unsafe member access .escalated on an `any` value                                                                                                                   @typescript-eslint/no-unsafe-member-access
+  595:26  error  Unsafe member access .reason on an `any` value                                                                                                                      @typescript-eslint/no-unsafe-member-access
+  603:29  error  Unsafe member access .escalated on an `any` value                                                                                                                   @typescript-eslint/no-unsafe-member-access
+  618:17  error  Unsafe call of an `any` typed value                                                                                                                                 @typescript-eslint/no-unsafe-call
+  618:42  error  Unsafe member access .releaseWorktree on an `any` value                                                                                                             @typescript-eslint/no-unsafe-member-access
+  635:17  error  Unsafe call of an `any` typed value                                                                                                                                 @typescript-eslint/no-unsafe-call
+  635:38  error  Unsafe member access .removeWorktree on an `any` value                                                                                                              @typescript-eslint/no-unsafe-member-access
+
+D:\Dev\Nexus\src\orchestration\queue\TaskQueue.ts
+  50:5  error  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+D:\Dev\Nexus\src\persistence\database\DatabaseClient.ts
+  119:3   error  Async method 'migrate' has no 'await' expression   @typescript-eslint/require-await
+  134:3   error  Async method 'tables' has no 'await' expression    @typescript-eslint/require-await
+  158:37  error  Unnecessary optional chain on a non-nullish value  @typescript-eslint/no-unnecessary-condition
+  190:3   error  Async method 'ping' has no 'await' expression      @typescript-eslint/require-await
+  225:3   error  Async method 'close' has no 'await' expression     @typescript-eslint/require-await
+
+D:\Dev\Nexus\src\renderer\src\App.tsx
+  98:7  error  Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator  @typescript-eslint/no-floating-promises
+
+D:\Dev\Nexus\src\renderer\src\bridges\UIBackendBridge.ts
+   54:3   error  Async method 'initialize' has no 'await' expression  @typescript-eslint/require-await
+   58:9   error  Unnecessary conditional, value is always falsy       @typescript-eslint/no-unnecessary-condition
+   65:9   error  Unnecessary conditional, value is always truthy      @typescript-eslint/no-unnecessary-condition
+   68:13  error  Unnecessary conditional, value is always truthy      @typescript-eslint/no-unnecessary-condition
+   76:9   error  Unnecessary conditional, value is always truthy      @typescript-eslint/no-unnecessary-condition
+   79:13  error  Unnecessary conditional, value is always truthy      @typescript-eslint/no-unnecessary-condition
+   87:9   error  Unnecessary conditional, value is always truthy      @typescript-eslint/no-unnecessary-condition
+  100:9   error  Unnecessary conditional, value is always truthy      @typescript-eslint/no-unnecessary-condition
+  100:24  error  Unnecessary optional chain on a non-nullish value    @typescript-eslint/no-unnecessary-condition
+  103:13  error  Unnecessary conditional, value is always truthy      @typescript-eslint/no-unnecessary-condition
+  111:9   error  Unnecessary conditional, value is always truthy      @typescript-eslint/no-unnecessary-condition
+  111:24  error  Unnecessary optional chain on a non-nullish value    @typescript-eslint/no-unnecessary-condition
+  114:13  error  Unnecessary conditional, value is always truthy      @typescript-eslint/no-unnecessary-condition
+  122:9   error  Unnecessary conditional, value is always truthy      @typescript-eslint/no-unnecessary-condition
+  122:24  error  Unnecessary optional chain on a non-nullish value    @typescript-eslint/no-unnecessary-condition
+  125:13  error  Unnecessary conditional, value is always truthy      @typescript-eslint/no-unnecessary-condition
+  133:9   error  Unnecessary conditional, value is always truthy      @typescript-eslint/no-unnecessary-condition
+  133:24  error  Unnecessary optional chain on a non-nullish value    @typescript-eslint/no-unnecessary-condition
+  136:13  error  Unnecessary conditional, value is always truthy      @typescript-eslint/no-unnecessary-condition
+  151:9   error  Unnecessary conditional, value is always falsy       @typescript-eslint/no-unnecessary-condition
+  151:25  error  Unnecessary optional chain on a non-nullish value    @typescript-eslint/no-unnecessary-condition
+  179:9   error  Unnecessary conditional, value is always falsy       @typescript-eslint/no-unnecessary-condition
+  179:25  error  Unnecessary optional chain on a non-nullish value    @typescript-eslint/no-unnecessary-condition
+  205:9   error  Unnecessary conditional, value is always falsy       @typescript-eslint/no-unnecessary-condition
+  205:25  error  Unnecessary optional chain on a non-nullish value    @typescript-eslint/no-unnecessary-condition
+  217:9   error  Unnecessary conditional, value is always falsy       @typescript-eslint/no-unnecessary-condition
+  217:25  error  Unnecessary optional chain on a non-nullish value    @typescript-eslint/no-unnecessary-condition
+  233:9   error  Unnecessary conditional, value is always falsy       @typescript-eslint/no-unnecessary-condition
+  233:25  error  Unnecessary optional chain on a non-nullish value    @typescript-eslint/no-unnecessary-condition
+
+D:\Dev\Nexus\src\renderer\src\components\dashboard\AgentCard.tsx
+  86:34  error  Invalid type "number" of template literal expression  @typescript-eslint/restrict-template-expressions
+
+D:\Dev\Nexus\src\renderer\src\components\dashboard\CostTracker.test.tsx
+  1:44  error  'vi' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+D:\Dev\Nexus\src\renderer\src\components\dashboard\EventRow.tsx
+   7:3   error  'Pause' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  56:22  error  Unnecessary conditional, value is always truthy                          @typescript-eslint/no-unnecessary-condition
+  78:16  error  Unnecessary optional chain on a non-nullish value                        @typescript-eslint/no-unnecessary-condition
+
+D:\Dev\Nexus\src\renderer\src\components\dashboard\OverviewCards.tsx
+  45:19  error  Invalid type "number" of template literal expression  @typescript-eslint/restrict-template-expressions
+  45:45  error  Invalid type "number" of template literal expression  @typescript-eslint/restrict-template-expressions
+  46:47  error  Invalid type "number" of template literal expression  @typescript-eslint/restrict-template-expressions
+
+D:\Dev\Nexus\src\renderer\src\components\dashboard\TaskTimeline.test.tsx
+    6:30  error  'TimelineEventType' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  207:29  error  Forbidden non-null assertion                                                         @typescript-eslint/no-non-null-assertion
+  217:29  error  Forbidden non-null assertion                                                         @typescript-eslint/no-non-null-assertion
+
+D:\Dev\Nexus\src\renderer\src\components\interview\ChatInput.tsx
+  53:32  error  Invalid type "number" of template literal expression  @typescript-eslint/restrict-template-expressions
+
+D:\Dev\Nexus\src\renderer\src\components\interview\StageProgress.tsx
+  86:30  error  Invalid type "number" of template literal expression                                 @typescript-eslint/restrict-template-expressions
+  93:17  error  'isFuture' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+D:\Dev\Nexus\src\renderer\src\components\kanban\FeatureCard.test.tsx
+  111:24  error  Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+  111:29  error  Unsafe member access .qaIterations on an `any` value  @typescript-eslint/no-unsafe-member-access
+
+D:\Dev\Nexus\src\renderer\src\components\kanban\FeatureDetailModal.test.tsx
+  3:8  error  'userEvent' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+D:\Dev\Nexus\src\renderer\src\components\kanban\FeatureDetailModal.tsx
+  117:33  error  Invalid type "number" of template literal expression  @typescript-eslint/restrict-template-expressions
+
+D:\Dev\Nexus\src\renderer\src\components\kanban\KanbanBoard.tsx
+  113:37  error  Unsafe member access .containerId on an `any` value                                                                 @typescript-eslint/no-unsafe-member-access
+  187:42  error  Returning a void expression from an arrow function shorthand is forbidden. Please add braces to the arrow function  @typescript-eslint/no-confusing-void-expression
+
+D:\Dev\Nexus\src\renderer\src\components\kanban\KanbanColumn.tsx
+  49:46  error  Invalid type "number" of template literal expression  @typescript-eslint/restrict-template-expressions
+
+D:\Dev\Nexus\src\renderer\src\components\kanban\ProgressIndicator.tsx
+  39:30  error  Invalid type "number" of template literal expression  @typescript-eslint/restrict-template-expressions
+
+D:\Dev\Nexus\src\renderer\src\components\kanban\TaskList.tsx
+  53:31  error  Invalid type "number" of template literal expression  @typescript-eslint/restrict-template-expressions
+  56:24  error  Invalid type "number" of template literal expression  @typescript-eslint/restrict-template-expressions
+  56:34  error  Invalid type "number" of template literal expression  @typescript-eslint/restrict-template-expressions
+  56:47  error  Invalid type "number" of template literal expression  @typescript-eslint/restrict-template-expressions
+
+D:\Dev\Nexus\src\renderer\src\components\theme-provider.tsx
+  24:12  error  Unnecessary conditional, value is always truthy  @typescript-eslint/no-unnecessary-condition
+
+D:\Dev\Nexus\src\renderer\src\components\ui\dialog.tsx
+  16:9  error  `ElementRef` is deprecated. Use `ComponentRef<T>` instead
+
+Retrieves the type of the 'ref' prop for a given component type or tag name  @typescript-eslint/no-deprecated
+  31:9  error  `ElementRef` is deprecated. Use `ComponentRef<T>` instead
+
+Retrieves the type of the 'ref' prop for a given component type or tag name  @typescript-eslint/no-deprecated
+  68:9  error  `ElementRef` is deprecated. Use `ComponentRef<T>` instead
+
+Retrieves the type of the 'ref' prop for a given component type or tag name  @typescript-eslint/no-deprecated
+  80:9  error  `ElementRef` is deprecated. Use `ComponentRef<T>` instead
+
+Retrieves the type of the 'ref' prop for a given component type or tag name  @typescript-eslint/no-deprecated
+
+D:\Dev\Nexus\src\renderer\src\components\ui\scroll-area.tsx
+   7:9  error  `ElementRef` is deprecated. Use `ComponentRef<T>` instead
+
+Retrieves the type of the 'ref' prop for a given component type or tag name  @typescript-eslint/no-deprecated
+  25:9  error  `ElementRef` is deprecated. Use `ComponentRef<T>` instead
+
+Retrieves the type of the 'ref' prop for a given component type or tag name  @typescript-eslint/no-deprecated
+
+D:\Dev\Nexus\src\renderer\src\hooks\useInterviewPersistence.ts
+  100:13  error  Unsafe assignment of an `any` value  @typescript-eslint/no-unsafe-assignment
+
+D:\Dev\Nexus\src\renderer\src\pages\DashboardPage.tsx
+  106:18  error  Invalid type "number" of template literal expression                                 @typescript-eslint/restrict-template-expressions
+  159:9   error  'overview' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  199:10  error  Definition for rule 'react-hooks/exhaustive-deps' was not found                      react-hooks/exhaustive-deps
+
+D:\Dev\Nexus\src\renderer\src\pages\InterviewPage.tsx
+  82:17  error  Invalid type "number" of template literal expression  @typescript-eslint/restrict-template-expressions
+
+D:\Dev\Nexus\src\renderer\src\pages\ModeSelectorPage.tsx
+  26:5   error  Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator  @typescript-eslint/no-floating-promises
+  28:43  error  Prefer the safe `: unknown` for a `catch` callback variable                                                                                                         @typescript-eslint/use-unknown-in-catch-callback-variable
+  35:5   error  Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator  @typescript-eslint/no-floating-promises
+  38:66  error  Prefer the safe `: unknown` for a `catch` callback variable                                                                                                         @typescript-eslint/use-unknown-in-catch-callback-variable
+
+D:\Dev\Nexus\src\renderer\src\stores\featureStore.ts
+   17:40  error  Unnecessary conditional, value is always truthy                                           @typescript-eslint/no-unnecessary-condition
+   17:55  error  Unnecessary optional chain on a non-nullish value                                         @typescript-eslint/no-unnecessary-condition
+  150:13  error  'otherFeatures' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  299:41  error  Forbidden non-null assertion                                                              @typescript-eslint/no-non-null-assertion
+  304:41  error  Forbidden non-null assertion                                                              @typescript-eslint/no-non-null-assertion
+
+D:\Dev\Nexus\src\renderer\src\stores\index.ts
+  5:27  error  `Toast` is deprecated. Use sonner toast instead: import { toast } from '@/lib/toast'
+This interface is kept for backward compatibility  @typescript-eslint/no-deprecated
+
+D:\Dev\Nexus\src\renderer\src\stores\interviewStore.ts
+  43:20  error  Type parameter T is used only once in the function signature  @typescript-eslint/no-unnecessary-type-parameters
+  44:40  error  Unnecessary conditional, value is always truthy               @typescript-eslint/no-unnecessary-condition
+
+D:\Dev\Nexus\src\renderer\src\stores\uiStore.ts
+  17:11  error  `Toast` is deprecated. Use sonner toast instead: import { toast } from '@/lib/toast'
+This interface is kept for backward compatibility  @typescript-eslint/no-deprecated
+  25:21  error  `Toast` is deprecated. Use sonner toast instead: import { toast } from '@/lib/toast'
+This interface is kept for backward compatibility  @typescript-eslint/no-deprecated
+  35:17  error  `Toast` is deprecated. Use sonner toast instead: import { toast } from '@/lib/toast'
+This interface is kept for backward compatibility  @typescript-eslint/no-deprecated
+
+D:\Dev\Nexus\src\scripts\db-status.ts
+  22:31  error  Invalid type "boolean" of template literal expression        @typescript-eslint/restrict-template-expressions
+  43:28  error  Invalid type "number" of template literal expression         @typescript-eslint/restrict-template-expressions
+  53:38  error  Invalid type "number" of template literal expression         @typescript-eslint/restrict-template-expressions
+  68:15  error  Prefer the safe `: unknown` for a `catch` callback variable  @typescript-eslint/use-unknown-in-catch-callback-variable
+
+D:\Dev\Nexus\src\scripts\migrate.ts
+  49:28  error  Invalid type "number" of template literal expression         @typescript-eslint/restrict-template-expressions
+  71:15  error  Prefer the safe `: unknown` for a `catch` callback variable  @typescript-eslint/use-unknown-in-catch-callback-variable
+
+D:\Dev\Nexus\src\types\events.ts
+  1:76  error  'Priority' is defined but never used. Allowed unused vars must match /^_/u     @typescript-eslint/no-unused-vars
+  2:21  error  'TaskStatus' is defined but never used. Allowed unused vars must match /^_/u   @typescript-eslint/no-unused-vars
+  3:33  error  'AgentStatus' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+✖ 336 problems (336 errors, 0 warnings)
+

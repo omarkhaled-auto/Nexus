@@ -43,7 +43,7 @@ export class APISurfaceAnalyzer extends BaseAnalyzer {
    * Perform API surface analysis
    * @returns API surface documentation
    */
-  async analyze(): Promise<APISurfaceDoc> {
+  analyze(): APISurfaceDoc {
     const publicInterfaces = this.documentInterfaces();
     const publicClasses = this.documentClasses();
     const publicFunctions = this.documentFunctions();
@@ -83,15 +83,15 @@ export class APISurfaceAnalyzer extends BaseAnalyzer {
     const total = interfaces.length + classes.length + functions.length + types.length;
 
     paragraphs.push(
-      `This codebase exposes ${total} public API elements: ` +
-      `${interfaces.length} interfaces, ${classes.length} classes, ` +
-      `${functions.length} functions, and ${types.length} type aliases.`
+      `This codebase exposes ${String(total)} public API elements: ` +
+      `${String(interfaces.length)} interfaces, ${String(classes.length)} classes, ` +
+      `${String(functions.length)} functions, and ${String(types.length)} type aliases.`
     );
 
     if (ipcChannels.length > 0) {
       paragraphs.push(
         `The application uses Electron IPC for inter-process communication, ` +
-        `with ${ipcChannels.length} documented channels.`
+        `with ${String(ipcChannels.length)} documented channels.`
       );
     }
 
@@ -159,7 +159,7 @@ export class APISurfaceAnalyzer extends BaseAnalyzer {
         name: prop.name,
         type: this.extractTypeFromSignature(prop.signature) || 'unknown',
         description: this.extractJSDoc(prop) || '',
-        optional: prop.signature?.includes('?') ?? false,
+        optional: prop.signature.includes('?'),
       });
     }
 
@@ -294,7 +294,7 @@ export class APISurfaceAnalyzer extends BaseAnalyzer {
         name: prop.name,
         type: this.extractTypeFromSignature(prop.signature) || 'unknown',
         description: this.extractJSDoc(prop) || '',
-        optional: prop.signature?.includes('?') ?? false,
+        optional: prop.signature.includes('?'),
       });
     }
 
@@ -462,7 +462,7 @@ export class APISurfaceAnalyzer extends BaseAnalyzer {
     }
 
     // Also search in file contents by looking at dependencies that suggest IPC usage
-    const ipcFiles = this.repoMap.files.filter(f =>
+    const _ipcFiles = this.repoMap.files.filter(f =>
       f.relativePath.includes('ipc') ||
       f.relativePath.includes('preload') ||
       f.relativePath.includes('main')
