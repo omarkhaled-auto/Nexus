@@ -45,8 +45,8 @@ PART 1: CODE MEMORY (Plan 13-03)
 Task 1: Types & Interfaces --------------> [TASK 1 COMPLETE]
 Task 2: Database Schema -----------------> [COMPLETE]
 Task 3: Code Chunker --------------------> [COMPLETE]
-Task 4: CodeMemory Core -----------------> [PENDING]
-Task 5: Semantic Search Engine ----------> [PENDING]
+Task 4: CodeMemory Core -----------------> [COMPLETE]
+Task 5: Semantic Search Engine ----------> [COMPLETE]
 Task 6: MemorySystem Integration --------> [PENDING]
 
 PART 2: FRESH CONTEXT MANAGER (Plan 13-04)
@@ -554,73 +554,73 @@ Implement vector similarity search for code chunks.
 ### Part A: Create CodeSearchEngine Class
 Create `src/persistence/memory/code/CodeSearchEngine.ts`:
 
-- [ ] **CodeSearchEngine Class** implementing ICodeSearchEngine
+- [x] **CodeSearchEngine Class** implementing ICodeSearchEngine
 
-- [ ] **search(query, chunks, options?) Method**
-  - [ ] If query is embedding, use directly
-  - [ ] If query is string, generate embedding first
-  - [ ] Calculate similarity for each chunk
-  - [ ] Filter by threshold
-  - [ ] Sort by score descending
-  - [ ] Apply limit
-  - [ ] Generate highlights if requested
-  - [ ] Return CodeSearchResult array
+- [x] **search(query, chunks, options?) Method**
+  - [x] If query is embedding, use directly
+  - [x] If query is string, generate embedding first
+  - [x] Calculate similarity for each chunk
+  - [x] Filter by threshold
+  - [x] Sort by score descending
+  - [x] Apply limit
+  - [x] Generate highlights if requested
+  - [x] Return CodeSearchResult array
 
-- [ ] **findSimilar(embedding, chunks, limit) Method**
-  - [ ] Calculate similarity for all chunks
-  - [ ] Sort by score
-  - [ ] Return top N
+- [x] **findSimilar(embedding, chunks, limit) Method**
+  - [x] Calculate similarity for all chunks
+  - [x] Sort by score
+  - [x] Return top N
 
-- [ ] **calculateSimilarity(embedding1, embedding2) Method**
-  - [ ] Implement cosine similarity
-  - [ ] Handle different vector lengths
-  - [ ] Return score 0.0 - 1.0
+- [x] **calculateSimilarity(embedding1, embedding2) Method**
+  - [x] Implement cosine similarity
+  - [x] Handle different vector lengths
+  - [x] Return score 0.0 - 1.0
 
-- [ ] **cosineSimilarity(a, b) Private Method**
-  - [ ] Calculate dot product
-  - [ ] Calculate magnitudes
-  - [ ] Return dot / (mag_a * mag_b)
+- [x] **cosineSimilarity(a, b) Private Method**
+  - [x] Calculate dot product
+  - [x] Calculate magnitudes
+  - [x] Return dot / (mag_a * mag_b)
 
-- [ ] **generateHighlights(query, content) Private Method**
-  - [ ] Find matching terms in content
-  - [ ] Extract surrounding context
-  - [ ] Return highlighted snippets
+- [x] **generateHighlights(query, content) Private Method**
+  - [x] Find matching terms in content
+  - [x] Extract surrounding context
+  - [x] Return highlighted snippets
 
-- [ ] **filterChunks(chunks, options) Private Method**
-  - [ ] Filter by projectId
-  - [ ] Filter by filePattern (glob match)
-  - [ ] Filter by language
-  - [ ] Filter by chunkTypes
-  - [ ] Return filtered array
+- [x] **filterChunks(chunks, options) Private Method**
+  - [x] Filter by projectId
+  - [x] Filter by filePattern (glob match)
+  - [x] Filter by language
+  - [x] Filter by chunkTypes
+  - [x] Return filtered array
 
-- [ ] **normalizeScore(rawScore) Private Method**
-  - [ ] Ensure score is in 0.0 - 1.0 range
-  - [ ] Apply any score adjustments
+- [x] **normalizeScore(rawScore) Private Method**
+  - [x] Ensure score is in 0.0 - 1.0 range
+  - [x] Apply any score adjustments
 
 ### Part B: Optimization
-- [ ] Consider batch similarity calculation
-- [ ] Cache embeddings when possible
-- [ ] Use typed arrays for performance
+- [x] Consider batch similarity calculation
+- [x] Cache embeddings when possible
+- [x] Use typed arrays for performance
 
 ### Part C: Create Tests
 Create `src/persistence/memory/code/CodeSearchEngine.test.ts`:
 
-- [ ] Test cosine similarity calculation
-- [ ] Test search with various options
-- [ ] Test findSimilar
-- [ ] Test filtering
-- [ ] Test threshold filtering
-- [ ] Test limit application
-- [ ] Test highlight generation
-- [ ] Test edge cases (empty chunks, no matches)
+- [x] Test cosine similarity calculation
+- [x] Test search with various options
+- [x] Test findSimilar
+- [x] Test filtering
+- [x] Test threshold filtering
+- [x] Test limit application
+- [x] Test highlight generation
+- [x] Test edge cases (empty chunks, no matches)
 
 ### Task 5 Completion Checklist
-- [ ] `CodeSearchEngine.ts` created (~250 lines)
-- [ ] `CodeSearchEngine.test.ts` created (~150 lines)
-- [x] All tests pass (33 tests)
+- [x] `CodeSearchEngine.ts` created (~475 lines)
+- [x] `CodeSearchEngine.test.ts` created (~615 lines)
+- [x] All tests pass (44 tests)
 - [x] TypeScript compiles
 
-**[TASK 5 COMPLETE]** <- Mark when done, proceed to Task 6
+**[TASK 5 COMPLETE]** - Completed: CodeSearchEngine with 44 passing tests
 
 ---
 

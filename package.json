@@ -47,6 +47,7 @@
     "framer-motion": "^12.26.2",
     "fs-extra": "^11.2.0",
     "lucide-react": "^0.562.0",
+    "minimatch": "^10.1.1",
     "nanoid": "^5.0.9",
     "pathe": "^1.1.2",
     "react": "^19.2.3",
