@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, real } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, real, blob } from 'drizzle-orm/sqlite-core';
 import { relations } from 'drizzle-orm';
 
 // ============================================================================
@@ -323,6 +323,25 @@ export const continuePointsRelations = relations(continuePoints, ({ one }) => ({
 }));
 
 // ============================================================================
+// Code Chunks table (for semantic code search - Plan 13-03)
+// ============================================================================
+export const codeChunks = sqliteTable('code_chunks', {
+  id: text('id').primaryKey(),
+  projectId: text('project_id').notNull(),
+  file: text('file').notNull(),
+  startLine: integer('start_line').notNull(),
+  endLine: integer('end_line').notNull(),
+  content: text('content').notNull(),
+  embedding: blob('embedding', { mode: 'buffer' }), // Binary blob of Float32Array
+  symbols: text('symbols', { mode: 'json' }).$type<string[]>(), // JSON array of symbol names
+  chunkType: text('chunk_type').notNull(),
+  language: text('language').notNull(),
+  complexity: integer('complexity'),
+  hash: text('hash').notNull(),
+  indexedAt: integer('indexed_at', { mode: 'timestamp' }).notNull(),
+});
+
+// ============================================================================
 // Type exports for use in application code
 // ============================================================================
 export type Project = typeof projects.$inferSelect;
@@ -357,3 +376,6 @@ export type NewEpisode = typeof episodes.$inferInsert;
 
 export type ContinuePointRecord = typeof continuePoints.$inferSelect;
 export type NewContinuePointRecord = typeof continuePoints.$inferInsert;
+
+export type CodeChunkRecord = typeof codeChunks.$inferSelect;
+export type NewCodeChunkRecord = typeof codeChunks.$inferInsert;
