@@ -52,8 +52,8 @@ Task 6: MemorySystem Integration --------> [COMPLETE]
 PART 2: FRESH CONTEXT MANAGER (Plan 13-04)
 ==========================================
 Task 7: Fresh Context Types -------------> [COMPLETE]
-Task 8: Token Budgeter ------------------> [PENDING]
-Task 9: FreshContextManager Core --------> [PENDING]
+Task 8: Token Budgeter ------------------> [COMPLETE]
+Task 9: FreshContextManager Core --------> [COMPLETE]
 Task 10: Context Builder ----------------> [PENDING]
 Task 11: AgentPool Integration ----------> [PENDING]
 
@@ -963,12 +963,12 @@ Create `src/orchestration/context/TokenBudgeter.test.ts`:
 - [ ] Test boundary truncation
 
 ### Task 8 Completion Checklist
-- [ ] `TokenBudgeter.ts` created (~200 lines)
-- [ ] `TokenBudgeter.test.ts` created (~150 lines)
-- [x] All tests pass (33 tests)
+- [x] `TokenBudgeter.ts` created (~589 lines)
+- [x] `TokenBudgeter.test.ts` created (~643 lines)
+- [x] All tests pass (36 tests)
 - [x] TypeScript compiles
 
-**[TASK 8 COMPLETE]** <- Mark when done, proceed to Task 9
+**[TASK 8 COMPLETE]** - Completed: TokenBudgeter with 36 passing tests
 
 ---
 
@@ -1041,12 +1041,12 @@ Create `src/orchestration/context/FreshContextManager.test.ts`:
 - [ ] Test that conversation history is always empty
 
 ### Task 9 Completion Checklist
-- [ ] `FreshContextManager.ts` created (~250 lines)
-- [ ] `FreshContextManager.test.ts` created (~150 lines)
-- [x] All tests pass (33 tests)
+- [x] `FreshContextManager.ts` created (~450 lines)
+- [x] `FreshContextManager.test.ts` created (~480 lines)
+- [x] All tests pass (43 tests)
 - [x] TypeScript compiles
 
-**[TASK 9 COMPLETE]** <- Mark when done, proceed to Task 10
+**[TASK 9 COMPLETE]** - Completed: FreshContextManager with 43 passing tests
 
 ---
 
