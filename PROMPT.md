@@ -54,7 +54,7 @@ PART 2: FRESH CONTEXT MANAGER (Plan 13-04)
 Task 7: Fresh Context Types -------------> [COMPLETE]
 Task 8: Token Budgeter ------------------> [COMPLETE]
 Task 9: FreshContextManager Core --------> [COMPLETE]
-Task 10: Context Builder ----------------> [PENDING]
+Task 10: Context Builder ----------------> [COMPLETE]
 Task 11: AgentPool Integration ----------> [PENDING]
 
 PART 3: INTEGRATION
@@ -1126,12 +1126,12 @@ Create `src/orchestration/context/ContextBuilder.test.ts`:
 - [ ] Test related file finding
 
 ### Task 10 Completion Checklist
-- [ ] `ContextBuilder.ts` created (~350 lines)
-- [ ] `ContextBuilder.test.ts` created (~200 lines)
-- [x] All tests pass (33 tests)
+- [x] `ContextBuilder.ts` created (~745 lines)
+- [x] `ContextBuilder.test.ts` created (~557 lines)
+- [x] All tests pass (31 tests)
 - [x] TypeScript compiles
 
-**[TASK 10 COMPLETE]** <- Mark when done, proceed to Task 11
+**[TASK 10 COMPLETE]** - Completed: ContextBuilder with 31 passing tests
 
 ---
 
