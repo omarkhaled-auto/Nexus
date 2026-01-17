@@ -352,7 +352,7 @@ export class CodeChunkRepository {
     // Parse embedding from binary blob
     let embedding: number[] = [];
     if (row.embedding) {
-      const buffer = row.embedding as Buffer;
+      const buffer = row.embedding;
       const float32Array = new Float32Array(
         buffer.buffer,
         buffer.byteOffset,
@@ -378,7 +378,7 @@ export class CodeChunkRepository {
       endLine: row.endLine,
       content: row.content,
       embedding,
-      symbols: (row.symbols ?? []) as string[],
+      symbols: (row.symbols ?? []),
       chunkType: row.chunkType as CodeChunkType,
       metadata,
       indexedAt: row.indexedAt,

@@ -328,7 +328,7 @@ describe('AgentContextIntegration', () => {
     expect(system.integration.getAgentContext('agent-1')).toBeDefined();
 
     // Complete the task
-    await system.integration.onTaskComplete('agent-1', task.id);
+    system.integration.onTaskComplete('agent-1', task.id);
 
     // Context should be cleared
     expect(system.integration.getAgentContext('agent-1')).toBeUndefined();
@@ -343,7 +343,7 @@ describe('AgentContextIntegration', () => {
     await system.integration.prepareAgentContext('agent-1', task);
 
     // Fail the task
-    await system.integration.onTaskFailed('agent-1', task.id, new Error('Test error'));
+    system.integration.onTaskFailed('agent-1', task.id, new Error('Test error'));
 
     // Context should be cleared
     expect(system.integration.getAgentContext('agent-1')).toBeUndefined();
@@ -366,7 +366,7 @@ describe('AgentContextIntegration', () => {
     expect(stats.pending).toBe(0);
     expect(stats.cleared).toBe(0);
 
-    await system.integration.onTaskComplete('agent-1', 'task-1');
+    system.integration.onTaskComplete('agent-1', 'task-1');
 
     stats = system.integration.getStats();
     expect(stats.ready).toBe(1);
@@ -499,7 +499,7 @@ describe('Context Statistics', () => {
     expect(stats.totalCreated).toBe(2);
     expect(stats.activeContexts).toBe(2);
 
-    await system.manager.clearTaskContext('task-1');
+    system.manager.clearTaskContext('task-1');
 
     stats = system.manager.getContextStats();
     expect(stats.totalCleared).toBe(1);

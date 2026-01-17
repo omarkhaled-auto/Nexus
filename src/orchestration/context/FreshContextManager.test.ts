@@ -402,16 +402,16 @@ describe('FreshContextManager', () => {
       manager.associateAgentWithContext('agent-1', context.contextId);
 
       // Clear agent context
-      await manager.clearAgentContext('agent-1');
+      manager.clearAgentContext('agent-1');
 
       // Context should be removed
       const activeContexts = manager.getActiveContexts();
       expect(activeContexts.has(context.contextId)).toBe(false);
     });
 
-    it('should handle clearing non-existent agent', async () => {
+    it('should handle clearing non-existent agent', () => {
       // Should not throw
-      await expect(manager.clearAgentContext('non-existent')).resolves.not.toThrow();
+      expect(() => manager.clearAgentContext('non-existent')).not.toThrow();
     });
 
     it('should update statistics when clearing', async () => {
@@ -420,7 +420,7 @@ describe('FreshContextManager', () => {
       manager.associateAgentWithContext('agent-1', context.contextId);
 
       const statsBefore = manager.getContextStats();
-      await manager.clearAgentContext('agent-1');
+      manager.clearAgentContext('agent-1');
       const statsAfter = manager.getContextStats();
 
       expect(statsAfter.totalCleared).toBe(statsBefore.totalCleared + 1);
@@ -432,15 +432,15 @@ describe('FreshContextManager', () => {
       const task = createMockTaskSpec({ id: 'task-to-clear' });
       const context = await manager.buildFreshContext(task);
 
-      await manager.clearTaskContext('task-to-clear');
+      manager.clearTaskContext('task-to-clear');
 
       const activeContexts = manager.getActiveContexts();
       expect(activeContexts.has(context.contextId)).toBe(false);
     });
 
-    it('should handle clearing non-existent task', async () => {
+    it('should handle clearing non-existent task', () => {
       // Should not throw
-      await expect(manager.clearTaskContext('non-existent')).resolves.not.toThrow();
+      expect(() => manager.clearTaskContext('non-existent')).not.toThrow();
     });
   });
 
@@ -567,7 +567,7 @@ describe('FreshContextManager', () => {
     it('should track cleared contexts', async () => {
       const task = createMockTaskSpec();
       await manager.buildFreshContext(task);
-      await manager.clearTaskContext(task.id);
+      manager.clearTaskContext(task.id);
 
       const stats = manager.getContextStats();
 
@@ -684,7 +684,7 @@ describe('FreshContextManager', () => {
       for (let i = 0; i < iterations; i++) {
         const task = createMockTaskSpec({ id: `task-${i}` });
         await manager.buildFreshContext(task);
-        await manager.clearTaskContext(task.id);
+        manager.clearTaskContext(task.id);
       }
 
       const stats = manager.getContextStats();

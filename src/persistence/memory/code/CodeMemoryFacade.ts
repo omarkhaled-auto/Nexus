@@ -15,7 +15,7 @@
  */
 
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
-import * as schema from '../../database/schema';
+import type * as schema from '../../database/schema';
 import type {
   CodeChunk,
   CodeSearchResult,

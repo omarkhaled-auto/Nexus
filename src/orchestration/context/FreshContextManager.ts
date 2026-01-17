@@ -26,7 +26,6 @@ import type {
   ContextStats,
   TokenBreakdown,
   ContextProjectConfig,
-  DEFAULT_CONTEXT_OPTIONS,
 } from './types';
 
 // ============================================================================
@@ -186,7 +185,7 @@ export class FreshContextManager implements IFreshContextManager {
     const budget = this.budgeter.createBudget(opts.maxTokens);
 
     // Clear any existing context for this task
-    await this.clearTaskContext(task.id);
+    this.clearTaskContext(task.id);
 
     // Generate unique context ID
     const contextId = uuidv4();
@@ -277,7 +276,7 @@ export class FreshContextManager implements IFreshContextManager {
    *
    * @param agentId Agent identifier
    */
-  async clearAgentContext(agentId: string): Promise<void> {
+  clearAgentContext(agentId: string): void {
     const contextId = this.agentToContext.get(agentId);
     if (contextId) {
       this.activeContexts.delete(contextId);
@@ -293,7 +292,7 @@ export class FreshContextManager implements IFreshContextManager {
    *
    * @param taskId Task identifier
    */
-  async clearTaskContext(taskId: string): Promise<void> {
+  clearTaskContext(taskId: string): void {
     const contextId = this.taskToContext.get(taskId);
     if (contextId) {
       this.activeContexts.delete(contextId);
@@ -363,7 +362,6 @@ export class FreshContextManager implements IFreshContextManager {
 
     // Check for empty files when task has files
     if (
-      WARNING_THRESHOLDS.emptyFiles &&
       context.taskSpec.files.length > 0 &&
       context.relevantFiles.length === 0
     ) {
@@ -632,22 +630,22 @@ export function createTestFreshContextManager(
         report: '',
       }),
       truncateToFit: (content: string) => content,
-      estimateTokens: (text: string) => Math.ceil((text?.length || 0) / 4),
+      estimateTokens: (text: string) => Math.ceil((text.length) / 4),
     };
 
   // Create mock builder
   const mockBuilder: IContextBuilder =
     options.builder ?? {
-      buildRepoMapContext: async () => 'mock repo map',
-      buildCodebaseDocsContext: async () => ({
+      buildRepoMapContext: () => Promise.resolve('mock repo map'),
+      buildCodebaseDocsContext: () => Promise.resolve({
         architectureSummary: 'mock summary',
         relevantPatterns: [],
         relevantAPIs: [],
         tokenCount: 100,
       }),
-      buildFileContext: async () => [],
-      buildCodeContext: async () => [],
-      buildMemoryContext: async () => [],
+      buildFileContext: () => Promise.resolve([]),
+      buildCodeContext: () => Promise.resolve([]),
+      buildMemoryContext: () => Promise.resolve([]),
     };
 
   // Create project config

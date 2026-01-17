@@ -87,7 +87,7 @@ export {
 // ============================================================================
 
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
-import * as schema from '../../database/schema';
+import type * as schema from '../../database/schema';
 import { CodeChunkRepository } from './CodeChunkRepository';
 import { CodeChunker } from './CodeChunker';
 import { CodeMemory, type CodeMemoryConfig } from './CodeMemory';

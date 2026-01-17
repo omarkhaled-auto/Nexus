@@ -381,7 +381,7 @@ export interface IFreshContextManager {
    *
    * @param agentId Agent identifier
    */
-  clearAgentContext(agentId: string): Promise<void>;
+  clearAgentContext(agentId: string): void;
 
   /**
    * Clear context for a specific task
@@ -389,7 +389,7 @@ export interface IFreshContextManager {
    *
    * @param taskId Task identifier
    */
-  clearTaskContext(taskId: string): Promise<void>;
+  clearTaskContext(taskId: string): void;
 
   /**
    * Validate a context against token budget

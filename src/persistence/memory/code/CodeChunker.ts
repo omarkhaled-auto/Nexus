@@ -21,7 +21,8 @@ import type {
   SymbolEntry,
 } from './types';
 import { DEFAULT_CHUNKING_OPTIONS } from './types';
-import { TreeSitterParser, getParser } from '../../../infrastructure/analysis/TreeSitterParser';
+import type { TreeSitterParser} from '../../../infrastructure/analysis/TreeSitterParser';
+import { getParser } from '../../../infrastructure/analysis/TreeSitterParser';
 
 // ============================================================================
 // Constants

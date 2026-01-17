@@ -14,7 +14,7 @@
  */
 
 import { readFile } from 'fs/promises';
-import { basename, extname, dirname, relative } from 'path';
+import { basename, extname, dirname } from 'path';
 import type {
   IContextBuilder,
   TaskSpec,
@@ -51,8 +51,9 @@ const DEFAULT_RELEVANCE: Record<FileIncludeReason, number> = {
 
 /**
  * File extensions to language mapping
+ * @internal Used for detecting language from file extension
  */
-const EXTENSION_TO_LANGUAGE: Record<string, string> = {
+const _EXTENSION_TO_LANGUAGE: Record<string, string> = {
   '.ts': 'typescript',
   '.tsx': 'typescript',
   '.js': 'javascript',
@@ -66,6 +67,9 @@ const EXTENSION_TO_LANGUAGE: Record<string, string> = {
   '.c': 'c',
   '.cs': 'csharp',
 };
+
+// Export for potential future use
+export { _EXTENSION_TO_LANGUAGE as EXTENSION_TO_LANGUAGE };
 
 // ============================================================================
 // Types

@@ -182,8 +182,9 @@ export class CodeSearchEngine implements ICodeSearchEngine {
       return [];
     }
 
-    // Filter to only chunks with embeddings
+    // Filter to only chunks with embeddings (defensive null check for runtime safety)
     const chunksWithEmbeddings = chunks.filter(
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Runtime null check
       (c) => c.embedding && c.embedding.length > 0
     );
 
@@ -302,6 +303,7 @@ export class CodeSearchEngine implements ICodeSearchEngine {
       const batch = chunks.slice(i, i + this.config.batchSize);
 
       for (const chunk of batch) {
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Runtime null check for safety
         if (!chunk.embedding || chunk.embedding.length === 0) {
           results.push({ chunk, score: 0 });
           continue;
@@ -373,6 +375,7 @@ export class CodeSearchEngine implements ICodeSearchEngine {
       }
 
       // Must have embedding for similarity search
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Runtime null check for safety
       if (!chunk.embedding || chunk.embedding.length === 0) {
         return false;
       }

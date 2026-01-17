@@ -256,8 +256,8 @@ export class AgentContextIntegration {
    * @param agentId Agent identifier
    * @param taskId Task identifier
    */
-  async onTaskComplete(agentId: string, taskId: string): Promise<void> {
-    await this.clearContext(agentId, taskId, 'complete');
+  onTaskComplete(agentId: string, taskId: string): void {
+    this.clearContext(agentId, taskId, 'complete');
   }
 
   /**
@@ -269,8 +269,8 @@ export class AgentContextIntegration {
    * @param taskId Task identifier
    * @param _error Optional error information (preserved for logging)
    */
-  async onTaskFailed(agentId: string, taskId: string, _error?: Error): Promise<void> {
-    await this.clearContext(agentId, taskId, 'failed');
+  onTaskFailed(agentId: string, taskId: string, _error?: Error): void {
+    this.clearContext(agentId, taskId, 'failed');
   }
 
   /**
@@ -402,15 +402,15 @@ export class AgentContextIntegration {
   /**
    * Clear context for an agent
    */
-  private async clearContext(
+  private clearContext(
     agentId: string,
     taskId: string,
     reason: 'complete' | 'failed'
-  ): Promise<void> {
+  ): void {
     try {
       // Clear from context manager
-      await this.contextManager.clearAgentContext(agentId);
-      await this.contextManager.clearTaskContext(taskId);
+      this.contextManager.clearAgentContext(agentId);
+      this.contextManager.clearTaskContext(taskId);
 
       // Update tracking
       const existing = this.agentContexts.get(agentId);

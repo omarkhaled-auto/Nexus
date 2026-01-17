@@ -11,7 +11,7 @@
 
 import { glob } from 'glob';
 import { readFile } from 'fs/promises';
-import { basename, extname, relative, resolve } from 'path';
+import { basename, relative, resolve } from 'path';
 import { createHash } from 'crypto';
 import type {
   ICodeMemory,
@@ -25,9 +25,9 @@ import type {
   UsageType,
 } from './types';
 import { DEFAULT_SEARCH_OPTIONS } from './types';
-import { CodeChunkRepository } from './CodeChunkRepository';
+import type { CodeChunkRepository } from './CodeChunkRepository';
 import { CodeChunker } from './CodeChunker';
-import { EmbeddingsService } from '../EmbeddingsService';
+import type { EmbeddingsService } from '../EmbeddingsService';
 
 // ============================================================================
 // Types
@@ -229,12 +229,9 @@ export class CodeMemory implements ICodeMemory {
       return this.indexFile(file, content);
     }
 
-    // Calculate hash of new content
-    const newHash = this.calculateHash(content);
-
     // Check if content has changed by comparing with first chunk's hash
     // (simplified check - could be more sophisticated)
-    const existingHash = existingChunks[0]?.metadata.hash;
+    const _existingHash = existingChunks[0]?.metadata.hash;
 
     // Get new chunks
     const newChunks = this.chunker.chunkFile(file, content);
