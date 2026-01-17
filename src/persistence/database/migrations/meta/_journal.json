@@ -36,6 +36,13 @@
       "when": 1768406400000,
       "tag": "0004_continue_points",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1737104400000,
+      "tag": "0005_code_chunks",
+      "breakpoints": true
     }
   ]
 }
