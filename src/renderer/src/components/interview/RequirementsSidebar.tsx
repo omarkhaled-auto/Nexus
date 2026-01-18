@@ -63,12 +63,12 @@ export function RequirementsSidebar(): ReactElement {
   }, [requirements]);
 
   // Group requirements by category
-  const requirementsByCategory = CATEGORY_ORDER.reduce(
+  const requirementsByCategory = CATEGORY_ORDER.reduce<Record<RequirementCategory, Requirement[]>>(
     (acc, category) => {
       acc[category] = requirements.filter((r) => r.category === category);
       return acc;
     },
-    {} as Record<RequirementCategory, Requirement[]>
+    {}
   );
 
   // Calculate stage progress

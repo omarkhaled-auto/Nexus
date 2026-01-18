@@ -9,13 +9,14 @@
  * @module SearchRequestHandler
  */
 
-import {
+import type {
   ContextRequest,
   ContextRequestType,
   ContextResponse,
   IRequestHandler,
   SearchResults,
-  SearchResultItem,
+  SearchResultItem} from '../types';
+import {
   DEFAULT_REQUEST_OPTIONS,
 } from '../types';
 

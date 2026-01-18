@@ -9,17 +9,18 @@
  * @module DynamicContextProvider
  */
 
-import {
-  AgentNotRegisteredError,
+import type {
   AgentRegistration,
   ContextRequest,
   ContextRequestType,
   ContextResponse,
-  DEFAULT_PROVIDER_OPTIONS,
-  DEFAULT_REQUEST_OPTIONS,
   DynamicContextProviderOptions,
   IDynamicContextProvider,
-  IRequestHandler,
+  IRequestHandler} from './types';
+import {
+  AgentNotRegisteredError,
+  DEFAULT_PROVIDER_OPTIONS,
+  DEFAULT_REQUEST_OPTIONS,
   NoHandlerFoundError,
   TokenBudgetExceededError,
 } from './types';
@@ -38,10 +39,10 @@ interface Logger {
  * Default console logger
  */
 const defaultLogger: Logger = {
-  info: (message, meta) => console.log(`[DynamicContextProvider] INFO: ${message}`, meta || ''),
-  debug: (message, meta) => console.log(`[DynamicContextProvider] DEBUG: ${message}`, meta || ''),
-  warn: (message, meta) => console.warn(`[DynamicContextProvider] WARN: ${message}`, meta || ''),
-  error: (message, meta) => console.error(`[DynamicContextProvider] ERROR: ${message}`, meta || ''),
+  info: (message, meta) => { console.log(`[DynamicContextProvider] INFO: ${message}`, meta || ''); },
+  debug: (message, meta) => { console.log(`[DynamicContextProvider] DEBUG: ${message}`, meta || ''); },
+  warn: (message, meta) => { console.warn(`[DynamicContextProvider] WARN: ${message}`, meta || ''); },
+  error: (message, meta) => { console.error(`[DynamicContextProvider] ERROR: ${message}`, meta || ''); },
 };
 
 /**

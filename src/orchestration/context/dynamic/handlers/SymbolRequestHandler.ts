@@ -12,7 +12,7 @@
 import { readFileSync, existsSync } from 'fs';
 import { normalize, resolve } from 'pathe';
 
-import {
+import type {
   ContextRequest,
   ContextRequestType,
   ContextResponse,
@@ -20,7 +20,8 @@ import {
   SymbolContext,
   SymbolUsage,
   SymbolUsageType,
-  SymbolKind,
+  SymbolKind} from '../types';
+import {
   DEFAULT_REQUEST_OPTIONS,
 } from '../types';
 

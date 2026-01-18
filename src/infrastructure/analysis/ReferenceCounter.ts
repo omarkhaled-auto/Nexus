@@ -250,7 +250,7 @@ export class ReferenceCounter implements IReferenceCounter {
 
     // Parse symbol key to get symbol name
     const parts = symbolKey.split('#');
-    const symbolName = parts.length >= 2 ? (parts[1] as string) : symbolKey;
+    const symbolName = parts.length >= 2 ? (parts[1]) : symbolKey;
 
     // Find edges that import this symbol
     for (const edge of dependencies) {

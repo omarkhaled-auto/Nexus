@@ -12,11 +12,12 @@
 import { existsSync, readFileSync, statSync } from 'fs';
 import { normalize, resolve, relative, isAbsolute } from 'pathe';
 
-import {
+import type {
   ContextRequest,
   ContextRequestType,
   ContextResponse,
-  IRequestHandler,
+  IRequestHandler} from '../types';
+import {
   DEFAULT_REQUEST_OPTIONS,
 } from '../types';
 
