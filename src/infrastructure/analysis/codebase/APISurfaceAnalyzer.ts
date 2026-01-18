@@ -543,14 +543,14 @@ export class APISurfaceAnalyzer extends BaseAnalyzer {
       if (!trimmed) continue;
 
       const optional = trimmed.includes('?');
-      const [nameWithOptional, typeAndDefault] = trimmed.split(':');
-      const name = (nameWithOptional !== undefined ? nameWithOptional : '').replace('?', '').trim();
+      const [nameWithOptional = '', typeAndDefault] = trimmed.split(':');
+      const name = nameWithOptional.replace('?', '').trim();
       let type = 'unknown';
       let defaultValue: string | undefined;
 
       if (typeAndDefault) {
-        const [typeStr, defaultStr] = typeAndDefault.split('=');
-        type = (typeStr !== undefined ? typeStr : '').trim();
+        const [typeStr = '', defaultStr] = typeAndDefault.split('=');
+        type = typeStr.trim();
         if (defaultStr) {
           defaultValue = defaultStr.trim();
         }

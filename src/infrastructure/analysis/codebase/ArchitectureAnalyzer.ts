@@ -692,8 +692,9 @@ export class ArchitectureAnalyzer extends BaseAnalyzer {
 
     // Add edges for layer dependencies
     for (let i = 0; i < layers.length - 1; i++) {
-      const currentLayer = layers[i]!;
-      const nextLayer = layers[i + 1]!;
+      const currentLayer = layers[i];
+      const nextLayer = layers[i + 1];
+      if (!currentLayer || !nextLayer) continue;
       edges.push({
         from: `L${String(currentLayer.number)}`,
         to: `L${String(nextLayer.number)}`,

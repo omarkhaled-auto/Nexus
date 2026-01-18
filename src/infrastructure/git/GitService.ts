@@ -394,7 +394,7 @@ export class GitService {
       return {
         name,
         current: name === result.current,
-        commit: branch ? branch.commit : '',
+        commit: branch.commit,
       };
     });
   }

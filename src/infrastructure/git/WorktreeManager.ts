@@ -95,7 +95,7 @@ export interface WorktreeRegistry {
   /** Base directory of the repository */
   baseDir: string;
   /** Map of taskId to WorktreeInfo */
-  worktrees: Record<string, WorktreeInfo>;
+  worktrees: Partial<Record<string, WorktreeInfo>>;
   /** Last time registry was updated */
   lastUpdated: Date;
 }

@@ -511,7 +511,8 @@ export class RepoMapFormatter implements IRepoMapFormatter {
     ];
 
     for (let i = 0; i < items.length; i++) {
-      const currentItem = items[i]!;
+      const currentItem = items[i];
+      if (!currentItem) continue;
       const { type, item } = currentItem;
       const isLastItem = i === items.length - 1;
       const connector = isLastItem ? '\u2514\u2500\u2500' : '\u251C\u2500\u2500'; // └── or ├──
@@ -558,7 +559,8 @@ export class RepoMapFormatter implements IRepoMapFormatter {
           const topLevelSymbols = sortedSymbols.filter((s) => !s.parentId);
 
           for (let j = 0; j < topLevelSymbols.length && j < 10; j++) {
-            const symbol = topLevelSymbols[j]!;
+            const symbol = topLevelSymbols[j];
+            if (!symbol) continue;
             const symbolPrefix = this.getSymbolPrefix(symbol.kind);
             const exportMark = symbol.exported ? '\u03B5' : '';
             const refCount =
