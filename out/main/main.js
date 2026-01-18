@@ -100,6 +100,8 @@ const optimizer = {
   }
 };
 class EventBus {
+  /** Singleton instance for static getInstance() */
+  static instance = null;
   /** Event subscriptions by type */
   subscriptions = /* @__PURE__ */ new Map();
   /** Wildcard subscriptions (receive all events) */
@@ -118,6 +120,24 @@ class EventBus {
   constructor(options = {}) {
     this.maxHistorySize = options.maxHistorySize ?? 1e3;
     this.defaultSource = options.defaultSource ?? "nexus";
+  }
+  /**
+   * Get the singleton EventBus instance
+   * Static method for compatibility with getInstance() pattern
+   *
+   * @returns Global EventBus instance
+   */
+  static getInstance() {
+    if (!EventBus.instance) {
+      EventBus.instance = new EventBus();
+    }
+    return EventBus.instance;
+  }
+  /**
+   * Reset the singleton instance (for testing)
+   */
+  static resetInstance() {
+    EventBus.instance = null;
   }
   /**
    * Emit an event to all subscribed handlers
@@ -436,7 +456,7 @@ function registerIpcHandlers() {
       }
       const eventBus = EventBus.getInstance();
       const projectId = state.projectId || `interview-${Date.now()}`;
-      eventBus.emit(
+      void eventBus.emit(
         "interview:started",
         {
           projectId,
@@ -455,7 +475,7 @@ function registerIpcHandlers() {
       }
       const eventBus = EventBus.getInstance();
       const projectId = state.projectId || "unknown";
-      eventBus.emit(
+      void eventBus.emit(
         "interview:question-asked",
         {
           projectId,
@@ -481,7 +501,7 @@ function registerIpcHandlers() {
         constraint: "technical"
       };
       const mappedCategory = categoryMap[payload.category] || payload.category;
-      eventBus.emit(
+      void eventBus.emit(
         "interview:requirement-captured",
         {
           projectId,
@@ -512,7 +532,7 @@ function registerIpcHandlers() {
       }
       const eventBus = EventBus.getInstance();
       const projectId = state.projectId || "unknown";
-      eventBus.emit(
+      void eventBus.emit(
         "interview:completed",
         {
           projectId,
@@ -534,7 +554,7 @@ function registerIpcHandlers() {
         throw new Error("Invalid event channel");
       }
       const eventBus = EventBus.getInstance();
-      eventBus.emit(channel, payload, { source: "RendererUI" });
+      void eventBus.emit(channel, payload, { source: "RendererUI" });
     }
   );
 }
