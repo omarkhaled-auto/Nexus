@@ -9,6 +9,7 @@ import { CoderAgent } from './CoderAgent';
 import type { AgentContext } from './BaseAgentRunner';
 import type { Task } from '../../types/task';
 import { EventBus } from '../../orchestration/events/EventBus';
+import type { ClaudeClient } from '../../llm/clients/ClaudeClient';
 
 // ============================================================================
 // Mock LLM Client
@@ -76,7 +77,7 @@ describe('CoderAgent', () => {
 
   describe('constructor', () => {
     it('should create agent with default config', () => {
-      const agent = new CoderAgent(mockClient as unknown as Parameters<typeof CoderAgent['prototype']['execute']>[0]['assignedAgentId'] extends string ? never : Parameters<typeof CoderAgent['prototype']['constructor']>[0]);
+      const agent = new CoderAgent(mockClient as unknown as ClaudeClient);
       expect(agent).toBeDefined();
       expect(agent.getAgentType()).toBe('coder');
     });

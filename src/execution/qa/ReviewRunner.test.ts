@@ -336,7 +336,7 @@ Let me know if you have questions.`;
     it('should return a function compatible with QARunner interface', async () => {
       mockGitService.diff.mockResolvedValueOnce('').mockResolvedValueOnce('');
 
-      const callback = runner.createCallback('/test/path');
+      const callback = runner.createCallback('/test/path')!;
 
       expect(typeof callback).toBe('function');
 
@@ -357,7 +357,7 @@ Let me know if you have questions.`;
       const callback = runner.createCallback('/test/path', {
         taskId: 'static-task',
         taskDescription: 'Static description',
-      });
+      })!;
 
       await callback('override-task');
 
@@ -464,7 +464,7 @@ describe('createReviewCallback', () => {
       mockGeminiClient as any,
       mockGitService as any,
       '/test/path'
-    );
+    )!;
 
     expect(typeof callback).toBe('function');
 

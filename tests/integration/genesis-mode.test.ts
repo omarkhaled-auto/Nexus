@@ -27,7 +27,7 @@ import { TimeEstimator } from '../../src/planning/estimation/TimeEstimator';
 import { ClaudeClient } from '../../src/llm/clients/ClaudeClient';
 import type { PlanningTask } from '../../src/planning/types';
 import type { Feature } from '../../src/types/core';
-import type { ProjectConfig } from '../../src/orchestration/types';
+import type { ProjectConfig, OrchestrationFeature } from '../../src/orchestration/types';
 
 // ============================================================================
 // Test Configuration
@@ -105,6 +105,24 @@ function createMinimalFeature(): Feature {
     description: 'Create a simple GET endpoint that returns "Hello World"',
     status: 'pending',
     priority: 'low',
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
+/**
+ * Create a minimal OrchestrationFeature for ProjectConfig testing
+ */
+function createOrchestrationFeature(): OrchestrationFeature {
+  const now = new Date();
+  return {
+    id: 'test-orch-feature',
+    projectId: 'test-project',
+    name: 'Test Feature',
+    description: 'A test feature for orchestration',
+    priority: 'should',
+    status: 'backlog',
+    complexity: 'simple',
     createdAt: now,
     updatedAt: now,
   };
@@ -403,7 +421,7 @@ describe('Genesis Mode - Integration Tests (API Required)', () => {
       'should decompose a simple feature into atomic tasks',
       async () => {
         const feature = createMinimalFeature();
-        const tasks = await decomposer.decompose(feature);
+        const tasks = await decomposer.decompose(feature.description);
 
         // Should return at least one task
         expect(tasks.length).toBeGreaterThan(0);
@@ -429,7 +447,7 @@ describe('Genesis Mode - Integration Tests (API Required)', () => {
       'should decompose a complex feature into multiple tasks',
       async () => {
         const feature = createSampleFeature();
-        const tasks = await decomposer.decompose(feature);
+        const tasks = await decomposer.decompose(feature.description);
 
         // Complex features should result in multiple tasks
         expect(tasks.length).toBeGreaterThanOrEqual(3);
@@ -559,7 +577,7 @@ describe('Genesis Mode - Integration Tests (API Required)', () => {
 
         // Step 1: Decompose a feature
         const feature = createMinimalFeature();
-        const tasks = await decomposer.decompose(feature);
+        const tasks = await decomposer.decompose(feature.description);
 
         expect(tasks.length).toBeGreaterThan(0);
         console.log(`[Genesis Test] Decomposed into ${tasks.length} tasks`);
@@ -573,12 +591,10 @@ describe('Genesis Mode - Integration Tests (API Required)', () => {
         expect(waves.length).toBeGreaterThan(0);
         console.log(`[Genesis Test] Calculated ${waves.length} execution waves`);
 
-        // Step 4: Estimate time
-        const timeEstimate = estimator.estimateTotal(tasks);
-        expect(timeEstimate.sequentialMinutes).toBeGreaterThan(0);
-        console.log(
-          `[Genesis Test] Estimated time: ${timeEstimate.parallelMinutes} min (parallel), ${timeEstimate.sequentialMinutes} min (sequential)`
-        );
+        // Step 4: Estimate time (estimateTotal returns Promise<number> for total minutes)
+        const totalMinutes = await estimator.estimateTotal(tasks);
+        expect(totalMinutes).toBeGreaterThan(0);
+        console.log(`[Genesis Test] Estimated total time: ${totalMinutes} min`);
 
         // Step 5: Validate
         const validation = resolver.validate(tasks);
@@ -601,7 +617,7 @@ describe('Genesis Mode - Integration Tests (API Required)', () => {
           projectId: 'genesis-test-project',
           projectPath: testDir,
           mode: 'genesis',
-          features: [createMinimalFeature()],
+          features: [createOrchestrationFeature()],
         };
 
         // Initialize coordinator
@@ -636,7 +652,7 @@ describe('Genesis Mode - Integration Tests (API Required)', () => {
           projectId: 'genesis-event-test',
           projectPath: testDir,
           mode: 'genesis',
-          features: [createMinimalFeature()],
+          features: [createOrchestrationFeature()],
         };
 
         // Initialize and start

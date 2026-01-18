@@ -333,7 +333,7 @@ describe('TestRunner', () => {
       mockSpawn.mockReturnValue(createMockProcess({ exitCode: 0 }));
 
       const runner = new TestRunner();
-      const callback = runner.createCallback('/specific/project');
+      const callback = runner.createCallback('/specific/project')!;
 
       await callback('task-123');
 
@@ -359,7 +359,7 @@ describe('TestRunner', () => {
       );
 
       const runner = new TestRunner();
-      const callback = runner.createCallback('/test/path');
+      const callback = runner.createCallback('/test/path')!;
 
       const result = await callback('task-456');
 

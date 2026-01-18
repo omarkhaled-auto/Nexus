@@ -455,9 +455,9 @@ describe('ReviewerAgent', () => {
 
       const eventBus = EventBus.getInstance();
       const events: string[] = [];
-      eventBus.on('agent:started', () => events.push('started'));
-      eventBus.on('agent:progress', () => events.push('progress'));
-      eventBus.on('task:completed', () => events.push('completed'));
+      eventBus.on('agent:started', () => { events.push('started'); });
+      eventBus.on('agent:progress', () => { events.push('progress'); });
+      eventBus.on('task:completed', () => { events.push('completed'); });
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const agent = new ReviewerAgent(mockClient as unknown as any);

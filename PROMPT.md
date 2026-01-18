@@ -3259,3 +3259,38 @@ After Phase 14B completion, TypeScript strict mode errors were identified and fi
 - All 1904 tests pass (6 skipped for missing API keys)
 - TypeScript compilation succeeds
 - Commit: `c162064` - "fix: TypeScript type errors in Phase 14B implementation"
+
+---
+
+## Post-Completion Fix: Additional TypeScript Errors
+
+**Date:** 2026-01-19
+
+Additional TypeScript strict mode errors were identified and fixed:
+
+### Issues Fixed:
+
+1. **CoderAgent.test.ts** (line 79) - Fixed complex type cast to use simple `ClaudeClient` type import and cast
+
+2. **ReviewerAgent.test.ts** (lines 458-460) - Fixed event handler callbacks that returned numbers instead of void. Changed `() => events.push('x')` to `() => { events.push('x'); }` to avoid implicit return
+
+3. **Multiple test files** - Fixed "possibly undefined" callback errors by adding non-null assertions (`!`) where `createCallback()` is called:
+   - BuildRunner.test.ts (lines 235, 250)
+   - ReviewRunner.test.ts (lines 343, 362, 471)
+   - TestRunner.test.ts (lines 338, 364)
+   - real-execution.test.ts (line 237)
+
+4. **genesis-mode.test.ts** - Multiple fixes:
+   - Updated `decomposer.decompose(feature)` to `decomposer.decompose(feature.description)` - the decompose method takes a string, not a Feature object
+   - Updated `estimator.estimateTotal(tasks)` usage - returns `Promise<number>`, not an object with sequentialMinutes/parallelMinutes
+   - Added `createOrchestrationFeature()` helper for tests that use `ProjectConfig.features` (requires `OrchestrationFeature` type, not `Feature`)
+   - Added `OrchestrationFeature` import
+
+5. **real-execution.test.ts** - Fixed all task definitions:
+   - Removed invalid `outputType` property from all PlanningTask objects
+   - Added required `type`, `size`, `testCriteria`, and `files` fields
+   - Created `createTask()` helper function for cleaner test fixtures
+
+### Verification:
+- TypeScript compilation succeeds with `npx tsc --noEmit`
+- All 1904 tests pass (6 skipped for missing API keys)

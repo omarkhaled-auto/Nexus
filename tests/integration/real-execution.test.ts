@@ -16,6 +16,25 @@ import { DependencyResolver } from '../../src/planning/dependencies/DependencyRe
 import type { PlanningTask } from '../../src/planning/types';
 
 // ============================================================================
+// Helper Functions
+// ============================================================================
+
+/**
+ * Create a valid PlanningTask with required fields
+ */
+function createTask(partial: Partial<PlanningTask> & { id: string; name: string; description: string }): PlanningTask {
+  return {
+    type: 'auto',
+    size: 'small',
+    estimatedMinutes: 10,
+    dependsOn: [],
+    testCriteria: [],
+    files: [],
+    ...partial,
+  };
+}
+
+// ============================================================================
 // Test Setup
 // ============================================================================
 
@@ -209,7 +228,7 @@ src/other.ts(25,10): error TS2551: Property 'foo' does not exist on type 'Bar'.`
     }, 30000);
 
     it('should create QARunner-compatible callback', async () => {
-      const callback = runner.createCallback(PROJECT_ROOT);
+      const callback = runner.createCallback(PROJECT_ROOT)!;
 
       // Callback should be a function
       expect(typeof callback).toBe('function');
@@ -241,33 +260,45 @@ src/other.ts(25,10): error TS2551: Property 'foo' does not exist on type 'Bar'.`
           id: '1',
           name: 'Task 1 - Foundation',
           description: 'Foundation task',
+          type: 'auto',
+          size: 'small',
           dependsOn: [],
           estimatedMinutes: 10,
-          outputType: 'code',
+          testCriteria: [],
+          files: [],
         },
         {
           id: '2',
           name: 'Task 2 - Depends on 1',
           description: 'Second task',
+          type: 'auto',
+          size: 'small',
           dependsOn: ['1'],
           estimatedMinutes: 10,
-          outputType: 'code',
+          testCriteria: [],
+          files: [],
         },
         {
           id: '3',
           name: 'Task 3 - Depends on 1',
           description: 'Third task',
+          type: 'auto',
+          size: 'small',
           dependsOn: ['1'],
           estimatedMinutes: 10,
-          outputType: 'code',
+          testCriteria: [],
+          files: [],
         },
         {
           id: '4',
           name: 'Task 4 - Depends on 2 and 3',
           description: 'Final task',
+          type: 'auto',
+          size: 'small',
           dependsOn: ['2', '3'],
           estimatedMinutes: 10,
-          outputType: 'code',
+          testCriteria: [],
+          files: [],
         },
       ];
 
@@ -293,22 +324,8 @@ src/other.ts(25,10): error TS2551: Property 'foo' does not exist on type 'Bar'.`
 
     it('should detect circular dependencies', () => {
       const tasks: PlanningTask[] = [
-        {
-          id: '1',
-          name: 'Task 1',
-          description: 'First task',
-          dependsOn: ['2'],
-          estimatedMinutes: 10,
-          outputType: 'code',
-        },
-        {
-          id: '2',
-          name: 'Task 2',
-          description: 'Second task',
-          dependsOn: ['1'],
-          estimatedMinutes: 10,
-          outputType: 'code',
-        },
+        createTask({ id: '1', name: 'Task 1', description: 'First task', dependsOn: ['2'] }),
+        createTask({ id: '2', name: 'Task 2', description: 'Second task', dependsOn: ['1'] }),
       ];
 
       expect(() => resolver.topologicalSort(tasks)).toThrow(/[Cc]ircular/);
@@ -317,30 +334,9 @@ src/other.ts(25,10): error TS2551: Property 'foo' does not exist on type 'Bar'.`
 
     it('should calculate parallel execution waves', () => {
       const tasks: PlanningTask[] = [
-        {
-          id: '1',
-          name: 'Task 1',
-          description: 'Independent 1',
-          dependsOn: [],
-          estimatedMinutes: 10,
-          outputType: 'code',
-        },
-        {
-          id: '2',
-          name: 'Task 2',
-          description: 'Independent 2',
-          dependsOn: [],
-          estimatedMinutes: 15,
-          outputType: 'code',
-        },
-        {
-          id: '3',
-          name: 'Task 3',
-          description: 'Depends on both',
-          dependsOn: ['1', '2'],
-          estimatedMinutes: 10,
-          outputType: 'code',
-        },
+        createTask({ id: '1', name: 'Task 1', description: 'Independent 1', estimatedMinutes: 10 }),
+        createTask({ id: '2', name: 'Task 2', description: 'Independent 2', estimatedMinutes: 15 }),
+        createTask({ id: '3', name: 'Task 3', description: 'Depends on both', dependsOn: ['1', '2'] }),
       ];
 
       const waves = resolver.calculateWaves(tasks);
@@ -362,30 +358,9 @@ src/other.ts(25,10): error TS2551: Property 'foo' does not exist on type 'Bar'.`
 
     it('should find critical path', () => {
       const tasks: PlanningTask[] = [
-        {
-          id: '1',
-          name: 'Short Task',
-          description: 'Quick task',
-          dependsOn: [],
-          estimatedMinutes: 5,
-          outputType: 'code',
-        },
-        {
-          id: '2',
-          name: 'Long Task',
-          description: 'Time-consuming task',
-          dependsOn: [],
-          estimatedMinutes: 30,
-          outputType: 'code',
-        },
-        {
-          id: '3',
-          name: 'Final Task',
-          description: 'Depends on long task',
-          dependsOn: ['2'],
-          estimatedMinutes: 10,
-          outputType: 'code',
-        },
+        createTask({ id: '1', name: 'Short Task', description: 'Quick task', estimatedMinutes: 5 }),
+        createTask({ id: '2', name: 'Long Task', description: 'Time-consuming task', estimatedMinutes: 30 }),
+        createTask({ id: '3', name: 'Final Task', description: 'Depends on long task', dependsOn: ['2'] }),
       ];
 
       const criticalPath = resolver.getCriticalPath(tasks);
@@ -397,30 +372,9 @@ src/other.ts(25,10): error TS2551: Property 'foo' does not exist on type 'Bar'.`
 
     it('should get next available tasks', () => {
       const tasks: PlanningTask[] = [
-        {
-          id: '1',
-          name: 'Task 1',
-          description: 'First',
-          dependsOn: [],
-          estimatedMinutes: 10,
-          outputType: 'code',
-        },
-        {
-          id: '2',
-          name: 'Task 2',
-          description: 'Second',
-          dependsOn: ['1'],
-          estimatedMinutes: 10,
-          outputType: 'code',
-        },
-        {
-          id: '3',
-          name: 'Task 3',
-          description: 'Third',
-          dependsOn: ['1'],
-          estimatedMinutes: 10,
-          outputType: 'code',
-        },
+        createTask({ id: '1', name: 'Task 1', description: 'First' }),
+        createTask({ id: '2', name: 'Task 2', description: 'Second', dependsOn: ['1'] }),
+        createTask({ id: '3', name: 'Task 3', description: 'Third', dependsOn: ['1'] }),
       ];
 
       // Initially, only task 1 is available
@@ -436,22 +390,8 @@ src/other.ts(25,10): error TS2551: Property 'foo' does not exist on type 'Bar'.`
 
     it('should validate dependency graph', () => {
       const validTasks: PlanningTask[] = [
-        {
-          id: '1',
-          name: 'Task 1',
-          description: 'First',
-          dependsOn: [],
-          estimatedMinutes: 10,
-          outputType: 'code',
-        },
-        {
-          id: '2',
-          name: 'Task 2',
-          description: 'Second',
-          dependsOn: ['1'],
-          estimatedMinutes: 10,
-          outputType: 'code',
-        },
+        createTask({ id: '1', name: 'Task 1', description: 'First' }),
+        createTask({ id: '2', name: 'Task 2', description: 'Second', dependsOn: ['1'] }),
       ];
 
       const validResult = resolver.validate(validTasks);
@@ -459,22 +399,8 @@ src/other.ts(25,10): error TS2551: Property 'foo' does not exist on type 'Bar'.`
       expect(validResult.issues).toHaveLength(0);
 
       const circularTasks: PlanningTask[] = [
-        {
-          id: '1',
-          name: 'Task 1',
-          description: 'First',
-          dependsOn: ['2'],
-          estimatedMinutes: 10,
-          outputType: 'code',
-        },
-        {
-          id: '2',
-          name: 'Task 2',
-          description: 'Second',
-          dependsOn: ['1'],
-          estimatedMinutes: 10,
-          outputType: 'code',
-        },
+        createTask({ id: '1', name: 'Task 1', description: 'First', dependsOn: ['2'] }),
+        createTask({ id: '2', name: 'Task 2', description: 'Second', dependsOn: ['1'] }),
       ];
 
       const invalidResult = resolver.validate(circularTasks);
@@ -485,38 +411,10 @@ src/other.ts(25,10): error TS2551: Property 'foo' does not exist on type 'Bar'.`
     it('should handle complex dependency graphs', () => {
       // Diamond dependency pattern
       const tasks: PlanningTask[] = [
-        {
-          id: 'A',
-          name: 'Task A',
-          description: 'Root',
-          dependsOn: [],
-          estimatedMinutes: 10,
-          outputType: 'code',
-        },
-        {
-          id: 'B',
-          name: 'Task B',
-          description: 'Left branch',
-          dependsOn: ['A'],
-          estimatedMinutes: 10,
-          outputType: 'code',
-        },
-        {
-          id: 'C',
-          name: 'Task C',
-          description: 'Right branch',
-          dependsOn: ['A'],
-          estimatedMinutes: 10,
-          outputType: 'code',
-        },
-        {
-          id: 'D',
-          name: 'Task D',
-          description: 'Merge point',
-          dependsOn: ['B', 'C'],
-          estimatedMinutes: 10,
-          outputType: 'code',
-        },
+        createTask({ id: 'A', name: 'Task A', description: 'Root' }),
+        createTask({ id: 'B', name: 'Task B', description: 'Left branch', dependsOn: ['A'] }),
+        createTask({ id: 'C', name: 'Task C', description: 'Right branch', dependsOn: ['A'] }),
+        createTask({ id: 'D', name: 'Task D', description: 'Merge point', dependsOn: ['B', 'C'] }),
       ];
 
       const resolved = resolver.topologicalSort(tasks);

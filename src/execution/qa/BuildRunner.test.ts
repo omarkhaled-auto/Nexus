@@ -230,7 +230,7 @@ src/b.ts(2,2): error TS5678: Error in stderr`;
       mockSpawn.mockReturnValue(createMockProcess({ exitCode: 0 }));
 
       const runner = new BuildRunner();
-      const callback = runner.createCallback('/specific/project');
+      const callback = runner.createCallback('/specific/project')!;
 
       await callback('task-123');
 
@@ -245,7 +245,7 @@ src/b.ts(2,2): error TS5678: Error in stderr`;
       mockSpawn.mockReturnValue(createMockProcess({ exitCode: 0 }));
 
       const runner = new BuildRunner();
-      const callback = runner.createCallback('/test/path');
+      const callback = runner.createCallback('/test/path')!;
 
       const result = await callback('task-456');
 
