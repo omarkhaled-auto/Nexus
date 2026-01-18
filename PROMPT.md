@@ -293,6 +293,42 @@ Errors fixed:
 - Resolved orchestration types import errors
 - Resolved task/events type import errors
 
+---
+
+## Post-Review Fixes (Iteration 8)
+
+### Completed Fixes:
+1. **Fixed `src/infrastructure/analysis/RepoMapFormatter.ts`** - 4 lint errors:
+   - Replaced non-null assertions with guard checks for array access in loops
+
+2. **Fixed `src/infrastructure/analysis/codebase/APISurfaceAnalyzer.ts`** - 2 lint errors:
+   - Used default values in destructuring instead of redundant undefined checks
+
+3. **Fixed `src/infrastructure/analysis/codebase/ArchitectureAnalyzer.ts`** - 2 lint errors:
+   - Replaced non-null assertions with guard checks for layer iteration
+
+4. **Fixed `src/infrastructure/analysis/codebase/TestStrategyAnalyzer.ts`** - 2 lint errors:
+   - Simplified array access patterns with proper guard clauses
+   - Changed truthy check pattern for config lookup
+
+5. **Fixed `src/infrastructure/git/GitService.ts`** - 1 lint error:
+   - Removed unnecessary truthy check on branch lookup
+
+6. **Fixed `src/infrastructure/git/WorktreeManager.ts`** - 2 lint errors:
+   - Changed `Record<string, WorktreeInfo>` to `Partial<Record<string, WorktreeInfo>>` for accurate typing
+
+### Lint Error Reduction:
+- Before: 355 errors
+- After: 342 errors
+- Reduction: **13 errors fixed**
+
+### Remaining Issues for Next Iteration:
+- 342 lint errors remaining
+- Primary categories still to address:
+  - Interview module: floating promises, unsafe assignments
+  - LLM clients: unsafe type handling for external APIs
+  - Renderer stores: unnecessary conditionals
+
 
 # ============================================================================
 # PART 1: STRUCTURAL AUDIT (Phases 1-12)
