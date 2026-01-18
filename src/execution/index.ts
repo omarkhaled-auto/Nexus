@@ -82,6 +82,51 @@ export {
 // ============================================================================
 
 /**
- * Prompt Loader - loads and manages agent prompts
+ * Agent Runners - specialized agents for code writing, testing, review, and merging.
+ * These agents are used by AgentPool to execute tasks.
+ *
+ * @see ./agents/index.ts for detailed exports
  */
-export { loadPrompt, clearPromptCache, preloadPrompts } from './agents/PromptLoader';
+export {
+  // Base class
+  BaseAgentRunner,
+  type AgentConfig,
+  type AgentContext,
+  type AgentTaskResult,
+  type Message,
+
+  // Specialized agents
+  CoderAgent,
+  TesterAgent,
+  ReviewerAgent,
+  MergerAgent,
+
+  // Review types
+  type ReviewSeverity,
+  type ReviewIssue,
+  type ReviewOutput,
+
+  // Merge types
+  type ConflictSeverity,
+  type ConflictType,
+  type MergeConflict,
+  type MergeResolution,
+  type MergeOutput,
+
+  // Prompt loading
+  loadPrompt,
+  clearPromptCache,
+  preloadPrompts,
+} from './agents';
+
+// ============================================================================
+// QA Submodule Exports
+// ============================================================================
+
+/**
+ * QA Runners - Build, Lint, Test, and Review runners
+ * that plug into RalphStyleIterator's QARunner interface.
+ *
+ * @see ./qa/index.ts for detailed exports
+ */
+export * from './qa';
