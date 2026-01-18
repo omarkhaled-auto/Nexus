@@ -175,6 +175,12 @@ export interface IDependencyResolver {
   hasCircularDependency(tasks: PlanningTask[]): boolean;
 
   /**
+   * Detect circular dependency cycles
+   * Returns array of cycles, each containing task IDs in the cycle
+   */
+  detectCycles(tasks: PlanningTask[]): { taskIds: string[] }[];
+
+  /**
    * Get all dependencies for a task (transitive)
    */
   getAllDependencies(taskId: string, tasks: PlanningTask[]): string[];

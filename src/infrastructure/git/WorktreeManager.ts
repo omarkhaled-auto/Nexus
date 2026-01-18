@@ -302,7 +302,8 @@ export class WorktreeManager {
 
         // Convert date strings back to Date objects
         const registry: WorktreeRegistry = {
-          ...raw,
+          version: 1,
+          baseDir: this.baseDir,
           lastUpdated: new Date(raw.lastUpdated),
           worktrees: {},
         };
@@ -439,7 +440,7 @@ export class WorktreeManager {
    */
   async listWorktrees(): Promise<WorktreeInfo[]> {
     const registry = await this.loadRegistry();
-    return Object.values(registry.worktrees);
+    return Object.values(registry.worktrees).filter((info): info is WorktreeInfo => info !== undefined);
   }
 
   /**
@@ -505,6 +506,9 @@ export class WorktreeManager {
     const now = Date.now();
 
     for (const [taskId, info] of Object.entries(registry.worktrees)) {
+      if (!info) {
+        continue;
+      }
       const lastActivityTime = info.lastActivity?.getTime() ?? info.createdAt.getTime();
       const age = now - lastActivityTime;
 

@@ -3,8 +3,7 @@
  * Integration with Google's Gemini API for the Reviewer agent
  * Phase 03-01: LLM Provider with Extended Thinking
  *
- * Note: The @google/generative-ai package has limited TypeScript support,
- * so we use eslint-disable comments for necessary type assertions.
+ * Note: Uses the @google/genai package (v1.35+)
  */
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
@@ -13,7 +12,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 
-import { GoogleGenerativeAI, type GenerativeModel, type Content } from '@google/generative-ai';
+import { GoogleGenAI, type Content } from '@google/genai';
 import type {
   Message,
   ChatOptions,
@@ -96,16 +95,14 @@ const DEFAULT_TIMEOUT = 120000; // 2 minutes
  * Implements LLMClient interface for compatibility
  */
 export class GeminiClient implements LLMClient {
-  private client: GoogleGenerativeAI;
-  private model: GenerativeModel;
+  private client: GoogleGenAI;
+  private modelName: string;
   private logger?: Logger;
   private readonly timeout: number;
 
   constructor(options: GeminiClientOptions) {
-    this.client = new GoogleGenerativeAI(options.apiKey);
-    this.model = this.client.getGenerativeModel({
-      model: options.model ?? DEFAULT_MODEL,
-    });
+    this.client = new GoogleGenAI({ apiKey: options.apiKey });
+    this.modelName = options.model ?? DEFAULT_MODEL;
     this.logger = options.logger;
     this.timeout = options.timeout ?? DEFAULT_TIMEOUT;
   }
@@ -120,29 +117,23 @@ export class GeminiClient implements LLMClient {
     try {
       this.logger?.debug('Sending chat request to Gemini', {
         messageCount: messages.length,
-        model: DEFAULT_MODEL,
+        model: this.modelName,
       });
 
-      // Create a chat session with optional tools
-      const chat = this.model.startChat({
-        history: contents.slice(0, -1), // All but last message as history
-        systemInstruction: systemPrompt,
-        generationConfig: {
+      // Use the models.generateContent API
+      const response = await this.client.models.generateContent({
+        model: this.modelName,
+        contents: contents,
+        config: {
+          systemInstruction: systemPrompt,
           maxOutputTokens: options?.maxTokens,
           temperature: options?.temperature,
           stopSequences: options?.stopSequences,
+          tools: options?.tools ? this.convertTools(options.tools) : undefined,
         },
-        tools: options?.tools ? this.convertTools(options.tools) : undefined,
       });
 
-      // Send the last message
-      const lastMessage = contents[contents.length - 1];
-      const response = await chat.sendMessage(
-        lastMessage?.parts.map((p) => p.text ?? '').join('') ?? ''
-      );
-
-      const result = response.response;
-      return this.parseResponse(result);
+      return this.parseResponse(response);
     } catch (error) {
       throw this.handleError(error);
     }
@@ -161,24 +152,20 @@ export class GeminiClient implements LLMClient {
     try {
       this.logger?.debug('Starting streaming chat with Gemini');
 
-      const chat = this.model.startChat({
-        history: contents.slice(0, -1),
-        systemInstruction: systemPrompt,
-        generationConfig: {
+      const response = await this.client.models.generateContentStream({
+        model: this.modelName,
+        contents: contents,
+        config: {
+          systemInstruction: systemPrompt,
           maxOutputTokens: options?.maxTokens,
           temperature: options?.temperature,
           stopSequences: options?.stopSequences,
+          tools: options?.tools ? this.convertTools(options.tools) : undefined,
         },
-        tools: options?.tools ? this.convertTools(options.tools) : undefined,
       });
 
-      const lastMessage = contents[contents.length - 1];
-      const result = await chat.sendMessageStream(
-        lastMessage?.parts.map((p) => p.text ?? '').join('') ?? ''
-      );
-
-      for await (const chunk of result.stream) {
-        const text = chunk.text();
+      for await (const chunk of response) {
+        const text = chunk.text;
         if (text) {
           yield { type: 'text', content: text };
         }
@@ -236,7 +223,7 @@ export class GeminiClient implements LLMClient {
       functionDeclarations: tools.map((tool) => ({
         name: tool.name,
         description: tool.description,
-        parameters: tool.inputSchema as Record<string, unknown>,
+        parameters: tool.inputSchema as unknown as Record<string, unknown>,
       })),
     }];
   }
@@ -244,8 +231,11 @@ export class GeminiClient implements LLMClient {
   /**
    * Parse Gemini response to internal format
    */
-  private parseResponse(response: { text: () => string; usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number } }): LLMResponse {
-    const content = response.text();
+  private parseResponse(response: {
+    text?: string;
+    usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number };
+  }): LLMResponse {
+    const content = response.text ?? '';
 
     // Extract usage metadata if available
     const usage: TokenUsage = {

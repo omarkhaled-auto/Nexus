@@ -438,15 +438,16 @@ export class InterviewEngine {
     const mappedCategory = CATEGORY_MAPPING[requirement.category] ?? 'functional';
 
     // Create a Requirement object for the event
+    // Using type assertions to handle interface differences between modules
     void this.eventBus.emit('interview:requirement-captured', {
       projectId: session.projectId,
       requirement: {
         id: requirement.id,
         projectId: session.projectId,
-        category: mappedCategory,
+        category: mappedCategory as unknown as import('../types/core').RequirementCategory,
         description: requirement.text,
-        priority: requirement.priority,
-        source: `interview:${session.id}`,
+        priority: requirement.priority as unknown as import('../types/core').RequirementPriority,
+        source: 'interview' as const,
         userStories: [],
         acceptanceCriteria: [],
         linkedFeatures: [],

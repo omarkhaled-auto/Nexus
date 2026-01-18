@@ -46,6 +46,8 @@ interface SyntaxNode {
   childCount: number;
   namedChildren: SyntaxNode[];
   namedChildCount: number;
+  firstNamedChild: SyntaxNode | null;
+  lastNamedChild: SyntaxNode | null;
   parent: SyntaxNode | null;
   childForFieldName(name: string): SyntaxNode | null;
   childrenForFieldName(name: string): SyntaxNode[];
@@ -87,8 +89,10 @@ export class TreeSitterParser implements ITreeSitterParser {
     if (this.initialized) return;
 
     try {
-      // Dynamic import for ESM compatibility
-      const TreeSitter = (await import('web-tree-sitter')).default;
+      // Dynamic import for ESM/CJS compatibility
+      const treeSitterModule = await import('web-tree-sitter');
+      // Handle both ESM default export and CJS module.exports
+      const TreeSitter = treeSitterModule.default || treeSitterModule;
 
       // Initialize the tree-sitter WASM module
       const treeSitterWasmPath = resolve(
@@ -707,8 +711,12 @@ export class TreeSitterParser implements ITreeSitterParser {
    * Extract JSDoc documentation
    */
   private extractDocumentation(node: SyntaxNode): string | undefined {
+    // For exported declarations, the JSDoc is attached to the export_statement
+    // not the declaration itself. Check parent first if it's an export.
+    const nodeToCheck = node.parent?.type === 'export_statement' ? node.parent : node;
+
     // Look for preceding comment
-    let sibling = node.previousSibling;
+    let sibling = nodeToCheck.previousSibling;
     while (sibling) {
       if (sibling.type === 'comment') {
         const text = sibling.text;
@@ -836,8 +844,9 @@ export class TreeSitterParser implements ITreeSitterParser {
       // Namespace import: import * as X from './mod'
       if (child.type === 'namespace_import') {
         importType = 'namespace';
-        const alias = child.childForFieldName('alias');
-        if (alias) {
+        // The identifier is a direct child, not accessed via field name
+        const alias = child.firstNamedChild;
+        if (alias && alias.type === 'identifier') {
           symbols.push({ local: alias.text, imported: '*' });
         }
       }
@@ -867,8 +876,9 @@ export class TreeSitterParser implements ITreeSitterParser {
           }
           if (clauseChild.type === 'namespace_import') {
             importType = 'namespace';
-            const alias = clauseChild.childForFieldName('alias');
-            if (alias) {
+            // The identifier is a direct child, not accessed via field name
+            const alias = clauseChild.firstNamedChild;
+            if (alias && alias.type === 'identifier') {
               symbols.push({ local: alias.text, imported: '*' });
             }
           }

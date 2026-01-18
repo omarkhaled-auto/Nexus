@@ -175,7 +175,7 @@ export class EventBus implements IEventBus {
       timestamp: new Date(),
       payload,
       source: options.source ?? this.defaultSource,
-      correlationId: options.correlationId,
+      ...(options.correlationId !== undefined && { correlationId: options.correlationId }),
     };
 
     // Add to history

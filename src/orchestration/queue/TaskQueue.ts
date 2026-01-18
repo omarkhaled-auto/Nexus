@@ -53,12 +53,12 @@ export class TaskQueue implements ITaskQueue {
 
   /**
    * Get and remove next ready task
-   * Returns null if no tasks are ready (dependencies unmet or queue empty)
+   * Returns undefined if no tasks are ready (dependencies unmet or queue empty)
    */
-  dequeue(): OrchestrationTask | null {
+  dequeue(): OrchestrationTask | undefined {
     const readyTask = this.findNextReadyTask();
     if (!readyTask) {
-      return null;
+      return undefined;
     }
 
     // Update status to assigned
