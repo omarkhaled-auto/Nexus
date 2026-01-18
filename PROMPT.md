@@ -2239,14 +2239,15 @@ export abstract class BaseAgentRunner {
 ```
 
 ### Task 12 Completion Checklist
-- [ ] BaseAgentRunner.ts created (~200 LOC)
-- [ ] Abstract methods defined for subclasses
-- [ ] Agent loop with iteration limit
-- [ ] Timeout handling
-- [ ] Event emission
-- [ ] Error handling
+- [x] BaseAgentRunner.ts created (~200 LOC) - Created at src/execution/agents/BaseAgentRunner.ts (433 LOC)
+- [x] BaseAgentRunner.test.ts created (17 tests) - Created at src/execution/agents/BaseAgentRunner.test.ts
+- [x] Abstract methods defined for subclasses - execute(), getAgentType(), getSystemPrompt(), buildTaskPrompt(), isTaskComplete()
+- [x] Agent loop with iteration limit - runAgentLoop() with configurable maxIterations (default: 50)
+- [x] Timeout handling - Configurable timeout (default: 30 minutes) with proper escalation
+- [x] Event emission - Emits agent:started, agent:progress, task:completed, agent:error, task:escalated
+- [x] Error handling - Catches LLM errors, adds to context, and retries
 
-**[TASK 12 COMPLETE]** <- Mark when done
+**[TASK 12 COMPLETE]** - Completed: BaseAgentRunner implemented with 17 passing tests
 
 ---
 
