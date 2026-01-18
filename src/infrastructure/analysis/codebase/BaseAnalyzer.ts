@@ -59,8 +59,9 @@ export abstract class BaseAnalyzer {
   /**
    * Perform analysis and return documentation
    * Each analyzer must implement this method.
+   * Can return either sync or async results.
    */
-  abstract analyze(): Promise<unknown>;
+  abstract analyze(): unknown;
 
   // ============================================================================
   // Symbol Helper Methods

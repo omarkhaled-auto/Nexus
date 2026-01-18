@@ -360,7 +360,7 @@ export class CodebaseAnalyzer implements ICodebaseAnalyzer {
       throw new Error('RepoMap and options must be set before running analyzers');
     }
     const analyzer = new ArchitectureAnalyzer(this.currentRepoMap, this.options);
-    return analyzer.analyze();
+    return Promise.resolve(analyzer.analyze());
   }
 
   private runPatternsAnalyzer(): Promise<PatternsDoc> {
@@ -368,7 +368,7 @@ export class CodebaseAnalyzer implements ICodebaseAnalyzer {
       throw new Error('RepoMap and options must be set before running analyzers');
     }
     const analyzer = new PatternsAnalyzer(this.currentRepoMap, this.options);
-    return analyzer.analyze();
+    return Promise.resolve(analyzer.analyze());
   }
 
   private runDependenciesAnalyzer(): Promise<DependenciesDoc> {
@@ -376,7 +376,7 @@ export class CodebaseAnalyzer implements ICodebaseAnalyzer {
       throw new Error('RepoMap and options must be set before running analyzers');
     }
     const analyzer = new DependenciesAnalyzer(this.currentRepoMap, this.options);
-    return analyzer.analyze();
+    return Promise.resolve(analyzer.analyze());
   }
 
   private runAPISurfaceAnalyzer(): Promise<APISurfaceDoc> {
@@ -384,7 +384,7 @@ export class CodebaseAnalyzer implements ICodebaseAnalyzer {
       throw new Error('RepoMap and options must be set before running analyzers');
     }
     const analyzer = new APISurfaceAnalyzer(this.currentRepoMap, this.options);
-    return analyzer.analyze();
+    return Promise.resolve(analyzer.analyze());
   }
 
   private runDataFlowAnalyzer(): Promise<DataFlowDoc> {
@@ -392,7 +392,7 @@ export class CodebaseAnalyzer implements ICodebaseAnalyzer {
       throw new Error('RepoMap and options must be set before running analyzers');
     }
     const analyzer = new DataFlowAnalyzer(this.currentRepoMap, this.options);
-    return analyzer.analyze();
+    return Promise.resolve(analyzer.analyze());
   }
 
   private runTestStrategyAnalyzer(): Promise<TestStrategyDoc> {
@@ -400,7 +400,7 @@ export class CodebaseAnalyzer implements ICodebaseAnalyzer {
       throw new Error('RepoMap and options must be set before running analyzers');
     }
     const analyzer = new TestStrategyAnalyzer(this.currentRepoMap, this.options);
-    return analyzer.analyze();
+    return Promise.resolve(analyzer.analyze());
   }
 
   private runKnownIssuesAnalyzer(): Promise<KnownIssuesDoc> {
@@ -408,7 +408,7 @@ export class CodebaseAnalyzer implements ICodebaseAnalyzer {
       throw new Error('RepoMap and options must be set before running analyzers');
     }
     const analyzer = new KnownIssuesAnalyzer(this.currentRepoMap, this.options);
-    return analyzer.analyze();
+    return Promise.resolve(analyzer.analyze());
   }
 
   // ============================================================================
