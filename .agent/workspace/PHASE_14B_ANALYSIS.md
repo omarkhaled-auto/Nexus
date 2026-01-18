@@ -211,9 +211,247 @@ class BuildRunner {
 
 ## Task 2: NexusCoordinator Interface Requirements
 
-**Status: PENDING**
+**Status: COMPLETE**
 
-(To be completed in next iteration)
+### 2.1 Required Interfaces
+
+From `src/planning/types.ts`:
+
+#### ITaskDecomposer (lines 136-156)
+```typescript
+export interface ITaskDecomposer {
+  /**
+   * Decompose a feature into atomic tasks
+   */
+  decompose(featureDescription: string, options?: DecompositionOptions): Promise<PlanningTask[]>;
+
+  /**
+   * Validate that a task meets size requirements
+   */
+  validateTaskSize(task: PlanningTask): TaskValidationResult;
+
+  /**
+   * Split a task that is too large
+   */
+  splitTask(task: PlanningTask): Promise<PlanningTask[]>;
+
+  /**
+   * Estimate time for a task
+   */
+  estimateTime(task: PlanningTask): number;
+}
+```
+
+**IMPORTANT:** Note that `decompose()` takes `featureDescription: string` (NOT a Feature object). This differs from PROMPT.md.
+
+#### IDependencyResolver (lines 161-187)
+```typescript
+export interface IDependencyResolver {
+  /**
+   * Calculate execution waves from tasks
+   */
+  calculateWaves(tasks: PlanningTask[]): Wave[];
+
+  /**
+   * Get topologically sorted task order
+   */
+  topologicalSort(tasks: PlanningTask[]): PlanningTask[];
+
+  /**
+   * Check for circular dependencies
+   */
+  hasCircularDependency(tasks: PlanningTask[]): boolean;
+
+  /**
+   * Detect circular dependency cycles
+   * Returns array of cycles, each containing task IDs in the cycle
+   */
+  detectCycles(tasks: PlanningTask[]): { taskIds: string[] }[];
+
+  /**
+   * Get all dependencies for a task (transitive)
+   */
+  getAllDependencies(taskId: string, tasks: PlanningTask[]): string[];
+}
+```
+
+#### ITimeEstimator (lines 192-207)
+```typescript
+export interface ITimeEstimator {
+  /**
+   * Estimate time for a task
+   */
+  estimate(task: PlanningTask): Promise<number>;
+
+  /**
+   * Estimate total time for a set of tasks
+   */
+  estimateTotal(tasks: PlanningTask[]): Promise<number>;
+
+  /**
+   * Calibrate estimator with actual data
+   */
+  calibrate(task: PlanningTask, actualMinutes: number): void;
+}
+```
+
+#### IAgentPool (from orchestration/types.ts, lines 173-200)
+```typescript
+export interface IAgentPool {
+  /** Spawn a new agent of the given type */
+  spawn(type: AgentType): PoolAgent;
+
+  /** Terminate an agent */
+  terminate(agentId: string): void;
+
+  /** Assign agent to a task */
+  assign(agentId: string, taskId: string, worktreePath?: string): void;
+
+  /** Release agent from current task */
+  release(agentId: string): void;
+
+  /** Get all agents */
+  getAll(): PoolAgent[];
+
+  /** Get active (non-idle) agents */
+  getActive(): PoolAgent[];
+
+  /** Get an available (idle) agent */
+  getAvailable(): PoolAgent | undefined;
+
+  /** Get agent by ID */
+  getById(agentId: string): PoolAgent | undefined;
+
+  /** Get current pool size */
+  size(): number;
+}
+```
+
+#### ITaskQueue (from orchestration/types.ts, lines 209-233)
+```typescript
+export interface ITaskQueue {
+  /** Add task to queue */
+  enqueue(task: OrchestrationTask, waveId?: number): void;
+
+  /** Remove and return highest priority ready task */
+  dequeue(): OrchestrationTask | undefined;
+
+  /** Get tasks ready for execution */
+  getReadyTasks(): OrchestrationTask[];
+
+  /** Get tasks in a specific wave */
+  getByWave(waveId: number): OrchestrationTask[];
+
+  /** Mark task as complete */
+  markComplete(taskId: string): void;
+
+  /** Mark task as failed */
+  markFailed(taskId: string): void;
+
+  /** Get queue size */
+  size(): number;
+
+  /** Check if queue is empty */
+  isEmpty(): boolean;
+}
+```
+
+### 2.2 NexusCoordinator Constructor Options
+
+From `src/orchestration/coordinator/NexusCoordinator.ts` (lines 36-47):
+
+```typescript
+export interface NexusCoordinatorOptions {
+  taskQueue: ITaskQueue;
+  agentPool: IAgentPool;
+  decomposer: ITaskDecomposer;
+  resolver: IDependencyResolver;
+  estimator: ITimeEstimator;
+  qaEngine: any; // QALoopEngine type
+  worktreeManager: any; // WorktreeManager type
+  checkpointManager: any; // CheckpointManager type
+  mergerRunner?: any; // MergerRunner for merging task branches
+  agentWorktreeBridge?: any; // AgentWorktreeBridge for worktree management
+}
+```
+
+### 2.3 How Dependencies Are Used
+
+#### Decomposition Flow (lines 390-448)
+```typescript
+// Genesis mode
+const allTasks: PlanningTask[] = [];
+for (const feature of features) {
+  const tasks = await this.decomposer.decompose(feature as any);
+  allTasks.push(...tasks);
+}
+```
+
+**Note:** The coordinator casts `feature` to `any` before passing to decomposer. This suggests the decomposer interface expects a string, but coordinator passes feature objects. Need to handle both.
+
+#### Dependency Resolution (lines 334-340)
+```typescript
+// Check for cycles
+const cycles: { taskIds: string[] }[] = this.resolver.detectCycles(allTasks);
+if (cycles.length > 0) {
+  throw new Error(`Dependency cycles detected`);
+}
+
+// Calculate waves
+this.waves = this.resolver.calculateWaves(allTasks);
+```
+
+**Key Usage:**
+1. `detectCycles()` returns `{ taskIds: string[] }[]`
+2. `calculateWaves()` returns `Wave[]`
+3. No call to `topologicalSort()` directly (uses waves instead)
+
+### 2.4 Supporting Types
+
+#### PlanningTask (from planning/types.ts, lines 29-48)
+```typescript
+export interface PlanningTask {
+  id: string;
+  name: string;
+  description: string;
+  type: TaskType;
+  size: TaskSize;
+  estimatedMinutes: number;
+  dependsOn: string[];
+  testCriteria: string[];
+  files: string[];
+}
+```
+
+#### Wave (from planning/types.ts, lines 72-79)
+```typescript
+export interface Wave {
+  id: number;
+  tasks: PlanningTask[];
+  estimatedMinutes: number;
+}
+```
+
+#### PoolAgent (from orchestration/types.ts, lines 158-168)
+```typescript
+export interface PoolAgent {
+  id: string;
+  type: AgentType;
+  status: AgentStatus;
+  modelConfig?: AgentModelConfig;
+  currentTaskId?: string;
+  worktreePath?: string;
+  metrics: AgentMetrics;
+  spawnedAt: Date;
+  lastActiveAt: Date;
+}
+```
+
+### Task 2 Checklist
+- [x] All required interface definitions
+- [x] Usage patterns for each interface
+- [x] Constructor injection pattern
+- [x] Supporting types documented
 
 ---
 
@@ -252,4 +490,4 @@ Based on PROMPT.md:
 
 ---
 
-*Last Updated: Task 1 Complete*
+*Last Updated: Task 2 Complete*
