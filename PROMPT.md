@@ -125,6 +125,56 @@ Task 24: Final Quality Report ------------------> [NEXUS REVIEW COMPLETE]
 
 ---
 
+## Post-Review Fixes (Iteration 3)
+
+### Completed Fixes:
+1. **Created `src/llm/types.ts`** - Core LLM type definitions:
+   - Message types (MessageRole, Message, ToolCall, ToolResult)
+   - Chat options and response types
+   - Streaming types (StreamChunk, StreamChunkType)
+   - Agent types with model configs (planner, coder, tester, reviewer, merger)
+   - Model pricing and token usage tracking
+   - LLMClient interface
+
+2. **Created `src/llm/clients/ClaudeClient.ts`** - Claude API client:
+   - Extended thinking support
+   - Streaming support
+   - Tool use handling
+   - Error classes (LLMError, APIError, RateLimitError, AuthenticationError, TimeoutError)
+
+3. **Created `src/llm/clients/GeminiClient.ts`** - Gemini API client:
+   - For Reviewer agent (per ADR-002)
+   - Implements LLMClient interface
+   - Error classes (GeminiAPIError, GeminiRateLimitError, GeminiTimeoutError)
+
+4. **Created `src/llm/clients/MockClaudeClient.ts`** - Mock Claude client for testing:
+   - Configurable responses
+   - Call history tracking
+   - Response queue for multi-call tests
+
+5. **Created `src/llm/clients/MockGeminiClient.ts`** - Mock Gemini client for testing:
+   - Same features as MockClaudeClient
+
+6. **Created `src/persistence/memory/EmbeddingsService.ts`** - Vector embeddings:
+   - OpenAI embeddings integration
+   - Batch embedding support
+   - Caching for repeated embeddings
+   - Mock mode for testing
+   - Cosine similarity calculations
+
+### Build Status After Fixes:
+- LLM client files now exist and are properly structured
+- Build still has other missing files to address
+
+### Remaining Issues for Next Iteration:
+- `src/persistence/memory/MemorySystem.ts` - Missing file
+- `src/orchestration/types.ts` - Missing file
+- `src/orchestration/agents/AgentPool.ts` - Missing file
+- `openai` and `@google/generative-ai` packages need to be installed or marked external
+- 600+ lint errors still remaining
+
+---
+
 # ============================================================================
 # PART 1: STRUCTURAL AUDIT (Phases 1-12)
 # ============================================================================
