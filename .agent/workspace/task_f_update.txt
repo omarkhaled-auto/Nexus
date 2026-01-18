@@ -1,0 +1,133 @@
+# Task 13-01-F: Formatter & Index
+
+## Objective
+Create the formatter for outputting repo maps in different formats and create the module index.
+
+## Requirements
+
+### Part A: Create RepoMapFormatter Class
+Create `src/infrastructure/analysis/RepoMapFormatter.ts`:
+
+- [x] **RepoMapFormatter Class** implementing IRepoMapFormatter
+  - [x] Static constant: CHARS_PER_TOKEN = 4 (approximate)
+
+- [x] **format(repoMap, options?) Method**
+  - [x] Dispatch to style-specific formatter
+  - [x] Styles: 'compact', 'detailed', 'tree'
+
+- [x] **formatCompact(repoMap, options) Private Method**
+  - [x] Minimal tokens, maximum info density
+  - [x] Sort symbols by references if rankByReferences
+  - [x] Select symbols to fit maxTokens budget
+  - [x] Group by file if groupByFile
+  - [x] Output format:
+    ```
+    # Repository Map
+
+    ## src/services/AuthService.ts
+    ⊕εAuthService (15)
+      · validateUser(user: User): boolean (8)
+      · hashPassword(password: string): string (3)
+
+    ## src/types/user.ts
+    ◇εUser
+    ⊤εUserRole = 'admin' | 'user'
+    ```
+  - [x] Symbol prefixes:
+    - `⊕` class
+    - `◇` interface
+    - `ƒ` function
+    - `·` method (indented)
+    - `.` property (indented)
+    - `→` variable
+    - `∷` constant
+    - `⊤` type
+    - `⊞` enum
+  - [x] `ε` marker for exported
+  - [x] `(N)` suffix for reference count
+
+- [x] **formatDetailed(repoMap, options) Private Method**
+  - [x] More verbose output
+  - [x] Include full signatures
+  - [x] Include documentation
+  - [x] Include dependency section
+
+- [x] **formatTree(repoMap, options) Private Method**
+  - [x] Directory tree structure
+  - [x] Show files with symbols nested
+  - [x] Use tree characters: `├──`, `└──`, `│`
+
+- [x] **estimateTokens(text) Method**
+  - [x] Return Math.ceil(text.length / CHARS_PER_TOKEN)
+
+- [x] **truncateToFit(repoMap, maxTokens) Method**
+  - [x] Format with compact style
+  - [x] Truncate if over budget
+  - [x] Add "... (truncated)" indicator
+
+- [x] **selectSymbolsForBudget(symbols, maxTokens, includeSignatures) Private Method**
+  - [x] Estimate tokens per symbol
+  - [x] Add symbols until budget exhausted
+  - [x] Return selected symbols
+
+- [x] **getSymbolPrefix(kind) Private Method**
+  - [x] Return appropriate Unicode prefix
+
+- [x] **truncateSignature(signature, maxLength) Private Method**
+  - [x] Truncate long signatures with "..."
+
+- [x] **formatStats(repoMap) Method**
+  - [x] Return formatted statistics summary
+
+### Part B: Create Index File
+Create `src/infrastructure/analysis/index.ts`:
+
+- [x] Export all types from `./types`
+- [x] Export TreeSitterParser and getParser
+- [x] Export SymbolExtractor and its types
+- [x] Export DependencyGraphBuilder and its types
+- [x] Export ReferenceCounter and its types
+- [x] Export RepoMapGenerator and getRepoMapGenerator
+- [x] Export RepoMapFormatter
+
+- [x] **createRepoMapGenerator(wasmBasePath?) Convenience Function**
+  - [x] Create and initialize generator
+  - [x] Return ready-to-use instance
+
+- [x] **generateRepoMap(projectPath, options?) Convenience Function**
+  - [x] Create generator, generate, return map
+
+- [x] **formatRepoMapForContext(projectPath, maxTokens) Convenience Function**
+  - [x] Generate and format in one call
+
+### Part C: Create Formatter Tests
+Create `src/infrastructure/analysis/RepoMapFormatter.test.ts`:
+
+- [x] Test compact format output
+- [x] Test detailed format output
+- [x] Test tree format output
+- [x] Test token estimation
+- [x] Test truncation to fit budget
+- [x] Test symbol selection for budget
+- [x] Test symbol prefixes
+- [x] Test signature truncation
+- [x] Test stats formatting
+
+### Part D: Integration Test
+Create `src/infrastructure/analysis/integration.test.ts`:
+
+- [x] Test full pipeline: generate → format → verify output
+- [x] Test with actual Nexus source files (skip in CI if needed)
+- [x] Verify token budget is respected
+- [x] Verify all symbol types are extracted
+
+### Task 13-01-F Completion Checklist
+- [x] `RepoMapFormatter.ts` created (~835 lines)
+- [x] `RepoMapFormatter.test.ts` created (~642 lines)
+- [x] `index.ts` created with all exports (~230 lines)
+- [x] `integration.test.ts` created (~287 lines)
+- [x] All tests pass (213 tests + 16 skipped)
+- [x] TypeScript compiles
+- [x] ESLint passes
+
+**[TASK 13-01-F COMPLETE]** ✅ Completed on 2025-01-16

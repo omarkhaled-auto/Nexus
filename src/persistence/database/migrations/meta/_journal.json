@@ -1,0 +1,48 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1768342300219,
+      "tag": "0000_premium_mariko_yashida",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1768343414845,
+      "tag": "0001_quiet_black_panther",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1736848000000,
+      "tag": "0002_hotfix_metadata_fields",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1768379716812,
+      "tag": "0003_hard_may_parker",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1768406400000,
+      "tag": "0004_continue_points",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1737104400000,
+      "tag": "0005_code_chunks",
+      "breakpoints": true
+    }
+  ]
+}
