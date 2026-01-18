@@ -92,6 +92,7 @@ export class TreeSitterParser implements ITreeSitterParser {
       // Dynamic import for ESM/CJS compatibility
       const treeSitterModule = await import('web-tree-sitter');
       // Handle both ESM default export and CJS module.exports
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       const TreeSitter = treeSitterModule.default || treeSitterModule;
 
       // Initialize the tree-sitter WASM module

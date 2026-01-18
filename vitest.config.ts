@@ -10,6 +10,12 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     include: ['src/**/*.test.ts', 'src/**/*.test.tsx', 'tests/**/*.test.ts'],
+    exclude: [
+      '**/node_modules/**',
+      '**/dist/**',
+      '**/.disabled/**',
+      '**/Reference_repos/**',
+    ],
     // Use jsdom for renderer tests (both .ts and .tsx)
     environmentMatchGlobs: [
       ['src/renderer/**/*.test.tsx', 'jsdom'],

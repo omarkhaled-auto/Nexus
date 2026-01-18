@@ -406,7 +406,7 @@ export function registerIpcHandlers(): void {
         performance: 'performance',
         security: 'security'
       }
-      const mappedCategory = categoryMap[payload.category] || 'functional'
+      const mappedCategory = categoryMap[payload.category] ?? 'functional'
 
       // Map frontend priority to backend RequirementPriority types
       const priorityMap: Record<string, 'critical' | 'high' | 'medium' | 'low'> = {
@@ -419,7 +419,7 @@ export function registerIpcHandlers(): void {
         medium: 'medium',
         low: 'low'
       }
-      const mappedPriority = priorityMap[payload.priority] || 'medium'
+      const mappedPriority = priorityMap[payload.priority] ?? 'medium'
       const now = new Date()
 
       void eventBus.emit(

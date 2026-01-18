@@ -19,6 +19,7 @@ import { QuestionGenerator } from './QuestionGenerator';
 import type { InterviewMessage, GenerationContext } from './QuestionGenerator';
 import type { ExtractedRequirement } from './types';
 import { INTERVIEWER_SYSTEM_PROMPT, INITIAL_GREETING } from './prompts/interviewer';
+import type { RequirementCategory as CoreRequirementCategory, RequirementPriority as CoreRequirementPriority } from '../types/core';
 
 /**
  * Logger interface
@@ -445,9 +446,9 @@ export class InterviewEngine {
       requirement: {
         id: requirement.id,
         projectId: session.projectId,
-        category: mappedCategory as unknown as import('../types/core').RequirementCategory,
+        category: mappedCategory as unknown as CoreRequirementCategory,
         content: requirement.text,
-        priority: requirement.priority as unknown as import('../types/core').RequirementPriority,
+        priority: requirement.priority as unknown as CoreRequirementPriority,
         source: 'interview' as const,
         createdAt: now,
         updatedAt: now,

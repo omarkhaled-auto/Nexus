@@ -43,10 +43,8 @@ const EVENT_ICONS: Record<TimelineEventType, IconConfig> = {
   error: { icon: AlertCircle, className: 'text-red-500' }
 };
 
-const DEFAULT_ICON_CONFIG: IconConfig = { icon: AlertCircle, className: 'text-muted-foreground' };
-
 function getIconConfig(type: TimelineEventType): IconConfig {
-  return EVENT_ICONS[type] ?? DEFAULT_ICON_CONFIG;
+  return EVENT_ICONS[type];
 }
 
 export interface EventRowProps {
@@ -68,7 +66,7 @@ export function EventRow({ event, className }: EventRowProps) {
   const config = getIconConfig(type)
   const iconClassName = config.className
   // Pre-render icon - using explicit JSX.Element type for React 19 compatibility
-  // @ts-ignore - LucideIcon dynamic lookup
+  // @ts-expect-error - LucideIcon dynamic lookup
   const iconElement: JSX.Element = <config.icon className={cn('h-4 w-4 flex-shrink-0', iconClassName)} />;
 
   return (

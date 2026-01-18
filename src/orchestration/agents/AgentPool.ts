@@ -53,23 +53,25 @@ export class AgentPool {
     return this.maxAgents - this.agents.size;
   }
 
-  async acquire(_agentType: string): Promise<string> {
+  acquire(_agentType: string): Promise<string> {
     if (this.agents.size >= this.maxAgents) {
       throw new PoolCapacityError();
     }
     const agentId = `agent-${Date.now()}`;
     this.agents.set(agentId, { type: _agentType, status: 'idle' });
-    return agentId;
+    return Promise.resolve(agentId);
   }
 
-  async release(agentId: string): Promise<void> {
+  release(agentId: string): Promise<void> {
     if (!this.agents.has(agentId)) {
       throw new AgentNotFoundError(agentId);
     }
     this.agents.delete(agentId);
+    return Promise.resolve();
   }
 
-  async shutdown(): Promise<void> {
+  shutdown(): Promise<void> {
     this.agents.clear();
+    return Promise.resolve();
   }
 }

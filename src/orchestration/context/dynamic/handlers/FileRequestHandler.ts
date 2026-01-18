@@ -73,7 +73,7 @@ export class FileRequestHandler implements IRequestHandler {
   /**
    * Handle a file content request
    */
-  async handle(request: ContextRequest): Promise<ContextResponse> {
+  handle(request: ContextRequest): Promise<ContextResponse> {
     const { query: filePath, options } = request;
     const maxTokens = options?.maxTokens ?? DEFAULT_REQUEST_OPTIONS.maxTokens;
 
@@ -83,35 +83,35 @@ export class FileRequestHandler implements IRequestHandler {
 
       // Validate path is within project (security check)
       if (!this.isPathAllowed(resolvedPath)) {
-        return this.createErrorResponse(
+        return Promise.resolve(this.createErrorResponse(
           request,
           `Path '${filePath}' is outside the project root and access is not allowed`
-        );
+        ));
       }
 
       // Check file exists
       if (!existsSync(resolvedPath)) {
-        return this.createErrorResponse(
+        return Promise.resolve(this.createErrorResponse(
           request,
           `File not found: ${filePath}`
-        );
+        ));
       }
 
       // Check it's a file, not a directory
       const stats = statSync(resolvedPath);
       if (stats.isDirectory()) {
-        return this.createErrorResponse(
+        return Promise.resolve(this.createErrorResponse(
           request,
           `Path is a directory, not a file: ${filePath}`
-        );
+        ));
       }
 
       // Check file size
       if (stats.size > this.maxFileSize) {
-        return this.createErrorResponse(
+        return Promise.resolve(this.createErrorResponse(
           request,
           `File exceeds maximum size (${this.formatBytes(stats.size)} > ${this.formatBytes(this.maxFileSize)})`
-        );
+        ));
       }
 
       // Read file content
@@ -137,7 +137,7 @@ export class FileRequestHandler implements IRequestHandler {
         metadata.truncatedAt = maxTokens;
       }
 
-      return {
+      return Promise.resolve({
         success: true,
         requestId: '', // Will be set by DynamicContextProvider
         type: 'file',
@@ -145,12 +145,12 @@ export class FileRequestHandler implements IRequestHandler {
         tokenCount,
         source: resolvedPath,
         metadata,
-      };
+      });
     } catch (error) {
-      return this.createErrorResponse(
+      return Promise.resolve(this.createErrorResponse(
         request,
         error instanceof Error ? error.message : String(error)
-      );
+      ));
     }
   }
 
