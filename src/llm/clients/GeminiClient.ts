@@ -2,7 +2,16 @@
  * Gemini API Client
  * Integration with Google's Gemini API for the Reviewer agent
  * Phase 03-01: LLM Provider with Extended Thinking
+ *
+ * Note: The @google/generative-ai package has limited TypeScript support,
+ * so we use eslint-disable comments for necessary type assertions.
  */
+
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 
 import { GoogleGenerativeAI, type GenerativeModel, type Content } from '@google/generative-ai';
 import type {

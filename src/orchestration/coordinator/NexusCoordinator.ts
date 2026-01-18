@@ -345,7 +345,7 @@ export class NexusCoordinator implements INexusCoordinator {
         for (const task of wave.tasks) {
           const orchestrationTask: OrchestrationTask = {
             ...task,
-            dependsOn: task.dependsOn ?? [],
+            dependsOn: task.dependsOn,
             status: 'pending',
             waveId: wave.id,
             priority: 1,

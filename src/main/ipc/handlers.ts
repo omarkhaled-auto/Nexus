@@ -354,7 +354,7 @@ export function registerIpcHandlers(): void {
       const eventBus = EventBus.getInstance()
       const projectId = state.projectId || `interview-${Date.now()}`
 
-      eventBus.emit(
+      void eventBus.emit(
         'interview:started',
         {
           projectId,
@@ -374,7 +374,7 @@ export function registerIpcHandlers(): void {
       const eventBus = EventBus.getInstance()
       const projectId = state.projectId || 'unknown'
 
-      eventBus.emit(
+      void eventBus.emit(
         'interview:question-asked',
         {
           projectId,
@@ -403,7 +403,7 @@ export function registerIpcHandlers(): void {
       }
       const mappedCategory = categoryMap[payload.category] || payload.category
 
-      eventBus.emit(
+      void eventBus.emit(
         'interview:requirement-captured',
         {
           projectId,
@@ -441,7 +441,7 @@ export function registerIpcHandlers(): void {
       const eventBus = EventBus.getInstance()
       const projectId = state.projectId || 'unknown'
 
-      eventBus.emit(
+      void eventBus.emit(
         'interview:completed',
         {
           projectId,
@@ -472,7 +472,7 @@ export function registerIpcHandlers(): void {
       // Emit generic event with payload
       // The channel should be a valid event type (e.g., 'feature:created')
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      eventBus.emit(channel as any, payload as any, { source: 'RendererUI' })
+      void eventBus.emit(channel as any, payload as any, { source: 'RendererUI' })
     }
   )
 }

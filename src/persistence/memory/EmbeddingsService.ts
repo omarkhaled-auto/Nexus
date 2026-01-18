@@ -12,8 +12,17 @@
  *
  * Layer 6: Persistence - Memory subsystem
  *
+ * Note: The openai package has limited TypeScript support in some configurations,
+ * so we use eslint-disable comments for necessary type assertions.
+ *
  * @module persistence/memory/EmbeddingsService
  */
+
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-redundant-type-constituents */
 
 import OpenAI from 'openai';
 

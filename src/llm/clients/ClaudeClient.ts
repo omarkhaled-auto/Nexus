@@ -371,13 +371,15 @@ export class ClaudeClient implements LLMClient {
         return new AuthenticationError(error.message);
       }
       if (error.status === 429) {
-        const retryAfter = error.headers?.['retry-after'];
+        const headers = error.headers as Record<string, string> | undefined;
+        const retryAfter = headers?.['retry-after'];
         return new RateLimitError(
           error.message,
           retryAfter ? parseInt(retryAfter, 10) : undefined
         );
       }
-      return new APIError(error.message, error.status);
+      // Cast error.status to number for type safety (Anthropic SDK returns number)
+      return new APIError(error.message, error.status as number);
     }
 
     if (error instanceof Error) {

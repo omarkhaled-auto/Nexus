@@ -109,6 +109,9 @@ export interface IEventBus {
  * ```
  */
 export class EventBus implements IEventBus {
+  /** Singleton instance for static getInstance() */
+  private static instance: EventBus | null = null;
+
   /** Event subscriptions by type */
   private subscriptions: Map<EventType, Subscription[]> = new Map();
 
@@ -132,6 +135,26 @@ export class EventBus implements IEventBus {
   constructor(options: { maxHistorySize?: number; defaultSource?: string } = {}) {
     this.maxHistorySize = options.maxHistorySize ?? 1000;
     this.defaultSource = options.defaultSource ?? 'nexus';
+  }
+
+  /**
+   * Get the singleton EventBus instance
+   * Static method for compatibility with getInstance() pattern
+   *
+   * @returns Global EventBus instance
+   */
+  static getInstance(): EventBus {
+    if (!EventBus.instance) {
+      EventBus.instance = new EventBus();
+    }
+    return EventBus.instance;
+  }
+
+  /**
+   * Reset the singleton instance (for testing)
+   */
+  static resetInstance(): void {
+    EventBus.instance = null;
   }
 
   /**
