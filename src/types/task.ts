@@ -43,3 +43,73 @@ export interface BaseTask {
   createdAt: Date;
   updatedAt?: Date;
 }
+
+// ============================================================================
+// Extended Task Types
+// ============================================================================
+
+/**
+ * Full task interface with all properties
+ */
+export interface Task extends BaseTask {
+  featureId?: string;
+  projectId?: string;
+  files?: string[];
+  dependencies?: string[];
+  testCriteria?: string[];
+  estimatedMinutes?: number;
+  actualMinutes?: number;
+  assignedAgentId?: string;
+  worktreePath?: string;
+  completedAt?: Date;
+  failedAt?: Date;
+  errorMessage?: string;
+  qaIterations?: number;
+}
+
+/**
+ * Task execution result
+ */
+export interface TaskResult {
+  taskId: string;
+  success: boolean;
+  escalated?: boolean;
+  reason?: string;
+  files?: {
+    path: string;
+    action: 'created' | 'modified' | 'deleted';
+  }[];
+  metrics?: {
+    iterations: number;
+    tokensUsed: number;
+    timeMs: number;
+  };
+  error?: string;
+}
+
+// ============================================================================
+// QA Result Types
+// ============================================================================
+
+/**
+ * Individual QA step result
+ */
+export interface QAStepResult {
+  step: 'build' | 'lint' | 'test' | 'review';
+  passed: boolean;
+  errors?: string[];
+  warnings?: string[];
+  details?: Record<string, unknown>;
+  durationMs?: number;
+}
+
+/**
+ * QA loop overall result
+ */
+export interface QAResult {
+  passed: boolean;
+  iteration: number;
+  steps: QAStepResult[];
+  totalDurationMs: number;
+  finalVerdict?: 'approved' | 'rejected' | 'needs_review';
+}
