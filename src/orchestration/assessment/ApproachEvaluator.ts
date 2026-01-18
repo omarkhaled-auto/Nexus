@@ -549,7 +549,7 @@ export class ApproachEvaluator implements IApproachEvaluator {
     }
 
     // Look for test-related patterns in iteration status
-    const testFailures = history.map((entry) => {
+    const testFailures: number[] = history.map((entry) => {
       const hasTestFailure = entry.errors.some(
         (e) =>
           e.message.toLowerCase().includes('test') ||
@@ -560,8 +560,8 @@ export class ApproachEvaluator implements IApproachEvaluator {
     });
 
     // Check if test failures are decreasing
-    const recentFailures = testFailures.slice(-3).reduce((a, b) => a + b, 0);
-    const previousFailures = testFailures.slice(-6, -3).reduce((a, b) => a + b, 0);
+    const recentFailures = testFailures.slice(-3).reduce((a: number, b: number) => a + b, 0);
+    const previousFailures = testFailures.slice(-6, -3).reduce((a: number, b: number) => a + b, 0);
 
     return recentFailures <= previousFailures;
   }

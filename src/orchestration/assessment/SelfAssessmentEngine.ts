@@ -633,21 +633,24 @@ export class SelfAssessmentEngine implements ISelfAssessmentEngine {
    * Get cached progress assessment if still valid
    */
   private getCachedProgressAssessment(taskId: string): ProgressAssessment | undefined {
-    return this.getCachedAssessmentByType(taskId, 'progress');
+    const cached = this.getCachedAssessmentByType(taskId, 'progress');
+    return cached as ProgressAssessment | undefined;
   }
 
   /**
    * Get cached blockers assessment if still valid
    */
   private getCachedBlockersAssessment(taskId: string): BlockerAssessment | undefined {
-    return this.getCachedAssessmentByType(taskId, 'blockers');
+    const cached = this.getCachedAssessmentByType(taskId, 'blockers');
+    return cached as BlockerAssessment | undefined;
   }
 
   /**
    * Get cached approach assessment if still valid
    */
   private getCachedApproachAssessment(taskId: string): ApproachAssessment | undefined {
-    return this.getCachedAssessmentByType(taskId, 'approach');
+    const cached = this.getCachedAssessmentByType(taskId, 'approach');
+    return cached as ApproachAssessment | undefined;
   }
 
   /**

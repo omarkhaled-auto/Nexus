@@ -255,7 +255,8 @@ export class ProgressAssessor implements IProgressAssessor {
     let streak = 0;
 
     for (let i = history.length - 1; i >= 0; i--) {
-      if (history[i].status === 'success' || history[i].errors.length === 0) {
+      // Check for success by verifying no errors occurred
+      if (history[i].errors.length === 0) {
         streak++;
       } else {
         break;
@@ -531,9 +532,9 @@ export class ProgressAssessor implements IProgressAssessor {
       completedWork.push(`Completed ${context.iterationHistory.length} iteration(s)`);
     }
 
-    // Add successful iterations
+    // Add successful iterations (iterations with no errors)
     const successfulIterations = context.iterationHistory.filter(
-      (h) => h.status === 'success' || h.errors.length === 0
+      (h) => h.errors.length === 0
     ).length;
     if (successfulIterations > 0) {
       completedWork.push(`${successfulIterations} successful iteration(s)`);
