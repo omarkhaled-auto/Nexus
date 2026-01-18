@@ -3715,3 +3715,53 @@ Total estimated tests: ~120-150
 - Fix remaining production code type errors
 - Update test mock data to match current interfaces
 - Fix e2e test Playwright API usage
+
+---
+
+### Iteration: TypeScript Build Fixes - Round 2 (2026-01-18)
+
+**Date:** 2026-01-18
+**Focus:** Fixing critical production TypeScript errors
+
+**Fixes Applied:**
+
+1. **src/llm/clients/GeminiClient.ts** - Updated to use new @google/genai SDK:
+   - Changed import from @google/generative-ai to @google/genai
+   - Updated client initialization to use GoogleGenAI class
+   - Updated API calls to use models.generateContent and models.generateContentStream
+   - Removed `GenerativeModel` dependency, use model name string instead
+
+2. **src/infrastructure/git/WorktreeManager.ts** - Fixed WorktreeRegistry type issues:
+   - Added `version` and `baseDir` properties when loading registry
+   - Added undefined filter for listWorktrees to handle Partial<Record>
+   - Added null check in cleanup loop for undefined worktree info
+
+3. **src/infrastructure/analysis/TreeSitterParser.ts** - Added missing interface properties:
+   - Added `firstNamedChild` and `lastNamedChild` to SyntaxNode interface
+
+4. **src/interview/InterviewEngine.ts** - Fixed type assertions for events:
+   - Added type assertions for RequirementCategory and RequirementPriority
+   - Changed source from template literal to 'interview' literal type
+
+5. **src/orchestration/events/EventBus.ts** - Fixed correlationId spread:
+   - Changed from direct assignment to conditional spread to avoid undefined
+
+6. **src/orchestration/queue/TaskQueue.ts** - Fixed dequeue return type:
+   - Changed return type from `null` to `undefined` to match interface
+
+7. **src/planning/types.ts** - Added missing interface method:
+   - Added `detectCycles` method to IDependencyResolver interface
+
+8. **package.json** - Added missing dependency:
+   - Installed `openai` package
+
+**Progress Summary:**
+- Fixed ~10 critical production file errors
+- ~56 production errors remaining (mostly React components)
+- ~690+ test file errors still pending
+
+**Next Steps (for future iterations):**
+- Fix remaining React component TypeScript errors (DashboardPage, KanbanPage, etc.)
+- Fix e2e test Playwright API usage (page.location -> page.url())
+- Fix integration test mock data to match current interfaces
+- Fix component test mock data
