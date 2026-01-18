@@ -1774,15 +1774,15 @@ export class DependencyResolver implements IDependencyResolver {
 ```
 
 ### Task 10 Completion Checklist
-- [ ] DependencyResolver.ts created (~250 LOC)
-- [ ] DependencyResolver.test.ts created (10+ tests)
-- [ ] Implements IDependencyResolver interface
-- [ ] Topological sort with Kahn's algorithm
-- [ ] Cycle detection
-- [ ] Wave calculation for parallel execution
-- [x] Tests pass - All 107 QA tests pass
+- [x] DependencyResolver.ts created (~250 LOC) - Created at src/planning/dependencies/DependencyResolver.ts (362 LOC)
+- [x] DependencyResolver.test.ts created (10+ tests) - Created at src/planning/dependencies/DependencyResolver.test.ts (41 tests)
+- [x] Implements IDependencyResolver interface - All interface methods implemented
+- [x] Topological sort with Kahn's algorithm - resolve() and topologicalSort() methods
+- [x] Cycle detection - detectCycles() and hasCircularDependency() methods
+- [x] Wave calculation for parallel execution - calculateWaves() method
+- [x] Tests pass - All 64 planning tests pass
 
-**[TASK 10 COMPLETE]** <- Mark when done
+**[TASK 10 COMPLETE]** - Completed: DependencyResolver implemented with full IDependencyResolver interface, Kahn's algorithm for topological sort, DFS for cycle detection, and wave calculation for parallel execution
 
 ---
 
