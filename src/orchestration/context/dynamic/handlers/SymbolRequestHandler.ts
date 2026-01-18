@@ -105,7 +105,7 @@ export class SymbolRequestHandler implements IRequestHandler {
 
     try {
       // Find the symbol definition
-      const symbolEntry = await this.findSymbolDefinition(symbolName);
+      const symbolEntry = this.findSymbolDefinition(symbolName);
 
       if (!symbolEntry) {
         return this.createErrorResponse(
@@ -115,7 +115,7 @@ export class SymbolRequestHandler implements IRequestHandler {
       }
 
       // Get symbol context (surrounding code, documentation)
-      const symbolContext = await this.getSymbolContext(
+      const symbolContext = this.getSymbolContext(
         symbolEntry,
         includeContext,
         type === 'definition' ? 0 : Math.min(limit, this.maxUsages)

@@ -255,10 +255,10 @@ export class InterviewSessionManager {
    * @param requirementsDB The RequirementsDB instance
    * @returns Number of requirements exported
    */
-  async exportToRequirementsDB(
+  exportToRequirementsDB(
     session: InterviewSession,
     requirementsDB: RequirementsDB
-  ): Promise<number> {
+  ): number {
     let exported = 0;
 
     for (const req of session.extractedRequirements) {

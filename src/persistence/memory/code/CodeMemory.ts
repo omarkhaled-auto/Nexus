@@ -127,10 +127,10 @@ export class CodeMemory implements ICodeMemory {
       const embeddings = await this.embeddings.embedBatch(contents);
 
       for (const [i, chunk] of chunks.entries()) {
-        const embedding = embeddings[i];
-        if (embedding) {
-          chunk.embedding = embedding;
-        }
+        // embedBatch returns EmbeddingResult[], extract the embedding vector
+        const result = embeddings[i];
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- defensive check for array bounds
+        chunk.embedding = result?.embedding ?? [];
       }
     }
 
@@ -187,10 +187,10 @@ export class CodeMemory implements ICodeMemory {
               const embeddings = await this.embeddings.embedBatch(contents);
 
               for (const [j, chunk] of chunks.entries()) {
-                const embedding = embeddings[j];
-                if (embedding) {
-                  chunk.embedding = embedding;
-                }
+                // embedBatch returns EmbeddingResult[], extract the embedding vector
+                const result = embeddings[j];
+                // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- defensive check for array bounds
+                chunk.embedding = result?.embedding ?? [];
               }
             }
 
@@ -257,10 +257,10 @@ export class CodeMemory implements ICodeMemory {
       const embeddings = await this.embeddings.embedBatch(contents);
 
       for (const [i, chunk] of newChunks.entries()) {
-        const embedding = embeddings[i];
-        if (embedding) {
-          chunk.embedding = embedding;
-        }
+        // embedBatch returns EmbeddingResult[], extract the embedding vector
+        const result = embeddings[i];
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- defensive check for array bounds
+        chunk.embedding = result?.embedding ?? [];
       }
     }
 
