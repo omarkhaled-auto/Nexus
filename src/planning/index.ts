@@ -24,3 +24,9 @@ export type {
 // Implementations
 export { TaskDecomposer, createTaskDecomposer } from './decomposition';
 export type { TaskDecomposerConfig } from './decomposition';
+
+export {
+  DependencyResolver,
+  createDependencyResolver,
+} from './dependencies';
+export type { Cycle, DependencyResolverConfig } from './dependencies';
