@@ -30,3 +30,15 @@ export {
   createDependencyResolver,
 } from './dependencies';
 export type { Cycle, DependencyResolverConfig } from './dependencies';
+
+export {
+  TimeEstimator,
+  createTimeEstimator,
+} from './estimation';
+export type {
+  EstimationFactors,
+  EstimationResult,
+  TimeEstimatorConfig,
+  ComplexityLevel,
+  TaskCategory,
+} from './estimation';
