@@ -206,8 +206,8 @@ export class APISurfaceAnalyzer extends BaseAnalyzer {
 
     if (symbol.signature) {
       const extendsMatch = symbol.signature.match(/extends\s+([^{]+)/);
-      if (extendsMatch) {
-        const extendsList = extendsMatch[1]?.split(',').map(e => e.trim()) ?? [];
+      if (extendsMatch && extendsMatch[1]) {
+        const extendsList = extendsMatch[1].split(',').map(e => e.trim());
         extendsInfo.push(...extendsList);
       }
     }
@@ -337,8 +337,8 @@ export class APISurfaceAnalyzer extends BaseAnalyzer {
 
     if (symbol.signature) {
       const implementsMatch = symbol.signature.match(/implements\s+([^{]+)/);
-      if (implementsMatch) {
-        const implementsList = implementsMatch[1]?.split(',').map(e => e.trim()) ?? [];
+      if (implementsMatch && implementsMatch[1]) {
+        const implementsList = implementsMatch[1].split(',').map(e => e.trim());
         implementsInfo.push(...implementsList);
       }
     }
@@ -544,13 +544,13 @@ export class APISurfaceAnalyzer extends BaseAnalyzer {
 
       const optional = trimmed.includes('?');
       const [nameWithOptional, typeAndDefault] = trimmed.split(':');
-      const name = (nameWithOptional ?? '').replace('?', '').trim();
+      const name = (nameWithOptional !== undefined ? nameWithOptional : '').replace('?', '').trim();
       let type = 'unknown';
       let defaultValue: string | undefined;
 
       if (typeAndDefault) {
         const [typeStr, defaultStr] = typeAndDefault.split('=');
-        type = (typeStr ?? '').trim();
+        type = (typeStr !== undefined ? typeStr : '').trim();
         if (defaultStr) {
           defaultValue = defaultStr.trim();
         }
@@ -630,10 +630,10 @@ export class APISurfaceAnalyzer extends BaseAnalyzer {
 
     for (const line of lines) {
       const match = line.match(/(\w+)(\?)?:\s*(.+)/);
-      if (match) {
+      if (match && match[1] && match[3]) {
         properties.push({
-          name: match[1] ?? '',
-          type: (match[3] ?? '').trim(),
+          name: match[1],
+          type: match[3].trim(),
           description: '',
           optional: !!match[2],
         });

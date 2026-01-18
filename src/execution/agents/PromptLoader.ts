@@ -3,7 +3,7 @@
 
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'pathe';
-import type { AgentType } from './types';
+import type { AgentType } from '../../types/agent';
 
 /**
  * Cache for loaded prompts to avoid repeated file reads
@@ -111,9 +111,13 @@ export function loadPrompt(agentType: AgentType): string {
     return 'You are an expert software architect and planner.';
   }
 
+  // At this point, agentType is one of the non-planner types
+  // TypeScript narrowing handles this automatically after the planner check above
+  const nonPlannerType: Exclude<AgentType, 'planner'> = agentType;
+
   // Try to load from file
   const basePath = getPromptsBasePath();
-  const promptPath = join(basePath, `${agentType}.md`);
+  const promptPath = join(basePath, `${nonPlannerType}.md`);
 
   let prompt: string;
 
@@ -124,11 +128,11 @@ export function loadPrompt(agentType: AgentType): string {
       prompt = prompt.replace(/^#\s+.*\n+/, '');
     } catch {
       // Fall back to default if read fails
-      prompt = DEFAULT_PROMPTS[agentType];
+      prompt = DEFAULT_PROMPTS[nonPlannerType];
     }
   } else {
     // Use built-in default
-    prompt = DEFAULT_PROMPTS[agentType];
+    prompt = DEFAULT_PROMPTS[nonPlannerType];
   }
 
   // Cache the result

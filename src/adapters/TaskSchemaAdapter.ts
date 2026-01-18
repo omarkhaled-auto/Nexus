@@ -63,8 +63,9 @@ export class TaskSchemaAdapter {
     let taskIndex = 0;
 
     while ((match = taskRegex.exec(xmlContent)) !== null) {
-      const attributes = match[1] ?? "";
-      const content = match[2] ?? "";
+      // match[1] and match[2] are guaranteed to be strings since they matched our regex groups
+      const attributes = match[1];
+      const content = match[2];
 
       try {
         const gsdTask = this.parseGSDTask(`<task ${attributes}>${content}</task>`);
@@ -176,7 +177,7 @@ export class TaskSchemaAdapter {
     }
 
     // TDD tasks should have test criteria
-    if (task.type === 'tdd' && (!task.testCriteria || task.testCriteria.length === 0)) {
+    if (task.type === 'tdd' && task.testCriteria.length === 0) {
       warnings.push('TDD task should have test criteria defined');
     }
 
@@ -236,15 +237,15 @@ export class TaskSchemaAdapter {
     const typeAttr = task.type;
     const tddAttr = task.type === 'tdd' ? ' tdd="true"' : '';
 
-    const files = task.files && task.files.length > 0
+    const files = task.files.length > 0
       ? `\n    <files>${task.files.join(', ')}</files>`
       : '';
 
-    const done = task.testCriteria && task.testCriteria.length > 0
-      ? `\n    <done>${task.testCriteria[0] ?? ''}</done>`
+    const done = task.testCriteria.length > 0
+      ? `\n    <done>${task.testCriteria[0]}</done>`
       : '';
 
-    const verify = task.testCriteria && task.testCriteria.length > 1
+    const verify = task.testCriteria.length > 1
       ? `\n    <verify>${task.testCriteria.slice(1).join('; ')}</verify>`
       : '';
 

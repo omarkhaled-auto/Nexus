@@ -264,8 +264,11 @@ export class DataFlowAnalyzer extends BaseAnalyzer {
     // If no state/actions found, try to parse from signature
     if (state.length === 0 && symbol.signature) {
       const stateMatch = symbol.signature.match(/state:\s*\{([^}]+)\}/);
-      if (stateMatch) {
-        const props = stateMatch[1]?.split(',').map(p => p.trim().split(':')[0]?.trim()) ?? [];
+      if (stateMatch && stateMatch[1]) {
+        const props = stateMatch[1].split(',').map(p => {
+          const parts = p.trim().split(':');
+          return parts[0] ? parts[0].trim() : '';
+        });
         state.push(...props.filter((p): p is string => !!p));
       }
     }
@@ -683,8 +686,8 @@ export class DataFlowAnalyzer extends BaseAnalyzer {
     const paramsMatch = symbol.signature.match(/\(([^)]+)\)/);
     if (!paramsMatch?.[1]) return 'void';
 
-    const firstParam = paramsMatch[1].split(',')[0];
-    const typeMatch = firstParam?.match(/:\s*([^,)=]+)/);
+    const firstParam = paramsMatch[1].split(',')[0] || '';
+    const typeMatch = firstParam.match(/:\s*([^,)=]+)/);
 
     return typeMatch?.[1]?.trim() || 'unknown';
   }

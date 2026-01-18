@@ -104,12 +104,10 @@ export class TestStrategyAnalyzer extends BaseAnalyzer {
 
     // Add framework-specific information
     if (frameworks.length > 0) {
-      const primaryFramework = frameworks[0];
-      if (primaryFramework) {
-        paragraphs.push(
-          `The primary testing framework is ${primaryFramework.name}, which provides ${primaryFramework.purpose.toLowerCase()}.`
-        );
-      }
+      const primaryFramework = frameworks[0]!;
+      paragraphs.push(
+        `The primary testing framework is ${primaryFramework.name}, which provides ${primaryFramework.purpose.toLowerCase()}.`
+      );
     }
 
     return paragraphs.join('\n\n');
@@ -127,7 +125,7 @@ export class TestStrategyAnalyzer extends BaseAnalyzer {
       const fileName = file.relativePath.split('/').pop() || '';
       const config = TEST_FRAMEWORK_CONFIGS[fileName];
 
-      if (config && !foundConfigs.has(config.name)) {
+      if (config !== undefined && !foundConfigs.has(config.name)) {
         frameworks.push({
           name: config.name,
           purpose: config.purpose,

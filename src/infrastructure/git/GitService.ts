@@ -389,11 +389,14 @@ export class GitService {
 
     const result = await this.git.branchLocal();
 
-    return result.all.map((name) => ({
-      name,
-      current: name === result.current,
-      commit: result.branches[name]?.commit || '',
-    }));
+    return result.all.map((name) => {
+      const branch = result.branches[name];
+      return {
+        name,
+        current: name === result.current,
+        commit: branch ? branch.commit : '',
+      };
+    });
   }
 
   // ==========================================================================

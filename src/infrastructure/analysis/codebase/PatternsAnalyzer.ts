@@ -428,7 +428,7 @@ export class PatternsAnalyzer extends BaseAnalyzer {
     // Analyze interfaces
     const interfaces = this.getSymbolsByKind('interface');
     if (interfaces.length > 0) {
-      const hasIPrefix = interfaces.some(i => i.name.startsWith('I') && i.name[1]?.toUpperCase() === i.name[1]);
+      const hasIPrefix = interfaces.some(i => i.name.startsWith('I') && i.name.length > 1 && i.name[1].toUpperCase() === i.name[1]);
       const noIPrefix = interfaces.some(i => !i.name.startsWith('I'));
 
       let convention = 'PascalCase';
