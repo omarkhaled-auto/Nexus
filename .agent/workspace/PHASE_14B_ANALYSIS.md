@@ -457,9 +457,263 @@ export interface PoolAgent {
 
 ## Task 3: Existing Types and Interfaces
 
-**Status: PENDING**
+**Status: COMPLETE**
 
-(To be completed in next iteration)
+### 3.1 Type Definition Locations
+
+| Type File | Purpose | Key Exports |
+|-----------|---------|-------------|
+| `src/types/core.ts` | Core domain types | Project, Feature, Requirement, ProjectStatus, FeatureStatus |
+| `src/types/task.ts` | Task-related types | Task, TaskResult, TaskType, TaskStatus, QAStepResult, QAResult |
+| `src/types/agent.ts` | Agent system types | Agent, AgentType, AgentStatus, AgentMetrics, AgentModelConfig |
+| `src/types/index.ts` | Barrel export | Re-exports all + TaskSize, Priority, ProjectMode |
+| `src/planning/types.ts` | Planning layer types | PlanningTask, Wave, ITaskDecomposer, IDependencyResolver, ITimeEstimator |
+| `src/orchestration/types.ts` | Orchestration layer types | IAgentPool, ITaskQueue, PoolAgent, OrchestrationTask, INexusCoordinator |
+| `src/execution/iteration/types.ts` | Iteration system types | QARunner, BuildResult, LintResult, TestResult, ReviewResult, ErrorEntry |
+
+### 3.2 Core Types for Phase 14B
+
+#### From `src/types/agent.ts`
+```typescript
+export type AgentType = 'planner' | 'coder' | 'tester' | 'reviewer' | 'merger';
+
+export type AgentStatus = 'idle' | 'assigned' | 'working' | 'waiting' | 'error' | 'terminated';
+
+export interface AgentMetrics {
+  tasksCompleted: number;
+  tasksFailed: number;
+  totalIterations: number;
+  averageIterationsPerTask: number;
+  totalTokensUsed: number;
+  totalTimeActive: number;  // milliseconds
+}
+
+export interface AgentModelConfig {
+  provider: 'anthropic' | 'google' | 'openai';
+  model: string;
+  maxTokens?: number;
+  temperature?: number;
+}
+
+export interface Agent {
+  id: string;
+  type: AgentType;
+  status: AgentStatus;
+  modelConfig: AgentModelConfig;
+  currentTaskId?: string;
+  worktreePath?: string;
+  metrics: AgentMetrics;
+  spawnedAt: Date;
+  lastActiveAt: Date;
+  terminatedAt?: Date;
+}
+```
+
+#### From `src/types/task.ts`
+```typescript
+export type TaskType = 'auto' | 'checkpoint' | 'tdd';
+
+export type TaskStatus = 'pending' | 'queued' | 'assigned' | 'in_progress' | 'completed' | 'failed' | 'blocked' | 'skipped';
+
+export interface Task extends BaseTask {
+  featureId?: string;
+  projectId?: string;
+  files?: string[];
+  dependencies?: string[];
+  testCriteria?: string[];
+  estimatedMinutes?: number;
+  actualMinutes?: number;
+  assignedAgentId?: string;
+  worktreePath?: string;
+  completedAt?: Date;
+  failedAt?: Date;
+  errorMessage?: string;
+  qaIterations?: number;
+}
+
+export interface TaskResult {
+  taskId: string;
+  success: boolean;
+  escalated?: boolean;
+  reason?: string;
+  files?: { path: string; action: 'created' | 'modified' | 'deleted'; }[];
+  metrics?: { iterations: number; tokensUsed: number; timeMs: number; };
+  error?: string;
+}
+```
+
+#### From `src/planning/types.ts`
+```typescript
+export type TaskSize = 'atomic' | 'small' | 'medium' | 'large';
+
+export interface PlanningTask {
+  id: string;
+  name: string;
+  description: string;
+  type: TaskType;
+  size: TaskSize;
+  estimatedMinutes: number;
+  dependsOn: string[];
+  testCriteria: string[];
+  files: string[];
+}
+
+export interface Wave {
+  id: number;
+  tasks: PlanningTask[];
+  estimatedMinutes: number;
+}
+
+export interface DecompositionOptions {
+  maxTaskMinutes?: number;
+  generateTestCriteria?: boolean;
+  contextFiles?: string[];
+  useTDD?: boolean;
+}
+
+export interface TaskValidationResult {
+  valid: boolean;
+  errors: string[];
+  warnings: string[];
+}
+```
+
+#### From `src/orchestration/types.ts`
+```typescript
+export interface PoolAgent {
+  id: string;
+  type: AgentType;
+  status: AgentStatus;
+  modelConfig?: AgentModelConfig;
+  currentTaskId?: string;
+  worktreePath?: string;
+  metrics: AgentMetrics;
+  spawnedAt: Date;
+  lastActiveAt: Date;
+}
+
+export interface OrchestrationTask {
+  id: string;
+  name: string;
+  description: string;
+  type?: TaskType;
+  status: TaskStatus;
+  priority: number;
+  waveId?: number;
+  featureId?: string;
+  files?: string[];
+  dependsOn: string[];
+  testCriteria?: string[];
+  estimatedMinutes?: number;
+  actualMinutes?: number;
+  assignedAgentId?: string;
+  createdAt: Date;
+  updatedAt?: Date;
+  completedAt?: Date;
+}
+```
+
+#### From `src/execution/iteration/types.ts`
+```typescript
+export type ErrorType = 'build' | 'lint' | 'test' | 'review' | 'runtime';
+export type ErrorSeverity = 'error' | 'warning' | 'info';
+
+export interface ErrorEntry {
+  type: ErrorType;
+  severity: ErrorSeverity;
+  message: string;
+  file?: string;
+  line?: number;
+  column?: number;
+  code?: string;
+  suggestion?: string;
+  iteration: number;
+}
+
+export interface BuildResult {
+  success: boolean;
+  errors: ErrorEntry[];
+  warnings: ErrorEntry[];
+  duration: number;
+}
+
+export interface LintResult {
+  success: boolean;
+  errors: ErrorEntry[];
+  warnings: ErrorEntry[];
+  fixable: number;
+}
+
+export interface TestResult {
+  success: boolean;
+  passed: number;
+  failed: number;
+  skipped: number;
+  errors: ErrorEntry[];
+  duration: number;
+}
+
+export interface ReviewResult {
+  approved: boolean;
+  comments: string[];
+  suggestions: string[];
+  blockers: string[];
+}
+
+export interface QARunner {
+  build?: (taskId: string) => Promise<BuildResult>;
+  lint?: (taskId: string) => Promise<LintResult>;
+  test?: (taskId: string) => Promise<TestResult>;
+  review?: (taskId: string) => Promise<ReviewResult>;
+}
+```
+
+### 3.3 Type Conflicts to Resolve
+
+| Conflict | PROMPT.md | Existing Types | Resolution |
+|----------|-----------|----------------|------------|
+| LintResult.fixedCount vs fixable | `fixedCount: number` | `fixable: number` | **Use `fixable`** - matches existing |
+| TestResult.failures vs errors | `failures: TestFailure[]` | `errors: ErrorEntry[]` | **Use `errors: ErrorEntry[]`** - matches existing |
+| ReviewResult.issues | `issues: ReviewIssue[]` | `comments/suggestions/blockers: string[]` | **Use existing pattern** - simpler |
+| BuildResult.errors | `errors: string[]` | `errors: ErrorEntry[]` | **Use `ErrorEntry[]`** - richer data |
+
+### 3.4 Types to Implement (Not Yet Existing)
+
+These types need to be created as part of Phase 14B:
+
+1. **Agent Runner Types** (for `src/execution/agents/`):
+   - `IAgentRunner` - Base interface for all agent runners
+   - `AgentRunnerConfig` - Configuration for agent runners
+   - `AgentResponse` - Response from agent execution
+
+2. **QA Runner Factory Types** (for `src/execution/qa/`):
+   - `QARunnerConfig` - Configuration for QA runner factory
+   - Individual runner configs (BuildRunnerConfig, LintRunnerConfig, etc.)
+
+### 3.5 Import Paths for Implementation
+
+When implementing the bindings, use these imports:
+
+```typescript
+// From types
+import type { AgentType, AgentStatus, AgentMetrics, AgentModelConfig, Agent } from '../types/agent';
+import type { TaskType, TaskStatus, Task, TaskResult } from '../types/task';
+
+// From planning
+import type { PlanningTask, Wave, ITaskDecomposer, IDependencyResolver, ITimeEstimator, DecompositionOptions, TaskValidationResult } from '../planning/types';
+
+// From orchestration
+import type { IAgentPool, ITaskQueue, PoolAgent, OrchestrationTask } from '../orchestration/types';
+
+// From execution/iteration
+import type { QARunner, BuildResult, LintResult, TestResult, ReviewResult, ErrorEntry, ErrorType, ErrorSeverity } from '../execution/iteration/types';
+```
+
+### Task 3 Checklist
+- [x] All type definitions needed
+- [x] Where they're defined
+- [x] Any type conflicts to resolve
+- [x] Import paths documented
 
 ---
 
@@ -490,4 +744,4 @@ Based on PROMPT.md:
 
 ---
 
-*Last Updated: Task 2 Complete*
+*Last Updated: Task 3 Complete - All Phase A Tasks Done*
