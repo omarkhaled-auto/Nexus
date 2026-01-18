@@ -135,7 +135,10 @@ export interface OrchestrationTask {
   waveId?: number;
   featureId?: string;
   files?: string[];
+  /** @deprecated Use dependsOn instead */
   dependencies?: string[];
+  /** Task IDs this task depends on */
+  dependsOn: string[];
   testCriteria?: string[];
   estimatedMinutes?: number;
   actualMinutes?: number;

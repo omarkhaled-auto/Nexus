@@ -97,7 +97,7 @@ export class SymbolRequestHandler implements IRequestHandler {
   /**
    * Handle a symbol context request
    */
-  async handle(request: ContextRequest): Promise<ContextResponse> {
+  handle(request: ContextRequest): Promise<ContextResponse> {
     const { query: symbolName, options, type } = request;
     const maxTokens = options?.maxTokens ?? DEFAULT_REQUEST_OPTIONS.maxTokens;
     const includeContext = options?.includeContext ?? DEFAULT_REQUEST_OPTIONS.includeContext;
@@ -108,10 +108,10 @@ export class SymbolRequestHandler implements IRequestHandler {
       const symbolEntry = this.findSymbolDefinition(symbolName);
 
       if (!symbolEntry) {
-        return this.createErrorResponse(
+        return Promise.resolve(this.createErrorResponse(
           request,
           `Symbol '${symbolName}' not found in the codebase`
-        );
+        ));
       }
 
       // Get symbol context (surrounding code, documentation)
@@ -132,7 +132,7 @@ export class SymbolRequestHandler implements IRequestHandler {
 
       const tokenCount = this.estimateTokens(truncatedContent);
 
-      return {
+      return Promise.resolve({
         success: true,
         requestId: '', // Will be set by DynamicContextProvider
         type: request.type,
@@ -150,12 +150,12 @@ export class SymbolRequestHandler implements IRequestHandler {
           wasTruncated,
           relatedSymbols: symbolContext.relatedSymbols,
         },
-      };
+      });
     } catch (error) {
-      return this.createErrorResponse(
+      return Promise.resolve(this.createErrorResponse(
         request,
         error instanceof Error ? error.message : String(error)
-      );
+      ));
     }
   }
 

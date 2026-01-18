@@ -330,7 +330,7 @@ export class NexusCoordinator implements INexusCoordinator {
       const allTasks = await this.decomposeByMode(config);
 
       // Check for cycles
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-redundant-type-constituents -- detectCycles needs to be added to IDependencyResolver interface
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- detectCycles needs to be added to IDependencyResolver interface
       const cycles: { taskIds: string[] }[] = this.resolver.detectCycles(allTasks);
       if (cycles.length > 0) {
         throw new Error(`Dependency cycles detected: ${cycles.map(c => c.taskIds.join(' -> ')).join('; ')}`);
@@ -345,6 +345,7 @@ export class NexusCoordinator implements INexusCoordinator {
         for (const task of wave.tasks) {
           const orchestrationTask: OrchestrationTask = {
             ...task,
+            dependsOn: task.dependsOn ?? [],
             status: 'pending',
             waveId: wave.id,
             priority: 1,
