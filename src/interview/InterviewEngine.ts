@@ -84,7 +84,7 @@ export interface ProcessMessageResult {
 /**
  * Category mapping from interview categories to RequirementsDB categories
  */
-const CATEGORY_MAPPING: Record<string, RequirementCategory> = {
+const CATEGORY_MAPPING: Partial<Record<string, RequirementCategory>> = {
   'functional': 'functional',
   'non-functional': 'non-functional',
   'technical': 'technical',
@@ -149,8 +149,8 @@ export class InterviewEngine {
       projectId,
     });
 
-    // Emit interview:started event
-    this.eventBus.emit('interview:started', {
+    // Emit interview:started event (fire-and-forget)
+    void this.eventBus.emit('interview:started', {
       projectId,
       projectName: projectId, // Will be resolved from DB if needed
       mode: 'genesis',
@@ -245,7 +245,7 @@ export class InterviewEngine {
     for (const req of newRequirements) {
       try {
         // Map category to RequirementsDB format
-        const dbCategory = CATEGORY_MAPPING[req.category] || 'functional';
+        const dbCategory = CATEGORY_MAPPING[req.category] ?? 'functional';
 
         await this.requirementsDB.addRequirement(session.projectId, {
           category: dbCategory,
@@ -325,8 +325,8 @@ export class InterviewEngine {
       messageCount: session.messages.length,
     });
 
-    // Emit interview:completed event
-    this.eventBus.emit('interview:completed', {
+    // Emit interview:completed event (fire-and-forget)
+    void this.eventBus.emit('interview:completed', {
       projectId: session.projectId,
       totalRequirements: session.extractedRequirements.length,
       categories: [...new Set(session.extractedRequirements.map((r) => r.category))],
@@ -419,10 +419,10 @@ export class InterviewEngine {
   }
 
   /**
-   * Emit message event
+   * Emit message event (fire-and-forget)
    */
   private emitMessageEvent(session: InterviewSession, message: InterviewMessage): void {
-    this.eventBus.emit('interview:question-asked', {
+    void this.eventBus.emit('interview:question-asked', {
       projectId: session.projectId,
       questionId: message.id,
       question: message.content,
@@ -431,14 +431,14 @@ export class InterviewEngine {
   }
 
   /**
-   * Emit requirement captured event
+   * Emit requirement captured event (fire-and-forget)
    */
   private emitRequirementEvent(session: InterviewSession, requirement: ExtractedRequirement): void {
     // Map category to RequirementsDB format
-    const mappedCategory = CATEGORY_MAPPING[requirement.category] || 'functional';
+    const mappedCategory = CATEGORY_MAPPING[requirement.category] ?? 'functional';
 
     // Create a Requirement object for the event
-    this.eventBus.emit('interview:requirement-captured', {
+    void this.eventBus.emit('interview:requirement-captured', {
       projectId: session.projectId,
       requirement: {
         id: requirement.id,

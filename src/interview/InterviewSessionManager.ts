@@ -60,7 +60,7 @@ interface SerializedSession {
 /**
  * Category mapping from extracted requirement categories to RequirementsDB categories
  */
-const CATEGORY_MAPPING: Record<string, RequirementCategory> = {
+const CATEGORY_MAPPING: Partial<Record<string, RequirementCategory>> = {
   'functional': 'functional',
   'non-functional': 'non-functional',
   'technical': 'technical',
@@ -130,8 +130,8 @@ export class InterviewSessionManager {
       this.logger?.info('Created interview session', { sessionId: session.id });
     }
 
-    // Emit save event
-    this.eventBus.emit('interview:saved', {
+    // Emit save event (fire-and-forget)
+    void this.eventBus.emit('interview:saved', {
       projectId: session.projectId,
       sessionId: session.id,
     });
@@ -264,7 +264,7 @@ export class InterviewSessionManager {
     for (const req of session.extractedRequirements) {
       try {
         // Map category to RequirementsDB format
-        const dbCategory = CATEGORY_MAPPING[req.category] || 'functional';
+        const dbCategory = CATEGORY_MAPPING[req.category] ?? 'functional';
 
         await requirementsDB.addRequirement(session.projectId, {
           category: dbCategory,
