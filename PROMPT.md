@@ -329,6 +329,54 @@ Errors fixed:
   - LLM clients: unsafe type handling for external APIs
   - Renderer stores: unnecessary conditionals
 
+---
+
+## Post-Review Fixes (Iteration 9)
+
+### Completed Fixes:
+1. **Fixed `src/infrastructure/analysis/RepoMapFormatter.ts`** - 2 lint errors:
+   - Used `for...of` with entries instead of index access for items loop
+   - Used `for...of` with slice for symbol iteration
+
+2. **Fixed `src/infrastructure/analysis/codebase/ArchitectureAnalyzer.ts`** - 2 lint errors:
+   - Used `for...of` with entries and proper conditional for layer edges
+
+3. **Fixed `src/infrastructure/analysis/codebase/TestStrategyAnalyzer.ts`** - 2 lint errors:
+   - Changed `Record<string, T>` to `Partial<Record<string, T>>` for TEST_FRAMEWORK_CONFIGS
+   - Simplified primaryFramework check with length guard
+
+4. **Fixed `src/interview/RequirementExtractor.ts`** - 1 lint error:
+   - Changed CATEGORY_MAP to use `Partial<Record>` type
+
+5. **Fixed `src/llm/types.ts`** - 1 lint error:
+   - Changed MODEL_PRICING to use `Partial<Record>` type
+
+6. **Fixed `src/llm/clients/MockGeminiClient.ts`** - 2 lint errors:
+   - Removed unused FinishReason and ToolCall imports
+
+7. **Fixed `src/llm/clients/GeminiClient.ts`** - 1 lint error:
+   - Changed `let` to `const` for finishReason
+
+8. **Fixed `src/renderer/src/stores/featureStore.ts`** - 2 lint errors:
+   - Removed unnecessary guard on splice result
+   - Removed unnecessary guard on array access
+
+9. **Fixed `src/renderer/test-setup.ts`** - 3 lint errors:
+   - Changed `!window.matchMedia` to `typeof window.matchMedia === 'undefined'`
+   - Same pattern for ResizeObserver and IntersectionObserver
+
+### Lint Error Reduction:
+- Before: 342 errors
+- After: 327 errors
+- Reduction: **15 errors fixed**
+
+### Remaining Issues for Next Iteration:
+- 327 lint errors remaining
+- Primary categories still to address:
+  - Interview module: floating promises, unsafe assignments (~20 errors)
+  - LLM clients: unsafe type handling for Gemini API (~40 errors)
+  - Renderer components: unsafe calls related to cn() function (~100+ errors)
+  - Main IPC handlers: unsafe type handling (~10 errors)
 
 # ============================================================================
 # PART 1: STRUCTURAL AUDIT (Phases 1-12)
