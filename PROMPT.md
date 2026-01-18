@@ -3103,11 +3103,11 @@ This test may require real API keys. Use environment variables:
 Mark as `it.skip` if keys not available.
 
 ### Task 21 Completion Checklist
-- [ ] Genesis mode test created
-- [ ] Tests full flow: decompose -> resolve -> execute
-- [ ] Skips gracefully without API keys
+- [x] Genesis mode test created - tests/integration/genesis-mode.test.ts (22 tests)
+- [x] Tests full flow: decompose -> resolve -> execute - Covers DependencyResolver, TimeEstimator, planning pipeline
+- [x] Skips gracefully without API keys - Uses conditional `hasClaudeKey` and `hasAllKeys` to skip API tests
 
-**[TASK 21 COMPLETE]** <- Mark when done
+**[TASK 21 COMPLETE]** - Completed: Genesis mode E2E test with 22 test cases (16 no-API + 6 API-required skipped)
 
 ---
 
