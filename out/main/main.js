@@ -1,5 +1,6 @@
 import { app, session, ipcMain, BrowserWindow, safeStorage, shell } from "electron";
 import { join } from "path";
+import { nanoid } from "nanoid";
 import Store from "electron-store";
 import __cjs_mod__ from "node:module";
 const __filename = import.meta.filename;
@@ -99,150 +100,215 @@ const optimizer = {
   }
 };
 class EventBus {
-  static instance = null;
-  /** Event type to handlers map */
-  handlers = /* @__PURE__ */ new Map();
-  /** Wildcard handlers that receive all events */
-  wildcardHandlers = /* @__PURE__ */ new Set();
-  constructor() {
-  }
+  /** Event subscriptions by type */
+  subscriptions = /* @__PURE__ */ new Map();
+  /** Wildcard subscriptions (receive all events) */
+  wildcardSubscriptions = [];
+  /** Event history for debugging */
+  history = [];
+  /** Maximum history size */
+  maxHistorySize;
+  /** Default source name */
+  defaultSource;
   /**
-   * Get singleton instance
-   */
-  static getInstance() {
-    if (!EventBus.instance) {
-      EventBus.instance = new EventBus();
-    }
-    return EventBus.instance;
-  }
-  /**
-   * Reset singleton instance (for testing)
-   */
-  static resetInstance() {
-    EventBus.instance = null;
-  }
-  /**
-   * Emit an event to all registered handlers
+   * Create a new EventBus
    *
-   * @param type Event type from EventType union
-   * @param payload Type-safe payload for the event type
-   * @param options Optional correlationId and source override
+   * @param options - Configuration options
    */
-  emit(type, payload, options) {
+  constructor(options = {}) {
+    this.maxHistorySize = options.maxHistorySize ?? 1e3;
+    this.defaultSource = options.defaultSource ?? "nexus";
+  }
+  /**
+   * Emit an event to all subscribed handlers
+   *
+   * @param type - Event type
+   * @param payload - Event payload
+   * @param options - Emit options
+   */
+  async emit(type, payload, options = {}) {
     const event = {
-      id: crypto.randomUUID(),
+      id: nanoid(),
       type,
       timestamp: /* @__PURE__ */ new Date(),
       payload,
-      source: options?.source ?? "EventBus",
-      correlationId: options?.correlationId
+      source: options.source ?? this.defaultSource,
+      correlationId: options.correlationId
     };
-    const typeHandlers = this.handlers.get(type);
-    if (typeHandlers) {
-      for (const handler of typeHandlers) {
-        this.safeCall(handler, event);
-      }
+    this.addToHistory(event);
+    const typeSubscriptions = this.subscriptions.get(type) ?? [];
+    const handlers = [];
+    for (const sub of typeSubscriptions) {
+      handlers.push({ sub, handler: sub.handler });
     }
-    for (const handler of this.wildcardHandlers) {
-      this.safeCall(handler, event);
+    for (const sub of this.wildcardSubscriptions) {
+      handlers.push({ sub, handler: sub.handler });
+    }
+    const toRemove = [];
+    await Promise.all(
+      handlers.map(async ({ sub, handler }) => {
+        try {
+          await handler(event);
+        } catch (error) {
+          console.error(`EventBus handler error for ${type}:`, error);
+        }
+        if (sub.once) {
+          const isWildcard = this.wildcardSubscriptions.includes(sub);
+          toRemove.push({ type: isWildcard ? null : type, id: sub.id });
+        }
+      })
+    );
+    for (const { type: subType, id } of toRemove) {
+      if (subType === null) {
+        this.wildcardSubscriptions = this.wildcardSubscriptions.filter((s) => s.id !== id);
+      } else {
+        const subs = this.subscriptions.get(subType);
+        if (subs) {
+          this.subscriptions.set(
+            subType,
+            subs.filter((s) => s.id !== id)
+          );
+        }
+      }
     }
   }
   /**
-   * Subscribe to events of a specific type
+   * Subscribe to an event type
    *
-   * @param type Event type to subscribe to
-   * @param handler Handler function called with NexusEvent
+   * @param type - Event type to subscribe to
+   * @param handler - Handler function
    * @returns Unsubscribe function
    */
   on(type, handler) {
-    if (!this.handlers.has(type)) {
-      this.handlers.set(type, /* @__PURE__ */ new Set());
-    }
-    const internalHandler = handler;
-    this.handlers.get(type).add(internalHandler);
+    const subscription = {
+      id: nanoid(),
+      handler,
+      once: false
+    };
+    const existing = this.subscriptions.get(type) ?? [];
+    this.subscriptions.set(type, [...existing, subscription]);
     return () => {
-      this.handlers.get(type)?.delete(internalHandler);
+      const subs = this.subscriptions.get(type);
+      if (subs) {
+        this.subscriptions.set(
+          type,
+          subs.filter((s) => s.id !== subscription.id)
+        );
+      }
     };
   }
   /**
-   * Subscribe to events of a specific type, but only fire once
+   * Subscribe to an event type (single trigger)
    *
-   * @param type Event type to subscribe to
-   * @param handler Handler function called with NexusEvent
+   * @param type - Event type to subscribe to
+   * @param handler - Handler function
    * @returns Unsubscribe function
    */
   once(type, handler) {
-    let unsubscribed = false;
-    const wrappedHandler = (event) => {
-      if (unsubscribed) return;
-      unsubscribed = true;
-      unsubscribe();
-      handler(event);
+    const subscription = {
+      id: nanoid(),
+      handler,
+      once: true
     };
-    const unsubscribe = this.on(type, wrappedHandler);
+    const existing = this.subscriptions.get(type) ?? [];
+    this.subscriptions.set(type, [...existing, subscription]);
     return () => {
-      unsubscribed = true;
-      unsubscribe();
+      const subs = this.subscriptions.get(type);
+      if (subs) {
+        this.subscriptions.set(
+          type,
+          subs.filter((s) => s.id !== subscription.id)
+        );
+      }
     };
   }
   /**
-   * Unsubscribe a specific handler from an event type
+   * Unsubscribe from an event type
    *
-   * @param type Event type
-   * @param handler Handler to remove
+   * @param type - Event type
+   * @param handler - Handler function to remove
    */
   off(type, handler) {
-    const typeHandlers = this.handlers.get(type);
-    if (typeHandlers) {
-      typeHandlers.delete(handler);
+    const subs = this.subscriptions.get(type);
+    if (subs) {
+      this.subscriptions.set(
+        type,
+        subs.filter((s) => s.handler !== handler)
+      );
     }
   }
   /**
    * Subscribe to all events (wildcard)
    *
-   * @param handler Handler function called with any event
+   * @param handler - Handler function
    * @returns Unsubscribe function
    */
   onAny(handler) {
-    this.wildcardHandlers.add(handler);
+    const subscription = {
+      id: nanoid(),
+      handler,
+      once: false
+    };
+    this.wildcardSubscriptions.push(subscription);
     return () => {
-      this.wildcardHandlers.delete(handler);
+      this.wildcardSubscriptions = this.wildcardSubscriptions.filter(
+        (s) => s.id !== subscription.id
+      );
     };
   }
   /**
-   * Remove all listeners for a specific type or all types
+   * Unsubscribe from all events (wildcard)
    *
-   * @param type Optional event type - if omitted, removes ALL handlers
+   * @param handler - Handler function to remove
    */
-  removeAllListeners(type) {
-    if (type) {
-      this.handlers.delete(type);
-    } else {
-      this.handlers.clear();
-      this.wildcardHandlers.clear();
+  offAny(handler) {
+    this.wildcardSubscriptions = this.wildcardSubscriptions.filter(
+      (s) => s.handler !== handler
+    );
+  }
+  /**
+   * Get event history
+   *
+   * @param limit - Maximum number of events to return (default: 100)
+   * @returns Array of recent events
+   */
+  getEventHistory(limit = 100) {
+    return this.history.slice(-limit);
+  }
+  /**
+   * Clear event history
+   */
+  clearHistory() {
+    this.history = [];
+  }
+  /**
+   * Get subscription count for an event type
+   *
+   * @param type - Event type
+   * @returns Number of subscriptions
+   */
+  getSubscriptionCount(type) {
+    return (this.subscriptions.get(type) ?? []).length;
+  }
+  /**
+   * Get total subscription count (including wildcards)
+   *
+   * @returns Total number of subscriptions
+   */
+  getTotalSubscriptionCount() {
+    let count = this.wildcardSubscriptions.length;
+    for (const subs of this.subscriptions.values()) {
+      count += subs.length;
     }
+    return count;
   }
   /**
-   * Get the number of listeners for an event type
-   *
-   * @param type Event type
-   * @returns Number of registered handlers
+   * Add event to history with size limit
    */
-  listenerCount(type) {
-    return this.handlers.get(type)?.size ?? 0;
-  }
-  /**
-   * Safely call a handler, catching any errors to prevent
-   * one handler from affecting others
-   */
-  safeCall(handler, event) {
-    try {
-      const result = handler(event);
-      if (result instanceof Promise) {
-        void result.catch(() => {
-        });
-      }
-    } catch {
+  addToHistory(event) {
+    this.history.push(event);
+    if (this.history.length > this.maxHistorySize) {
+      this.history = this.history.slice(-this.maxHistorySize);
     }
   }
 }
@@ -259,7 +325,7 @@ const state = {
   agents: /* @__PURE__ */ new Map()
 };
 function registerIpcHandlers() {
-  ipcMain.handle("mode:genesis", async (event) => {
+  ipcMain.handle("mode:genesis", (event) => {
     if (!validateSender$1(event)) {
       throw new Error("Unauthorized IPC sender");
     }
@@ -273,7 +339,7 @@ function registerIpcHandlers() {
     });
     return { success: true, projectId };
   });
-  ipcMain.handle("mode:evolution", async (event, projectId) => {
+  ipcMain.handle("mode:evolution", (event, projectId) => {
     if (!validateSender$1(event)) {
       throw new Error("Unauthorized IPC sender");
     }
@@ -287,7 +353,7 @@ function registerIpcHandlers() {
     state.projectId = projectId;
     return { success: true };
   });
-  ipcMain.handle("project:get", async (event, id) => {
+  ipcMain.handle("project:get", (event, id) => {
     if (!validateSender$1(event)) {
       throw new Error("Unauthorized IPC sender");
     }
@@ -302,11 +368,11 @@ function registerIpcHandlers() {
   });
   ipcMain.handle(
     "project:create",
-    async (event, input) => {
+    (event, input) => {
       if (!validateSender$1(event)) {
         throw new Error("Unauthorized IPC sender");
       }
-      if (!input || typeof input.name !== "string" || !input.name) {
+      if (typeof input.name !== "string" || !input.name) {
         throw new Error("Invalid project name");
       }
       if (input.mode !== "genesis" && input.mode !== "evolution") {
@@ -318,7 +384,7 @@ function registerIpcHandlers() {
       return { id };
     }
   );
-  ipcMain.handle("tasks:list", async (event) => {
+  ipcMain.handle("tasks:list", (event) => {
     if (!validateSender$1(event)) {
       throw new Error("Unauthorized IPC sender");
     }
@@ -326,7 +392,7 @@ function registerIpcHandlers() {
   });
   ipcMain.handle(
     "task:update",
-    async (event, id, update) => {
+    (event, id, update) => {
       if (!validateSender$1(event)) {
         throw new Error("Unauthorized IPC sender");
       }
@@ -347,13 +413,13 @@ function registerIpcHandlers() {
       return void 0;
     }
   );
-  ipcMain.handle("agents:status", async (event) => {
+  ipcMain.handle("agents:status", (event) => {
     if (!validateSender$1(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     return Array.from(state.agents.values());
   });
-  ipcMain.handle("execution:pause", async (event, reason) => {
+  ipcMain.handle("execution:pause", (event, reason) => {
     if (!validateSender$1(event)) {
       throw new Error("Unauthorized IPC sender");
     }
@@ -364,7 +430,7 @@ function registerIpcHandlers() {
   });
   ipcMain.handle(
     "interview:emit-started",
-    async (event, payload) => {
+    (event, payload) => {
       if (!validateSender$1(event)) {
         throw new Error("Unauthorized IPC sender");
       }
@@ -383,7 +449,7 @@ function registerIpcHandlers() {
   );
   ipcMain.handle(
     "interview:emit-message",
-    async (event, payload) => {
+    (event, payload) => {
       if (!validateSender$1(event)) {
         throw new Error("Unauthorized IPC sender");
       }
@@ -403,7 +469,7 @@ function registerIpcHandlers() {
   );
   ipcMain.handle(
     "interview:emit-requirement",
-    async (event, payload) => {
+    (event, payload) => {
       if (!validateSender$1(event)) {
         throw new Error("Unauthorized IPC sender");
       }
@@ -440,7 +506,7 @@ function registerIpcHandlers() {
   );
   ipcMain.handle(
     "interview:emit-completed",
-    async (event, payload) => {
+    (event, payload) => {
       if (!validateSender$1(event)) {
         throw new Error("Unauthorized IPC sender");
       }
@@ -460,7 +526,7 @@ function registerIpcHandlers() {
   );
   ipcMain.handle(
     "eventbus:emit",
-    async (event, channel, payload) => {
+    (event, channel, payload) => {
       if (!validateSender$1(event)) {
         throw new Error("Unauthorized IPC sender");
       }
@@ -952,16 +1018,16 @@ function createWindow() {
     mainWindow?.show();
   });
   mainWindow.webContents.setWindowOpenHandler((details) => {
-    shell.openExternal(details.url);
+    void shell.openExternal(details.url);
     return { action: "deny" };
   });
   if (is.dev && process.env["ELECTRON_RENDERER_URL"]) {
-    mainWindow.loadURL(process.env["ELECTRON_RENDERER_URL"]);
+    void mainWindow.loadURL(process.env["ELECTRON_RENDERER_URL"]);
   } else {
-    mainWindow.loadFile(join(__dirname, "../renderer/index.html"));
+    void mainWindow.loadFile(join(__dirname, "../renderer/index.html"));
   }
 }
-app.whenReady().then(() => {
+void app.whenReady().then(() => {
   electronApp.setAppUserModelId("com.nexus.app");
   registerIpcHandlers();
   registerSettingsHandlers();
