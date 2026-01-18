@@ -70,7 +70,7 @@ Task 8: SelfAssessmentEngine Core -------> [TASK 8 COMPLETE - SelfAssessmentEngi
 Task 9: Progress Assessor ---------------> [TASK 9 COMPLETE - ProgressAssessor.ts + tests created]
 Task 10: Blocker Detector ---------------> [TASK 10 COMPLETE - BlockerDetector.ts + tests created]
 Task 11: Approach Evaluator -------------> [TASK 11 COMPLETE - ApproachEvaluator.ts + tests created]
-Task 12: Historical Learner -------------> [PENDING]
+Task 12: Historical Learner -------------> [TASK 12 COMPLETE - HistoricalLearner.ts + tests + index.ts created]
 
 PART 3: INTEGRATION
 ===================
@@ -1375,13 +1375,14 @@ Create `src/orchestration/assessment/HistoricalLearner.test.ts`:
 - [ ] Test common blocker detection
 
 ### Task 12 Completion Checklist
-- [ ] `HistoricalLearner.ts` created (~200 lines)
-- [ ] `HistoricalLearner.test.ts` created (~150 lines)
-- [ ] `index.ts` created (~50 lines)
-- [x] All tests pass (37 tests)
+- [x] `HistoricalLearner.ts` created (805 lines)
+- [x] `HistoricalLearner.test.ts` created (531 lines)
+- [x] `index.ts` created (129 lines)
+- [x] All tests pass (206 tests - 53 HistoricalLearner tests)
 - [x] TypeScript compiles
+- [x] ESLint passes
 
-**[TASK 12 COMPLETE]** <- Mark when done, proceed to Task 13
+**[TASK 12 COMPLETE]** - Proceed to Task 13
 
 ---
 
