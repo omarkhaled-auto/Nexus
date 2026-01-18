@@ -49,6 +49,17 @@ const DEFAULT_FIXED_BUDGET = {
 } as const;
 
 /**
+ * Type for custom fixed budget input (accepts regular numbers)
+ */
+export type FixedBudgetInput = Partial<{
+  systemPrompt: number;
+  repoMap: number;
+  codebaseDocs: number;
+  taskSpec: number;
+  reserved: number;
+}>;
+
+/**
  * Dynamic budget allocation ratios
  * Sum must equal 1.0
  */
@@ -97,14 +108,20 @@ export class TokenBudgeter implements ITokenBudgeter {
   /**
    * Configuration for fixed budget allocations
    */
-  private readonly fixedBudget: typeof DEFAULT_FIXED_BUDGET;
+  private readonly fixedBudget: {
+    systemPrompt: number;
+    repoMap: number;
+    codebaseDocs: number;
+    taskSpec: number;
+    reserved: number;
+  };
 
   /**
    * Create a new TokenBudgeter
    *
    * @param customFixedBudget Optional custom fixed budget allocations
    */
-  constructor(customFixedBudget?: Partial<typeof DEFAULT_FIXED_BUDGET>) {
+  constructor(customFixedBudget?: FixedBudgetInput) {
     this.fixedBudget = {
       ...DEFAULT_FIXED_BUDGET,
       ...customFixedBudget,
@@ -571,7 +588,7 @@ export function createTokenBudgeter(): TokenBudgeter {
  * Create a TokenBudgeter with custom fixed budget
  */
 export function createCustomTokenBudgeter(
-  customFixedBudget: Partial<typeof DEFAULT_FIXED_BUDGET>
+  customFixedBudget: FixedBudgetInput
 ): TokenBudgeter {
   return new TokenBudgeter(customFixedBudget);
 }

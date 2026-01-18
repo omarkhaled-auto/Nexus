@@ -314,7 +314,7 @@ export class CodeMemory implements ICodeMemory {
     const results: CodeSearchResult[] = chunks
       .map((chunk) => ({
         chunk,
-        score: this.cosineSimilarity(queryEmbedding, chunk.embedding),
+        score: this.cosineSimilarity(queryEmbedding.embedding, chunk.embedding),
         highlights: opts.includeContext ? this.generateHighlights(query, chunk.content) : undefined,
       }))
       .filter((result) => result.score >= opts.threshold)
@@ -347,7 +347,7 @@ export class CodeMemory implements ICodeMemory {
     const results: CodeSearchResult[] = chunksWithEmbeddings
       .map((chunk) => ({
         chunk,
-        score: this.cosineSimilarity(snippetEmbedding, chunk.embedding),
+        score: this.cosineSimilarity(snippetEmbedding.embedding, chunk.embedding),
       }))
       .filter((result) => result.score > 0.3) // Minimum threshold for code similarity
       .sort((a, b) => b.score - a.score)

@@ -169,14 +169,14 @@ export class EventBus implements IEventBus {
     payload: EventPayloadMap[T],
     options: EmitOptions = {}
   ): Promise<void> {
-    const event: TypedNexusEvent<T> = {
+    const event = {
       id: nanoid(),
       type,
       timestamp: new Date(),
       payload,
       source: options.source ?? this.defaultSource,
-      ...(options.correlationId !== undefined && { correlationId: options.correlationId }),
-    };
+      ...(options.correlationId !== undefined ? { correlationId: options.correlationId } : {}),
+    } as TypedNexusEvent<T>;
 
     // Add to history
     this.addToHistory(event);

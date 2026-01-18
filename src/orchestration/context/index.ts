@@ -192,16 +192,9 @@ export interface ContextSystem {
  * ```
  */
 export function createContextSystem(config: ContextSystemConfig): ContextSystem {
-  // Create budgeter - cast customBudget to proper type since interface uses number
-  // but TokenBudgeter expects Partial<typeof DEFAULT_FIXED_BUDGET>
+  // Create budgeter - use customBudget directly since TokenBudgeter accepts Partial
   const budgeter = config.customBudget
-    ? new TokenBudgeter(config.customBudget as Partial<{
-        systemPrompt: number;
-        repoMap: number;
-        codebaseDocs: number;
-        taskSpec: number;
-        reserved: number;
-      }>)
+    ? new TokenBudgeter(config.customBudget)
     : new TokenBudgeter();
 
   // Create builder

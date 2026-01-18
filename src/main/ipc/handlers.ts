@@ -395,13 +395,32 @@ export function registerIpcHandlers(): void {
       const eventBus = EventBus.getInstance()
       const projectId = state.projectId || 'unknown'
 
-      // Map frontend categories (underscores) to backend categories (hyphens)
-      const categoryMap: Record<string, string> = {
-        non_functional: 'non-functional',
-        user_story: 'business-logic',
-        constraint: 'technical'
+      // Map frontend categories to backend RequirementCategory types
+      const categoryMap: Record<string, 'functional' | 'technical' | 'ui' | 'performance' | 'security'> = {
+        non_functional: 'performance',
+        user_story: 'functional',
+        constraint: 'technical',
+        functional: 'functional',
+        technical: 'technical',
+        ui: 'ui',
+        performance: 'performance',
+        security: 'security'
       }
-      const mappedCategory = categoryMap[payload.category] || payload.category
+      const mappedCategory = categoryMap[payload.category] || 'functional'
+
+      // Map frontend priority to backend RequirementPriority types
+      const priorityMap: Record<string, 'critical' | 'high' | 'medium' | 'low'> = {
+        must: 'critical',
+        should: 'high',
+        could: 'medium',
+        wont: 'low',
+        critical: 'critical',
+        high: 'high',
+        medium: 'medium',
+        low: 'low'
+      }
+      const mappedPriority = priorityMap[payload.priority] || 'medium'
+      const now = new Date()
 
       void eventBus.emit(
         'interview:requirement-captured',
@@ -410,22 +429,12 @@ export function registerIpcHandlers(): void {
           requirement: {
             id: payload.requirementId,
             projectId,
-            category: mappedCategory as
-              | 'functional'
-              | 'non-functional'
-              | 'ui-ux'
-              | 'technical'
-              | 'business-logic'
-              | 'integration',
-            description: payload.text,
-            priority: payload.priority as 'must' | 'should' | 'could' | 'wont',
-            userStories: [],
-            acceptanceCriteria: [],
-            linkedFeatures: [],
-            validated: false,
-            confidence: 1,
-            tags: [],
-            createdAt: new Date()
+            category: mappedCategory,
+            content: payload.text,
+            priority: mappedPriority,
+            source: 'interview' as const,
+            createdAt: now,
+            updatedAt: now
           }
         },
         { source: 'InterviewUI' }

@@ -245,7 +245,15 @@ export class MemorySystem {
     // Prune old episodes if needed
     await this.pruneIfNeeded(projectId);
 
-    return this.recordToEpisode({ ...newEpisode, createdAt: now, lastAccessedAt: null });
+    // Cast to EpisodeRecord since we know all required fields are present
+    return this.recordToEpisode({
+      ...newEpisode,
+      createdAt: now,
+      lastAccessedAt: null,
+      taskId: newEpisode.taskId ?? null,
+      agentId: newEpisode.agentId ?? null,
+      accessCount: newEpisode.accessCount ?? 0,
+    } as EpisodeRecord);
   }
 
   /**

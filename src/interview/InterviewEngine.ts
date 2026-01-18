@@ -439,22 +439,18 @@ export class InterviewEngine {
 
     // Create a Requirement object for the event
     // Using type assertions to handle interface differences between modules
+    const now = new Date();
     void this.eventBus.emit('interview:requirement-captured', {
       projectId: session.projectId,
       requirement: {
         id: requirement.id,
         projectId: session.projectId,
         category: mappedCategory as unknown as import('../types/core').RequirementCategory,
-        description: requirement.text,
+        content: requirement.text,
         priority: requirement.priority as unknown as import('../types/core').RequirementPriority,
         source: 'interview' as const,
-        userStories: [],
-        acceptanceCriteria: [],
-        linkedFeatures: [],
-        validated: false,
-        confidence: requirement.confidence,
-        tags: requirement.area ? [requirement.area] : [],
-        createdAt: new Date(),
+        createdAt: now,
+        updatedAt: now,
       },
     });
   }

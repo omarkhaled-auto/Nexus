@@ -1,4 +1,6 @@
+import React from 'react'
 import { format } from 'date-fns'
+import type { LucideIcon } from 'lucide-react'
 import {
   CheckCircle2,
   XCircle,
@@ -15,13 +17,12 @@ import {
 import { cn } from '@renderer/lib/utils'
 import type { TimelineEvent, TimelineEventType } from '@renderer/types/metrics'
 
+type IconConfig = { icon: LucideIcon; className: string };
+
 /**
  * Icon configuration for each event type
  */
-const EVENT_ICONS: Record<
-  TimelineEventType,
-  { icon: typeof CheckCircle2; className: string }
-> = {
+const EVENT_ICONS: Record<TimelineEventType, IconConfig> = {
   task_started: { icon: Play, className: 'text-blue-500' },
   task_completed: { icon: CheckCircle2, className: 'text-emerald-500' },
   task_failed: { icon: XCircle, className: 'text-red-500' },
@@ -40,6 +41,12 @@ const EVENT_ICONS: Record<
   review_requested: { icon: MessageSquare, className: 'text-amber-500' },
   error_occurred: { icon: AlertCircle, className: 'text-red-500' },
   error: { icon: AlertCircle, className: 'text-red-500' }
+};
+
+const DEFAULT_ICON_CONFIG: IconConfig = { icon: AlertCircle, className: 'text-muted-foreground' };
+
+function getIconConfig(type: TimelineEventType): IconConfig {
+  return EVENT_ICONS[type] ?? DEFAULT_ICON_CONFIG;
 }
 
 export interface EventRowProps {
@@ -58,9 +65,11 @@ export interface EventRowProps {
  */
 export function EventRow({ event, className }: EventRowProps) {
   const { type, title, timestamp, metadata } = event
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- type may have unknown value at runtime
-  const iconConfig = EVENT_ICONS[type] ?? { icon: AlertCircle, className: 'text-muted-foreground' }
-  const Icon: typeof CheckCircle2 = iconConfig.icon
+  const config = getIconConfig(type)
+  const iconClassName = config.className
+  // Pre-render icon - using explicit JSX.Element type for React 19 compatibility
+  // @ts-ignore - LucideIcon dynamic lookup
+  const iconElement: JSX.Element = <config.icon className={cn('h-4 w-4 flex-shrink-0', iconClassName)} />;
 
   return (
     <div
@@ -75,7 +84,7 @@ export function EventRow({ event, className }: EventRowProps) {
       </span>
 
       {/* Event icon */}
-      <Icon className={cn('h-4 w-4 flex-shrink-0', iconConfig.className)} />
+      {iconElement}
 
       {/* Event title */}
       <span className="flex-1 text-sm truncate">{title}</span>

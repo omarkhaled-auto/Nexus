@@ -220,7 +220,7 @@ class SettingsService {
     }
 
     const base64 = this.store.get(`llm.${provider}ApiKeyEncrypted`)
-    if (!base64) {
+    if (!base64 || typeof base64 !== 'string') {
       return null
     }
 

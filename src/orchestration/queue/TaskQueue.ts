@@ -138,6 +138,13 @@ export class TaskQueue implements ITaskQueue {
   }
 
   /**
+   * Check if queue is empty
+   */
+  isEmpty(): boolean {
+    return this.tasks.size === 0;
+  }
+
+  /**
    * Clear all tasks and reset state
    */
   clear(): void {
