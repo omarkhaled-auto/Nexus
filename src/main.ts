@@ -231,6 +231,20 @@ export {
 } from './llm';
 
 // ============================================================================
+// NexusFactory - Main Entry Point
+// ============================================================================
+
+export {
+  // Factory for creating fully-wired Nexus instances
+  NexusFactory,
+  createNexus,
+  createTestingNexus,
+  createMinimalNexus,
+  type NexusConfig,
+  type NexusInstance,
+} from './NexusFactory';
+
+// ============================================================================
 // Version Information
 // ============================================================================
 
