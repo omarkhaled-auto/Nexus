@@ -20,7 +20,11 @@
       "Bash(npx vitest:*)",
       "Skill(gsd:execute-plan)",
       "Bash(git stash pop:*)",
-      "Bash(git stash drop:*)"
+      "Bash(git stash drop:*)",
+      "mcp__sequential-thinking__sequentialthinking",
+      "Bash(dir \"C:\\\\Users\\\\Omar Khaled\\\\OneDrive\\\\Desktop\\\\Nexus\\\\src\")",
+      "Bash(wc:*)",
+      "Bash(gemini -y:*)"
     ]
   }
 }
