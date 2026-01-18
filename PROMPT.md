@@ -1517,15 +1517,15 @@ Return a JSON array of smaller tasks, each under 30 minutes.`;
 ```
 
 ### Task 9 Completion Checklist
-- [ ] TaskDecomposer.ts created (~300 LOC)
-- [ ] TaskDecomposer.test.ts created (12+ tests)
-- [ ] Implements ITaskDecomposer interface exactly
-- [ ] Actually calls ClaudeClient
-- [ ] Enforces 30-minute rule
-- [ ] Can split oversized tasks
-- [x] Tests pass - All 107 QA tests pass
+- [x] TaskDecomposer.ts created (~300 LOC) - Created at src/planning/decomposition/TaskDecomposer.ts (370 LOC)
+- [x] TaskDecomposer.test.ts created (12+ tests) - Created at src/planning/decomposition/TaskDecomposer.test.ts (23 tests)
+- [x] Implements ITaskDecomposer interface exactly - Matches decompose, validateTaskSize, splitTask, estimateTime
+- [x] Actually calls ClaudeClient - Uses claudeClient.chat() with system prompts
+- [x] Enforces 30-minute rule - validateTaskSize checks estimatedMinutes, auto-splits oversized
+- [x] Can split oversized tasks - splitTask() method calls Claude for task splitting
+- [x] Tests pass - All 1605 tests pass
 
-**[TASK 9 COMPLETE]** <- Mark when done
+**[TASK 9 COMPLETE]** - Completed: TaskDecomposer implemented with full ITaskDecomposer interface
 
 ---
 

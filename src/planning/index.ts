@@ -20,3 +20,7 @@ export type {
   IDependencyResolver,
   ITimeEstimator,
 } from './types';
+
+// Implementations
+export { TaskDecomposer, createTaskDecomposer } from './decomposition';
+export type { TaskDecomposerConfig } from './decomposition';
