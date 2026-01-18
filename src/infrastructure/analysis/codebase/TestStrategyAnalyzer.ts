@@ -19,7 +19,7 @@ import type {
 /**
  * Known test framework configurations
  */
-const TEST_FRAMEWORK_CONFIGS: Record<string, { name: string; purpose: string }> = {
+const TEST_FRAMEWORK_CONFIGS: Partial<Record<string, { name: string; purpose: string }>> = {
   'vitest.config.ts': { name: 'Vitest', purpose: 'Fast unit testing with Vite integration' },
   'vitest.config.js': { name: 'Vitest', purpose: 'Fast unit testing with Vite integration' },
   'vitest.config.mts': { name: 'Vitest', purpose: 'Fast unit testing with Vite integration' },
@@ -103,8 +103,8 @@ export class TestStrategyAnalyzer extends BaseAnalyzer {
     }
 
     // Add framework-specific information
-    const primaryFramework = frameworks[0];
-    if (primaryFramework) {
+    if (frameworks.length > 0) {
+      const primaryFramework = frameworks[0];
       paragraphs.push(
         `The primary testing framework is ${primaryFramework.name}, which provides ${primaryFramework.purpose.toLowerCase()}.`
       );

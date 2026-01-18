@@ -246,7 +246,7 @@ export class GeminiClient implements LLMClient {
                    (response.usageMetadata?.candidatesTokenCount ?? 0),
     };
 
-    let finishReason: FinishReason = 'stop';
+    const finishReason: FinishReason = 'stop';
 
     return {
       content,

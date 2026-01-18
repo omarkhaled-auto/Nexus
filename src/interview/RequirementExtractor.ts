@@ -38,7 +38,7 @@ const DEFAULT_PRIORITY: ExtractedRequirementPriority = 'should';
  * Category mapping from LLM output to internal format
  * Handles underscore variants (non_functional -> non-functional)
  */
-const CATEGORY_MAP: Record<string, ExtractedRequirementCategory> = {
+const CATEGORY_MAP: Partial<Record<string, ExtractedRequirementCategory>> = {
   functional: 'functional',
   non_functional: 'non-functional',
   'non-functional': 'non-functional',

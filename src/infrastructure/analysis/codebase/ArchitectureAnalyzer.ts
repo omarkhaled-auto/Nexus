@@ -691,15 +691,15 @@ export class ArchitectureAnalyzer extends BaseAnalyzer {
     const edges: Array<{ from: string; to: string; style?: 'solid' | 'dotted' }> = [];
 
     // Add edges for layer dependencies
-    for (let i = 0; i < layers.length - 1; i++) {
-      const currentLayer = layers[i];
+    for (const [i, currentLayer] of layers.slice(0, -1).entries()) {
       const nextLayer = layers[i + 1];
-      if (!currentLayer || !nextLayer) continue;
-      edges.push({
-        from: `L${String(currentLayer.number)}`,
-        to: `L${String(nextLayer.number)}`,
-        style: 'solid',
-      });
+      if (nextLayer) {
+        edges.push({
+          from: `L${String(currentLayer.number)}`,
+          to: `L${String(nextLayer.number)}`,
+          style: 'solid',
+        });
+      }
     }
 
     return '```mermaid\n' + this.generateMermaidDiagram('flowchart', {

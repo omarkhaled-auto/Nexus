@@ -9,7 +9,7 @@
 // For now, this is a minimal setup
 
 // Mock window.matchMedia if not available
-if (typeof window !== 'undefined' && !window.matchMedia) {
+if (typeof window !== 'undefined' && typeof window.matchMedia === 'undefined') {
   Object.defineProperty(window, 'matchMedia', {
     writable: true,
     value: (query: string) => ({
@@ -26,7 +26,7 @@ if (typeof window !== 'undefined' && !window.matchMedia) {
 }
 
 // Mock ResizeObserver if not available
-if (typeof window !== 'undefined' && !window.ResizeObserver) {
+if (typeof window !== 'undefined' && typeof window.ResizeObserver === 'undefined') {
   class ResizeObserver {
     observe() {}
     unobserve() {}
@@ -39,7 +39,7 @@ if (typeof window !== 'undefined' && !window.ResizeObserver) {
 }
 
 // Mock IntersectionObserver if not available
-if (typeof window !== 'undefined' && !window.IntersectionObserver) {
+if (typeof window !== 'undefined' && typeof window.IntersectionObserver === 'undefined') {
   class IntersectionObserver {
     observe() {}
     unobserve() {}

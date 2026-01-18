@@ -237,7 +237,7 @@ export const DEFAULT_MODEL_CONFIGS: Record<AgentType, ModelConfig> = {
 /**
  * Model pricing per million tokens
  */
-export const MODEL_PRICING: Record<string, ModelPricing> = {
+export const MODEL_PRICING: Partial<Record<string, ModelPricing>> = {
   'claude-sonnet-4-20250514': {
     inputPerMillion: 3.0,
     outputPerMillion: 15.0,

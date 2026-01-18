@@ -11,8 +11,6 @@ import type {
   StreamChunk,
   TokenUsage,
   LLMClient,
-  FinishReason,
-  ToolCall,
 } from '../types';
 import type { MockResponseConfig, MockResponse } from './MockClaudeClient';
 

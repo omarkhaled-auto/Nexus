@@ -167,10 +167,7 @@ export const useFeatureStore = create<FeatureState>()((set, get) => ({
 
       // Perform array move
       const reordered = [...columnFeatures]
-      const removed = reordered.splice(oldIndex, 1)[0]
-      if (!removed) {
-        return state
-      }
+      const [removed] = reordered.splice(oldIndex, 1)
       reordered.splice(newIndex, 0, removed)
 
       // Reconstruct the features array preserving order
@@ -180,10 +177,8 @@ export const useFeatureStore = create<FeatureState>()((set, get) => ({
 
       for (const feature of state.features) {
         if (feature.status === columnId) {
-          const reorderedFeature = reordered[columnIdx]
-          if (reorderedFeature) {
-            result.push(reorderedFeature)
-          }
+          // We know columnIdx is valid because we're iterating over the same number of items
+          result.push(reordered[columnIdx])
           columnIdx++
         } else {
           result.push(feature)
