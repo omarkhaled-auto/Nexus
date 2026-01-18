@@ -300,7 +300,7 @@ describe('ContextBuilder', () => {
         codebaseAnalyzer: mockAnalyzer as unknown as ContextBuilder extends { codebaseAnalyzer: infer T } ? T : never,
       });
 
-      const task = createTestTaskSpec({ examples: [{ file: 'src/app.ts' }] });
+      const task = createTestTaskSpec({ files: ['src/app.ts'] });
       const result = await builder.buildCodebaseDocsContext('/test', task, 1000);
 
       // Factory pattern should be included (matching file)
@@ -521,7 +521,7 @@ describe('ContextBuilder', () => {
   describe('findRelatedFiles', () => {
     it('should find test files for task files', () => {
       const builder = new ContextBuilder({});
-      const task = createTestTaskSpec({ examples: [{ file: 'src/app.ts' }] });
+      const task = createTestTaskSpec({ files: ['src/app.ts'] });
       const related = builder.findRelatedFiles(task);
 
       expect(related).toContain('src/app.test.ts');
@@ -529,7 +529,7 @@ describe('ContextBuilder', () => {
 
     it('should find types files for task files', () => {
       const builder = new ContextBuilder({});
-      const task = createTestTaskSpec({ examples: [{ file: 'src/app.ts' }] });
+      const task = createTestTaskSpec({ files: ['src/app.ts'] });
       const related = builder.findRelatedFiles(task);
 
       expect(related).toContain('src/types.ts');

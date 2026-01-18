@@ -14,15 +14,17 @@ import type {
   Agent,
   AgentType,
   AgentStatus,
+  AgentMetrics,
+  AgentModelConfig,
   TaskStatus,
   TaskType,
-  TaskSize,
+  TaskPriority,
   FeatureStatus,
-  FeatureComplexity,
-  Priority,
   RequirementCategory,
-  ProjectMode,
+  RequirementPriority,
   ProjectStatus,
+  ProjectMetrics,
+  ProjectSettings,
 } from '@/types';
 
 // ============================================================================
@@ -55,7 +57,7 @@ function generateId(prefix: string): string {
  *
  * @example
  * const task = createTask(); // Default task
- * const task = createTask({ status: 'executing' }); // With override
+ * const task = createTask({ status: 'in_progress' }); // With override
  * const task = createTask({ dependencies: ['task-1', 'task-2'] }); // With dependencies
  */
 export function createTask(overrides: Partial<Task> = {}): Task {
@@ -64,33 +66,26 @@ export function createTask(overrides: Partial<Task> = {}): Task {
 
   return {
     id,
-    projectId: 'project-1',
-    featureId: undefined,
-    subFeatureId: undefined,
     name: `Test Task ${id}`,
     description: 'A test task for unit testing',
     type: 'auto' as TaskType,
     status: 'pending' as TaskStatus,
-    size: 'small' as TaskSize,
-    priority: 5,
-    tags: [],
-    notes: [],
-    assignedAgent: undefined,
-    worktreePath: undefined,
-    branchName: undefined,
-    dependsOn: [],
-    blockedBy: undefined,
-    qaIterations: 0,
-    maxIterations: 50,
-    estimatedMinutes: 15,
-    actualMinutes: undefined,
-    startedAt: undefined,
-    completedAt: undefined,
-    filesCreated: [],
-    filesModified: [],
-    testsWritten: [],
+    priority: 'normal' as TaskPriority,
     createdAt: now,
     updatedAt: now,
+    featureId: undefined,
+    projectId: 'project-1',
+    files: [],
+    dependencies: [],
+    testCriteria: ['Tests should pass'],
+    estimatedMinutes: 15,
+    actualMinutes: undefined,
+    assignedAgentId: undefined,
+    worktreePath: undefined,
+    completedAt: undefined,
+    failedAt: undefined,
+    errorMessage: undefined,
+    qaIterations: 0,
     ...overrides,
   };
 }
@@ -115,7 +110,7 @@ export function createTasks(count: number, overrides: Partial<Task> = {}): Task[
  *
  * @example
  * const feature = createFeature(); // Default feature
- * const feature = createFeature({ complexity: 'complex' }); // Complex feature
+ * const feature = createFeature({ priority: 'critical' }); // With override
  */
 export function createFeature(overrides: Partial<Feature> = {}): Feature {
   const now = new Date();
@@ -126,14 +121,13 @@ export function createFeature(overrides: Partial<Feature> = {}): Feature {
     projectId: 'project-1',
     name: `Test Feature ${id}`,
     description: 'A test feature for unit testing',
-    priority: 'should' as Priority,
-    status: 'backlog' as FeatureStatus,
-    complexity: 'simple' as FeatureComplexity,
-    subFeatures: [],
-    estimatedTasks: 3,
-    completedTasks: 0,
+    priority: 'medium' as RequirementPriority,
+    status: 'pending' as FeatureStatus,
+    estimatedMinutes: 60,
     createdAt: now,
     updatedAt: now,
+    completedAt: undefined,
+    parentId: undefined,
     ...overrides,
   };
 }
@@ -154,7 +148,7 @@ export function createFeatures(count: number, overrides: Partial<Feature> = {}):
  *
  * @example
  * const req = createRequirement(); // Default requirement
- * const req = createRequirement({ category: 'non-functional', priority: 'must' });
+ * const req = createRequirement({ category: 'technical', priority: 'critical' });
  */
 export function createRequirement(overrides: Partial<Requirement> = {}): Requirement {
   const now = new Date();
@@ -163,17 +157,13 @@ export function createRequirement(overrides: Partial<Requirement> = {}): Require
   return {
     id,
     projectId: 'project-1',
+    featureId: undefined,
+    content: `Test requirement ${id}`,
     category: 'functional' as RequirementCategory,
-    description: `Test requirement ${id}`,
-    priority: 'should' as Priority,
-    source: 'test',
-    userStories: ['As a user, I want to test things'],
-    acceptanceCriteria: ['Tests should pass'],
-    linkedFeatures: [],
-    validated: false,
-    confidence: 0.9,
-    tags: [],
+    priority: 'medium' as RequirementPriority,
+    source: 'interview' as const,
     createdAt: now,
+    updatedAt: now,
     ...overrides,
   };
 }
@@ -200,37 +190,37 @@ export function createProject(overrides: Partial<Project> = {}): Project {
   const now = new Date();
   const id = overrides.id ?? generateId('project');
 
+  const defaultMetrics: ProjectMetrics = {
+    tasksTotal: 0,
+    tasksCompleted: 0,
+    tasksFailed: 0,
+    featuresTotal: 0,
+    featuresCompleted: 0,
+    estimatedTotalMinutes: 0,
+    actualTotalMinutes: 0,
+    averageQAIterations: 0,
+  };
+
+  const defaultSettings: ProjectSettings = {
+    maxConcurrentAgents: 4,
+    maxTaskMinutes: 30,
+    qaMaxIterations: 50,
+    enableTDD: true,
+    autoMerge: true,
+  };
+
   return {
     id,
     name: `Test Project ${id}`,
     description: 'A test project for unit testing',
-    mode: 'genesis' as ProjectMode,
-    status: 'initializing' as ProjectStatus,
-    rootPath: `/tmp/test-projects/${id}`,
-    repositoryUrl: undefined,
-    features: [],
-    requirements: [],
-    settings: {
-      maxParallelAgents: 4,
-      testCoverageTarget: 80,
-      maxTaskMinutes: 30,
-      qaMaxIterations: 50,
-      checkpointIntervalHours: 2,
-    },
+    mode: 'genesis' as const,
+    status: 'pending' as ProjectStatus,
+    path: `/tmp/test-projects/${id}`,
     createdAt: now,
     updatedAt: now,
     completedAt: undefined,
-    metrics: {
-      totalFeatures: 0,
-      completedFeatures: 0,
-      totalTasks: 0,
-      completedTasks: 0,
-      totalTokensUsed: 0,
-      totalCost: 0,
-      averageQAIterations: 0,
-      startedAt: undefined,
-      estimatedCompletion: undefined,
-    },
+    metrics: overrides.metrics ? { ...defaultMetrics, ...overrides.metrics } : defaultMetrics,
+    settings: overrides.settings ? { ...defaultSettings, ...overrides.settings } : defaultSettings,
     ...overrides,
   };
 }
@@ -244,7 +234,7 @@ export function createProject(overrides: Partial<Project> = {}): Project {
  *
  * @example
  * const agent = createAgent(); // Default coder agent
- * const agent = createAgent({ type: 'reviewer', status: 'executing' });
+ * const agent = createAgent({ type: 'reviewer', status: 'working' });
  */
 export function createAgent(overrides: Partial<Agent> = {}): Agent {
   const now = new Date();
@@ -252,7 +242,7 @@ export function createAgent(overrides: Partial<Agent> = {}): Agent {
   const type: AgentType = overrides.type ?? 'coder';
 
   // Get default model config based on type
-  const modelConfigs: Record<AgentType, Agent['model']> = {
+  const modelConfigs: Record<AgentType, AgentModelConfig> = {
     planner: { model: 'claude-opus-4', maxTokens: 8000, temperature: 0.7, provider: 'anthropic' },
     coder: { model: 'claude-sonnet-4', maxTokens: 16000, temperature: 0.3, provider: 'anthropic' },
     tester: { model: 'claude-sonnet-4', maxTokens: 8000, temperature: 0.3, provider: 'anthropic' },
@@ -260,37 +250,26 @@ export function createAgent(overrides: Partial<Agent> = {}): Agent {
     merger: { model: 'claude-sonnet-4', maxTokens: 4000, temperature: 0.1, provider: 'anthropic' },
   };
 
-  const toolConfigs: Record<AgentType, Agent['tools']> = {
-    planner: ['file_read', 'search_code'],
-    coder: ['file_read', 'file_write', 'file_edit', 'terminal', 'search_code', 'git_status', 'git_diff'],
-    tester: ['file_read', 'file_write', 'terminal', 'run_tests', 'search_code'],
-    reviewer: ['file_read', 'search_code', 'git_diff'],
-    merger: ['file_read', 'git_status', 'git_diff', 'git_commit', 'terminal'],
+  const defaultMetrics: AgentMetrics = {
+    tasksCompleted: 0,
+    tasksFailed: 0,
+    totalIterations: 0,
+    averageIterationsPerTask: 0,
+    totalTokensUsed: 0,
+    totalTimeActive: 0,
   };
 
   return {
     id,
     type,
     status: 'idle' as AgentStatus,
-    model: modelConfigs[type],
-    systemPrompt: `prompts/${type}.md`,
-    tools: toolConfigs[type],
+    modelConfig: modelConfigs[type],
     currentTaskId: undefined,
     worktreePath: undefined,
-    branchName: undefined,
-    metrics: {
-      tasksCompleted: 0,
-      tasksFailed: 0,
-      totalTokensUsed: 0,
-      totalCost: 0,
-      averageTaskDuration: 0,
-      qaIterationsTotal: 0,
-      successRate: 100,
-    },
+    metrics: overrides.metrics ? { ...defaultMetrics, ...overrides.metrics } : defaultMetrics,
     spawnedAt: now,
-    lastActivityAt: now,
+    lastActiveAt: now,
     terminatedAt: undefined,
-    terminationReason: undefined,
     ...overrides,
   };
 }
@@ -321,7 +300,7 @@ export function createProjectWithFeatures(
   for (let i = 0; i < featureCount; i++) {
     const feature = createFeature({
       projectId: project.id,
-      estimatedTasks: tasksPerFeature,
+      estimatedMinutes: tasksPerFeature * 15,
     });
     features.push(feature);
 
@@ -335,10 +314,9 @@ export function createProjectWithFeatures(
     }
   }
 
-  // Update project with features array
-  project.features = features;
-  project.metrics.totalFeatures = featureCount;
-  project.metrics.totalTasks = featureCount * tasksPerFeature;
+  // Update project metrics
+  project.metrics.featuresTotal = featureCount;
+  project.metrics.tasksTotal = featureCount * tasksPerFeature;
 
   return { project, features, tasks };
 }
@@ -353,7 +331,7 @@ export function createTaskChain(length: number, overrides: Partial<Task> = {}): 
   for (let i = 0; i < length; i++) {
     const task = createTask({
       ...overrides,
-      dependsOn: i > 0 ? [tasks[i - 1]!.id] : [],
+      dependencies: i > 0 ? [tasks[i - 1]!.id] : [],
     });
     tasks.push(task);
   }

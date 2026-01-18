@@ -95,7 +95,7 @@ function createMockRepoMap(): RepoMap {
       signature: 'const MAX_RETRIES = 3',
       exported: true,
       references: 5,
-      modifiers: ['export', 'const'],
+      modifiers: ['export', 'readonly'],
     },
   ];
 

@@ -28,7 +28,7 @@ function createError(
   type: ErrorEntry['type'] = 'build',
   severity: ErrorEntry['severity'] = 'error'
 ): ErrorEntry {
-  return { message, type, severity };
+  return { message, type, severity, iteration: 1 };
 }
 
 function createContext(overrides: Partial<ExecutionContext> = {}): ExecutionContext {

@@ -40,15 +40,21 @@ vi.mock('web-tree-sitter', () => {
     },
   };
 
-  const MockParser = vi.fn().mockImplementation(() => ({
+  // Create mock with static properties attached
+  const MockParserInstance = {
     parse: vi.fn().mockReturnValue(mockTree),
     setLanguage: vi.fn(),
-  }));
-
-  MockParser.init = vi.fn().mockResolvedValue(undefined);
-  MockParser.Language = {
-    load: vi.fn().mockResolvedValue({}),
   };
+
+  const MockParser = Object.assign(
+    vi.fn().mockImplementation(() => MockParserInstance),
+    {
+      init: vi.fn().mockResolvedValue(undefined),
+      Language: {
+        load: vi.fn().mockResolvedValue({}),
+      },
+    }
+  );
 
   return {
     default: MockParser,

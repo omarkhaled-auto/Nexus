@@ -37,6 +37,7 @@ import {
   type ErrorEntry,
   type IterationHistoryEntry,
 } from './assessment';
+import type { GitChange } from '../execution/iteration/types';
 
 // ============================================================================
 // Test Helpers
@@ -83,11 +84,12 @@ function createMockExecutionContext(overrides: Partial<ExecutionContext> = {}): 
 /**
  * Create a mock ErrorEntry for testing
  */
-function createMockError(message: string, type: 'error' | 'warning' = 'error'): ErrorEntry {
+function createMockError(message: string, errorType: 'build' | 'lint' | 'test' | 'review' | 'runtime' = 'build'): ErrorEntry {
   return {
-    type,
+    type: errorType,
+    severity: 'error',
     message,
-    timestamp: new Date(),
+    iteration: 1,
   };
 }
 
@@ -107,14 +109,16 @@ function createMockIterationEntry(
   }
 
   // Convert filesModified to changes
-  const changes = filesModified.map(file => ({
-    type: 'modified' as const,
+  const changes: GitChange[] = filesModified.map(file => ({
+    changeType: 'modified' as const,
     file,
+    additions: 10,
+    deletions: 5,
   }));
 
   return {
     iteration: 1,
-    phase: 'execute' as const,
+    phase: 'coding' as const,
     action: 'Test action',
     changes: changes.length > 0 ? changes : [],
     errors: rest.errors ?? errors,

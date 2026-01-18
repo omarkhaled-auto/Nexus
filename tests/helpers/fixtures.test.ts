@@ -56,10 +56,11 @@ describe('EventBus fixture', () => {
       received.push(event.payload);
     });
 
-    eventBus.emit('agent:spawned', { agentId: 'test-1', type: 'coder' });
+    const mockAgent = { id: 'test-1', type: 'coder' } as any;
+    eventBus.emit('agent:spawned', { agent: mockAgent });
 
     expect(received).toHaveLength(1);
-    expect(received[0]).toMatchObject({ agentId: 'test-1', type: 'coder' });
+    expect(received[0]).toMatchObject({ agent: mockAgent });
   });
 
   test('listeners are cleaned up between tests', async ({ eventBus }) => {

@@ -9,7 +9,7 @@ import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest';
 import { InterviewEngine } from './InterviewEngine';
 import type { InterviewSession, ProcessMessageResult } from './InterviewEngine';
 import type { LLMClient, Message, ChatOptions, LLMResponse } from '../llm';
-import type { RequirementsDB, Requirement, RequirementInput } from '../persistence/requirements/RequirementsDB';
+import type { RequirementsDB, Requirement } from '../persistence/requirements/RequirementsDB';
 import type { EventBus } from '../orchestration/events/EventBus';
 
 /**
@@ -35,7 +35,7 @@ function createMockRequirementsDB(): RequirementsDB & {
   getRequirement: Mock;
 } {
   return {
-    addRequirement: vi.fn().mockImplementation(async (_projectId: string, input: RequirementInput) => {
+    addRequirement: vi.fn().mockImplementation(async (_projectId: string, input: Omit<Requirement, 'id'>) => {
       return {
         id: 'req-' + Math.random().toString(36).slice(2, 9),
         projectId: _projectId,

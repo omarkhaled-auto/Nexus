@@ -577,42 +577,30 @@ describe('CheckpointManager', () => {
 // ============================================================================
 
 function createTestState(projectId: string): NexusState {
+  const now = new Date();
   return {
     projectId,
-    project: {
-      id: projectId,
-      name: 'Test Project',
-      description: 'A test project',
-      mode: 'genesis' as const,
-      status: 'planning',
-      rootPath: '/test/path',
-      repositoryUrl: null,
-      settings: null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      completedAt: null,
-    },
-    features: [],
-    tasks: [],
-    agents: [],
+    projectName: 'Test Project',
     status: 'planning',
-    currentPhase: 'Phase 1',
-    lastCheckpointId: undefined,
+    mode: 'genesis' as const,
+    features: [],
+    currentFeatureIndex: 0,
+    currentTaskIndex: 0,
+    completedTasks: 0,
+    totalTasks: 0,
+    lastUpdatedAt: now,
+    createdAt: now,
   };
 }
 
 function createTestFeature(id: string, name: string) {
   return {
     id,
-    projectId: 'proj-1',
     name,
     description: `Description for ${name}`,
-    priority: 'should' as const,
-    status: 'backlog',
-    complexity: 'simple' as const,
-    estimatedTasks: 3,
+    status: 'pending' as const,
+    tasks: [],
     completedTasks: 0,
-    createdAt: new Date(),
-    updatedAt: new Date(),
+    totalTasks: 3,
   };
 }

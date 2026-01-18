@@ -54,13 +54,13 @@ describe('LLMProvider', () => {
       chat: mockClaudeChat,
       chatStream: mockClaudeChatStream,
       countTokens: mockClaudeCountTokens,
-    }));
+    }) as any);
 
     vi.mocked(GeminiClient).mockImplementation(() => ({
       chat: mockGeminiChat,
       chatStream: mockGeminiChatStream,
       countTokens: vi.fn().mockReturnValue(10),
-    }));
+    }) as any);
 
     provider = new LLMProvider({
       anthropicApiKey: 'test-anthropic-key',
@@ -456,7 +456,7 @@ describe('LLMProvider', () => {
         chatStream: vi.fn(),
         countTokens: vi.fn(),
         isAvailable: mockIsAvailable,
-      }));
+      }) as any);
 
       const cliProvider = new LLMProvider({
         claudeBackend: 'cli',
