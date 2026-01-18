@@ -2866,12 +2866,13 @@ export function createNexus(config: NexusConfig): NexusInstance {
 ```
 
 ### Task 18 Completion Checklist
-- [ ] NexusFactory.ts created
-- [ ] Wires all real implementations together
-- [ ] Provides testing mode with mocks
-- [ ] Single entry point for creating Nexus
+- [x] NexusFactory.ts created - Created at src/NexusFactory.ts (420 LOC)
+- [x] Wires all real implementations together - Connects ClaudeClient, GeminiClient, TaskDecomposer, DependencyResolver, TimeEstimator, AgentPool, QARunnerFactory, NexusCoordinator, TaskQueue, EventBus, WorktreeManager
+- [x] Provides testing mode with mocks - createForTesting() with mockQA option and createPlanningOnly() for minimal instances
+- [x] Single entry point for creating Nexus - NexusFactory.create() and convenience functions createNexus(), createTestingNexus()
+- [x] Tests pass - 20 tests in src/NexusFactory.test.ts
 
-**[TASK 18 COMPLETE]** <- Mark when done
+**[TASK 18 COMPLETE]** - Completed: NexusFactory with full dependency wiring, testing modes, and 20 passing tests
 
 ---
 
