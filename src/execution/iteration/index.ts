@@ -117,6 +117,34 @@ export {
 } from './EscalationHandler';
 
 // ============================================================================
+// Additional imports for factory function
+// ============================================================================
+
+import type { IterationContext, AgentExecutionResult, QARunner } from './types';
+import type { EscalationHandlerOptions } from './EscalationHandler';
+import type { CommitHandlerOptions } from './IterationCommitHandler';
+import type { DiffFormatOptions } from './GitDiffContextBuilder';
+import type { RalphStyleIterator } from './RalphStyleIterator';
+import type { IFreshContextManager } from '../../orchestration/context/types';
+
+// ============================================================================
+// Factory Function Configuration Type
+// ============================================================================
+
+/**
+ * Configuration for creating a full RalphStyleIterator
+ */
+export interface FullRalphStyleIteratorConfig {
+  projectPath: string;
+  contextManager: IFreshContextManager;
+  agentRunner?: (context: IterationContext) => Promise<AgentExecutionResult>;
+  qaRunner?: QARunner;
+  escalationOptions?: EscalationHandlerOptions;
+  commitOptions?: CommitHandlerOptions;
+  diffOptions?: DiffFormatOptions;
+}
+
+// ============================================================================
 // Factory Function
 // ============================================================================
 
@@ -151,15 +179,9 @@ export {
  * const result = await iterator.execute(task, { maxIterations: 10 });
  * ```
  */
-export function createFullRalphStyleIterator(config: {
-  projectPath: string;
-  contextManager: unknown;
-  agentRunner?: (context: import('./types').IterationContext) => Promise<import('./types').AgentExecutionResult>;
-  qaRunner?: import('./types').QARunner;
-  escalationOptions?: import('./EscalationHandler').EscalationHandlerOptions;
-  commitOptions?: import('./IterationCommitHandler').CommitHandlerOptions;
-  diffOptions?: import('./GitDiffContextBuilder').DiffFormatOptions;
-}): import('./RalphStyleIterator').RalphStyleIterator {
+export function createFullRalphStyleIterator(
+  config: FullRalphStyleIteratorConfig
+): RalphStyleIterator {
   const {
     projectPath,
     contextManager,

@@ -39,7 +39,7 @@ import type {
   GitDiff,
 } from './types';
 import { DEFAULT_ITERATION_OPTIONS } from './types';
-import type { IFreshContextManager, TaskContext } from '../../orchestration/context/types';
+import type { IFreshContextManager } from '../../orchestration/context/types';
 
 // ============================================================================
 // Constants
@@ -303,18 +303,19 @@ export class RalphStyleIterator implements IRalphStyleIterator {
    *
    * @param taskId Task ID to pause
    */
-  async pause(taskId: string): Promise<void> {
+  pause(taskId: string): Promise<void> {
     const entry = this.taskRegistry.get(taskId);
     if (!entry) {
-      throw new Error(`Task not found: ${taskId}`);
+      return Promise.reject(new Error(`Task not found: ${taskId}`));
     }
 
     if (entry.state !== 'running') {
-      throw new Error(`Cannot pause task in state: ${entry.state}`);
+      return Promise.reject(new Error(`Cannot pause task in state: ${entry.state}`));
     }
 
     entry.state = 'paused';
     entry.lastActivity = new Date();
+    return Promise.resolve();
   }
 
   /**
@@ -322,18 +323,19 @@ export class RalphStyleIterator implements IRalphStyleIterator {
    *
    * @param taskId Task ID to resume
    */
-  async resume(taskId: string): Promise<void> {
+  resume(taskId: string): Promise<void> {
     const entry = this.taskRegistry.get(taskId);
     if (!entry) {
-      throw new Error(`Task not found: ${taskId}`);
+      return Promise.reject(new Error(`Task not found: ${taskId}`));
     }
 
     if (entry.state !== 'paused') {
-      throw new Error(`Cannot resume task in state: ${entry.state}`);
+      return Promise.reject(new Error(`Cannot resume task in state: ${entry.state}`));
     }
 
     entry.state = 'running';
     entry.lastActivity = new Date();
+    return Promise.resolve();
   }
 
   /**
@@ -341,18 +343,19 @@ export class RalphStyleIterator implements IRalphStyleIterator {
    *
    * @param taskId Task ID to abort
    */
-  async abort(taskId: string): Promise<void> {
+  abort(taskId: string): Promise<void> {
     const entry = this.taskRegistry.get(taskId);
     if (!entry) {
-      throw new Error(`Task not found: ${taskId}`);
+      return Promise.reject(new Error(`Task not found: ${taskId}`));
     }
 
     if (entry.state === 'completed' || entry.state === 'failed' || entry.state === 'escalated') {
-      throw new Error(`Cannot abort task in state: ${entry.state}`);
+      return Promise.reject(new Error(`Cannot abort task in state: ${entry.state}`));
     }
 
     entry.state = 'aborted';
     entry.lastActivity = new Date();
+    return Promise.resolve();
   }
 
   /**
@@ -425,8 +428,10 @@ export class RalphStyleIterator implements IRalphStyleIterator {
       ? entry.errorAggregator.getUniqueErrors()
       : [];
 
-    // Get last results
-    const lastEntry = entry.history[entry.history.length - 1];
+    // Get last results - history may be empty on first iteration
+    const lastEntry = entry.history.length > 0
+      ? entry.history[entry.history.length - 1]
+      : undefined;
 
     return {
       task,
@@ -435,10 +440,10 @@ export class RalphStyleIterator implements IRalphStyleIterator {
       previousDiff,
       cumulativeDiff,
       previousErrors,
-      lastBuildResult: lastEntry?.buildResult,
-      lastLintResult: lastEntry?.lintResult,
-      lastTestResult: lastEntry?.testResult,
-      lastReviewFeedback: lastEntry?.reviewResult?.comments,
+      lastBuildResult: lastEntry ? lastEntry.buildResult : undefined,
+      lastLintResult: lastEntry ? lastEntry.lintResult : undefined,
+      lastTestResult: lastEntry ? lastEntry.testResult : undefined,
+      lastReviewFeedback: lastEntry?.reviewResult ? lastEntry.reviewResult.comments : undefined,
       taskContext,
     };
   }
@@ -722,10 +727,10 @@ export class RalphStyleIterator implements IRalphStyleIterator {
   /**
    * Get base commit for diff tracking
    */
-  private async getBaseCommit(): Promise<string> {
+  private getBaseCommit(): Promise<string> {
     // For now, return HEAD as base
     // In full implementation, this would get actual current commit
-    return 'HEAD';
+    return Promise.resolve('HEAD');
   }
 
   /**
@@ -819,23 +824,23 @@ export class RalphStyleIterator implements IRalphStyleIterator {
  */
 function createDefaultDiffBuilder(): IGitDiffContextBuilder {
   return {
-    async buildDiffContext(fromCommit: string, toCommit?: string): Promise<GitDiff> {
-      return {
+    buildDiffContext(fromCommit: string, toCommit?: string): Promise<GitDiff> {
+      return Promise.resolve({
         fromCommit,
         toCommit: toCommit || 'HEAD',
         changes: [],
         diffText: '',
         stats: { filesChanged: 0, additions: 0, deletions: 0 },
-      };
+      });
     },
-    async buildCumulativeDiff(baseCommit: string): Promise<GitDiff> {
-      return {
+    buildCumulativeDiff(baseCommit: string): Promise<GitDiff> {
+      return Promise.resolve({
         fromCommit: baseCommit,
         toCommit: 'HEAD',
         changes: [],
         diffText: '',
         stats: { filesChanged: 0, additions: 0, deletions: 0 },
-      };
+      });
     },
     formatDiffForAgent(diff: GitDiff): string {
       return diff.diffText || 'No changes';
@@ -856,7 +861,9 @@ function createDefaultErrorAggregator(): IErrorContextAggregator {
     getUniqueErrors(): ErrorEntry[] {
       const seen = new Set<string>();
       return errors.filter(e => {
-        const key = `${e.type}:${e.file}:${e.line}:${e.message}`;
+        const file = e.file ?? '';
+        const line = e.line !== undefined ? String(e.line) : '';
+        const key = `${e.type}:${file}:${line}:${e.message}`;
         if (seen.has(key)) return false;
         seen.add(key);
         return true;
@@ -867,9 +874,10 @@ function createDefaultErrorAggregator(): IErrorContextAggregator {
     },
     formatErrorsForAgent(): string {
       if (errors.length === 0) return 'No errors';
-      return errors.map(e =>
-        `[${e.type.toUpperCase()}] ${e.file ? `${e.file}:${e.line}` : ''} ${e.message}`
-      ).join('\n');
+      return errors.map(e => {
+        const location = e.file ? `${e.file}:${String(e.line ?? '')}` : '';
+        return `[${e.type.toUpperCase()}] ${location} ${e.message}`;
+      }).join('\n');
     },
     clear(): void {
       errors.length = 0;
@@ -884,19 +892,23 @@ function createDefaultCommitHandler(): IIterationCommitHandler {
   const commits = new Map<string, Map<number, string>>();
 
   return {
-    async commitIteration(taskId: string, iteration: number, message: string): Promise<string> {
+    commitIteration(taskId: string, iteration: number, _message: string): Promise<string> {
       const hash = `commit-${taskId}-${iteration}`;
       if (!commits.has(taskId)) {
         commits.set(taskId, new Map());
       }
-      commits.get(taskId)!.set(iteration, hash);
-      return hash;
+      const taskCommits = commits.get(taskId);
+      if (taskCommits) {
+        taskCommits.set(iteration, hash);
+      }
+      return Promise.resolve(hash);
     },
-    async rollbackToIteration(taskId: string, iteration: number): Promise<void> {
+    rollbackToIteration(_taskId: string, _iteration: number): Promise<void> {
       // No-op for default implementation
+      return Promise.resolve();
     },
     getIterationCommit(taskId: string, iteration: number): string | null {
-      return commits.get(taskId)?.get(iteration) || null;
+      return commits.get(taskId)?.get(iteration) ?? null;
     },
   };
 }
@@ -905,9 +917,9 @@ function createDefaultCommitHandler(): IIterationCommitHandler {
  * Create a default escalation handler (stub for testing)
  */
 function createDefaultEscalationHandler(): IEscalationHandler {
-  return {
+  const handler: IEscalationHandler = {
     async escalate(taskId, reason, context) {
-      const checkpoint = await this.createCheckpoint(taskId);
+      const checkpoint = await handler.createCheckpoint(taskId);
       return {
         taskId,
         reason,
@@ -919,21 +931,23 @@ function createDefaultEscalationHandler(): IEscalationHandler {
         createdAt: new Date(),
       };
     },
-    async createCheckpoint(taskId: string): Promise<string> {
-      return `checkpoint-${taskId}-${Date.now()}`;
+    createCheckpoint(taskId: string): Promise<string> {
+      return Promise.resolve(`checkpoint-${taskId}-${Date.now()}`);
     },
-    async notifyHuman(report): Promise<void> {
+    notifyHuman(report): Promise<void> {
       // No-op for default implementation
       console.log(`[Escalation] Task ${report.taskId} escalated: ${report.reason}`);
+      return Promise.resolve();
     },
   };
+  return handler;
 }
 
 /**
  * Create a default agent runner (stub for testing)
  */
-function createDefaultAgentRunner(): (context: IterationContext) => Promise<AgentExecutionResult> {
-  return async () => ({
+function createDefaultAgentRunner(): (_context: IterationContext) => Promise<AgentExecutionResult> {
+  return () => Promise.resolve({
     success: true,
     filesChanged: [],
     output: 'Default agent execution',
@@ -982,7 +996,7 @@ export function createTestRalphStyleIterator(
 ): RalphStyleIterator {
   // Create mock context manager
   const mockContextManager: IFreshContextManager = options.contextManager ?? {
-    buildFreshContext: async (task) => ({
+    buildFreshContext: (task) => Promise.resolve({
       repoMap: 'mock repo map',
       codebaseDocs: {
         architectureSummary: 'mock summary',

@@ -545,7 +545,7 @@ function createRealGitExecutor(projectPath: string): IGitExecutor {
           stdio: ['pipe', 'pipe', 'pipe'],
         });
         return result.trim();
-      } catch (error) {
+      } catch {
         // Return placeholder if not in a git repo
         return 'HEAD';
       }
@@ -587,25 +587,25 @@ export function createMockGitExecutor(mockResponses?: {
   };
 
   return {
-    async run(args: string[]): Promise<string> {
+    run(args: string[]): Promise<string> {
       // Check for diff command
       if (args.includes('diff')) {
         if (args.includes('--stat') || args.includes('--numstat')) {
-          return responses.statsOutput ?? '';
+          return Promise.resolve(responses.statsOutput ?? '');
         }
-        return responses.diffOutput ?? '';
+        return Promise.resolve(responses.diffOutput ?? '');
       }
 
       // Default empty response
-      return '';
+      return Promise.resolve('');
     },
 
-    async getHeadCommit(): Promise<string> {
-      return responses.headCommit ?? 'abc1234567890';
+    getHeadCommit(): Promise<string> {
+      return Promise.resolve(responses.headCommit ?? 'abc1234567890');
     },
 
-    async hasUncommittedChanges(): Promise<boolean> {
-      return responses.hasChanges ?? false;
+    hasUncommittedChanges(): Promise<boolean> {
+      return Promise.resolve(responses.hasChanges ?? false);
     },
   };
 }

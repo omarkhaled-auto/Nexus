@@ -262,8 +262,11 @@ export class EscalationHandler implements IEscalationHandler {
       case 'agent_request':
         return `The agent working on task "${taskName}" explicitly requested human assistance after ${iterations} iterations.`;
 
-      default:
-        return `Task "${taskName}" was escalated after ${iterations} iterations due to: ${reason}`;
+      default: {
+        // Exhaustive check - this should never happen if all cases are covered
+        const _exhaustiveCheck: never = reason;
+        return `Task "${taskName}" was escalated after ${iterations} iterations due to: ${String(_exhaustiveCheck)}`;
+      }
     }
   }
 
@@ -693,17 +696,17 @@ export function createMockEscalationGitExecutor(mockState?: {
   return {
     commands: state.commands,
 
-    async run(args: string[]): Promise<string> {
+    run(args: string[]): Promise<string> {
       state.commands.push(args);
-      return '';
+      return Promise.resolve('');
     },
 
-    async getHeadCommit(): Promise<string> {
-      return state.headCommit;
+    getHeadCommit(): Promise<string> {
+      return Promise.resolve(state.headCommit);
     },
 
-    async hasUncommittedChanges(): Promise<boolean> {
-      return state.hasChanges;
+    hasUncommittedChanges(): Promise<boolean> {
+      return Promise.resolve(state.hasChanges);
     },
   };
 }
@@ -723,16 +726,18 @@ export function createMockFileSystem(mockState?: {
   return {
     writtenFiles: state.writtenFiles,
 
-    async mkdir(path: string, _options?: { recursive?: boolean }): Promise<void> {
+    mkdir(path: string, _options?: { recursive?: boolean }): Promise<void> {
       state.existingPaths.add(path);
+      return Promise.resolve();
     },
 
-    async writeFile(path: string, content: string): Promise<void> {
+    writeFile(path: string, content: string): Promise<void> {
       state.writtenFiles.set(path, content);
+      return Promise.resolve();
     },
 
-    async exists(path: string): Promise<boolean> {
-      return state.existingPaths.has(path);
+    exists(path: string): Promise<boolean> {
+      return Promise.resolve(state.existingPaths.has(path));
     },
   };
 }

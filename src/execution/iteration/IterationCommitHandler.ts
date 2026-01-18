@@ -364,7 +364,10 @@ export class IterationCommitHandler implements IIterationCommitHandler {
     if (!this.commitRegistry.has(taskId)) {
       this.commitRegistry.set(taskId, []);
     }
-    this.commitRegistry.get(taskId)!.push(entry);
+    const entries = this.commitRegistry.get(taskId);
+    if (entries) {
+      entries.push(entry);
+    }
   }
 }
 
@@ -462,60 +465,61 @@ export function createMockCommitExecutor(mockState?: {
   return {
     commands: state.commands,
 
-    async run(args: string[]): Promise<string> {
+    run(args: string[]): Promise<string> {
       state.commands.push(args);
 
       // Check if this command should error
-      if (state.errorOnCommand && args.some(a => state.errorOnCommand!.includes(a))) {
-        throw new Error(`Mock error for command: git ${args.join(' ')}`);
+      const errorCmd = state.errorOnCommand;
+      if (errorCmd && args.some(a => errorCmd.includes(a))) {
+        return Promise.reject(new Error(`Mock error for command: git ${args.join(' ')}`));
       }
 
       // Handle specific commands
       if (args[0] === 'rev-parse' && args[1] === 'HEAD') {
         // After commit, update HEAD
         if (state.commands.some(c => c[0] === 'commit')) {
-          return state.commitResult;
+          return Promise.resolve(state.commitResult);
         }
-        return state.headCommit;
+        return Promise.resolve(state.headCommit);
       }
 
       if (args[0] === 'add' && args[1] === '-A') {
-        return '';
+        return Promise.resolve('');
       }
 
       if (args[0] === 'commit') {
-        return '';
+        return Promise.resolve('');
       }
 
       if (args[0] === 'tag') {
-        return '';
+        return Promise.resolve('');
       }
 
       if (args[0] === 'reset') {
-        return '';
+        return Promise.resolve('');
       }
 
       if (args[0] === 'clean') {
-        return '';
+        return Promise.resolve('');
       }
 
       if (args[0] === 'status' && args[1] === '--porcelain') {
-        return state.hasChanges ? 'M file.txt' : '';
+        return Promise.resolve(state.hasChanges ? 'M file.txt' : '');
       }
 
-      return '';
+      return Promise.resolve('');
     },
 
-    async getHeadCommit(): Promise<string> {
+    getHeadCommit(): Promise<string> {
       // After commit, return the new commit hash
       if (state.commands.some(c => c[0] === 'commit')) {
-        return state.commitResult;
+        return Promise.resolve(state.commitResult);
       }
-      return state.headCommit;
+      return Promise.resolve(state.headCommit);
     },
 
-    async hasUncommittedChanges(): Promise<boolean> {
-      return state.hasChanges;
+    hasUncommittedChanges(): Promise<boolean> {
+      return Promise.resolve(state.hasChanges);
     },
   };
 }

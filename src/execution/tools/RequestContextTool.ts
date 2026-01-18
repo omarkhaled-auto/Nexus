@@ -239,9 +239,13 @@ export class RequestContextToolHandler {
 
   /**
    * Validate tool parameters
+   * Note: We validate at runtime because params come from external sources (LLMs)
    */
   private validateParams(params: RequestContextParams): string | null {
-    if (!params.request_type) {
+    // Cast to unknown for runtime validation since input comes from external source
+    const rawParams = params as unknown as Record<string, unknown>;
+
+    if (!rawParams.request_type) {
       return 'request_type is required';
     }
 
