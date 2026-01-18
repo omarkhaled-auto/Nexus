@@ -1,44 +1,50 @@
-# Plans 13-05 & 13-06: Dynamic Context Provider + Ralph-Style Iterator
+# Plans 13-07 & 13-08: Dynamic Replanner + Self-Assessment Engine
 
 ## Context
 - **Phase:** 13 - Context Enhancement & Level 4.0 Automation
-- **Plans:** 13-05 (Dynamic Context Provider) + 13-06 (Ralph-Style Iterator)
-- **Purpose:** Enable agents to request additional context mid-task and implement persistent git-based iteration loops
+- **Plans:** 13-07 (Dynamic Replanner) + 13-08 (Self-Assessment Engine)
+- **Purpose:** Detect task complexity and trigger replanning; enable agents to assess their own progress and blockers
 - **Input:**
-  - `PHASE_13_CONTEXT_ENHANCEMENT_PLAN.md` (Plans 13-05 and 13-06 sections)
+  - `PHASE_13_CONTEXT_ENHANCEMENT_PLAN.md` (Plans 13-07 and 13-08 sections)
   - `src/orchestration/context/` (FreshContextManager from Plan 13-04)
+  - `src/execution/iteration/` (RalphStyleIterator from Plan 13-06)
   - `src/persistence/memory/code/` (CodeMemory from Plan 13-03)
-  - `src/infrastructure/analysis/` (RepoMapGenerator from Plan 13-01)
+  - `05_ARCHITECTURE_BLUEPRINT.md` (Nexus 7-layer architecture)
   - `07_NEXUS_MASTER_BOOK.md` (architecture reference)
 - **Output:**
-  - `src/orchestration/context/dynamic/` - Dynamic Context Provider module
-  - `src/execution/iteration/` - Ralph-Style Iterator module
-- **Philosophy:** Agents should be able to request more context when needed, and iterate persistently on tasks using git diffs to see their previous work.
+  - `src/orchestration/planning/` - Dynamic Replanner module
+  - `src/orchestration/assessment/` - Self-Assessment Engine module
+- **Philosophy:** When tasks prove more complex than estimated, the system should detect this and adapt. Agents should be able to evaluate their own progress and identify blockers.
 
 ## Pre-Requisites
-- [x] Verify Plan 13-04 complete: `src/orchestration/context/` exists with FreshContextManager
-- [x] Verify Plan 13-03 complete: `src/persistence/memory/code/` exists with CodeMemory
-- [x] Verify Plan 13-01 complete: `src/infrastructure/analysis/` exists with RepoMapGenerator
-- [ ] Read `PHASE_13_CONTEXT_ENHANCEMENT_PLAN.md` - Plans 13-05 and 13-06 sections
-- [x] Review existing `src/execution/` for execution layer patterns
-- [x] Check for existing GitService in the codebase (found at src/infrastructure/git/GitService.ts)
+- [ ] Verify Plan 13-04 complete: `src/orchestration/context/` exists with FreshContextManager
+- [ ] Verify Plan 13-06 complete: `src/execution/iteration/` exists with RalphStyleIterator
+- [ ] Verify Plan 13-03 complete: `src/persistence/memory/code/` exists with CodeMemory
+- [ ] Verify Plan 13-01 complete: `src/infrastructure/analysis/` exists with RepoMapGenerator
+- [ ] Read `PHASE_13_CONTEXT_ENHANCEMENT_PLAN.md` - Plans 13-07 and 13-08 sections
+- [ ] Review existing `src/orchestration/` for orchestration patterns
+- [ ] Check for existing NexusCoordinator, TaskDecomposer patterns
 
 ## Dependencies on Previous Plans
 
 This combined plan uses:
 ```typescript
 // From Plan 13-01
-import { RepoMapGenerator, SymbolEntry } from '../infrastructure/analysis';
+import { RepoMapGenerator } from '../infrastructure/analysis';
 
 // From Plan 13-03
-import { CodeMemory, CodeSearchResult } from '../persistence/memory/code';
+import { CodeMemory } from '../persistence/memory/code';
 
 // From Plan 13-04
+import { FreshContextManager, TaskContext } from '../orchestration/context';
+
+// From Plan 13-06
 import { 
-  FreshContextManager, 
-  TaskContext, 
-  FileContent 
-} from '../orchestration/context';
+  RalphStyleIterator, 
+  IterationContext, 
+  IterationStatus,
+  ErrorEntry 
+} from '../execution/iteration';
 ```
 
 ---
@@ -48,1326 +54,1326 @@ import {
 This combined plan has **14 tasks** in 4 parts:
 
 ```
-PART 1: DYNAMIC CONTEXT PROVIDER (Plan 13-05)
-=============================================
-Task 1: Types & Interfaces --------------> [COMPLETE]
-Task 2: DynamicContextProvider Core -----> [COMPLETE]
-Task 3: File Request Handler ------------> [COMPLETE]
-Task 4: Symbol Request Handler ----------> [COMPLETE]
-Task 5: Search Request Handler ----------> [COMPLETE]
-Task 6: Agent Tool Integration ----------> [COMPLETE]
+PART 1: DYNAMIC REPLANNER (Plan 13-07)
+======================================
+Task 1: Replanner Types & Interfaces ----> [TASK 1 COMPLETE - types.ts created]
+Task 2: DynamicReplanner Core -----------> [IN PROGRESS]
+Task 3: Trigger Evaluators --------------> [PENDING]
+Task 4: Task Splitter -------------------> [PENDING]
+Task 5: Agent Replan Request Tool -------> [PENDING]
+Task 6: Coordinator Integration ---------> [PENDING]
 
-PART 2: RALPH-STYLE ITERATOR (Plan 13-06)
-=========================================
-Task 7: Iterator Types & Interfaces -----> [COMPLETE]
-Task 8: RalphStyleIterator Core ---------> [COMPLETE]
-Task 9: Git Diff Context Builder --------> [COMPLETE]
-Task 10: Error Context Aggregator -------> [COMPLETE]
-Task 11: Iteration Commit Handler -------> [COMPLETE]
-Task 12: Escalation Handler -------------> [COMPLETE]
+PART 2: SELF-ASSESSMENT ENGINE (Plan 13-08)
+==========================================
+Task 7: Assessment Types & Interfaces ---> [PENDING]
+Task 8: SelfAssessmentEngine Core -------> [PENDING]
+Task 9: Progress Assessor ---------------> [PENDING]
+Task 10: Blocker Detector ---------------> [PENDING]
+Task 11: Approach Evaluator -------------> [PENDING]
+Task 12: Historical Learner -------------> [PENDING]
 
 PART 3: INTEGRATION
 ===================
-Task 13: Cross-Module Integration -------> [COMPLETE]
+Task 13: Cross-Module Integration -------> [PENDING]
 
 PART 4: FINAL VERIFICATION
 ==========================
-Task 14: Lint & Quality Check -----------> [COMPLETE]
+Task 14: Lint & Quality Check -----------> [PENDING]
 ```
 
 ---
 
 # ============================================================================
-# PART 1: DYNAMIC CONTEXT PROVIDER (Plan 13-05)
+# PART 1: DYNAMIC REPLANNER (Plan 13-07)
 # ============================================================================
 
-# Task 1: Types & Interfaces
+# Task 1: Replanner Types & Interfaces
 
 ## Objective
-Define all TypeScript interfaces and types for the Dynamic Context Provider system.
+Define all TypeScript interfaces and types for the Dynamic Replanner system.
 
 ## Requirements
 
 ### Part A: Create Directory Structure
-- [ ] Create directory: `src/orchestration/context/dynamic/`
-- [ ] This module extends the existing context module from Plan 13-04
+- [ ] Create directory: `src/orchestration/planning/`
+- [ ] Create subdirectory: `src/orchestration/planning/triggers/`
+- [ ] This module lives in Layer 2 (Orchestration) / Layer 3 (Planning)
 
 ### Part B: Create Types File
-Create `src/orchestration/context/dynamic/types.ts`:
+Create `src/orchestration/planning/types.ts`:
 
-- [ ] **ContextRequestType Type**
+- [ ] **ReplanTrigger Type**
   ```typescript
-  type ContextRequestType = 'file' | 'symbol' | 'search' | 'usages' | 'definition';
+  type ReplanTrigger = 
+    | 'time_exceeded'
+    | 'iterations_high'
+    | 'scope_creep'
+    | 'complexity_discovered'
+    | 'dependency_discovered'
+    | 'blocking_issue'
+    | 'agent_request';
   ```
 
-- [ ] **ContextRequest Interface**
+- [ ] **ReplanAction Type**
   ```typescript
-  interface ContextRequest {
-    type: ContextRequestType;
-    query: string;
-    agentId: string;
+  type ReplanAction = 'continue' | 'split' | 'rescope' | 'escalate' | 'abort';
+  ```
+
+- [ ] **TriggerThresholds Interface**
+  ```typescript
+  interface TriggerThresholds {
+    timeExceededRatio: number;      // Default: 1.5 (150% of estimate)
+    iterationsRatio: number;        // Default: 0.4 (40% of max)
+    scopeCreepFiles: number;        // Default: 3 extra files
+    consecutiveFailures: number;    // Default: 5
+    complexityKeywords: string[];   // Words indicating complexity
+  }
+  ```
+
+- [ ] **DEFAULT_TRIGGER_THRESHOLDS Constant**
+  ```typescript
+  const DEFAULT_TRIGGER_THRESHOLDS: TriggerThresholds = {
+    timeExceededRatio: 1.5,
+    iterationsRatio: 0.4,
+    scopeCreepFiles: 3,
+    consecutiveFailures: 5,
+    complexityKeywords: ['refactor', 'rewrite', 'complex', 'difficult', 'blocked'],
+  };
+  ```
+
+- [ ] **ExecutionContext Interface**
+  ```typescript
+  interface ExecutionContext {
     taskId: string;
-    reason: string;
-    options?: ContextRequestOptions;
+    taskName: string;
+    estimatedTime: number;
+    timeElapsed: number;
+    iteration: number;
+    maxIterations: number;
+    filesExpected: string[];
+    filesModified: string[];
+    errors: ErrorEntry[];
+    consecutiveFailures: number;
+    agentFeedback?: string;
+  }
+  ```
+
+- [ ] **ReplanMetrics Interface**
+  ```typescript
+  interface ReplanMetrics {
+    timeElapsed: number;
+    estimatedTime: number;
+    timeRatio: number;
+    iterations: number;
+    maxIterations: number;
+    iterationRatio: number;
+    filesModified: number;
+    filesExpected: number;
+    scopeCreepCount: number;
+    errorsEncountered: number;
+    consecutiveFailures: number;
+  }
+  ```
+
+- [ ] **ReplanReason Interface**
+  ```typescript
+  interface ReplanReason {
+    trigger: ReplanTrigger;
+    details: string;
+    metrics: ReplanMetrics;
+    confidence: number;
+  }
+  ```
+
+- [ ] **ReplanDecision Interface**
+  ```typescript
+  interface ReplanDecision {
+    shouldReplan: boolean;
+    reason?: ReplanReason;
+    suggestedAction: ReplanAction;
+    confidence: number;
     timestamp: Date;
   }
   ```
 
-- [ ] **ContextRequestOptions Interface**
+- [ ] **ReplanResult Interface**
   ```typescript
-  interface ContextRequestOptions {
-    maxTokens?: number;
-    includeContext?: boolean;
-    depth?: number;
-    filePattern?: string;
-    limit?: number;
-  }
-  ```
-
-- [ ] **DEFAULT_REQUEST_OPTIONS Constant**
-  ```typescript
-  const DEFAULT_REQUEST_OPTIONS: Required<ContextRequestOptions> = {
-    maxTokens: 10000,
-    includeContext: true,
-    depth: 1,
-    filePattern: '**/*',
-    limit: 10,
-  };
-  ```
-
-- [ ] **ContextResponse Interface**
-  ```typescript
-  interface ContextResponse {
+  interface ReplanResult {
     success: boolean;
-    requestId: string;
-    type: ContextRequestType;
-    content: string;
-    tokenCount: number;
-    source: string;
-    metadata?: Record<string, unknown>;
-    error?: string;
+    action: ReplanAction;
+    originalTask: Task;
+    newTasks?: Task[];
+    message: string;
+    metrics: ReplanMetrics;
   }
   ```
 
-- [ ] **SymbolContext Interface**
+- [ ] **Task Interface** (if not already defined elsewhere)
   ```typescript
-  interface SymbolContext {
+  interface Task {
+    id: string;
     name: string;
-    kind: 'function' | 'class' | 'interface' | 'type' | 'variable' | 'method';
-    file: string;
-    line: number;
-    column: number;
-    signature: string;
-    documentation?: string;
-    usages: SymbolUsage[];
-    relatedSymbols: string[];
+    description: string;
+    files: string[];
+    estimatedTime: number;
+    dependencies: string[];
+    acceptanceCriteria: string[];
+    status: TaskStatus;
+    parentTaskId?: string;
   }
   ```
 
-- [ ] **SymbolUsage Interface**
+- [ ] **TaskStatus Type**
   ```typescript
-  interface SymbolUsage {
-    file: string;
-    line: number;
-    column: number;
-    context: string;
-    usageType: 'call' | 'import' | 'reference' | 'assignment' | 'type_reference';
-  }
+  type TaskStatus = 'pending' | 'in_progress' | 'completed' | 'failed' | 'split' | 'escalated';
   ```
 
-- [ ] **SearchResults Interface**
+- [ ] **MonitoredTask Interface**
   ```typescript
-  interface SearchResults {
-    query: string;
-    results: SearchResultItem[];
-    totalMatches: number;
-    truncated: boolean;
-    tokenCount: number;
-  }
-  ```
-
-- [ ] **SearchResultItem Interface**
-  ```typescript
-  interface SearchResultItem {
-    file: string;
-    startLine: number;
-    endLine: number;
-    content: string;
-    score: number;
-    highlights?: string[];
-  }
-  ```
-
-- [ ] **AgentRegistration Interface**
-  ```typescript
-  interface AgentRegistration {
-    agentId: string;
+  interface MonitoredTask {
     taskId: string;
-    tokenBudget: number;
-    usedTokens: number;
-    requests: ContextRequest[];
-    registeredAt: Date;
+    startedAt: Date;
+    context: ExecutionContext;
+    decisions: ReplanDecision[];
+    isActive: boolean;
   }
   ```
 
-- [ ] **IDynamicContextProvider Interface**
+- [ ] **IDynamicReplanner Interface**
   ```typescript
-  interface IDynamicContextProvider {
-    // Registration
-    registerAgent(agentId: string, taskId: string, tokenBudget?: number): void;
-    unregisterAgent(agentId: string): void;
+  interface IDynamicReplanner {
+    // Monitoring
+    startMonitoring(taskId: string, context: ExecutionContext): void;
+    stopMonitoring(taskId: string): void;
+    updateContext(taskId: string, context: Partial<ExecutionContext>): void;
     
-    // Context requests
-    requestFile(agentId: string, filePath: string, reason: string): Promise<ContextResponse>;
-    requestSymbol(agentId: string, symbolName: string, reason: string): Promise<ContextResponse>;
-    requestSearch(agentId: string, query: string, reason: string): Promise<ContextResponse>;
-    requestUsages(agentId: string, symbolName: string, reason: string): Promise<ContextResponse>;
-    requestDefinition(agentId: string, symbolName: string, reason: string): Promise<ContextResponse>;
+    // Evaluation
+    checkReplanningNeeded(taskId: string): ReplanDecision;
+    evaluateAllTriggers(context: ExecutionContext): ReplanDecision;
     
-    // Batch requests
-    requestFiles(agentId: string, filePaths: string[], reason: string): Promise<ContextResponse[]>;
-    request(agentId: string, request: Omit<ContextRequest, 'agentId' | 'taskId' | 'timestamp'>): Promise<ContextResponse>;
+    // Actions
+    replan(taskId: string, reason: ReplanReason): Promise<ReplanResult>;
+    handleAgentRequest(taskId: string, request: AgentReplanRequest): Promise<ReplanDecision>;
     
-    // Budget tracking
-    getRemainingBudget(agentId: string): number;
-    getUsedTokens(agentId: string): number;
-    getRequestHistory(agentId: string): ContextRequest[];
+    // Configuration
+    setThresholds(thresholds: Partial<TriggerThresholds>): void;
+    getThresholds(): TriggerThresholds;
+    
+    // Status
+    getMonitoredTasks(): MonitoredTask[];
+    getDecisionHistory(taskId: string): ReplanDecision[];
   }
   ```
 
-- [ ] **IRequestHandler Interface**
+- [ ] **ITriggerEvaluator Interface**
   ```typescript
-  interface IRequestHandler {
-    canHandle(type: ContextRequestType): boolean;
-    handle(request: ContextRequest): Promise<ContextResponse>;
+  interface ITriggerEvaluator {
+    readonly trigger: ReplanTrigger;
+    evaluate(context: ExecutionContext, thresholds: TriggerThresholds): TriggerResult;
+  }
+  ```
+
+- [ ] **TriggerResult Interface**
+  ```typescript
+  interface TriggerResult {
+    triggered: boolean;
+    trigger: ReplanTrigger;
+    confidence: number;
+    details: string;
+    metrics: Partial<ReplanMetrics>;
+  }
+  ```
+
+- [ ] **ITaskSplitter Interface**
+  ```typescript
+  interface ITaskSplitter {
+    canSplit(task: Task, reason: ReplanReason): boolean;
+    split(task: Task, reason: ReplanReason): Promise<Task[]>;
+    estimateSubtasks(task: Task): number;
+  }
+  ```
+
+- [ ] **AgentReplanRequest Interface**
+  ```typescript
+  interface AgentReplanRequest {
+    taskId: string;
+    agentId: string;
+    reason: string;
+    suggestion?: string;
+    blockers?: string[];
+    complexityDetails?: string;
   }
   ```
 
 - [ ] Export all types
 
 ### Task 1 Completion Checklist
-- [x] Directory `src/orchestration/context/dynamic/` created
-- [x] `types.ts` created with all interfaces (~300 lines - comprehensive)
-- [x] All types properly exported
-- [x] TypeScript compiles (no new errors introduced)
+- [ ] Directory `src/orchestration/planning/` created
+- [ ] Subdirectory `src/orchestration/planning/triggers/` created
+- [ ] `types.ts` created with all interfaces (~300 lines)
+- [ ] All types properly exported
+- [ ] TypeScript compiles
 
-**[TASK 1 COMPLETE]** - Types and interfaces created, proceeding to Task 2
+**[TASK 1 COMPLETE]** <- Mark when done, proceed to Task 2
 
 ---
 
-# Task 2: DynamicContextProvider Core
+# Task 2: DynamicReplanner Core
 
 ## Objective
-Implement the main DynamicContextProvider class that manages agent context requests.
+Implement the main DynamicReplanner class that monitors tasks and triggers replanning.
 
 ## Requirements
 
-### Part A: Create DynamicContextProvider Class
-Create `src/orchestration/context/dynamic/DynamicContextProvider.ts`:
+### Part A: Create DynamicReplanner Class
+Create `src/orchestration/planning/DynamicReplanner.ts`:
 
-- [ ] **DynamicContextProvider Class** implementing IDynamicContextProvider
+- [ ] **DynamicReplanner Class** implementing IDynamicReplanner
 
 - [ ] **Constructor**
-  - [ ] Accept array of IRequestHandler implementations
-  - [ ] Accept optional default token budget (default: 50000)
-  - [ ] Initialize agent registry Map
-  - [ ] Initialize request counter for IDs
+  - [ ] Accept array of ITriggerEvaluator implementations
+  - [ ] Accept ITaskSplitter
+  - [ ] Accept optional thresholds (default to DEFAULT_TRIGGER_THRESHOLDS)
+  - [ ] Initialize monitored tasks Map
+  - [ ] Initialize decision history Map
 
-- [ ] **registerAgent(agentId, taskId, tokenBudget?) Method**
-  - [ ] Create AgentRegistration record
-  - [ ] Store in registry
-  - [ ] Log registration
+- [ ] **startMonitoring(taskId, context) Method**
+  - [ ] Create MonitoredTask record
+  - [ ] Store in monitored tasks Map
+  - [ ] Log monitoring started
 
-- [ ] **unregisterAgent(agentId) Method**
-  - [ ] Remove from registry
-  - [ ] Log unregistration with stats (requests made, tokens used)
+- [ ] **stopMonitoring(taskId) Method**
+  - [ ] Mark task as inactive
+  - [ ] Keep decision history
+  - [ ] Log monitoring stopped
 
-- [ ] **requestFile(agentId, filePath, reason) Method**
-  - [ ] Validate agent is registered
-  - [ ] Check budget
-  - [ ] Create ContextRequest
-  - [ ] Route to appropriate handler
-  - [ ] Track tokens used
-  - [ ] Return ContextResponse
+- [ ] **updateContext(taskId, partialContext) Method**
+  - [ ] Merge with existing context
+  - [ ] Automatically call checkReplanningNeeded
+  - [ ] Return updated decision if triggered
 
-- [ ] **requestSymbol(agentId, symbolName, reason) Method**
-  - [ ] Same pattern as requestFile
-  - [ ] Route to symbol handler
+- [ ] **checkReplanningNeeded(taskId) Method**
+  - [ ] Get task context
+  - [ ] Call evaluateAllTriggers
+  - [ ] Store decision in history
+  - [ ] Return ReplanDecision
 
-- [ ] **requestSearch(agentId, query, reason) Method**
-  - [ ] Same pattern
-  - [ ] Route to search handler
+- [ ] **evaluateAllTriggers(context) Method**
+  - [ ] Run all trigger evaluators
+  - [ ] Collect triggered results
+  - [ ] Determine highest priority trigger
+  - [ ] Calculate combined confidence
+  - [ ] Determine suggested action
+  - [ ] Return ReplanDecision
 
-- [ ] **requestUsages(agentId, symbolName, reason) Method**
-  - [ ] Same pattern
-  - [ ] Route to usages handler
+- [ ] **replan(taskId, reason) Method**
+  - [ ] Based on suggested action:
+    - 'split': Call TaskSplitter
+    - 'rescope': Modify task scope
+    - 'escalate': Pause and notify
+    - 'abort': Mark task failed
+    - 'continue': No action
+  - [ ] Update task status
+  - [ ] Return ReplanResult
 
-- [ ] **requestDefinition(agentId, symbolName, reason) Method**
-  - [ ] Same pattern
-  - [ ] Route to definition handler
+- [ ] **handleAgentRequest(taskId, request) Method**
+  - [ ] Create agent_request trigger result
+  - [ ] Evaluate combined with current context
+  - [ ] Return ReplanDecision
 
-- [ ] **requestFiles(agentId, filePaths[], reason) Method**
-  - [ ] Batch request for multiple files
-  - [ ] Check combined budget
-  - [ ] Return array of responses
+- [ ] **setThresholds(thresholds) Method**
+  - [ ] Merge with current thresholds
 
-- [ ] **request(agentId, request) Method** - Generic request method
-  - [ ] Validate agent
-  - [ ] Check budget
-  - [ ] Find handler for request type
-  - [ ] Execute and track
-  - [ ] Return response
+- [ ] **getThresholds() Method**
+  - [ ] Return current thresholds
 
-- [ ] **getRemainingBudget(agentId) Method**
-  - [ ] Return tokenBudget - usedTokens
-  - [ ] Return 0 if not registered
+- [ ] **getMonitoredTasks() Method**
+  - [ ] Return array of MonitoredTask
 
-- [ ] **getUsedTokens(agentId) Method**
-  - [ ] Return usedTokens from registration
-  - [ ] Return 0 if not registered
-
-- [ ] **getRequestHistory(agentId) Method**
-  - [ ] Return requests array from registration
-  - [ ] Return empty array if not registered
+- [ ] **getDecisionHistory(taskId) Method**
+  - [ ] Return decisions for task
 
 **Private Helper Methods:**
-- [ ] **validateAgent(agentId) Private Method**
-  - [ ] Check agent is registered
-  - [ ] Throw error if not
+- [ ] **determineSuggestedAction(triggers) Private Method**
+  - [ ] If blocking_issue or agent_request with blockers -> 'escalate'
+  - [ ] If scope_creep or complexity_discovered -> 'split'
+  - [ ] If time_exceeded or iterations_high -> 'split' or 'rescope'
+  - [ ] Otherwise -> 'continue'
 
-- [ ] **checkBudget(agentId, estimatedTokens) Private Method**
-  - [ ] Check if request would exceed budget
-  - [ ] Return boolean
+- [ ] **calculateCombinedConfidence(triggers) Private Method**
+  - [ ] Average confidence of triggered evaluators
+  - [ ] Weight by trigger severity
 
-- [ ] **findHandler(type) Private Method**
-  - [ ] Find handler that can handle request type
-  - [ ] Throw if no handler found
-
-- [ ] **trackRequest(agentId, request, response) Private Method**
-  - [ ] Add request to history
-  - [ ] Update usedTokens
-
-- [ ] **generateRequestId() Private Method**
-  - [ ] Generate unique request ID
+- [ ] **findHighestPriorityTrigger(triggers) Private Method**
+  - [ ] Priority: blocking_issue > agent_request > scope_creep > time_exceeded > iterations_high
 
 ### Part B: Create Tests
-Create `src/orchestration/context/dynamic/DynamicContextProvider.test.ts`:
+Create `src/orchestration/planning/DynamicReplanner.test.ts`:
 
-- [ ] Test agent registration
-- [ ] Test agent unregistration
-- [ ] Test request routing
-- [ ] Test budget tracking
-- [ ] Test budget enforcement
-- [ ] Test request history
-- [ ] Test unregistered agent handling
+- [ ] Test monitoring start/stop
+- [ ] Test context updates
+- [ ] Test trigger evaluation
+- [ ] Test replan decision making
+- [ ] Test agent request handling
+- [ ] Test threshold configuration
 
 ### Task 2 Completion Checklist
-- [x] `DynamicContextProvider.ts` created (~300 lines) - 440 lines total
-- [x] `DynamicContextProvider.test.ts` created (~200 lines) - 340 lines total
-- [x] All tests pass (32/32 tests)
-- [x] TypeScript compiles (no errors in our files)
+- [ ] `DynamicReplanner.ts` created (~350 lines)
+- [ ] `DynamicReplanner.test.ts` created (~200 lines)
+- [ ] All tests pass
+- [ ] TypeScript compiles
 
-**[TASK 2 COMPLETE]** - Proceeding to Task 3
+**[TASK 2 COMPLETE]** <- Mark when done, proceed to Task 3
 
 ---
 
-# Task 3: File Request Handler
+# Task 3: Trigger Evaluators
 
 ## Objective
-Implement handler for file content requests.
+Implement individual trigger evaluators for each replan trigger type.
 
 ## Requirements
 
-### Part A: Create Handlers Directory
-- [ ] Create directory: `src/orchestration/context/dynamic/handlers/`
+### Part A: Create TimeExceededTrigger
+Create `src/orchestration/planning/triggers/TimeExceededTrigger.ts`:
 
-### Part B: Create FileRequestHandler Class
-Create `src/orchestration/context/dynamic/handlers/FileRequestHandler.ts`:
+- [ ] **TimeExceededTrigger Class** implementing ITriggerEvaluator
+- [ ] `trigger` property returns 'time_exceeded'
+- [ ] **evaluate(context, thresholds) Method**
+  - [ ] Calculate timeRatio = timeElapsed / estimatedTime
+  - [ ] If timeRatio > thresholds.timeExceededRatio -> triggered
+  - [ ] Calculate confidence based on how much over
+  - [ ] Return TriggerResult
 
-- [ ] **FileRequestHandler Class** implementing IRequestHandler
+### Part B: Create IterationsTrigger
+Create `src/orchestration/planning/triggers/IterationsTrigger.ts`:
 
-- [ ] **Constructor**
-  - [ ] Accept FileSystemService or similar for file access
-  - [ ] Accept project root path
+- [ ] **IterationsTrigger Class** implementing ITriggerEvaluator
+- [ ] `trigger` property returns 'iterations_high'
+- [ ] **evaluate(context, thresholds) Method**
+  - [ ] Calculate iterationRatio = iteration / maxIterations
+  - [ ] If iterationRatio > thresholds.iterationsRatio -> triggered
+  - [ ] Higher confidence as ratio approaches 1.0
+  - [ ] Return TriggerResult
 
-- [ ] **canHandle(type) Method**
-  - [ ] Return true for 'file' type
+### Part C: Create ScopeCreepTrigger
+Create `src/orchestration/planning/triggers/ScopeCreepTrigger.ts`:
 
-- [ ] **handle(request) Method**
-  - [ ] Extract file path from request.query
-  - [ ] Resolve path relative to project root
-  - [ ] Check file exists
-  - [ ] Read file content
-  - [ ] Truncate if exceeds maxTokens
-  - [ ] Return ContextResponse with content
+- [ ] **ScopeCreepTrigger Class** implementing ITriggerEvaluator
+- [ ] `trigger` property returns 'scope_creep'
+- [ ] **evaluate(context, thresholds) Method**
+  - [ ] Find files modified that weren't expected
+  - [ ] If count > thresholds.scopeCreepFiles -> triggered
+  - [ ] List unexpected files in details
+  - [ ] Return TriggerResult
 
-- [ ] **resolveFilePath(query) Private Method**
-  - [ ] Handle relative and absolute paths
-  - [ ] Normalize path separators
-  - [ ] Validate path is within project
+### Part D: Create ConsecutiveFailuresTrigger
+Create `src/orchestration/planning/triggers/ConsecutiveFailuresTrigger.ts`:
 
-- [ ] **readFileContent(filePath) Private Method**
-  - [ ] Read file as UTF-8
-  - [ ] Handle read errors
+- [ ] **ConsecutiveFailuresTrigger Class** implementing ITriggerEvaluator
+- [ ] `trigger` property returns 'blocking_issue'
+- [ ] **evaluate(context, thresholds) Method**
+  - [ ] If consecutiveFailures > thresholds.consecutiveFailures -> triggered
+  - [ ] Analyze error patterns
+  - [ ] Return TriggerResult
 
-- [ ] **truncateContent(content, maxTokens) Private Method**
-  - [ ] Estimate tokens
-  - [ ] Truncate at line boundary if over
-  - [ ] Add truncation indicator
+### Part E: Create ComplexityTrigger
+Create `src/orchestration/planning/triggers/ComplexityTrigger.ts`:
 
-- [ ] **estimateTokens(content) Private Method**
-  - [ ] Return Math.ceil(content.length / 4)
+- [ ] **ComplexityTrigger Class** implementing ITriggerEvaluator
+- [ ] `trigger` property returns 'complexity_discovered'
+- [ ] **evaluate(context, thresholds) Method**
+  - [ ] Check agentFeedback for complexity keywords
+  - [ ] Check error messages for complexity indicators
+  - [ ] Return TriggerResult
 
-### Part C: Create Tests
-Create `src/orchestration/context/dynamic/handlers/FileRequestHandler.test.ts`:
+### Part F: Create Triggers Index
+Create `src/orchestration/planning/triggers/index.ts`:
 
-- [ ] Test file reading
-- [ ] Test path resolution
-- [ ] Test non-existent file handling
-- [ ] Test truncation
-- [ ] Test path validation (security)
+- [ ] Export all trigger classes
+- [ ] Export factory: `createAllTriggers()`
+
+### Part G: Create Tests
+Create `src/orchestration/planning/triggers/triggers.test.ts`:
+
+- [ ] Test TimeExceededTrigger
+- [ ] Test IterationsTrigger
+- [ ] Test ScopeCreepTrigger
+- [ ] Test ConsecutiveFailuresTrigger
+- [ ] Test ComplexityTrigger
+- [ ] Test with various threshold configurations
 
 ### Task 3 Completion Checklist
-- [x] `handlers/` directory created
-- [x] `FileRequestHandler.ts` created (~280 lines)
-- [x] `FileRequestHandler.test.ts` created (~250 lines)
-- [x] All tests pass (18 tests)
-- [x] TypeScript compiles (no new errors)
+- [ ] `TimeExceededTrigger.ts` created (~60 lines)
+- [ ] `IterationsTrigger.ts` created (~60 lines)
+- [ ] `ScopeCreepTrigger.ts` created (~80 lines)
+- [ ] `ConsecutiveFailuresTrigger.ts` created (~70 lines)
+- [ ] `ComplexityTrigger.ts` created (~80 lines)
+- [ ] `triggers/index.ts` created (~30 lines)
+- [ ] `triggers.test.ts` created (~200 lines)
+- [ ] All tests pass
+- [ ] TypeScript compiles
 
-**[TASK 3 COMPLETE]** - FileRequestHandler implemented with 18 passing tests, proceeding to Task 4
-
----
-
-# Task 4: Symbol Request Handler
-
-## Objective
-Implement handler for symbol definition and context requests.
-
-## Requirements
-
-### Part A: Create SymbolRequestHandler Class
-Create `src/orchestration/context/dynamic/handlers/SymbolRequestHandler.ts`:
-
-- [x] **SymbolRequestHandler Class** implementing IRequestHandler
-
-- [x] **Constructor**
-  - [x] Accept RepoMapGenerator from Plan 13-01
-  - [x] Accept CodeMemory from Plan 13-03 (optional, for enhanced search)
-
-- [x] **canHandle(type) Method**
-  - [x] Return true for 'symbol' and 'definition' types
-
-- [x] **handle(request) Method**
-  - [x] Extract symbol name from request.query
-  - [x] Use RepoMapGenerator.findSymbol()
-  - [x] Get symbol definition
-  - [x] Optionally get usages if includeContext
-  - [x] Format as SymbolContext
-  - [x] Return ContextResponse
-
-- [x] **findSymbolDefinition(symbolName) Private Method**
-  - [x] Search repo map for symbol
-  - [x] Return first match or null
-  - [x] Handle ambiguous names
-
-- [x] **getSymbolContext(symbol) Private Method**
-  - [x] Read file at symbol location
-  - [x] Extract surrounding code
-  - [x] Get documentation if available
-
-- [x] **getSymbolUsages(symbolName, limit) Private Method**
-  - [x] Use RepoMapGenerator.findUsages()
-  - [x] Limit results
-  - [x] Format as SymbolUsage[]
-
-- [x] **formatSymbolResponse(symbolContext) Private Method**
-  - [x] Format for agent consumption
-  - [x] Include signature, documentation, usages
-
-### Part B: Create Tests
-Create `src/orchestration/context/dynamic/handlers/SymbolRequestHandler.test.ts`:
-
-- [x] Test symbol finding
-- [x] Test definition retrieval
-- [x] Test usage finding
-- [x] Test ambiguous symbol handling
-- [x] Test not found handling
-
-### Task 4 Completion Checklist
-- [x] `SymbolRequestHandler.ts` created (~433 lines)
-- [x] `SymbolRequestHandler.test.ts` created (~340 lines)
-- [x] All tests pass (28 tests)
-- [x] TypeScript compiles
-
-**[TASK 4 COMPLETE]** ✅ Completed on 2025-01-18
+**[TASK 3 COMPLETE]** <- Mark when done, proceed to Task 4
 
 ---
 
-# Task 5: Search Request Handler
+# Task 4: Task Splitter
 
 ## Objective
-Implement handler for semantic code search requests.
+Implement task splitting logic for when tasks need to be decomposed.
 
 ## Requirements
 
-### Part A: Create SearchRequestHandler Class
-Create `src/orchestration/context/dynamic/handlers/SearchRequestHandler.ts`:
+### Part A: Create TaskSplitter Class
+Create `src/orchestration/planning/TaskSplitter.ts`:
 
-- [ ] **SearchRequestHandler Class** implementing IRequestHandler
+- [ ] **TaskSplitter Class** implementing ITaskSplitter
 
 - [ ] **Constructor**
-  - [ ] Accept CodeMemory from Plan 13-03
+  - [ ] Accept optional LLM client for intelligent splitting
+  - [ ] Accept CodeMemory for code understanding (Plan 13-03)
 
-- [ ] **canHandle(type) Method**
-  - [ ] Return true for 'search' and 'usages' types
+- [ ] **canSplit(task, reason) Method**
+  - [ ] Check task has enough scope to split
+  - [ ] Check reason indicates splittable issue
+  - [ ] Return boolean
 
-- [ ] **handle(request) Method**
-  - [ ] Extract query from request.query
-  - [ ] Use CodeMemory.searchCode() for 'search'
-  - [ ] Use CodeMemory.findUsages() for 'usages'
-  - [ ] Apply limit and filter options
-  - [ ] Format as SearchResults
-  - [ ] Return ContextResponse
+- [ ] **split(task, reason) Method**
+  - [ ] Analyze task based on reason.trigger:
+    - scope_creep: Split by file groups
+    - complexity_discovered: Split by functionality
+    - time_exceeded: Split by estimated time
+  - [ ] Create subtasks with:
+    - New IDs (parentTaskId set to original)
+    - Subset of files
+    - Proportional time estimates
+    - Dependency chain between subtasks
+  - [ ] Return Task[]
 
-- [ ] **searchCode(query, options) Private Method**
-  - [ ] Call CodeMemory.searchCode
-  - [ ] Map results to SearchResultItem
-  - [ ] Calculate total token count
+- [ ] **estimateSubtasks(task) Method**
+  - [ ] Based on file count, estimate 2-5 subtasks
+  - [ ] Return suggested count
 
-- [ ] **findUsages(symbolName, options) Private Method**
-  - [ ] Call CodeMemory.findUsages
-  - [ ] Format as SearchResults
+- [ ] **splitByFiles(task, fileGroups) Private Method**
+  - [ ] Group related files together
+  - [ ] Create task per group
 
-- [ ] **formatSearchResults(results, query) Private Method**
-  - [ ] Create SearchResults object
-  - [ ] Track if truncated
-  - [ ] Calculate token count
+- [ ] **splitByFunctionality(task) Private Method**
+  - [ ] Use CodeMemory to understand code structure
+  - [ ] Split into logical units
 
-- [ ] **truncateResults(results, maxTokens) Private Method**
-  - [ ] Keep results until token limit
-  - [ ] Mark as truncated
+- [ ] **generateSubtaskName(original, index, focus) Private Method**
+  - [ ] Create descriptive name like "Task-A Part 1: Setup"
+
+- [ ] **distributeAcceptanceCriteria(original, subtasks) Private Method**
+  - [ ] Assign relevant criteria to each subtask
 
 ### Part B: Create Tests
-Create `src/orchestration/context/dynamic/handlers/SearchRequestHandler.test.ts`:
+Create `src/orchestration/planning/TaskSplitter.test.ts`:
 
-- [ ] Test semantic search
-- [ ] Test usage finding
-- [ ] Test result limiting
-- [ ] Test truncation
-- [ ] Test empty results
+- [ ] Test canSplit detection
+- [ ] Test splitting by files
+- [ ] Test splitting by functionality
+- [ ] Test subtask generation
+- [ ] Test dependency chain creation
+- [ ] Test acceptance criteria distribution
 
-### Task 5 Completion Checklist
-- [x] `SearchRequestHandler.ts` created (~410 lines - comprehensive implementation)
-- [x] `SearchRequestHandler.test.ts` created (~400 lines - 21 comprehensive tests)
-- [x] All tests pass (99 total tests in dynamic context module)
-- [x] TypeScript compiles (no new errors introduced)
+### Task 4 Completion Checklist
+- [ ] `TaskSplitter.ts` created (~250 lines)
+- [ ] `TaskSplitter.test.ts` created (~150 lines)
+- [ ] All tests pass
+- [ ] TypeScript compiles
 
-**[TASK 5 COMPLETE]** - SearchRequestHandler implemented with semantic search and usage finding
+**[TASK 4 COMPLETE]** <- Mark when done, proceed to Task 5
 
 ---
 
-# Task 6: Agent Tool Integration
+# Task 5: Agent Replan Request Tool
 
 ## Objective
-Create the tool definition that agents can use to request context.
+Create the tool that agents can use to request replanning.
 
 ## Requirements
 
-### Part A: Create Tool Directory (if not exists)
-- [ ] Create or use: `src/execution/tools/`
+### Part A: Create RequestReplanTool
+Create `src/execution/tools/RequestReplanTool.ts`:
 
-### Part B: Create RequestContextTool
-Create `src/execution/tools/RequestContextTool.ts`:
-
-- [ ] **REQUEST_CONTEXT_TOOL_DEFINITION Constant**
+- [ ] **REQUEST_REPLAN_TOOL_DEFINITION Constant**
   ```typescript
-  const REQUEST_CONTEXT_TOOL_DEFINITION = {
-    name: 'request_context',
-    description: 'Request additional code context when you need to understand more of the codebase. Use this when you need to see file contents, find symbol definitions, or search for related code.',
+  const REQUEST_REPLAN_TOOL_DEFINITION = {
+    name: 'request_replan',
+    description: 'Request task replanning when you discover the task is more complex than expected, encounter blockers, or believe the task should be split into smaller parts.',
     parameters: {
       type: 'object',
       properties: {
-        request_type: {
-          type: 'string',
-          enum: ['file', 'symbol', 'search', 'usages', 'definition'],
-          description: 'Type of context to request: file (get file contents), symbol (find symbol info), search (semantic code search), usages (find where symbol is used), definition (find where symbol is defined)'
-        },
-        query: {
-          type: 'string',
-          description: 'The file path, symbol name, or search query depending on request_type'
-        },
         reason: {
           type: 'string',
-          description: 'Brief explanation of why you need this context'
+          description: 'Detailed explanation of why replanning is needed'
         },
-        options: {
-          type: 'object',
-          properties: {
-            max_tokens: {
-              type: 'number',
-              description: 'Maximum tokens for the response (default: 10000)'
-            },
-            include_context: {
-              type: 'boolean',
-              description: 'Include surrounding code context (default: true)'
-            },
-            limit: {
-              type: 'number',
-              description: 'Maximum number of results for search/usages (default: 10)'
-            }
-          }
+        suggestion: {
+          type: 'string',
+          description: 'Your suggestion for how the task could be split or rescoped'
+        },
+        blockers: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'List of specific blockers preventing progress'
+        },
+        complexity_details: {
+          type: 'string',
+          description: 'Details about discovered complexity'
+        },
+        affected_files: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Files that are affected by the complexity'
         }
       },
-      required: ['request_type', 'query', 'reason']
+      required: ['reason']
     }
   };
   ```
 
-- [ ] **RequestContextToolHandler Class**
-  - [ ] Constructor accepts DynamicContextProvider
-  - [ ] execute(agentId, params) method
+- [ ] **RequestReplanToolHandler Class**
+  - [ ] Constructor accepts DynamicReplanner
+  - [ ] execute(agentId, taskId, params) method
   - [ ] Validates parameters
-  - [ ] Routes to DynamicContextProvider
+  - [ ] Creates AgentReplanRequest
+  - [ ] Calls replanner.handleAgentRequest
   - [ ] Formats response for agent
 
-- [ ] **createRequestContextTool(provider) Factory Function**
-  - [ ] Creates handler with provider
+- [ ] **createRequestReplanTool(replanner) Factory Function**
+  - [ ] Creates handler with replanner
   - [ ] Returns tool definition + handler
 
-### Part C: Create Index File
-Create `src/orchestration/context/dynamic/index.ts`:
-
-- [ ] Export all types from `./types`
-- [ ] Export DynamicContextProvider
-- [ ] Export all handlers
-- [ ] Export factory: `createDynamicContextProvider()`
-
-### Part D: Create Tests
-Create `src/execution/tools/RequestContextTool.test.ts`:
+### Part B: Create Tests
+Create `src/execution/tools/RequestReplanTool.test.ts`:
 
 - [ ] Test tool definition structure
 - [ ] Test parameter validation
 - [ ] Test execution routing
 - [ ] Test response formatting
 
-### Task 6 Completion Checklist
-- [x] `RequestContextTool.ts` created (~350 lines - comprehensive with validation)
-- [x] `RequestContextTool.test.ts` created (~400 lines - 38 tests)
-- [x] `index.ts` created (~130 lines - includes createFullDynamicContextProvider)
-- [x] All tests pass (38 + 99 = 137 tests)
-- [x] TypeScript compiles
+### Task 5 Completion Checklist
+- [ ] `RequestReplanTool.ts` created (~150 lines)
+- [ ] `RequestReplanTool.test.ts` created (~100 lines)
+- [ ] All tests pass
+- [ ] TypeScript compiles
 
-**[TASK 6 COMPLETE]** ✅ Completed on 2025-01-18
+**[TASK 5 COMPLETE]** <- Mark when done, proceed to Task 6
+
+---
+
+# Task 6: Coordinator Integration
+
+## Objective
+Create integration points for the replanner with the orchestration system.
+
+## Requirements
+
+### Part A: Create ReplannerIntegration Module
+Create `src/orchestration/planning/ReplannerIntegration.ts`:
+
+- [ ] **ReplannerIntegration Class**
+  - [ ] Wraps DynamicReplanner
+  - [ ] Provides hooks for NexusCoordinator
+
+- [ ] **Constructor**
+  - [ ] Accept DynamicReplanner
+  - [ ] Accept event emitter for notifications
+
+- [ ] **onTaskStarted(taskId, task) Method**
+  - [ ] Start monitoring the task
+  - [ ] Create initial ExecutionContext
+
+- [ ] **onIterationComplete(taskId, iterationResult) Method**
+  - [ ] Update context with iteration data
+  - [ ] Check for replanning
+  - [ ] Return ReplanDecision
+
+- [ ] **onTaskCompleted(taskId, success) Method**
+  - [ ] Stop monitoring
+  - [ ] Log final metrics
+
+- [ ] **onAgentFeedback(taskId, feedback) Method**
+  - [ ] Update context with feedback
+  - [ ] Check for complexity triggers
+
+- [ ] **handleReplanDecision(decision) Method**
+  - [ ] If shouldReplan, execute replan
+  - [ ] Emit appropriate events
+  - [ ] Return result
+
+### Part B: Create Index File
+Create `src/orchestration/planning/index.ts`:
+
+- [ ] Export all types from `./types`
+- [ ] Export DynamicReplanner
+- [ ] Export TaskSplitter
+- [ ] Export ReplannerIntegration
+- [ ] Export all triggers
+- [ ] Export factory: `createDynamicReplanner()`
+
+### Part C: Create Tests
+Create `src/orchestration/planning/ReplannerIntegration.test.ts`:
+
+- [ ] Test task lifecycle hooks
+- [ ] Test iteration handling
+- [ ] Test replan decision handling
+- [ ] Test event emission
+
+### Task 6 Completion Checklist
+- [ ] `ReplannerIntegration.ts` created (~200 lines)
+- [ ] `index.ts` created (~50 lines)
+- [ ] `ReplannerIntegration.test.ts` created (~150 lines)
+- [ ] All tests pass
+- [ ] TypeScript compiles
+
+**[TASK 6 COMPLETE]** <- Mark when done, proceed to Task 7
 
 ---
 
 # ============================================================================
-# PART 2: RALPH-STYLE ITERATOR (Plan 13-06)
+# PART 2: SELF-ASSESSMENT ENGINE (Plan 13-08)
 # ============================================================================
 
-# Task 7: Iterator Types & Interfaces
+# Task 7: Assessment Types & Interfaces
 
 ## Objective
-Define all TypeScript interfaces for the Ralph-Style Iterator system.
+Define all TypeScript interfaces for the Self-Assessment Engine.
 
 ## Requirements
 
 ### Part A: Create Directory Structure
-- [ ] Create directory: `src/execution/iteration/`
-- [ ] This module lives in Layer 4 (Execution)
+- [ ] Create directory: `src/orchestration/assessment/`
+- [ ] This module lives in Layer 2 (Orchestration)
 
 ### Part B: Create Types File
-Create `src/execution/iteration/types.ts`:
+Create `src/orchestration/assessment/types.ts`:
 
-- [ ] **IterationState Type**
+- [ ] **AssessmentType Type**
   ```typescript
-  type IterationState = 'pending' | 'running' | 'paused' | 'completed' | 'failed' | 'escalated' | 'aborted';
+  type AssessmentType = 'progress' | 'blockers' | 'approach';
   ```
 
-- [ ] **IterationPhase Type**
+- [ ] **EffectivenessLevel Type**
   ```typescript
-  type IterationPhase = 'initializing' | 'coding' | 'building' | 'linting' | 'testing' | 'reviewing' | 'committing' | 'finalizing';
+  type EffectivenessLevel = 'working' | 'struggling' | 'stuck' | 'wrong_direction';
   ```
 
-- [ ] **IterationOptions Interface**
+- [ ] **BlockerType Type**
   ```typescript
-  interface IterationOptions {
-    maxIterations?: number;
-    commitEachIteration?: boolean;
-    includeGitDiff?: boolean;
-    includePreviousErrors?: boolean;
-    escalateAfter?: number;
-    timeoutMinutes?: number;
-  }
+  type BlockerType = 'technical' | 'dependency' | 'unclear_requirement' | 'external' | 'knowledge_gap';
   ```
 
-- [ ] **DEFAULT_ITERATION_OPTIONS Constant**
+- [ ] **BlockerSeverity Type**
   ```typescript
-  const DEFAULT_ITERATION_OPTIONS: Required<IterationOptions> = {
-    maxIterations: 20,
-    commitEachIteration: true,
-    includeGitDiff: true,
-    includePreviousErrors: true,
-    escalateAfter: 20,
-    timeoutMinutes: 60,
-  };
+  type BlockerSeverity = 'none' | 'low' | 'medium' | 'high' | 'critical';
   ```
 
-- [ ] **IterationResult Interface**
+- [ ] **RecommendedAction Type**
   ```typescript
-  interface IterationResult {
-    success: boolean;
+  type RecommendedAction = 'continue' | 'try_alternative' | 'request_help' | 'split_task' | 'abort';
+  ```
+
+- [ ] **RiskType Type**
+  ```typescript
+  type RiskType = 'technical' | 'scope' | 'time' | 'quality';
+  ```
+
+- [ ] **ProgressAssessment Interface**
+  ```typescript
+  interface ProgressAssessment {
     taskId: string;
-    iterations: number;
-    finalState: IterationState;
-    history: IterationHistoryEntry[];
-    totalDuration: number;
-    totalTokens: number;
-    finalCommit?: string;
-    escalationReport?: EscalationReport;
-  }
-  ```
-
-- [ ] **IterationHistoryEntry Interface**
-  ```typescript
-  interface IterationHistoryEntry {
-    iteration: number;
-    phase: IterationPhase;
-    action: string;
-    changes: GitChange[];
-    buildResult?: BuildResult;
-    lintResult?: LintResult;
-    testResult?: TestResult;
-    reviewResult?: ReviewResult;
-    errors: ErrorEntry[];
-    duration: number;
-    tokens: number;
-    timestamp: Date;
-    commitHash?: string;
-  }
-  ```
-
-- [ ] **IterationStatus Interface**
-  ```typescript
-  interface IterationStatus {
-    taskId: string;
-    currentIteration: number;
-    maxIterations: number;
-    state: IterationState;
-    phase: IterationPhase;
-    lastActivity: Date;
-    startedAt: Date;
-    elapsedTime: number;
-  }
-  ```
-
-- [ ] **IterationContext Interface**
-  ```typescript
-  interface IterationContext {
-    task: Task;
-    iteration: number;
-    options: Required<IterationOptions>;
-    
-    // Git context
-    previousDiff?: GitDiff;
-    cumulativeDiff?: GitDiff;
-    
-    // Error context
-    previousErrors: ErrorEntry[];
-    
-    // Results from previous iteration
-    lastBuildResult?: BuildResult;
-    lastLintResult?: LintResult;
-    lastTestResult?: TestResult;
-    lastReviewFeedback?: string[];
-    
-    // Fresh task context
-    taskContext: TaskContext;
-  }
-  ```
-
-- [ ] **GitChange Interface**
-  ```typescript
-  interface GitChange {
-    file: string;
-    changeType: 'added' | 'modified' | 'deleted' | 'renamed';
-    additions: number;
-    deletions: number;
-  }
-  ```
-
-- [ ] **GitDiff Interface**
-  ```typescript
-  interface GitDiff {
-    fromCommit: string;
-    toCommit: string;
-    changes: GitChange[];
-    diffText: string;
-    stats: {
-      filesChanged: number;
-      additions: number;
-      deletions: number;
-    };
-  }
-  ```
-
-- [ ] **ErrorEntry Interface**
-  ```typescript
-  interface ErrorEntry {
-    type: 'build' | 'lint' | 'test' | 'review' | 'runtime';
-    severity: 'error' | 'warning' | 'info';
-    message: string;
-    file?: string;
-    line?: number;
-    column?: number;
-    code?: string;
-    suggestion?: string;
-    iteration: number;
-  }
-  ```
-
-- [ ] **BuildResult, LintResult, TestResult, ReviewResult Interfaces**
-  ```typescript
-  interface BuildResult {
-    success: boolean;
-    errors: ErrorEntry[];
-    warnings: ErrorEntry[];
-    duration: number;
-  }
-
-  interface LintResult {
-    success: boolean;
-    errors: ErrorEntry[];
-    warnings: ErrorEntry[];
-    fixable: number;
-  }
-
-  interface TestResult {
-    success: boolean;
-    passed: number;
-    failed: number;
-    skipped: number;
-    errors: ErrorEntry[];
-    duration: number;
-  }
-
-  interface ReviewResult {
-    approved: boolean;
-    comments: string[];
-    suggestions: string[];
+    completionEstimate: number;     // 0.0 - 1.0
+    confidence: number;             // 0.0 - 1.0
+    remainingWork: string[];
+    completedWork: string[];
     blockers: string[];
+    risks: Risk[];
+    estimatedRemainingTime: number;
+    assessedAt: Date;
   }
   ```
 
-- [ ] **EscalationReport Interface**
+- [ ] **Risk Interface**
   ```typescript
-  interface EscalationReport {
+  interface Risk {
+    type: RiskType;
+    description: string;
+    probability: number;    // 0.0 - 1.0
+    impact: number;         // 0.0 - 1.0
+    riskScore: number;      // probability * impact
+    mitigation?: string;
+  }
+  ```
+
+- [ ] **Blocker Interface**
+  ```typescript
+  interface Blocker {
+    id: string;
+    type: BlockerType;
+    description: string;
+    affectedFiles: string[];
+    possibleSolutions: string[];
+    needsHuman: boolean;
+    detectedAt: Date;
+  }
+  ```
+
+- [ ] **BlockerAssessment Interface**
+  ```typescript
+  interface BlockerAssessment {
     taskId: string;
-    reason: EscalationReason;
-    iterationsCompleted: number;
-    summary: string;
-    lastErrors: ErrorEntry[];
+    blockers: Blocker[];
+    severity: BlockerSeverity;
+    canProceed: boolean;
     suggestedActions: string[];
-    checkpointCommit: string;
-    createdAt: Date;
+    assessedAt: Date;
   }
   ```
 
-- [ ] **EscalationReason Type**
+- [ ] **AlternativeApproach Interface**
   ```typescript
-  type EscalationReason = 'max_iterations' | 'timeout' | 'repeated_failures' | 'blocking_error' | 'agent_request';
-  ```
-
-- [ ] **IRalphStyleIterator Interface**
-  ```typescript
-  interface IRalphStyleIterator {
-    execute(task: Task, options?: IterationOptions): Promise<IterationResult>;
-    pause(taskId: string): Promise<void>;
-    resume(taskId: string): Promise<void>;
-    abort(taskId: string): Promise<void>;
-    getStatus(taskId: string): IterationStatus | null;
-    getHistory(taskId: string): IterationHistoryEntry[];
+  interface AlternativeApproach {
+    id: string;
+    description: string;
+    pros: string[];
+    cons: string[];
+    estimatedEffort: number;    // in minutes
+    confidence: number;         // 0.0 - 1.0
+    requiredChanges: string[];
   }
   ```
 
-- [ ] **IGitDiffContextBuilder Interface**
+- [ ] **ApproachAssessment Interface**
   ```typescript
-  interface IGitDiffContextBuilder {
-    buildDiffContext(fromCommit: string, toCommit?: string): Promise<GitDiff>;
-    buildCumulativeDiff(baseCommit: string): Promise<GitDiff>;
-    formatDiffForAgent(diff: GitDiff): string;
+  interface ApproachAssessment {
+    taskId: string;
+    currentApproach: string;
+    effectiveness: EffectivenessLevel;
+    confidence: number;
+    alternatives: AlternativeApproach[];
+    recommendation: string;
+    assessedAt: Date;
   }
   ```
 
-- [ ] **IErrorContextAggregator Interface**
+- [ ] **Recommendation Interface**
   ```typescript
-  interface IErrorContextAggregator {
-    addErrors(errors: ErrorEntry[]): void;
-    getUniqueErrors(): ErrorEntry[];
-    getErrorsByType(type: ErrorEntry['type']): ErrorEntry[];
-    formatErrorsForAgent(): string;
-    clear(): void;
+  interface Recommendation {
+    action: RecommendedAction;
+    reason: string;
+    details: string;
+    confidence: number;
+    priority: number;       // 1-5, 1 is highest
   }
   ```
 
-- [ ] **IIterationCommitHandler Interface**
+- [ ] **TaskOutcome Interface**
   ```typescript
-  interface IIterationCommitHandler {
-    commitIteration(taskId: string, iteration: number, message: string): Promise<string>;
-    rollbackToIteration(taskId: string, iteration: number): Promise<void>;
-    getIterationCommit(taskId: string, iteration: number): string | null;
+  interface TaskOutcome {
+    taskId: string;
+    success: boolean;
+    approach: string;
+    iterations: number;
+    timeSpent: number;
+    blockers: string[];
+    lessonsLearned: string[];
+    completedAt: Date;
   }
   ```
 
-- [ ] **IEscalationHandler Interface**
+- [ ] **HistoricalInsight Interface**
   ```typescript
-  interface IEscalationHandler {
-    escalate(taskId: string, reason: EscalationReason, context: IterationContext): Promise<EscalationReport>;
-    createCheckpoint(taskId: string): Promise<string>;
-    notifyHuman(report: EscalationReport): Promise<void>;
+  interface HistoricalInsight {
+    pattern: string;
+    taskType: string;
+    successRate: number;
+    averageIterations: number;
+    averageTime: number;
+    commonBlockers: string[];
+    recommendedApproach: string;
+    sampleSize: number;
   }
   ```
 
-- [x] Export all types
+- [ ] **AssessmentContext Interface**
+  ```typescript
+  interface AssessmentContext {
+    taskId: string;
+    taskName: string;
+    taskDescription: string;
+    taskFiles: string[];
+    iterationHistory: IterationHistoryEntry[];
+    currentErrors: ErrorEntry[];
+    agentFeedback?: string;
+    codeChanges?: string;
+  }
+  ```
+
+- [ ] **ISelfAssessmentEngine Interface**
+  ```typescript
+  interface ISelfAssessmentEngine {
+    // Assessment
+    assessProgress(taskId: string, context: AssessmentContext): Promise<ProgressAssessment>;
+    assessBlockers(taskId: string, context: AssessmentContext): Promise<BlockerAssessment>;
+    assessApproach(taskId: string, context: AssessmentContext): Promise<ApproachAssessment>;
+    
+    // Recommendations
+    recommendNextStep(taskId: string): Promise<Recommendation>;
+    recommendAlternativeApproach(taskId: string): Promise<AlternativeApproach[]>;
+    
+    // Learning
+    recordOutcome(outcome: TaskOutcome): Promise<void>;
+    getHistoricalInsights(taskType: string): Promise<HistoricalInsight[]>;
+    
+    // Combined
+    getFullAssessment(taskId: string, context: AssessmentContext): Promise<FullAssessment>;
+  }
+  ```
+
+- [ ] **FullAssessment Interface**
+  ```typescript
+  interface FullAssessment {
+    taskId: string;
+    progress: ProgressAssessment;
+    blockers: BlockerAssessment;
+    approach: ApproachAssessment;
+    recommendation: Recommendation;
+    assessedAt: Date;
+  }
+  ```
+
+- [ ] **IProgressAssessor Interface**
+  ```typescript
+  interface IProgressAssessor {
+    assess(context: AssessmentContext): Promise<ProgressAssessment>;
+  }
+  ```
+
+- [ ] **IBlockerDetector Interface**
+  ```typescript
+  interface IBlockerDetector {
+    detect(context: AssessmentContext): Promise<BlockerAssessment>;
+  }
+  ```
+
+- [ ] **IApproachEvaluator Interface**
+  ```typescript
+  interface IApproachEvaluator {
+    evaluate(context: AssessmentContext): Promise<ApproachAssessment>;
+  }
+  ```
+
+- [ ] **IHistoricalLearner Interface**
+  ```typescript
+  interface IHistoricalLearner {
+    recordOutcome(outcome: TaskOutcome): Promise<void>;
+    getInsights(taskType: string): Promise<HistoricalInsight[]>;
+    findSimilarTasks(taskDescription: string): Promise<TaskOutcome[]>;
+  }
+  ```
+
+- [ ] Export all types
 
 ### Task 7 Completion Checklist
-- [x] Directory `src/execution/iteration/` created
-- [x] `types.ts` created with all interfaces (~470 lines - comprehensive implementation)
-- [x] All types properly exported
-- [x] TypeScript compiles (no new errors introduced)
+- [ ] Directory `src/orchestration/assessment/` created
+- [ ] `types.ts` created with all interfaces (~350 lines)
+- [ ] All types properly exported
+- [ ] TypeScript compiles
 
-**[TASK 7 COMPLETE]** ✅ Completed on 2025-01-18 - Proceeding to Task 8
+**[TASK 7 COMPLETE]** <- Mark when done, proceed to Task 8
 
 ---
 
-# Task 8: RalphStyleIterator Core
+# Task 8: SelfAssessmentEngine Core
 
 ## Objective
-Implement the main RalphStyleIterator class with the iteration state machine.
+Implement the main SelfAssessmentEngine class.
 
 ## Requirements
 
-### Part A: Create RalphStyleIterator Class
-Create `src/execution/iteration/RalphStyleIterator.ts`:
+### Part A: Create SelfAssessmentEngine Class
+Create `src/orchestration/assessment/SelfAssessmentEngine.ts`:
 
-- [ ] **RalphStyleIterator Class** implementing IRalphStyleIterator
+- [ ] **SelfAssessmentEngine Class** implementing ISelfAssessmentEngine
 
 - [ ] **Constructor**
-  - [ ] Accept FreshContextManager (Plan 13-04)
-  - [ ] Accept GitDiffContextBuilder
-  - [ ] Accept ErrorContextAggregator
-  - [ ] Accept IterationCommitHandler
-  - [ ] Accept EscalationHandler
-  - [ ] Accept AgentRunner or execution function
-  - [ ] Accept QA functions (build, lint, test, review)
-  - [ ] Initialize task registry Map
+  - [ ] Accept IProgressAssessor
+  - [ ] Accept IBlockerDetector
+  - [ ] Accept IApproachEvaluator
+  - [ ] Accept IHistoricalLearner
+  - [ ] Accept optional LLM client for AI-powered assessments
+  - [ ] Initialize assessment cache
 
-- [ ] **execute(task, options?) Method** - MAIN METHOD
-  - [ ] Merge options with defaults
-  - [ ] Register task in registry
-  - [ ] Get base commit for diff tracking
-  - [ ] **Main Loop:**
-    ```
-    while (iteration <= maxIterations && !completed) {
-      1. Build iteration context
-      2. Execute agent with context
-      3. Commit iteration work
-      4. Run QA (build -> lint -> test -> review)
-      5. If all pass: success, break
-      6. If fail: aggregate errors, continue
-    }
-    ```
-  - [ ] If max iterations reached: escalate
-  - [ ] Return IterationResult
+- [ ] **assessProgress(taskId, context) Method**
+  - [ ] Delegate to ProgressAssessor
+  - [ ] Cache result
+  - [ ] Return ProgressAssessment
 
-- [ ] **buildIterationContext(task, iteration, options) Private Method**
-  - [ ] Get fresh context from FreshContextManager
-  - [ ] If iteration > 1:
-    - [ ] Add previous diff
-    - [ ] Add cumulative diff
-    - [ ] Add previous errors
-  - [ ] Return IterationContext
+- [ ] **assessBlockers(taskId, context) Method**
+  - [ ] Delegate to BlockerDetector
+  - [ ] Cache result
+  - [ ] Return BlockerAssessment
 
-- [ ] **executeAgent(context) Private Method**
-  - [ ] Call agent with context
-  - [ ] Track changes made
-  - [ ] Return agent result
+- [ ] **assessApproach(taskId, context) Method**
+  - [ ] Delegate to ApproachEvaluator
+  - [ ] Cache result
+  - [ ] Return ApproachAssessment
 
-- [ ] **runQA(taskId) Private Method**
-  - [ ] Run build
-  - [ ] If build fails, return errors
-  - [ ] Run lint
-  - [ ] If lint fails with errors, return errors
-  - [ ] Run tests
-  - [ ] If tests fail, return errors
-  - [ ] Run review (optional)
-  - [ ] Return combined result
+- [ ] **recommendNextStep(taskId) Method**
+  - [ ] Get cached assessments or recalculate
+  - [ ] Combine progress, blockers, approach into recommendation
+  - [ ] Return Recommendation
 
-- [ ] **checkSuccess(qaResult) Private Method**
-  - [ ] Check build passed
-  - [ ] Check lint passed (0 errors)
-  - [ ] Check tests passed
-  - [ ] Return boolean
+- [ ] **recommendAlternativeApproach(taskId) Method**
+  - [ ] Get approach assessment
+  - [ ] Return alternatives sorted by confidence
 
-- [ ] **pause(taskId) Method**
-  - [ ] Set state to 'paused'
-  - [ ] Store current state
+- [ ] **recordOutcome(outcome) Method**
+  - [ ] Delegate to HistoricalLearner
+  - [ ] Clear caches for task
 
-- [ ] **resume(taskId) Method**
-  - [ ] Validate state is 'paused'
-  - [ ] Set state to 'running'
-  - [ ] Continue execution
+- [ ] **getHistoricalInsights(taskType) Method**
+  - [ ] Delegate to HistoricalLearner
+  - [ ] Return HistoricalInsight[]
 
-- [ ] **abort(taskId) Method**
-  - [ ] Set state to 'aborted'
-  - [ ] Clean up resources
-  - [ ] Return current result
+- [ ] **getFullAssessment(taskId, context) Method**
+  - [ ] Run all assessments
+  - [ ] Generate recommendation
+  - [ ] Return FullAssessment
 
-- [ ] **getStatus(taskId) Method**
-  - [ ] Return IterationStatus from registry
-  - [ ] Return null if not found
+**Private Helper Methods:**
+- [ ] **combineIntoRecommendation(progress, blockers, approach) Private Method**
+  - [ ] If blockers.severity is critical -> 'request_help'
+  - [ ] If approach.effectiveness is stuck -> 'try_alternative'
+  - [ ] If progress.completionEstimate > 0.8 -> 'continue'
+  - [ ] etc.
 
-- [ ] **getHistory(taskId) Method**
-  - [ ] Return history from registry
-  - [ ] Return empty array if not found
+- [ ] **getCachedAssessment(taskId, type) Private Method**
+  - [ ] Return cached if fresh (< 5 min old)
 
-### Part B: State Machine
-- [ ] Track state transitions properly
-- [ ] Handle pause/resume/abort cleanly
-- [ ] Log all state changes
+- [ ] **invalidateCache(taskId) Private Method**
+  - [ ] Clear all cached assessments for task
 
-### Part C: Create Tests
-Create `src/execution/iteration/RalphStyleIterator.test.ts`:
+### Part B: Create Tests
+Create `src/orchestration/assessment/SelfAssessmentEngine.test.ts`:
 
-- [ ] Test successful iteration (passes on first try)
-- [ ] Test iteration with failures then success
-- [ ] Test max iterations reached (escalation)
-- [ ] Test pause and resume
-- [ ] Test abort
-- [ ] Test context building with diffs
-- [ ] Test error aggregation
+- [ ] Test progress assessment
+- [ ] Test blocker assessment
+- [ ] Test approach assessment
+- [ ] Test recommendation generation
+- [ ] Test historical insights
+- [ ] Test caching behavior
 
 ### Task 8 Completion Checklist
-- [x] `RalphStyleIterator.ts` created (~800 lines - more comprehensive than estimated)
-- [x] `RalphStyleIterator.test.ts` created (~800 lines - 30 comprehensive tests)
-- [x] All tests pass (30/30)
-- [x] TypeScript compiles
+- [ ] `SelfAssessmentEngine.ts` created (~300 lines)
+- [ ] `SelfAssessmentEngine.test.ts` created (~200 lines)
+- [ ] All tests pass
+- [ ] TypeScript compiles
 
-**[TASK 8 COMPLETE]** - Completed on 2026-01-18
+**[TASK 8 COMPLETE]** <- Mark when done, proceed to Task 9
 
 ---
 
-# Task 9: Git Diff Context Builder
+# Task 9: Progress Assessor
 
 ## Objective
-Implement building context from git diffs to show agents their previous work.
+Implement progress estimation logic.
 
 ## Requirements
 
-### Part A: Create GitDiffContextBuilder Class
-Create `src/execution/iteration/GitDiffContextBuilder.ts`:
+### Part A: Create ProgressAssessor Class
+Create `src/orchestration/assessment/ProgressAssessor.ts`:
 
-- [x] **GitDiffContextBuilder Class** implementing IGitDiffContextBuilder
+- [ ] **ProgressAssessor Class** implementing IProgressAssessor
 
-- [x] **Constructor**
-  - [x] Accept GitService or git command executor (via IGitExecutor interface)
-  - [x] Accept project root path
-  - [x] Accept optional format options (maxTokens, includeContent, etc.)
+- [ ] **Constructor**
+  - [ ] Accept optional LLM client for AI-powered estimation
 
-- [x] **buildDiffContext(fromCommit, toCommit?) Method**
-  - [x] Default toCommit to HEAD
-  - [x] Run `git diff fromCommit..toCommit`
-  - [x] Parse diff output
-  - [x] Calculate stats
-  - [x] Return GitDiff
-  - [x] Handle git errors gracefully
+- [ ] **assess(context) Method**
+  - [ ] Calculate completion from multiple signals
+  - [ ] Identify remaining work
+  - [ ] Identify completed work
+  - [ ] Detect blockers from errors
+  - [ ] Assess risks
+  - [ ] Return ProgressAssessment
 
-- [x] **buildCumulativeDiff(baseCommit) Method**
-  - [x] Get diff from base to HEAD
-  - [x] Return GitDiff
+- [ ] **calculateCompletionEstimate(context) Private Method**
+  - [ ] Consider: iteration progress, test pass rate, error reduction, files touched vs expected
+  - [ ] Return 0.0 - 1.0
 
-- [x] **formatDiffForAgent(diff) Method**
-  - [x] Format diff for agent consumption
-  - [x] Include summary of changes
-  - [x] Include relevant diff hunks (with syntax highlighting markers)
-  - [x] Respect token limits (truncation with indicator)
-  - [x] Return formatted string
+- [ ] **identifyRemainingWork(context) Private Method**
+  - [ ] Analyze acceptance criteria not yet met
+  - [ ] Analyze files not yet modified
+  - [ ] Return string[]
 
-- [x] **parseDiffOutput(diffText) Private Method**
-  - [x] Parse git diff output
-  - [x] Extract file changes
-  - [x] Extract additions/deletions
-  - [x] Return structured GitChange[]
-  - [x] Detect change types (added, modified, deleted, renamed)
+- [ ] **identifyCompletedWork(context) Private Method**
+  - [ ] Analyze passing tests
+  - [ ] Analyze completed criteria
+  - [ ] Return string[]
 
-- [x] **calculateStats(changes) Private Method**
-  - [x] Sum additions and deletions
-  - [x] Count files changed
-  - [x] Return stats object
+- [ ] **assessRisks(context, completionEstimate) Private Method**
+  - [ ] Time risk: if estimate low but time high
+  - [ ] Technical risk: if many errors
+  - [ ] Scope risk: if unexpected files
+  - [ ] Return Risk[]
 
-- [x] **getHeadCommit() Private Method**
-  - [x] Run `git rev-parse HEAD`
-  - [x] Return commit hash
+- [ ] **calculateConfidence(context) Private Method**
+  - [ ] Higher confidence with more iterations
+  - [ ] Lower confidence with high error variance
+  - [ ] Return 0.0 - 1.0
 
-- [x] **runGitCommand(args) Private Method**
-  - [x] Execute git command via injected executor
-  - [x] Handle errors
-  - [x] Return output
+### Part B: Create Tests
+Create `src/orchestration/assessment/ProgressAssessor.test.ts`:
 
-- [x] **Factory Functions**
-  - [x] createGitDiffContextBuilder() - Creates with real git executor
-  - [x] createMockGitExecutor() - Creates mock for testing
-  - [x] createTestGitDiffContextBuilder() - Creates with mock for tests
-
-### Part B: Create Tests (27 tests, all passing)
-Create `src/execution/iteration/GitDiffContextBuilder.test.ts`:
-
-- [x] Test diff building (between commits, with default HEAD)
-- [x] Test cumulative diff (base to HEAD)
-- [x] Test formatting for agent (summary, detailed, file list modes)
-- [x] Test diff parsing (file changes, additions, deletions, change types)
-- [x] Test with no changes (empty diff handling)
-- [x] Test with merge conflicts (handles conflict markers)
-- [x] Test edge cases (binary files, special chars, tabs in filenames, long hashes)
+- [ ] Test completion estimation
+- [ ] Test remaining work identification
+- [ ] Test risk assessment
+- [ ] Test confidence calculation
+- [ ] Test with various scenarios
 
 ### Task 9 Completion Checklist
-- [x] `GitDiffContextBuilder.ts` created (~480 lines - comprehensive implementation with factory functions)
-- [x] `GitDiffContextBuilder.test.ts` created (~450 lines - 27 comprehensive tests)
-- [x] All tests pass (27/27)
-- [x] TypeScript compiles (no new errors introduced)
-- [x] Created `src/renderer/test-setup.ts` to fix missing test setup file
+- [ ] `ProgressAssessor.ts` created (~200 lines)
+- [ ] `ProgressAssessor.test.ts` created (~150 lines)
+- [ ] All tests pass
+- [ ] TypeScript compiles
 
-**[TASK 9 COMPLETE]** - Completed on 2026-01-18, proceeding to Task 10
+**[TASK 9 COMPLETE]** <- Mark when done, proceed to Task 10
 
 ---
 
-# Task 10: Error Context Aggregator
+# Task 10: Blocker Detector
 
 ## Objective
-Implement collection and formatting of errors from previous iterations.
+Implement blocker detection and categorization.
 
 ## Requirements
 
-### Part A: Create ErrorContextAggregator Class
-Create `src/execution/iteration/ErrorContextAggregator.ts`:
+### Part A: Create BlockerDetector Class
+Create `src/orchestration/assessment/BlockerDetector.ts`:
 
-- [ ] **ErrorContextAggregator Class** implementing IErrorContextAggregator
+- [ ] **BlockerDetector Class** implementing IBlockerDetector
 
 - [ ] **Constructor**
-  - [ ] Initialize errors array
-  - [ ] Accept optional max errors limit
+  - [ ] Initialize blocker patterns
 
-- [ ] **addErrors(errors) Method**
-  - [ ] Add errors to collection
-  - [ ] Mark with current iteration if not set
+- [ ] **detect(context) Method**
+  - [ ] Analyze errors for blocker patterns
+  - [ ] Analyze agent feedback
+  - [ ] Categorize blockers by type
+  - [ ] Assess severity
+  - [ ] Determine if can proceed
+  - [ ] Suggest actions
+  - [ ] Return BlockerAssessment
 
-- [ ] **getUniqueErrors() Method**
-  - [ ] Deduplicate by message + file + line
-  - [ ] Keep most recent occurrence
-  - [ ] Return unique errors
+- [ ] **detectTechnicalBlockers(context) Private Method**
+  - [ ] Build failures
+  - [ ] Type errors
+  - [ ] Import issues
+  - [ ] Return Blocker[]
 
-- [ ] **getErrorsByType(type) Method**
-  - [ ] Filter errors by type
-  - [ ] Return filtered array
+- [ ] **detectDependencyBlockers(context) Private Method**
+  - [ ] Missing dependencies
+  - [ ] Version conflicts
+  - [ ] Circular dependencies
+  - [ ] Return Blocker[]
 
-- [ ] **formatErrorsForAgent() Method**
-  - [ ] Group errors by type
-  - [ ] Format for agent consumption
-  - [ ] Prioritize by severity
-  - [ ] Include suggestions where available
-  - [ ] Return formatted string
+- [ ] **detectRequirementBlockers(context) Private Method**
+  - [ ] Unclear or contradictory requirements
+  - [ ] Missing information
+  - [ ] Return Blocker[]
 
-- [ ] **clear() Method**
-  - [ ] Clear all errors
+- [ ] **detectKnowledgeGapBlockers(context) Private Method**
+  - [ ] Unfamiliar patterns
+  - [ ] Complex domains
+  - [ ] Return Blocker[]
 
-- [ ] **deduplicateErrors(errors) Private Method**
-  - [ ] Create key from message + file + line
-  - [ ] Keep unique entries
+- [ ] **assessSeverity(blockers) Private Method**
+  - [ ] No blockers -> 'none'
+  - [ ] All solvable -> 'low' or 'medium'
+  - [ ] Any needsHuman -> 'high' or 'critical'
+  - [ ] Return BlockerSeverity
 
-- [ ] **prioritizeErrors(errors) Private Method**
-  - [ ] Sort by severity (error > warning > info)
-  - [ ] Then by type (build > lint > test > review)
-  - [ ] Return sorted array
+- [ ] **suggestSolutions(blocker) Private Method**
+  - [ ] Based on blocker type, suggest actions
+  - [ ] Return string[]
 
-- [ ] **formatError(error) Private Method**
-  - [ ] Format single error with context
-  - [ ] Include file:line if available
-  - [ ] Include suggestion if available
+- [ ] **determineIfNeedsHuman(blocker) Private Method**
+  - [ ] Unclear requirements -> true
+  - [ ] External dependencies -> true
+  - [ ] Complex technical -> maybe
+  - [ ] Return boolean
 
 ### Part B: Create Tests
-Create `src/execution/iteration/ErrorContextAggregator.test.ts`:
+Create `src/orchestration/assessment/BlockerDetector.test.ts`:
 
-- [ ] Test error adding
-- [ ] Test deduplication
-- [ ] Test filtering by type
-- [ ] Test formatting
-- [ ] Test prioritization
-- [ ] Test clearing
+- [ ] Test technical blocker detection
+- [ ] Test dependency blocker detection
+- [ ] Test requirement blocker detection
+- [ ] Test severity assessment
+- [ ] Test solution suggestions
 
 ### Task 10 Completion Checklist
-- [x] `ErrorContextAggregator.ts` created (~310 lines - more comprehensive than estimated)
-- [x] `ErrorContextAggregator.test.ts` created (~330 lines - 31 comprehensive tests)
-- [x] All tests pass (31/31)
-- [x] TypeScript compiles (verified via Vitest)
+- [ ] `BlockerDetector.ts` created (~250 lines)
+- [ ] `BlockerDetector.test.ts` created (~150 lines)
+- [ ] All tests pass
+- [ ] TypeScript compiles
 
-**[TASK 10 COMPLETE]** ✅ Completed on 2026-01-18 - Proceeding to Task 11
+**[TASK 10 COMPLETE]** <- Mark when done, proceed to Task 11
 
 ---
 
-# Task 11: Iteration Commit Handler
+# Task 11: Approach Evaluator
 
 ## Objective
-Implement git commits for each iteration with rollback support.
+Implement current approach evaluation and alternative generation.
 
 ## Requirements
 
-### Part A: Create IterationCommitHandler Class
-Create `src/execution/iteration/IterationCommitHandler.ts`:
+### Part A: Create ApproachEvaluator Class
+Create `src/orchestration/assessment/ApproachEvaluator.ts`:
 
-- [ ] **IterationCommitHandler Class** implementing IIterationCommitHandler
+- [ ] **ApproachEvaluator Class** implementing IApproachEvaluator
 
 - [ ] **Constructor**
-  - [ ] Accept GitService or git command executor
-  - [ ] Accept project root path
-  - [ ] Initialize commit registry Map
+  - [ ] Accept optional LLM client for AI-powered evaluation
+  - [ ] Accept CodeMemory for code understanding (Plan 13-03)
 
-- [ ] **commitIteration(taskId, iteration, message) Method**
-  - [ ] Stage all changes: `git add -A`
-  - [ ] Create commit: `git commit -m "iteration-{n}: {message}"`
-  - [ ] Tag iteration: `git tag iteration-{taskId}-{n}`
-  - [ ] Store commit hash in registry
-  - [ ] Return commit hash
+- [ ] **evaluate(context) Method**
+  - [ ] Analyze current approach from code changes
+  - [ ] Determine effectiveness level
+  - [ ] Generate alternatives if struggling/stuck
+  - [ ] Make recommendation
+  - [ ] Return ApproachAssessment
 
-- [ ] **rollbackToIteration(taskId, iteration) Method**
-  - [ ] Find commit hash for iteration
-  - [ ] Reset to commit: `git reset --hard {hash}`
-  - [ ] Clean untracked: `git clean -fd`
-  - [ ] Update registry
+- [ ] **determineEffectiveness(context) Private Method**
+  - [ ] 'working': Errors decreasing, tests passing
+  - [ ] 'struggling': Errors fluctuating, slow progress
+  - [ ] 'stuck': Same errors repeating, no progress
+  - [ ] 'wrong_direction': Errors increasing, scope creep
+  - [ ] Return EffectivenessLevel
 
-- [ ] **getIterationCommit(taskId, iteration) Method**
-  - [ ] Look up in registry
-  - [ ] Return hash or null
+- [ ] **inferCurrentApproach(context) Private Method**
+  - [ ] Analyze what files are being changed
+  - [ ] Analyze patterns in changes
+  - [ ] Return description string
 
-- [ ] **generateCommitMessage(taskId, iteration, summary) Private Method**
-  - [ ] Format: `[nexus] Task {taskId} - Iteration {n}: {summary}`
-  - [ ] Keep under 72 chars for first line
+- [ ] **generateAlternatives(context, currentApproach) Private Method**
+  - [ ] Based on error patterns, suggest different approaches
+  - [ ] Use CodeMemory to find similar successful patterns
+  - [ ] Return AlternativeApproach[]
 
-- [ ] **stageChanges() Private Method**
-  - [ ] Run `git add -A`
-  - [ ] Return true if changes staged
+- [ ] **evaluateAlternative(alternative, context) Private Method**
+  - [ ] Estimate effort
+  - [ ] List pros and cons
+  - [ ] Calculate confidence
 
-- [ ] **hasUncommittedChanges() Private Method**
-  - [ ] Run `git status --porcelain`
-  - [ ] Return true if output not empty
-
-- [ ] **createTag(name, commit) Private Method**
-  - [ ] Run `git tag {name} {commit}`
-  - [ ] Handle existing tag
+- [ ] **makeRecommendation(effectiveness, alternatives) Private Method**
+  - [ ] If working: "Continue current approach"
+  - [ ] If struggling: "Consider [best alternative]"
+  - [ ] If stuck: "Try [best alternative] or request help"
+  - [ ] Return string
 
 ### Part B: Create Tests
-Create `src/execution/iteration/IterationCommitHandler.test.ts`:
+Create `src/orchestration/assessment/ApproachEvaluator.test.ts`:
 
-- [ ] Test commit creation
-- [ ] Test commit message formatting
-- [ ] Test tagging
-- [ ] Test rollback
-- [ ] Test commit lookup
-- [ ] Test with no changes
+- [ ] Test effectiveness determination
+- [ ] Test approach inference
+- [ ] Test alternative generation
+- [ ] Test recommendation making
+- [ ] Test with various scenarios
 
 ### Task 11 Completion Checklist
-- [x] `IterationCommitHandler.ts` created (~420 lines - comprehensive implementation)
-- [x] `IterationCommitHandler.test.ts` created (~410 lines - 37 comprehensive tests)
-- [x] All tests pass (37/37)
-- [x] TypeScript compiles (verified via Vitest)
+- [ ] `ApproachEvaluator.ts` created (~250 lines)
+- [ ] `ApproachEvaluator.test.ts` created (~150 lines)
+- [ ] All tests pass
+- [ ] TypeScript compiles
 
-**[TASK 11 COMPLETE]** ✅ Completed on 2026-01-18 - Proceeding to Task 12
+**[TASK 11 COMPLETE]** <- Mark when done, proceed to Task 12
 
 ---
 
-# Task 12: Escalation Handler
+# Task 12: Historical Learner
 
 ## Objective
-Implement escalation when max iterations reached or blocking issues found.
+Implement learning from past task outcomes.
 
 ## Requirements
 
-### Part A: Create EscalationHandler Class
-Create `src/execution/iteration/EscalationHandler.ts`:
+### Part A: Create HistoricalLearner Class
+Create `src/orchestration/assessment/HistoricalLearner.ts`:
 
-- [ ] **EscalationHandler Class** implementing IEscalationHandler
+- [ ] **HistoricalLearner Class** implementing IHistoricalLearner
 
 - [ ] **Constructor**
-  - [ ] Accept GitService or git command executor
-  - [ ] Accept notification service (optional)
-  - [ ] Accept checkpoint directory path
+  - [ ] Accept database/storage for outcomes
+  - [ ] Accept CodeMemory for similarity search (Plan 13-03)
 
-- [ ] **escalate(taskId, reason, context) Method**
-  - [ ] Create checkpoint
-  - [ ] Generate escalation report
-  - [ ] Save report to checkpoint directory
-  - [ ] Notify human
-  - [ ] Return EscalationReport
+- [ ] **recordOutcome(outcome) Method**
+  - [ ] Validate outcome data
+  - [ ] Store in database
+  - [ ] Update aggregated insights
 
-- [ ] **createCheckpoint(taskId) Method**
-  - [ ] Commit any pending changes
-  - [ ] Create checkpoint tag
-  - [ ] Save current state info
-  - [ ] Return checkpoint commit hash
+- [ ] **getInsights(taskType) Method**
+  - [ ] Query outcomes by task type
+  - [ ] Calculate success rate
+  - [ ] Calculate average iterations
+  - [ ] Find common blockers
+  - [ ] Determine recommended approach
+  - [ ] Return HistoricalInsight[]
 
-- [ ] **notifyHuman(report) Method**
-  - [ ] Format notification message
-  - [ ] Log to console
-  - [ ] Write to file
-  - [ ] Call notification service if configured
+- [ ] **findSimilarTasks(taskDescription) Method**
+  - [ ] Use CodeMemory to find semantically similar tasks
+  - [ ] Return past TaskOutcome[]
 
-- [ ] **generateReport(taskId, reason, context) Private Method**
-  - [ ] Summarize iterations completed
-  - [ ] List last errors
-  - [ ] Suggest actions based on reason
-  - [ ] Return EscalationReport
+- [ ] **calculateSuccessRate(outcomes) Private Method**
+  - [ ] Count successful / total
+  - [ ] Return rate 0.0 - 1.0
 
-- [ ] **suggestActions(reason, errors) Private Method**
-  - [ ] Analyze errors
-  - [ ] Suggest fixes based on error types
-  - [ ] Return suggestions array
+- [ ] **findCommonBlockers(outcomes) Private Method**
+  - [ ] Aggregate all blockers
+  - [ ] Find most frequent
+  - [ ] Return top blockers
 
-- [ ] **formatReportForDisplay(report) Private Method**
-  - [ ] Format report for human reading
-  - [ ] Include all relevant info
-  - [ ] Return formatted string
+- [ ] **determineRecommendedApproach(outcomes) Private Method**
+  - [ ] Find approach with highest success rate
+  - [ ] Return approach description
 
-- [ ] **saveReportToFile(report, path) Private Method**
-  - [ ] Write report as JSON
-  - [ ] Also write human-readable version
+- [ ] **classifyTaskType(task) Private Method**
+  - [ ] Based on files, description, etc.
+  - [ ] Return task type string
 
 ### Part B: Create Index File
-Create `src/execution/iteration/index.ts`:
+Create `src/orchestration/assessment/index.ts`:
 
 - [ ] Export all types from `./types`
-- [ ] Export RalphStyleIterator
-- [ ] Export GitDiffContextBuilder
-- [ ] Export ErrorContextAggregator
-- [ ] Export IterationCommitHandler
-- [ ] Export EscalationHandler
-- [ ] Export factory: `createRalphStyleIterator()`
+- [ ] Export SelfAssessmentEngine
+- [ ] Export ProgressAssessor
+- [ ] Export BlockerDetector
+- [ ] Export ApproachEvaluator
+- [ ] Export HistoricalLearner
+- [ ] Export factory: `createSelfAssessmentEngine()`
 
 ### Part C: Create Tests
-Create `src/execution/iteration/EscalationHandler.test.ts`:
+Create `src/orchestration/assessment/HistoricalLearner.test.ts`:
 
-- [ ] Test escalation report generation
-- [ ] Test checkpoint creation
-- [ ] Test notification
-- [ ] Test action suggestions
-- [ ] Test file saving
+- [ ] Test outcome recording
+- [ ] Test insight generation
+- [ ] Test similar task finding
+- [ ] Test success rate calculation
+- [ ] Test common blocker detection
 
 ### Task 12 Completion Checklist
-- [x] `EscalationHandler.ts` created (~510 lines - comprehensive implementation)
-- [x] `EscalationHandler.test.ts` created (~410 lines - 42 comprehensive tests)
-- [x] `index.ts` created (~150 lines - full module exports with factory)
-- [x] All tests pass (42/42)
-- [x] TypeScript compiles (verified via Vitest)
+- [ ] `HistoricalLearner.ts` created (~200 lines)
+- [ ] `HistoricalLearner.test.ts` created (~150 lines)
+- [ ] `index.ts` created (~50 lines)
+- [ ] All tests pass
+- [ ] TypeScript compiles
 
-**[TASK 12 COMPLETE]** ✅ Completed on 2026-01-18 - Proceeding to Task 13
+**[TASK 12 COMPLETE]** <- Mark when done, proceed to Task 13
 
 ---
 
@@ -1378,72 +1384,83 @@ Create `src/execution/iteration/EscalationHandler.test.ts`:
 # Task 13: Cross-Module Integration
 
 ## Objective
-Ensure Dynamic Context Provider and Ralph-Style Iterator work together.
+Ensure Dynamic Replanner and Self-Assessment Engine work together.
 
 ## Requirements
 
 ### Part A: Integration Points
 Verify these integration points work:
 
-- [x] **RalphStyleIterator uses FreshContextManager:**
-  - Builds fresh context each iteration
-  - Context includes relevant code from previous iterations
+- [ ] **DynamicReplanner uses SelfAssessmentEngine:**
+  - Uses blocker assessment for blocking_issue trigger
+  - Uses progress assessment for time estimation
+  - Uses approach assessment for complexity detection
 
-- [x] **RalphStyleIterator uses DynamicContextProvider:**
-  - Agents can request additional context mid-iteration
-  - Requests tracked and budgeted
+- [ ] **SelfAssessmentEngine uses RalphStyleIterator (Plan 13-06):**
+  - Gets iteration history for assessment
+  - Gets error context for blocker detection
 
-- [x] **DynamicContextProvider uses CodeMemory:**
-  - Search requests use Plan 13-03 CodeMemory
-  - Results are relevant and ranked
+- [ ] **Both use CodeMemory (Plan 13-03):**
+  - For code understanding
+  - For similar task finding
 
-- [x] **GitDiffContextBuilder integrates with IterationContext:**
-  - Diffs are included in context
-  - Agent sees previous work
+### Part B: Create AssessmentReplannerBridge
+Create `src/orchestration/AssessmentReplannerBridge.ts`:
 
-### Part B: Create E2E Integration Test
-Create `src/execution/iteration/integration.test.ts`:
+- [ ] **AssessmentReplannerBridge Class**
+  - [ ] Connects DynamicReplanner and SelfAssessmentEngine
+  - [ ] Provides unified interface
 
-- [x] Test full iteration cycle:
-  1. Start task
-  2. Agent executes (mock)
-  3. Commit iteration
-  4. Run QA (mock fail)
-  5. Second iteration with diff context
-  6. QA passes
-  7. Success
+- [ ] **assessAndCheckReplan(taskId, context) Method**
+  - [ ] Get full assessment
+  - [ ] Check replanning triggers
+  - [ ] If blocker critical, trigger replan
+  - [ ] Return combined result
 
-- [x] Test agent requesting context mid-iteration
-- [x] Test escalation flow
-- [x] Test status and history tracking
+- [ ] **onAssessmentComplete(assessment) Method**
+  - [ ] Update replanner context with assessment data
 
-### Part C: Update Parent Exports
-Update `src/orchestration/context/index.ts`:
-- [x] Add export for dynamic module: `export * from './dynamic'`
+### Part C: Create E2E Integration Test
+Create `src/orchestration/integration.test.ts`:
 
-Update `src/execution/index.ts` (create if needed):
-- [x] Add export for iteration module: `export * from './iteration'`
+- [ ] Test full assessment -> replan cycle:
+  1. Create task
+  2. Run iterations (mock)
+  3. Assessment detects blockers
+  4. Replanner triggers
+  5. Task is split
+  6. Record outcomes
 
-### Part D: Create README Files
-Create `src/orchestration/context/dynamic/README.md`:
-- [x] Document Dynamic Context Provider
-- [x] Usage examples
-- [x] Tool definition for agents
+- [ ] Test historical learning improving future assessments
 
-Create `src/execution/iteration/README.md`:
-- [x] Document Ralph-Style Iterator
-- [x] Iteration flow diagram (ASCII)
-- [x] Configuration options
-- [x] Escalation handling
+### Part D: Update Parent Exports
+Update `src/orchestration/index.ts` (create if needed):
+- [ ] Add export for planning module: `export * from './planning'`
+- [ ] Add export for assessment module: `export * from './assessment'`
+- [ ] Add export for bridge: `export * from './AssessmentReplannerBridge'`
+
+### Part E: Create README Files
+Create `src/orchestration/planning/README.md`:
+- [ ] Document Dynamic Replanner
+- [ ] Trigger types and thresholds
+- [ ] Task splitting behavior
+- [ ] Agent replan tool usage
+
+Create `src/orchestration/assessment/README.md`:
+- [ ] Document Self-Assessment Engine
+- [ ] Assessment types
+- [ ] Historical learning
+- [ ] Integration with replanner
 
 ### Task 13 Completion Checklist
-- [x] Integration points verified
-- [x] `integration.test.ts` created (598 lines - comprehensive 16 tests)
-- [x] Parent exports updated
-- [x] README files created
-- [x] All integration tests pass (320 tests total in both modules)
+- [ ] Integration points verified
+- [ ] `AssessmentReplannerBridge.ts` created (~150 lines)
+- [ ] `integration.test.ts` created (~200 lines)
+- [ ] Parent exports updated
+- [ ] README files created
+- [ ] All integration tests pass
 
-**[TASK 13 COMPLETE]** ✅ Completed on 2026-01-18
+**[TASK 13 COMPLETE]** <- Mark when done, proceed to Task 14
 
 ---
 
@@ -1459,66 +1476,85 @@ Ensure all code passes linting and quality checks before completion.
 ## Requirements
 
 ### Part A: Run Auto-fix
-- [x] Created `tsconfig.json` for ESLint's TypeScript project service
-- [x] Fixed lint errors systematically
+- [ ] Run: `npm run lint -- --fix`
+- [ ] Note how many errors were auto-fixed
 
 ### Part B: Fix Remaining Lint Errors
 
-**Fixed issues:**
-- [x] Converted async functions without await to return Promise.resolve()
-- [x] Fixed unused variable warnings with underscore prefix
-- [x] Fixed template expression type safety with String() and null coalescing
-- [x] Fixed non-null assertions with proper null checks
-- [x] Replaced dynamic `import()` types with proper imports
+Common issues to fix:
+
+**`no-unused-vars`:**
+- [ ] Remove unused imports
+- [ ] Prefix unused parameters with underscore: `_param`
+- [ ] Remove unused variables
+
+**`restrict-template-expressions`:**
+- [ ] Use String() for non-strings in templates
+- [ ] Use ?? for possibly undefined values
+- [ ] Use .join() for arrays
+
+**`no-unsafe-*`:**
+- [ ] Add proper types instead of `any`
+- [ ] Use type guards where needed
+- [ ] Add targeted suppressions only when unavoidable (with comment)
 
 ### Part C: Fix Files Systematically
 
-Dynamic Context Provider files:
-- [x] `src/orchestration/context/dynamic/types.ts` - No lint errors
-- [x] `src/orchestration/context/dynamic/DynamicContextProvider.ts` - No lint errors
-- [x] `src/orchestration/context/dynamic/handlers/FileRequestHandler.ts` - No lint errors
-- [x] `src/orchestration/context/dynamic/handlers/SymbolRequestHandler.ts` - No lint errors
-- [x] `src/orchestration/context/dynamic/handlers/SearchRequestHandler.ts` - No lint errors
-- [x] `src/orchestration/context/dynamic/index.ts` - No lint errors
+Dynamic Replanner files:
+- [ ] `src/orchestration/planning/types.ts`
+- [ ] `src/orchestration/planning/DynamicReplanner.ts`
+- [ ] `src/orchestration/planning/TaskSplitter.ts`
+- [ ] `src/orchestration/planning/ReplannerIntegration.ts`
+- [ ] `src/orchestration/planning/triggers/*.ts`
+- [ ] `src/orchestration/planning/index.ts`
 
-Ralph-Style Iterator files:
-- [x] `src/execution/iteration/types.ts` - No lint errors
-- [x] `src/execution/iteration/RalphStyleIterator.ts` - Fixed async issues, template expressions
-- [x] `src/execution/iteration/GitDiffContextBuilder.ts` - Fixed async issues, unused variable
-- [x] `src/execution/iteration/ErrorContextAggregator.ts` - No lint errors
-- [x] `src/execution/iteration/IterationCommitHandler.ts` - Fixed non-null assertions, async issues
-- [x] `src/execution/iteration/EscalationHandler.ts` - Fixed exhaustive check, async issues
-- [x] `src/execution/iteration/index.ts` - Fixed import types, added proper typing
+Self-Assessment Engine files:
+- [ ] `src/orchestration/assessment/types.ts`
+- [ ] `src/orchestration/assessment/SelfAssessmentEngine.ts`
+- [ ] `src/orchestration/assessment/ProgressAssessor.ts`
+- [ ] `src/orchestration/assessment/BlockerDetector.ts`
+- [ ] `src/orchestration/assessment/ApproachEvaluator.ts`
+- [ ] `src/orchestration/assessment/HistoricalLearner.ts`
+- [ ] `src/orchestration/assessment/index.ts`
 
 Tool files:
-- [x] `src/execution/tools/RequestContextTool.ts` - Fixed runtime validation pattern
+- [ ] `src/execution/tools/RequestReplanTool.ts`
+
+Bridge file:
+- [ ] `src/orchestration/AssessmentReplannerBridge.ts`
 
 Test files:
-- [x] All `*.test.ts` files - Excluded from lint via eslint.config.js
+- [ ] All `*.test.ts` files
 
 ### Part D: Final Verification
-- [x] Run: `npm run lint` for target files
-  - Result: 0 errors in Plans 13-05/13-06 files
+- [ ] Run: `npm run lint`
+  - Expected: 0 errors
 
-- [x] Run: `npm test src/orchestration/context/dynamic/`
-  - Result: 99 tests passed
+- [ ] Run: `npm run build`
+  - Expected: Success, no errors
 
-- [x] Run: `npm test src/execution/iteration/`
-  - Result: 183 tests passed
+- [ ] Run: `npm test src/orchestration/planning/`
+  - Expected: All tests pass
 
-- [x] Run: `npm test src/execution/tools/`
-  - Result: 38 tests passed
+- [ ] Run: `npm test src/orchestration/assessment/`
+  - Expected: All tests pass
+
+- [ ] Run: `npm test src/execution/tools/RequestReplanTool`
+  - Expected: All tests pass
+
+- [ ] Run full test suite: `npm test`
+  - Expected: All existing tests still pass (no regressions)
 
 ### Task 14 Completion Checklist
-- [x] Created tsconfig.json for project
-- [x] All lint errors in Plans 13-05/13-06 files fixed
-- [x] Plans 13-05/13-06 files pass lint (0 errors in target files)
-- [x] All Dynamic Context tests pass (99 tests)
-- [x] All Ralph Iterator tests pass (183 tests)
-- [x] All Tools tests pass (38 tests)
-- [x] Total: 320 tests passing
+- [ ] Auto-fix applied
+- [ ] All lint errors manually fixed
+- [ ] `npm run lint` passes with 0 errors
+- [ ] `npm run build` succeeds
+- [ ] All Dynamic Replanner tests pass
+- [ ] All Self-Assessment tests pass
+- [ ] Full test suite passes (no regressions)
 
-**[TASK 14 COMPLETE]** ✅ Completed on 2026-01-18
+**[TASK 14 COMPLETE]**
 
 ---
 
@@ -1527,48 +1563,59 @@ Test files:
 After completion:
 
 ```
-src/orchestration/context/dynamic/
+src/orchestration/planning/
 |-- index.ts                          # Module exports (~50 lines)
-|-- types.ts                          # Type definitions (~200 lines)
-|-- README.md                         # Documentation (~100 lines)
-|-- DynamicContextProvider.ts         # Core implementation (~300 lines)
-|-- DynamicContextProvider.test.ts    # Tests (~200 lines)
-|-- handlers/
-    |-- FileRequestHandler.ts         # File requests (~150 lines)
-    |-- FileRequestHandler.test.ts    # Tests (~100 lines)
-    |-- SymbolRequestHandler.ts       # Symbol requests (~200 lines)
-    |-- SymbolRequestHandler.test.ts  # Tests (~150 lines)
-    |-- SearchRequestHandler.ts       # Search requests (~180 lines)
-    |-- SearchRequestHandler.test.ts  # Tests (~120 lines)
+|-- types.ts                          # Type definitions (~300 lines)
+|-- README.md                         # Documentation (~150 lines)
+|-- DynamicReplanner.ts               # Core replanner (~350 lines)
+|-- DynamicReplanner.test.ts          # Tests (~200 lines)
+|-- TaskSplitter.ts                   # Task splitting (~250 lines)
+|-- TaskSplitter.test.ts              # Tests (~150 lines)
+|-- ReplannerIntegration.ts           # Coordinator hooks (~200 lines)
+|-- ReplannerIntegration.test.ts      # Tests (~150 lines)
+|-- triggers/
+    |-- index.ts                      # Trigger exports (~30 lines)
+    |-- TimeExceededTrigger.ts        # (~60 lines)
+    |-- IterationsTrigger.ts          # (~60 lines)
+    |-- ScopeCreepTrigger.ts          # (~80 lines)
+    |-- ConsecutiveFailuresTrigger.ts # (~70 lines)
+    |-- ComplexityTrigger.ts          # (~80 lines)
+    |-- triggers.test.ts              # Tests (~200 lines)
                                       --------------------------
-                                      Subtotal: ~1,750 lines
+                                      Subtotal: ~2,380 lines
 
-src/execution/iteration/
+src/orchestration/assessment/
 |-- index.ts                          # Module exports (~50 lines)
 |-- types.ts                          # Type definitions (~350 lines)
 |-- README.md                         # Documentation (~150 lines)
-|-- RalphStyleIterator.ts             # Core iterator (~400 lines)
-|-- RalphStyleIterator.test.ts        # Tests (~250 lines)
-|-- GitDiffContextBuilder.ts          # Git diff building (~200 lines)
-|-- GitDiffContextBuilder.test.ts     # Tests (~150 lines)
-|-- ErrorContextAggregator.ts         # Error aggregation (~180 lines)
-|-- ErrorContextAggregator.test.ts    # Tests (~120 lines)
-|-- IterationCommitHandler.ts         # Commit handling (~200 lines)
-|-- IterationCommitHandler.test.ts    # Tests (~150 lines)
-|-- EscalationHandler.ts              # Escalation (~200 lines)
-|-- EscalationHandler.test.ts         # Tests (~120 lines)
-|-- integration.test.ts               # Integration tests (~200 lines)
+|-- SelfAssessmentEngine.ts           # Core engine (~300 lines)
+|-- SelfAssessmentEngine.test.ts      # Tests (~200 lines)
+|-- ProgressAssessor.ts               # Progress estimation (~200 lines)
+|-- ProgressAssessor.test.ts          # Tests (~150 lines)
+|-- BlockerDetector.ts                # Blocker detection (~250 lines)
+|-- BlockerDetector.test.ts           # Tests (~150 lines)
+|-- ApproachEvaluator.ts              # Approach evaluation (~250 lines)
+|-- ApproachEvaluator.test.ts         # Tests (~150 lines)
+|-- HistoricalLearner.ts              # Historical learning (~200 lines)
+|-- HistoricalLearner.test.ts         # Tests (~150 lines)
                                       --------------------------
-                                      Subtotal: ~2,720 lines
+                                      Subtotal: ~2,550 lines
+
+src/orchestration/
+|-- AssessmentReplannerBridge.ts      # Bridge module (~150 lines)
+|-- integration.test.ts               # E2E tests (~200 lines)
+|-- index.ts                          # Updated exports (~50 lines)
+                                      --------------------------
+                                      Subtotal: ~400 lines
 
 src/execution/tools/
-|-- RequestContextTool.ts             # Agent tool (~150 lines)
-|-- RequestContextTool.test.ts        # Tests (~100 lines)
+|-- RequestReplanTool.ts              # Agent tool (~150 lines)
+|-- RequestReplanTool.test.ts         # Tests (~100 lines)
                                       --------------------------
                                       Subtotal: ~250 lines
 
                                       ==========================
-                                      TOTAL: ~4,720 lines
+                                      TOTAL: ~5,580 lines
 ```
 
 ---
@@ -1576,28 +1623,31 @@ src/execution/tools/
 ## Success Criteria
 
 - [ ] All 14 tasks completed with markers checked
-- [ ] Dynamic Context Provider in `src/orchestration/context/dynamic/`
-- [ ] Ralph-Style Iterator in `src/execution/iteration/`
+- [ ] Dynamic Replanner in `src/orchestration/planning/`
+- [ ] Self-Assessment Engine in `src/orchestration/assessment/`
 - [ ] Agent tool in `src/execution/tools/`
+- [ ] Bridge module in `src/orchestration/`
 - [ ] All unit tests pass
 - [ ] All integration tests pass
 - [ ] TypeScript compiles: `npm run build`
 - [ ] ESLint passes: `npm run lint` (0 errors)
-- [ ] Agent can request context:
+- [ ] Replanner detects complexity:
   ```typescript
-  const provider = createDynamicContextProvider();
-  provider.registerAgent('agent-1', 'task-1');
-  const response = await provider.requestFile('agent-1', 'src/index.ts', 'Need to understand entry point');
-  console.log('File content:', response.content);
+  const replanner = createDynamicReplanner();
+  replanner.startMonitoring('task-1', executionContext);
+  replanner.updateContext('task-1', { iteration: 8, maxIterations: 20 });
+  const decision = replanner.checkReplanningNeeded('task-1');
+  console.log('Should replan:', decision.shouldReplan);
   ```
-- [ ] Ralph iteration works:
+- [ ] Assessment engine works:
   ```typescript
-  const iterator = createRalphStyleIterator();
-  const result = await iterator.execute(task, { maxIterations: 10 });
-  console.log('Iterations:', result.iterations);
-  console.log('Success:', result.success);
+  const assessor = createSelfAssessmentEngine();
+  const assessment = await assessor.getFullAssessment('task-1', context);
+  console.log('Completion:', assessment.progress.completionEstimate);
+  console.log('Blockers:', assessment.blockers.severity);
+  console.log('Recommendation:', assessment.recommendation.action);
   ```
-- [ ] **Total lines: ~4,500-5,500**
+- [ ] **Total lines: ~5,500-6,000**
 
 ---
 
@@ -1605,56 +1655,55 @@ src/execution/tools/
 
 ```
 --max-iterations 50
---completion-promise "PLANS_13_05_06_COMPLETE"
+--completion-promise "PLANS_13_07_08_COMPLETE"
 ```
 
 ## Task Completion Markers
 
 Complete tasks sequentially:
 
-**Part 1: Dynamic Context Provider**
-- [ ] `[TASK 1 COMPLETE]` - Types & Interfaces
-- [ ] `[TASK 2 COMPLETE]` - DynamicContextProvider Core
-- [ ] `[TASK 3 COMPLETE]` - File Request Handler
-- [ ] `[TASK 4 COMPLETE]` - Symbol Request Handler
-- [ ] `[TASK 5 COMPLETE]` - Search Request Handler
-- [x] `[TASK 6 COMPLETE]` - Agent Tool Integration ✅
+**Part 1: Dynamic Replanner**
+- [ ] `[TASK 1 COMPLETE]` - Replanner Types & Interfaces
+- [ ] `[TASK 2 COMPLETE]` - DynamicReplanner Core
+- [ ] `[TASK 3 COMPLETE]` - Trigger Evaluators
+- [ ] `[TASK 4 COMPLETE]` - Task Splitter
+- [ ] `[TASK 5 COMPLETE]` - Agent Replan Request Tool
+- [ ] `[TASK 6 COMPLETE]` - Coordinator Integration
 
-**Part 2: Ralph-Style Iterator**
-- [x] `[TASK 7 COMPLETE]` - Iterator Types & Interfaces ✅
-- [x] `[TASK 8 COMPLETE]` - RalphStyleIterator Core ✅
-- [x] `[TASK 9 COMPLETE]` - Git Diff Context Builder ✅
-- [x] `[TASK 10 COMPLETE]` - Error Context Aggregator ✅
-- [x] `[TASK 11 COMPLETE]` - Iteration Commit Handler ✅
-- [x] `[TASK 12 COMPLETE]` - Escalation Handler ✅
+**Part 2: Self-Assessment Engine**
+- [ ] `[TASK 7 COMPLETE]` - Assessment Types & Interfaces
+- [ ] `[TASK 8 COMPLETE]` - SelfAssessmentEngine Core
+- [ ] `[TASK 9 COMPLETE]` - Progress Assessor
+- [ ] `[TASK 10 COMPLETE]` - Blocker Detector
+- [ ] `[TASK 11 COMPLETE]` - Approach Evaluator
+- [ ] `[TASK 12 COMPLETE]` - Historical Learner
 
 **Part 3: Integration**
-- [x] `[TASK 13 COMPLETE]` - Cross-Module Integration ✅
+- [ ] `[TASK 13 COMPLETE]` - Cross-Module Integration
 
 **Part 4: Final Verification**
-- [x] `[TASK 14 COMPLETE]` - Lint & Quality Check ✅
+- [ ] `[TASK 14 COMPLETE]` - Lint & Quality Check
 
 **Completion:**
-- [x] `[PLANS 13-05 & 13-06 COMPLETE]` - All done ✅
+- [ ] `[PLANS 13-07 & 13-08 COMPLETE]` - All done
 
 ---
 
 ## Notes
 
 - Complete tasks in order - later tasks depend on earlier ones
-- Part 1 (Dynamic Context) can run in parallel with agents
-- Part 2 (Ralph Iterator) builds on Part 1 for context requests
+- Part 1 (Dynamic Replanner) and Part 2 (Self-Assessment) work together
 - Task 14 (lint) is critical - do not skip it
 - Reference `PHASE_13_CONTEXT_ENHANCEMENT_PLAN.md` for interface details
-- Follow existing Nexus patterns in the relevant layers
-- Dynamic Context extends Layer 2 (Orchestration), Ralph Iterator is Layer 4 (Execution)
-- This combined plan enables Plans 13-07 and 13-08
+- Follow existing Nexus patterns in the orchestration layer
+- Both modules are in Layer 2/3 (Orchestration/Planning)
+- This completes Phase 13 - all 8 plans done!
 
 ## Reference Files
 
 For existing patterns, examine:
 - `src/orchestration/context/` - Plan 13-04 code (FreshContextManager)
+- `src/execution/iteration/` - Plan 13-06 code (RalphStyleIterator)
 - `src/persistence/memory/code/` - Plan 13-03 code (CodeMemory)
 - `src/infrastructure/analysis/` - Plan 13-01 code (RepoMapGenerator)
-- Existing git integration in the codebase
-- Existing execution layer patterns
+- Existing orchestration patterns in the codebase
