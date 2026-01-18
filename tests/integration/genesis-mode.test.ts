@@ -25,7 +25,8 @@ import { TaskDecomposer } from '../../src/planning/decomposition/TaskDecomposer'
 import { DependencyResolver } from '../../src/planning/dependencies/DependencyResolver';
 import { TimeEstimator } from '../../src/planning/estimation/TimeEstimator';
 import { ClaudeClient } from '../../src/llm/clients/ClaudeClient';
-import type { PlanningTask, Feature } from '../../src/planning/types';
+import type { PlanningTask } from '../../src/planning/types';
+import type { Feature } from '../../src/types/core';
 import type { ProjectConfig } from '../../src/orchestration/types';
 
 // ============================================================================
@@ -60,28 +61,35 @@ if (!hasAllKeys) {
 // ============================================================================
 
 /**
+ * Helper to create a PlanningTask with required fields and optional overrides
+ */
+function createTask(overrides: Partial<PlanningTask> & { id: string; name: string }): PlanningTask {
+  return {
+    description: overrides.description || `Task: ${overrides.name}`,
+    type: 'auto',
+    size: 'small',
+    dependsOn: [],
+    estimatedMinutes: 10,
+    testCriteria: [],
+    files: [],
+    ...overrides,
+  };
+}
+
+/**
  * Create a sample feature for testing decomposition
  */
 function createSampleFeature(): Feature {
+  const now = new Date();
   return {
     id: 'test-feature-001',
+    projectId: 'test-project',
     name: 'User Authentication',
     description: 'Implement basic user authentication with login, logout, and session management',
-    requirements: `
-      1. Users can register with email and password
-      2. Users can login with credentials
-      3. Sessions are managed securely
-      4. Users can logout and invalidate session
-    `,
-    acceptanceCriteria: [
-      'User can register with valid email and password',
-      'User receives validation error for invalid inputs',
-      'User can login with registered credentials',
-      'User session persists across page refreshes',
-      'User can logout successfully',
-    ],
+    status: 'pending',
     priority: 'high',
-    estimatedComplexity: 'medium',
+    createdAt: now,
+    updatedAt: now,
   };
 }
 
@@ -89,14 +97,16 @@ function createSampleFeature(): Feature {
  * Create a minimal feature for fast decomposition tests
  */
 function createMinimalFeature(): Feature {
+  const now = new Date();
   return {
     id: 'test-feature-mini',
+    projectId: 'test-project',
     name: 'Add Hello World endpoint',
     description: 'Create a simple GET endpoint that returns "Hello World"',
-    requirements: 'Create /api/hello endpoint that returns JSON: { message: "Hello World" }',
-    acceptanceCriteria: ['GET /api/hello returns 200 with message'],
+    status: 'pending',
     priority: 'low',
-    estimatedComplexity: 'simple',
+    createdAt: now,
+    updatedAt: now,
   };
 }
 
@@ -109,41 +119,56 @@ function createSampleTasks(): PlanningTask[] {
       id: 'task-1',
       name: 'Create User model',
       description: 'Define the User TypeScript interface and database schema',
+      type: 'auto',
+      size: 'small',
       dependsOn: [],
       estimatedMinutes: 15,
-      outputType: 'code',
+      testCriteria: ['User interface exists', 'Schema is valid'],
+      files: ['src/models/User.ts'],
     },
     {
       id: 'task-2',
       name: 'Implement password hashing',
       description: 'Create utility functions for secure password hashing and verification',
+      type: 'auto',
+      size: 'small',
       dependsOn: [],
       estimatedMinutes: 20,
-      outputType: 'code',
+      testCriteria: ['hashPassword function works', 'verifyPassword function works'],
+      files: ['src/utils/password.ts'],
     },
     {
       id: 'task-3',
       name: 'Create auth service',
       description: 'Implement authentication service with login and register methods',
+      type: 'auto',
+      size: 'small',
       dependsOn: ['task-1', 'task-2'],
       estimatedMinutes: 25,
-      outputType: 'code',
+      testCriteria: ['login works', 'register works'],
+      files: ['src/services/AuthService.ts'],
     },
     {
       id: 'task-4',
       name: 'Create auth routes',
       description: 'Define Express routes for login, register, and logout endpoints',
+      type: 'auto',
+      size: 'small',
       dependsOn: ['task-3'],
       estimatedMinutes: 20,
-      outputType: 'code',
+      testCriteria: ['POST /login works', 'POST /register works'],
+      files: ['src/routes/auth.ts'],
     },
     {
       id: 'task-5',
       name: 'Write auth tests',
       description: 'Create integration tests for authentication flow',
+      type: 'tdd',
+      size: 'small',
       dependsOn: ['task-4'],
       estimatedMinutes: 25,
-      outputType: 'tests',
+      testCriteria: ['All auth tests pass'],
+      files: ['tests/auth.test.ts'],
     },
   ];
 }
@@ -248,23 +273,17 @@ describe('Genesis Mode - Unit Tests (No API)', () => {
     });
 
     it('should estimate time considering complexity', async () => {
-      const simpleTask: PlanningTask = {
+      const simpleTask = createTask({
         id: 'simple',
         name: 'Simple task',
         description: 'A simple rename operation',
-        dependsOn: [],
-        estimatedMinutes: 10,
-        outputType: 'code',
-      };
+      });
 
-      const complexTask: PlanningTask = {
+      const complexTask = createTask({
         id: 'complex',
         name: 'Complex refactor',
         description: 'A complex algorithm optimization with security and encryption',
-        dependsOn: [],
-        estimatedMinutes: 10,
-        outputType: 'code',
-      };
+      });
 
       const simpleEstimate = await estimator.estimate(simpleTask);
       const complexEstimate = await estimator.estimate(complexTask);
@@ -278,25 +297,20 @@ describe('Genesis Mode - Unit Tests (No API)', () => {
     });
 
     it('should provide confidence levels for estimates', () => {
-      const wellDefinedTask: PlanningTask = {
+      const wellDefinedTask = createTask({
         id: 'well-defined',
         name: 'Create user model',
         description:
           'Detailed description of creating a TypeScript interface for User with proper validation and database schema mapping',
-        dependsOn: [],
         estimatedMinutes: 20,
-        outputType: 'code',
         files: ['src/models/user.ts', 'src/database/schema.ts'],
-      };
+      });
 
-      const vagueTask: PlanningTask = {
+      const vagueTask = createTask({
         id: 'vague',
         name: 'Fix things',
         description: 'Fix stuff',
-        dependsOn: [],
-        estimatedMinutes: 10,
-        outputType: 'code',
-      };
+      });
 
       // Use estimateDetailed to get confidence
       const wellDefinedEstimate = estimator.estimateDetailed(wellDefinedTask);
@@ -345,22 +359,18 @@ describe('Genesis Mode - Unit Tests (No API)', () => {
     it('should detect invalid genesis plans', () => {
       // Tasks with circular dependency (invalid genesis plan)
       const invalidTasks: PlanningTask[] = [
-        {
+        createTask({
           id: 'a',
           name: 'Task A',
           description: 'Depends on B',
           dependsOn: ['b'],
-          estimatedMinutes: 10,
-          outputType: 'code',
-        },
-        {
+        }),
+        createTask({
           id: 'b',
           name: 'Task B',
           description: 'Depends on A (circular!)',
           dependsOn: ['a'],
-          estimatedMinutes: 10,
-          outputType: 'code',
-        },
+        }),
       ];
 
       const validation = resolver.validate(invalidTasks);
@@ -673,14 +683,12 @@ describe('Genesis Mode - Edge Cases', () => {
 
     it('should handle single task', () => {
       const singleTask: PlanningTask[] = [
-        {
+        createTask({
           id: 'solo',
           name: 'Standalone task',
           description: 'A task with no dependencies',
-          dependsOn: [],
           estimatedMinutes: 15,
-          outputType: 'code',
-        },
+        }),
       ];
 
       const resolved = resolver.topologicalSort(singleTask);
@@ -696,30 +704,9 @@ describe('Genesis Mode - Edge Cases', () => {
 
     it('should handle all tasks with no dependencies (maximum parallelism)', () => {
       const independentTasks: PlanningTask[] = [
-        {
-          id: 'a',
-          name: 'Task A',
-          description: 'Independent',
-          dependsOn: [],
-          estimatedMinutes: 10,
-          outputType: 'code',
-        },
-        {
-          id: 'b',
-          name: 'Task B',
-          description: 'Independent',
-          dependsOn: [],
-          estimatedMinutes: 20,
-          outputType: 'code',
-        },
-        {
-          id: 'c',
-          name: 'Task C',
-          description: 'Independent',
-          dependsOn: [],
-          estimatedMinutes: 15,
-          outputType: 'code',
-        },
+        createTask({ id: 'a', name: 'Task A', description: 'Independent' }),
+        createTask({ id: 'b', name: 'Task B', description: 'Independent', estimatedMinutes: 20 }),
+        createTask({ id: 'c', name: 'Task C', description: 'Independent', estimatedMinutes: 15 }),
       ];
 
       const waves = resolver.calculateWaves(independentTasks);
@@ -731,30 +718,9 @@ describe('Genesis Mode - Edge Cases', () => {
 
     it('should handle linear dependency chain (no parallelism)', async () => {
       const chainTasks: PlanningTask[] = [
-        {
-          id: 'first',
-          name: 'First',
-          description: 'First in chain',
-          dependsOn: [],
-          estimatedMinutes: 10,
-          outputType: 'code',
-        },
-        {
-          id: 'second',
-          name: 'Second',
-          description: 'Depends on first',
-          dependsOn: ['first'],
-          estimatedMinutes: 10,
-          outputType: 'code',
-        },
-        {
-          id: 'third',
-          name: 'Third',
-          description: 'Depends on second',
-          dependsOn: ['second'],
-          estimatedMinutes: 10,
-          outputType: 'code',
-        },
+        createTask({ id: 'first', name: 'First', description: 'First in chain' }),
+        createTask({ id: 'second', name: 'Second', description: 'Depends on first', dependsOn: ['first'] }),
+        createTask({ id: 'third', name: 'Third', description: 'Depends on second', dependsOn: ['second'] }),
       ];
 
       const waves = resolver.calculateWaves(chainTasks);
@@ -783,38 +749,10 @@ describe('Genesis Mode - Edge Cases', () => {
       //    \ /
       //     D
       const diamondTasks: PlanningTask[] = [
-        {
-          id: 'A',
-          name: 'Root',
-          description: 'Root task',
-          dependsOn: [],
-          estimatedMinutes: 10,
-          outputType: 'code',
-        },
-        {
-          id: 'B',
-          name: 'Left',
-          description: 'Left branch',
-          dependsOn: ['A'],
-          estimatedMinutes: 10,
-          outputType: 'code',
-        },
-        {
-          id: 'C',
-          name: 'Right',
-          description: 'Right branch',
-          dependsOn: ['A'],
-          estimatedMinutes: 10,
-          outputType: 'code',
-        },
-        {
-          id: 'D',
-          name: 'Merge',
-          description: 'Merge point',
-          dependsOn: ['B', 'C'],
-          estimatedMinutes: 10,
-          outputType: 'code',
-        },
+        createTask({ id: 'A', name: 'Root', description: 'Root task' }),
+        createTask({ id: 'B', name: 'Left', description: 'Left branch', dependsOn: ['A'] }),
+        createTask({ id: 'C', name: 'Right', description: 'Right branch', dependsOn: ['A'] }),
+        createTask({ id: 'D', name: 'Merge', description: 'Merge point', dependsOn: ['B', 'C'] }),
       ];
 
       const waves = resolver.calculateWaves(diamondTasks);
@@ -831,38 +769,10 @@ describe('Genesis Mode - Edge Cases', () => {
       //    \  |  /
       //       D
       const convergeTasks: PlanningTask[] = [
-        {
-          id: 'A',
-          name: 'A',
-          description: 'A',
-          dependsOn: [],
-          estimatedMinutes: 10,
-          outputType: 'code',
-        },
-        {
-          id: 'B',
-          name: 'B',
-          description: 'B',
-          dependsOn: [],
-          estimatedMinutes: 10,
-          outputType: 'code',
-        },
-        {
-          id: 'C',
-          name: 'C',
-          description: 'C',
-          dependsOn: [],
-          estimatedMinutes: 10,
-          outputType: 'code',
-        },
-        {
-          id: 'D',
-          name: 'D',
-          description: 'Depends on A, B, C',
-          dependsOn: ['A', 'B', 'C'],
-          estimatedMinutes: 10,
-          outputType: 'code',
-        },
+        createTask({ id: 'A', name: 'A', description: 'A' }),
+        createTask({ id: 'B', name: 'B', description: 'B' }),
+        createTask({ id: 'C', name: 'C', description: 'C' }),
+        createTask({ id: 'D', name: 'D', description: 'Depends on A, B, C', dependsOn: ['A', 'B', 'C'] }),
       ];
 
       const resolved = resolver.topologicalSort(convergeTasks);
@@ -878,14 +788,7 @@ describe('Genesis Mode - Edge Cases', () => {
 
     it('should handle missing dependencies gracefully', () => {
       const tasksWithMissingDep: PlanningTask[] = [
-        {
-          id: 'A',
-          name: 'A',
-          description: 'A',
-          dependsOn: ['NONEXISTENT'], // Missing dependency
-          estimatedMinutes: 10,
-          outputType: 'code',
-        },
+        createTask({ id: 'A', name: 'A', description: 'A', dependsOn: ['NONEXISTENT'] }), // Missing dependency
       ];
 
       // Should not throw during topological sort (external deps are ignored)

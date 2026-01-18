@@ -171,13 +171,15 @@ describe('ReviewRunner', () => {
 
       await runner.run('/test/path');
 
+      // System prompt is now passed as a message with role 'system'
       expect(mockGeminiClient.chat).toHaveBeenCalledWith(
         expect.arrayContaining([
+          expect.objectContaining({ role: 'system' }),
           expect.objectContaining({
+            role: 'user',
             content: expect.stringContaining('staged.ts'),
           }),
-        ]),
-        expect.any(Object)
+        ])
       );
     });
 
@@ -216,13 +218,15 @@ describe('ReviewRunner', () => {
         acceptanceCriteria: ['Users can log in', 'Sessions persist'],
       });
 
+      // System prompt is now passed as a message with role 'system'
       expect(mockGeminiClient.chat).toHaveBeenCalledWith(
         expect.arrayContaining([
+          expect.objectContaining({ role: 'system' }),
           expect.objectContaining({
+            role: 'user',
             content: expect.stringContaining('Implement user authentication'),
           }),
-        ]),
-        expect.any(Object)
+        ])
       );
     });
 
@@ -236,9 +240,10 @@ describe('ReviewRunner', () => {
 
       await runner.run('/test/path');
 
+      // First message is system prompt, second is user message with the diff
       const callArgs = mockGeminiClient.chat.mock.calls[0][0];
-      const content = callArgs[0].content;
-      expect(content).toContain('DIFF TRUNCATED');
+      const userMessage = callArgs.find((msg: { role: string }) => msg.role === 'user');
+      expect(userMessage.content).toContain('DIFF TRUNCATED');
     });
   });
 
@@ -357,13 +362,15 @@ Let me know if you have questions.`;
       await callback('override-task');
 
       // Task ID should be overridden, but description should be retained
+      // System prompt is now passed as a message with role 'system'
       expect(mockGeminiClient.chat).toHaveBeenCalledWith(
         expect.arrayContaining([
+          expect.objectContaining({ role: 'system' }),
           expect.objectContaining({
+            role: 'user',
             content: expect.stringContaining('Static description'),
           }),
-        ]),
-        expect.any(Object)
+        ])
       );
     });
   });

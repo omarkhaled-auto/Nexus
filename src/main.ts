@@ -239,8 +239,8 @@ export {
   NexusFactory,
   createNexus,
   createTestingNexus,
-  createMinimalNexus,
-  type NexusConfig,
+  type NexusFactoryConfig,
+  type NexusTestingConfig,
   type NexusInstance,
 } from './NexusFactory';
 

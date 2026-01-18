@@ -180,10 +180,11 @@ export class ReviewRunner {
       const prompt = this.buildReviewPrompt(truncatedDiff, context);
 
       // Call Gemini for review
-      const response = await this.geminiClient.chat(
-        [{ role: 'user', content: prompt }],
-        { systemPrompt: this.buildSystemPrompt() }
-      );
+      // System prompt is passed as a message with role 'system'
+      const response = await this.geminiClient.chat([
+        { role: 'system', content: this.buildSystemPrompt() },
+        { role: 'user', content: prompt },
+      ]);
 
       // Parse the response
       return this.parseReviewResponse(response.content);
@@ -244,10 +245,11 @@ export class ReviewRunner {
       const prompt = this.buildReviewPrompt(filteredDiff, context);
 
       // Call Gemini for review
-      const response = await this.geminiClient.chat(
-        [{ role: 'user', content: prompt }],
-        { systemPrompt: this.buildSystemPrompt() }
-      );
+      // System prompt is passed as a message with role 'system'
+      const response = await this.geminiClient.chat([
+        { role: 'system', content: this.buildSystemPrompt() },
+        { role: 'user', content: prompt },
+      ]);
 
       return this.parseReviewResponse(response.content);
     } catch (error) {

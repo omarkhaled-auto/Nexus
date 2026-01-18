@@ -138,10 +138,13 @@ export class TaskDecomposer implements ITaskDecomposer {
     const prompt = this.buildDecompositionPrompt(featureDescription, options);
 
     // Call Claude for decomposition
+    // System prompt is passed as a message with role 'system'
     const response = await this.claudeClient.chat(
-      [{ role: 'user', content: prompt }],
+      [
+        { role: 'system', content: DECOMPOSITION_SYSTEM_PROMPT },
+        { role: 'user', content: prompt },
+      ],
       {
-        systemPrompt: DECOMPOSITION_SYSTEM_PROMPT,
         maxTokens: 4000,
         temperature: 0.3, // Lower temperature for more consistent structure
       }
@@ -214,10 +217,13 @@ export class TaskDecomposer implements ITaskDecomposer {
   async splitTask(task: PlanningTask): Promise<PlanningTask[]> {
     const prompt = this.buildSplitPrompt(task);
 
+    // System prompt is passed as a message with role 'system'
     const response = await this.claudeClient.chat(
-      [{ role: 'user', content: prompt }],
+      [
+        { role: 'system', content: SPLIT_SYSTEM_PROMPT },
+        { role: 'user', content: prompt },
+      ],
       {
-        systemPrompt: SPLIT_SYSTEM_PROMPT,
         maxTokens: 2000,
         temperature: 0.3,
       }

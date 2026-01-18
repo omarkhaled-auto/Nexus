@@ -137,12 +137,16 @@ describe('TaskDecomposer', () => {
       const decomposer = new TaskDecomposer(mockClaudeClient as any);
       await decomposer.decompose('Test feature');
 
+      // System prompt is now passed as a message with role 'system'
       expect(mockClaudeClient.chat).toHaveBeenCalledWith(
         expect.arrayContaining([
+          expect.objectContaining({
+            role: 'system',
+            content: expect.stringContaining('30-MINUTE RULE'),
+          }),
           expect.objectContaining({ role: 'user' }),
         ]),
         expect.objectContaining({
-          systemPrompt: expect.stringContaining('30-MINUTE RULE'),
           maxTokens: 4000,
         })
       );
