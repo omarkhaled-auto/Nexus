@@ -201,7 +201,7 @@ export class CheckpointManager {
 
     // Emit event if eventBus provided
     if (this.eventBus) {
-      this.eventBus.emit(
+      void this.eventBus.emit(
         'system:checkpoint-created',
         {
           checkpointId,
@@ -279,7 +279,7 @@ export class CheckpointManager {
 
     // Emit event if eventBus provided
     if (this.eventBus) {
-      this.eventBus.emit(
+      void this.eventBus.emit(
         'system:checkpoint-restored',
         {
           checkpointId,

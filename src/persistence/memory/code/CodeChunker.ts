@@ -208,6 +208,7 @@ export class CodeChunker implements ICodeChunker {
       );
 
       // Check for content between symbols (comments, stray code)
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- nextSymbol can be undefined for last element
       if (nextSymbol && endLine < nextSymbol.line - 1) {
         const betweenContent = this.getContentRange(lines, endLine + 1, nextSymbol.line - 1);
         if (betweenContent.trim().length > 0) {
@@ -343,7 +344,7 @@ export class CodeChunker implements ICodeChunker {
     // Look for closing braces, which often indicate end of blocks
     for (let i = targetLine - 1; i >= Math.max(startLine, targetLine - searchRange); i--) {
       const line = lines[i - 1]; // Convert to 0-indexed
-      const trimmed = line?.trim() ?? '';
+      const trimmed = line.trim();
 
       // End of function/class/block
       if (trimmed === '}' || trimmed === '};' || trimmed.endsWith('}')) {

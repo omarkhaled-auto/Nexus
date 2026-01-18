@@ -247,7 +247,7 @@ export class InterviewEngine {
         // Map category to RequirementsDB format
         const dbCategory = CATEGORY_MAPPING[req.category] ?? 'functional';
 
-        await this.requirementsDB.addRequirement(session.projectId, {
+        this.requirementsDB.addRequirement(session.projectId, {
           category: dbCategory,
           description: req.text,
           priority: req.priority,

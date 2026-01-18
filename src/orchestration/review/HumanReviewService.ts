@@ -233,7 +233,7 @@ export class HumanReviewService {
     this.pendingReviews.set(reviewId, review);
 
     // Emit review:requested event
-    this.eventBus.emit(
+    void this.eventBus.emit(
       'review:requested',
       {
         reviewId,
@@ -281,7 +281,7 @@ export class HumanReviewService {
     this.pendingReviews.delete(reviewId);
 
     // Emit review:approved event
-    this.eventBus.emit(
+    void this.eventBus.emit(
       'review:approved',
       {
         reviewId,
@@ -327,7 +327,7 @@ export class HumanReviewService {
     this.pendingReviews.delete(reviewId);
 
     // Emit review:rejected event
-    this.eventBus.emit(
+    void this.eventBus.emit(
       'review:rejected',
       {
         reviewId,

@@ -126,10 +126,9 @@ export class CodeMemory implements ICodeMemory {
       const contents = chunks.map((chunk) => chunk.content);
       const embeddings = await this.embeddings.embedBatch(contents);
 
-      for (let i = 0; i < chunks.length; i++) {
+      for (const [i, chunk] of chunks.entries()) {
         const embedding = embeddings[i];
-        const chunk = chunks[i];
-        if (chunk && embedding) {
+        if (embedding) {
           chunk.embedding = embedding;
         }
       }
@@ -187,10 +186,9 @@ export class CodeMemory implements ICodeMemory {
               const contents = chunks.map((c) => c.content);
               const embeddings = await this.embeddings.embedBatch(contents);
 
-              for (let j = 0; j < chunks.length; j++) {
+              for (const [j, chunk] of chunks.entries()) {
                 const embedding = embeddings[j];
-                const chunk = chunks[j];
-                if (chunk && embedding) {
+                if (embedding) {
                   chunk.embedding = embedding;
                 }
               }
@@ -258,10 +256,9 @@ export class CodeMemory implements ICodeMemory {
       const contents = newChunks.map((c) => c.content);
       const embeddings = await this.embeddings.embedBatch(contents);
 
-      for (let i = 0; i < newChunks.length; i++) {
+      for (const [i, chunk] of newChunks.entries()) {
         const embedding = embeddings[i];
-        const chunk = newChunks[i];
-        if (chunk && embedding) {
+        if (embedding) {
           chunk.embedding = embedding;
         }
       }

@@ -169,9 +169,9 @@ export class SymbolRequestHandler implements IRequestHandler {
    * Searches using the RepoMapGenerator if available,
    * otherwise falls back to a simpler search approach.
    */
-  private async findSymbolDefinition(
+  private findSymbolDefinition(
     symbolName: string
-  ): Promise<SymbolEntry | null> {
+  ): SymbolEntry | null {
     // Use RepoMapGenerator if available
     if (this.repoMapGenerator) {
       const symbols = this.repoMapGenerator.findSymbol(symbolName);
@@ -189,11 +189,11 @@ export class SymbolRequestHandler implements IRequestHandler {
   /**
    * Get comprehensive context for a symbol
    */
-  private async getSymbolContext(
+  private getSymbolContext(
     symbol: SymbolEntry,
     includeContext: boolean,
     maxUsages: number
-  ): Promise<SymbolContext> {
+  ): SymbolContext {
     // Get usages if requested
     const usages: SymbolUsage[] = [];
     if (maxUsages > 0 && this.repoMapGenerator) {

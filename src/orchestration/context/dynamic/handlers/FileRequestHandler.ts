@@ -73,7 +73,7 @@ export class FileRequestHandler implements IRequestHandler {
   /**
    * Handle a file content request
    */
-  async handle(request: ContextRequest): Promise<ContextResponse> {
+  handle(request: ContextRequest): ContextResponse {
     const { query: filePath, options } = request;
     const maxTokens = options?.maxTokens ?? DEFAULT_REQUEST_OPTIONS.maxTokens;
 

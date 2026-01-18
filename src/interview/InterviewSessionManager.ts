@@ -266,7 +266,7 @@ export class InterviewSessionManager {
         // Map category to RequirementsDB format
         const dbCategory = CATEGORY_MAPPING[req.category] ?? 'functional';
 
-        await requirementsDB.addRequirement(session.projectId, {
+        requirementsDB.addRequirement(session.projectId, {
           category: dbCategory,
           description: req.text,
           priority: req.priority,

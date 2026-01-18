@@ -10,7 +10,7 @@
  */
 
 import type { AgentType, AgentStatus, AgentMetrics, AgentModelConfig } from '../types/agent';
-import type { TaskType, TaskStatus, TaskPriority } from '../types/task';
+import type { TaskType, TaskStatus } from '../types/task';
 
 // Re-export agent types for convenience
 export type { AgentType, AgentStatus, AgentMetrics, AgentModelConfig };

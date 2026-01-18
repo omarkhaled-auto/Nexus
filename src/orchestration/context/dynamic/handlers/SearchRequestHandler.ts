@@ -24,7 +24,6 @@ import type {
   ICodeMemory,
   CodeSearchResult,
   CodeSearchOptions,
-  CodeUsage,
 } from '../../../../persistence/memory/code/types';
 
 // ============================================================================
@@ -299,10 +298,7 @@ export class SearchRequestHandler implements IRequestHandler {
       sections.push('---');
       sections.push('');
 
-      for (let i = 0; i < searchResults.results.length; i++) {
-        const result = searchResults.results[i];
-        if (!result) continue;
-
+      for (const [i, result] of searchResults.results.entries()) {
         sections.push(`## Result ${i + 1}: ${result.file}`);
         sections.push('');
         sections.push(`**Lines:** ${result.startLine}-${result.endLine}`);

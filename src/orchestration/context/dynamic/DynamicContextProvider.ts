@@ -251,7 +251,11 @@ export class DynamicContextProvider implements IDynamicContextProvider {
       return this.createErrorResponse(requestId, partialRequest.type, error);
     }
 
-    const registration = this.registry.get(agentId)!;
+    const registration = this.registry.get(agentId);
+    if (!registration) {
+      // Should never happen after validateAgent, but satisfy type checker
+      return this.createErrorResponse(requestId, partialRequest.type, new Error('Agent not registered'));
+    }
 
     // Build full request
     const request: ContextRequest = {

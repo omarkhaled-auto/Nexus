@@ -154,6 +154,7 @@ export class CodeChunkRepository {
       .limit(1);
 
     const row = rows[0];
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- DB query with .limit(1) can return empty array
     if (!row) return null;
     return this.toChunk(row);
   }
@@ -195,6 +196,7 @@ export class CodeChunkRepository {
       .limit(1);
 
     const row = rows[0];
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- DB query with .limit(1) can return empty array
     if (!row) return null;
     return this.toChunk(row);
   }
