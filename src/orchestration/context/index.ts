@@ -248,3 +248,16 @@ export function createTestContextSystem(
     },
   });
 }
+
+
+// ============================================================================
+// Dynamic Context Submodule Exports
+// ============================================================================
+
+/**
+ * Dynamic Context Provider - allows agents to request additional context
+ * mid-task while respecting token budgets.
+ *
+ * @see ./dynamic/README.md for detailed documentation
+ */
+export * from './dynamic';
