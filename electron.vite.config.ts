@@ -1,0 +1,40 @@
+import { defineConfig, externalizeDepsPlugin } from 'electron-vite';
+import react from '@vitejs/plugin-react';
+import { resolve } from 'path';
+
+export default defineConfig({
+  main: {
+    plugins: [externalizeDepsPlugin()],
+    build: {
+      outDir: 'out/main',
+      rollupOptions: {
+        external: ['better-sqlite3', '@google/generative-ai', 'openai'],
+      },
+    },
+  },
+  preload: {
+    plugins: [externalizeDepsPlugin()],
+    build: {
+      outDir: 'out/preload',
+    },
+  },
+  renderer: {
+    plugins: [react()],
+    root: 'src/renderer',
+    build: {
+      outDir: 'out/renderer',
+      rollupOptions: {
+        input: resolve(__dirname, 'src/renderer/index.html'),
+      },
+    },
+    resolve: {
+      alias: {
+        '@': resolve(__dirname, 'src'),
+        '@renderer': resolve(__dirname, 'src/renderer/src'),
+        '@shared': resolve(__dirname, 'src/shared'),
+        '@main': resolve(__dirname, 'src/main'),
+        '@preload': resolve(__dirname, 'src/preload'),
+      },
+    },
+  },
+});

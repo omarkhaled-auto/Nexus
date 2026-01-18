@@ -323,6 +323,23 @@ class EventBus {
     return count;
   }
   /**
+   * Get listener count for a specific event type
+   *
+   * @param type - Event type
+   * @returns Number of listeners for this event type
+   */
+  listenerCount(type) {
+    return (this.subscriptions.get(type) ?? []).length;
+  }
+  /**
+   * Remove all listeners for all event types
+   * Clears both type-specific and wildcard subscriptions
+   */
+  removeAllListeners() {
+    this.subscriptions.clear();
+    this.wildcardSubscriptions = [];
+  }
+  /**
    * Add event to history with size limit
    */
   addToHistory(event) {
