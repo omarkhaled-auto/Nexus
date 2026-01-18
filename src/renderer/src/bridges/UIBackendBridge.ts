@@ -107,7 +107,7 @@ class UIBackendBridge {
     if (window.nexusAPI.onMetricsUpdate) {
       const unsubMetrics = window.nexusAPI.onMetricsUpdate((metrics) => {
         const typedMetrics = metrics as OverviewMetrics
-         
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Runtime null check for IPC data
         if (typedMetrics) {
           useMetricsStore.getState().setOverview(typedMetrics)
         }
@@ -120,7 +120,7 @@ class UIBackendBridge {
     if (window.nexusAPI.onAgentStatusUpdate) {
       const unsubAgentStatus = window.nexusAPI.onAgentStatusUpdate((status) => {
         const typedStatus = status as AgentMetrics
-         
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Runtime null check for IPC data
         if (typedStatus && typedStatus.id) {
           useMetricsStore.getState().updateAgentMetrics(typedStatus.id, typedStatus)
         }
@@ -133,7 +133,7 @@ class UIBackendBridge {
     if (window.nexusAPI.onTimelineEvent) {
       const unsubTimeline = window.nexusAPI.onTimelineEvent((event) => {
         const typedEvent = event as TimelineEvent
-         
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Runtime null check for IPC data
         if (typedEvent && typedEvent.id) {
           useMetricsStore.getState().addTimelineEvent(typedEvent)
         }
@@ -146,7 +146,7 @@ class UIBackendBridge {
     if (window.nexusAPI.onCostUpdate) {
       const unsubCosts = window.nexusAPI.onCostUpdate((costs) => {
         const typedCosts = costs as CostMetrics
-         
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Runtime null check for IPC data
         if (typedCosts) {
           useMetricsStore.getState().setCosts(typedCosts)
         }

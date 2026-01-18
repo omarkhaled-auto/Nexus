@@ -92,7 +92,7 @@ export class RequirementsDB {
    * @param input - The requirement data
    * @returns The created requirement
    */
-  async addRequirement(projectId: string, input: CreateRequirementInput): Promise<Requirement> {
+  addRequirement(projectId: string, input: CreateRequirementInput): Requirement {
     const now = new Date();
     const requirement: Requirement = {
       id: nanoid(),
@@ -128,7 +128,7 @@ export class RequirementsDB {
    * @param id - The requirement ID
    * @returns The requirement or null if not found
    */
-  async getRequirement(id: string): Promise<Requirement | null> {
+  getRequirement(id: string): Requirement | null {
     return this.requirements.get(id) ?? null;
   }
 
@@ -139,7 +139,7 @@ export class RequirementsDB {
    * @param options - Query options
    * @returns Array of requirements
    */
-  async getRequirements(projectId: string, options: QueryOptions = {}): Promise<Requirement[]> {
+  getRequirements(projectId: string, options: QueryOptions = {}): Requirement[] {
     let results = Array.from(this.requirements.values()).filter((r) => r.projectId === projectId);
 
     // Apply filters
@@ -153,7 +153,8 @@ export class RequirementsDB {
       results = results.filter((r) => r.validated === options.validated);
     }
     if (options.tags && options.tags.length > 0) {
-      results = results.filter((r) => options.tags!.some((tag) => r.tags.includes(tag)));
+      const tagList = options.tags;
+      results = results.filter((r) => tagList.some((tag) => r.tags.includes(tag)));
     }
 
     // Apply pagination
@@ -174,10 +175,10 @@ export class RequirementsDB {
    * @param updates - The fields to update
    * @returns The updated requirement
    */
-  async updateRequirement(
+  updateRequirement(
     id: string,
     updates: Partial<Omit<Requirement, 'id' | 'projectId' | 'createdAt'>>
-  ): Promise<Requirement> {
+  ): Requirement {
     const existing = this.requirements.get(id);
     if (!existing) {
       throw new Error(`Requirement not found: ${id}`);
@@ -199,7 +200,7 @@ export class RequirementsDB {
    * @param id - The requirement ID
    * @returns True if deleted, false if not found
    */
-  async deleteRequirement(id: string): Promise<boolean> {
+  deleteRequirement(id: string): boolean {
     return this.requirements.delete(id);
   }
 
@@ -209,7 +210,7 @@ export class RequirementsDB {
    * @param id - The requirement ID
    * @returns The updated requirement
    */
-  async validateRequirement(id: string): Promise<Requirement> {
+  validateRequirement(id: string): Requirement {
     return this.updateRequirement(id, { validated: true });
   }
 
@@ -220,7 +221,7 @@ export class RequirementsDB {
    * @param featureId - The feature ID
    * @returns The updated requirement
    */
-  async linkToFeature(requirementId: string, featureId: string): Promise<Requirement> {
+  linkToFeature(requirementId: string, featureId: string): Requirement {
     const existing = this.requirements.get(requirementId);
     if (!existing) {
       throw new Error(`Requirement not found: ${requirementId}`);
@@ -240,14 +241,14 @@ export class RequirementsDB {
    * @param projectId - The project ID
    * @returns Statistics about the requirements
    */
-  async getStatistics(projectId: string): Promise<{
+  getStatistics(projectId: string): {
     total: number;
     byCategory: Record<RequirementCategory, number>;
     byPriority: Record<RequirementPriority, number>;
     validated: number;
     unvalidated: number;
-  }> {
-    const requirements = await this.getRequirements(projectId);
+  } {
+    const requirements = this.getRequirements(projectId);
 
     const byCategory: Record<RequirementCategory, number> = {
       functional: 0,
@@ -284,7 +285,7 @@ export class RequirementsDB {
    *
    * @param projectId - The project ID
    */
-  async clearProject(projectId: string): Promise<void> {
+  clearProject(projectId: string): void {
     const toDelete = Array.from(this.requirements.entries())
       .filter(([, r]) => r.projectId === projectId)
       .map(([id]) => id);

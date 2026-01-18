@@ -68,7 +68,7 @@ export function RequirementsSidebar(): ReactElement {
       acc[category] = requirements.filter((r) => r.category === category);
       return acc;
     },
-    {}
+    {} as Record<RequirementCategory, Requirement[]>
   );
 
   // Calculate stage progress
