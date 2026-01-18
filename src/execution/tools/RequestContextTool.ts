@@ -18,7 +18,7 @@ import type {
   ContextRequestOptions,
   ContextResponse,
   IDynamicContextProvider,
-} from '@/orchestration/context/dynamic/types';
+} from '../../orchestration/context/dynamic/types';
 
 // ============================================================================
 // Tool Definition Types

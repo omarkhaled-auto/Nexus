@@ -92,8 +92,6 @@ export {
 export {
   ErrorContextAggregator,
   createErrorContextAggregator,
-  type ErrorAggregatorOptions,
-  DEFAULT_ERROR_AGGREGATOR_OPTIONS,
 } from './ErrorContextAggregator';
 
 export {
@@ -117,7 +115,17 @@ export {
 } from './EscalationHandler';
 
 // ============================================================================
-// Additional imports for factory function
+// Factory function imports (runtime, not just type)
+// ============================================================================
+
+import { createGitDiffContextBuilder as createDiffBuilder } from './GitDiffContextBuilder';
+import { createIterationCommitHandler as createCommitHandler } from './IterationCommitHandler';
+import { createEscalationHandler as createEscalation } from './EscalationHandler';
+import { createErrorContextAggregator as createErrorAggregator } from './ErrorContextAggregator';
+import { createRalphStyleIterator as createIterator } from './RalphStyleIterator';
+
+// ============================================================================
+// Type imports for factory function
 // ============================================================================
 
 import type { IterationContext, AgentExecutionResult, QARunner } from './types';
@@ -192,14 +200,14 @@ export function createFullRalphStyleIterator(
     diffOptions,
   } = config;
 
-  // Create all dependencies
-  const diffBuilder = createGitDiffContextBuilder(projectPath, diffOptions);
-  const commitHandler = createIterationCommitHandler(projectPath, commitOptions);
-  const escalationHandler = createEscalationHandler(projectPath, escalationOptions);
-  const errorAggregator = createErrorContextAggregator();
+  // Create all dependencies using the imported factory functions
+  const diffBuilder = createDiffBuilder(projectPath, diffOptions);
+  const commitHandler = createCommitHandler(projectPath, commitOptions);
+  const escalationHandler = createEscalation(projectPath, escalationOptions);
+  const errorAggregator = createErrorAggregator();
 
   // Create the iterator with all dependencies
-  return createRalphStyleIterator({
+  return createIterator({
     projectPath,
     contextManager,
     diffBuilder,
