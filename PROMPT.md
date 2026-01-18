@@ -2007,15 +2007,15 @@ export class TimeEstimator implements ITimeEstimator {
 ```
 
 ### Task 11 Completion Checklist
-- [ ] TimeEstimator.ts created (~200 LOC)
-- [ ] TimeEstimator.test.ts created (8+ tests)
-- [ ] Implements ITimeEstimator interface
-- [ ] Heuristic-based estimation
-- [ ] Historical calibration support
-- [ ] Complexity assessment
-- [x] Tests pass - All 107 QA tests pass
+- [x] TimeEstimator.ts created (~200 LOC) - Created at src/planning/estimation/TimeEstimator.ts (378 LOC)
+- [x] TimeEstimator.test.ts created (8+ tests) - Created at src/planning/estimation/TimeEstimator.test.ts (25 tests)
+- [x] Implements ITimeEstimator interface - estimate(), estimateTotal(), calibrate()
+- [x] Heuristic-based estimation - Uses file count, complexity keywords, test requirements
+- [x] Historical calibration support - Records actual times, blends with heuristics after 5+ data points
+- [x] Complexity assessment - High/medium/low based on keywords and task metadata
+- [x] Tests pass - All 89 planning tests pass (including 25 TimeEstimator tests)
 
-**[TASK 11 COMPLETE]** <- Mark when done
+**[TASK 11 COMPLETE]** - Completed: TimeEstimator implemented with full ITimeEstimator interface and 25 comprehensive tests
 
 ---
 
