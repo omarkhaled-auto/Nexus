@@ -13,8 +13,11 @@
  * - Coordinates between the two modules
  */
 
-import {
+import type {
   DynamicReplanner,
+  ReplanMetrics,
+} from './planning';
+import {
   createDefaultReplanner,
   type ExecutionContext,
   type ReplanDecision,
@@ -24,8 +27,9 @@ import {
   type TriggerThresholds,
 } from './planning';
 
+import type {
+  SelfAssessmentEngine} from './assessment';
 import {
-  SelfAssessmentEngine,
   createFullSelfAssessmentEngine,
   type AssessmentContext,
   type FullAssessment,
@@ -367,14 +371,16 @@ export class AssessmentReplannerBridge {
   private buildExecutionContext(
     taskId: string,
     context: AssessmentContext,
-    assessment: FullAssessment
+    _assessment: FullAssessment
   ): ExecutionContext {
     // Count consecutive failures from iteration history
     let consecutiveFailures = 0;
-    if (context.iterationHistory && context.iterationHistory.length > 0) {
-      for (let i = context.iterationHistory.length - 1; i >= 0; i--) {
-        const iteration = context.iterationHistory[i];
-        if (!iteration || iteration.errorsEncountered > 0) {
+    const history = context.iterationHistory;
+    if (history.length > 0) {
+      for (let i = history.length - 1; i >= 0; i--) {
+        const iteration = history[i];
+        // Use errors array length instead of errorsEncountered
+        if (iteration.errors.length > 0) {
           consecutiveFailures++;
         } else {
           break;
@@ -387,7 +393,7 @@ export class AssessmentReplannerBridge {
       taskName: context.taskName,
       estimatedTime: context.estimatedTime ?? 30,
       timeElapsed: context.timeElapsed ?? 0,
-      iteration: context.iterationHistory?.length ?? 0,
+      iteration: history.length,
       maxIterations: context.maxIterations ?? 20,
       filesExpected: context.taskFiles,
       filesModified: this.extractModifiedFiles(context),
@@ -401,14 +407,11 @@ export class AssessmentReplannerBridge {
    * Extract modified files from context
    */
   private extractModifiedFiles(context: AssessmentContext): string[] {
-    if (!context.iterationHistory) return [];
-
     const files = new Set<string>();
     for (const iteration of context.iterationHistory) {
-      if (iteration.filesModified) {
-        for (const file of iteration.filesModified) {
-          files.add(file);
-        }
+      // Extract files from git changes
+      for (const change of iteration.changes) {
+        files.add(change.file);
       }
     }
     return Array.from(files);
@@ -417,7 +420,7 @@ export class AssessmentReplannerBridge {
   /**
    * Build ReplanMetrics from ExecutionContext
    */
-  private buildMetrics(context: ExecutionContext): import('./planning').ReplanMetrics {
+  private buildMetrics(context: ExecutionContext): ReplanMetrics {
     const scopeCreepCount = context.filesModified.filter(
       (f) => !context.filesExpected.includes(f)
     ).length;
