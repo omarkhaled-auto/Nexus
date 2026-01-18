@@ -60,7 +60,7 @@ export function registerInterviewHandlers(
   // ========================================
   ipcMain.handle(
     'interview:sendMessage',
-    (event, sessionId: string, message: string): ProcessMessageResult => {
+    async (event, sessionId: string, message: string): Promise<ProcessMessageResult> => {
       if (!validateSender(event)) {
         throw new Error('Unauthorized IPC sender');
       }
