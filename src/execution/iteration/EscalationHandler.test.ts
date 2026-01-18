@@ -51,17 +51,22 @@ function createMockIterationContext(overrides?: Partial<IterationContext>): Iter
       architectureSummary: 'Mock architecture',
       relevantPatterns: [],
       relevantAPIs: [],
+      tokenCount: 100,
     },
     projectConfig: {
       name: 'test-project',
       path: '/test/project',
+      language: 'typescript',
     },
     taskSpec,
     relevantFiles: [],
+    relevantCode: [],
     relevantMemories: [],
     conversationHistory: [],
     tokenCount: 1000,
+    tokenBudget: 150000,
     generatedAt: new Date(),
+    contextId: 'test-context-123',
   };
 
   return {

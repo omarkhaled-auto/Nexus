@@ -75,7 +75,6 @@ export {
   type PropertySchema,
   type ToolExecutionResult,
   type RequestContextParams,
-  type RequestContextToolConfig,
 } from './tools/RequestContextTool';
 
 // ============================================================================
@@ -85,4 +84,4 @@ export {
 /**
  * Prompt Loader - loads and manages agent prompts
  */
-export { PromptLoader } from './agents/PromptLoader';
+export { loadPrompt, clearPromptCache, preloadPrompts } from './agents/PromptLoader';

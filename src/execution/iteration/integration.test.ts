@@ -39,12 +39,14 @@ import type { TaskSpec } from '../../orchestration/context/types';
  */
 function createMockTaskSpec(overrides?: Partial<TaskSpec>): TaskSpec {
   return {
-    taskId: `task-${Date.now()}`,
+    id: `task-${Date.now()}`,
+    name: 'Test Task',
     description: 'Test task description',
-    requirements: ['Requirement 1', 'Requirement 2'],
-    targetFiles: ['src/test.ts'],
-    hints: [],
-    priority: 'medium' as const,
+    files: ['src/test.ts'],
+    testCriteria: 'All tests pass',
+    acceptanceCriteria: ['Requirement 1', 'Requirement 2'],
+    dependencies: [],
+    estimatedTime: 30,
     ...overrides,
   };
 }
@@ -293,7 +295,7 @@ describe('DynamicContextProvider + RalphStyleIterator Integration', () => {
         agentRunner: createMockAgentRunner(),
       });
 
-      const task = createMockTaskSpec({ taskId: 'status-test-task' });
+      const task = createMockTaskSpec({ id: 'status-test-task' });
       const result = await iterator.execute(task, { maxIterations: 5 });
 
       // Task completed successfully
@@ -559,23 +561,25 @@ describe('Cross-Module Type Compatibility', () => {
   it('should have compatible task types between modules', () => {
     // This test verifies type compatibility at compile time
     const task: TaskSpec = {
-      taskId: 'type-test',
+      id: 'type-test',
+      name: 'Type Compatibility Test',
       description: 'Type compatibility test',
-      requirements: ['Test requirement'],
-      targetFiles: [],
-      hints: [],
-      priority: 'medium',
+      files: [],
+      testCriteria: 'All tests pass',
+      acceptanceCriteria: ['Test requirement'],
+      dependencies: [],
+      estimatedTime: 30,
     };
 
     // Should be usable in both DynamicContextProvider and RalphStyleIterator
     const provider = createDynamicContextProvider([]);
-    provider.registerAgent('agent', task.taskId);
+    provider.registerAgent('agent', task.id);
 
     const iterator = createTestRalphStyleIterator({});
-    const statusCheck = iterator.getStatus(task.taskId);
+    const statusCheck = iterator.getStatus(task.id);
 
     // Type checks pass if code compiles
-    expect(task.taskId).toBeDefined();
+    expect(task.id).toBeDefined();
     expect(statusCheck).toBeNull(); // Task not started yet
   });
 

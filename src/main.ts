@@ -96,10 +96,10 @@ export {
   createFullRalphStyleIterator,
   GitDiffContextBuilder,
   ErrorContextAggregator,
-  type IterationConfig,
   type IterationResult,
-  type IterationSession,
-  type CompletionStatus,
+  type IterationOptions,
+  type IterationContext,
+  type IterationStatus,
   // Tools
   RequestContextToolHandler,
   createRequestContextTool,
@@ -107,7 +107,9 @@ export {
   type ToolDefinition,
   type ToolExecutionResult,
   // Agents
-  PromptLoader,
+  loadPrompt,
+  clearPromptCache,
+  preloadPrompts,
 } from './execution';
 
 // ============================================================================
@@ -142,8 +144,9 @@ export {
 export {
   // Checkpoints
   CheckpointManager,
-  type Checkpoint,
-  type CheckpointMetadata,
+  CheckpointScheduler,
+  type CheckpointManagerOptions,
+  type CheckpointConfig,
 } from './persistence/checkpoints';
 
 // ============================================================================
@@ -172,10 +175,10 @@ export {
   type DependencyEdge,
   // Codebase Analyzer (Phase 13-02)
   CodebaseAnalyzer,
-  ArchitectureGenerator,
-  PatternsGenerator,
-  DependenciesGenerator,
-  type CodebaseDocs,
+  ArchitectureAnalyzer,
+  PatternsAnalyzer,
+  DependenciesAnalyzer,
+  type CodebaseDocumentation,
   type ArchitectureDoc,
   type PatternsDoc,
   type DependenciesDoc,
