@@ -3232,3 +3232,30 @@ This is THE ICING ON THE CAKE. After this, Nexus is COMPLETE.
 ---
 
 **[PHASE 14B EXECUTION BINDINGS COMPLETE]**
+
+---
+
+## Post-Completion Fix: TypeScript Type Errors
+
+**Date:** 2025-01-19
+
+After Phase 14B completion, TypeScript strict mode errors were identified and fixed:
+
+### Issues Fixed:
+1. **ReviewRunner.ts** - `systemPrompt` was being passed in `ChatOptions` which doesn't support this property. Fixed to pass system prompt as a message with `role: 'system'` in the messages array.
+
+2. **TaskDecomposer.ts** - Same issue as ReviewRunner.ts. Fixed to use message-based system prompt.
+
+3. **main.ts** - Was exporting `createMinimalNexus` and `NexusConfig` which don't exist in NexusFactory.ts. Fixed to export `NexusFactoryConfig` and `NexusTestingConfig`.
+
+4. **genesis-mode.test.ts** - Multiple issues:
+   - Was importing `Feature` from wrong location (planning/types instead of types/core)
+   - Test fixtures had invalid `outputType` property on PlanningTask
+   - Added `createTask()` helper function for creating valid PlanningTask objects
+
+5. **Test Assertions** - Updated test assertions in ReviewRunner.test.ts and TaskDecomposer.test.ts to match the new pattern of passing systemPrompt as a message.
+
+### Verification:
+- All 1904 tests pass (6 skipped for missing API keys)
+- TypeScript compilation succeeds
+- Commit: `c162064` - "fix: TypeScript type errors in Phase 14B implementation"
