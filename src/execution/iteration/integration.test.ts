@@ -517,8 +517,8 @@ describe('DynamicContextProvider + RalphStyleIterator Integration', () => {
         async (context: IterationContext): Promise<AgentExecutionResult> => {
           // Simulate agent requesting additional context
           if (context.iteration === 1 && !contextRequestMade) {
-            const agentId = `agent-${context.task.taskId}`;
-            provider.registerAgent(agentId, context.task.taskId);
+            const agentId = `agent-${context.task.id}`;
+            provider.registerAgent(agentId, context.task.id);
 
             const response = await provider.requestFile(
               agentId,

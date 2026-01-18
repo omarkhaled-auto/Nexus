@@ -11,49 +11,49 @@ import { DashboardPage } from './page-objects/DashboardPage';
  * - Completing and merging tasks
  */
 test.describe('Execution Flow', () => {
-  test('E2E-EX-001: should start execution', async ({ window }) => {
+  test('E2E-EX-001: should start execution', async ({ window: page }) => {
     // Navigate to Evolution mode to see features
-    await window.evaluate(() => {
+    await page.evaluate(() => {
       window.location.hash = '#/evolution';
     });
-    await window.waitForLoadState('networkidle');
+    await page.waitForLoadState('networkidle');
 
     // Verify Kanban board loads with features
-    const inProgressColumn = window.locator('h2:has-text("In Progress")');
+    const inProgressColumn = page.locator('h2:has-text("In Progress")');
     await expect(inProgressColumn).toBeVisible({ timeout: 10000 });
 
     // Find features that have progress indicators
     // Features in progress should show progress bar or percentage
-    const featureCards = window.locator('.cursor-grab');
+    const featureCards = page.locator('.cursor-grab');
     const cardCount = await featureCards.count();
     expect(cardCount).toBeGreaterThan(0);
 
     // Look for any progress indicator on feature cards
-    const progressBars = window.locator('[role="progressbar"], .bg-primary');
+    const progressBars = page.locator('[role="progressbar"], .bg-primary');
     const hasProgress = await progressBars.count() > 0;
 
     // Even if no active progress, the execution UI is functional
     expect(hasProgress || cardCount > 0).toBeTruthy();
   });
 
-  test('E2E-EX-002: should show progress updates', async ({ window }) => {
-    const dashboard = new DashboardPage(window);
+  test('E2E-EX-002: should show progress updates', async ({ window: page }) => {
+    const dashboard = new DashboardPage(page);
 
     // Navigate to Dashboard to monitor progress
-    await window.evaluate(() => {
+    await page.evaluate(() => {
       window.location.hash = '#/dashboard';
     });
-    await window.waitForLoadState('networkidle');
+    await page.waitForLoadState('networkidle');
 
     // Wait for dashboard to load
     await dashboard.waitForLoad();
 
     // Verify progress chart section exists
-    const progressSection = window.locator('text=Progress');
+    const progressSection = page.locator('text=Progress');
     await expect(progressSection.first()).toBeVisible({ timeout: 10000 });
 
     // Verify completed tasks metric card is visible
-    const completedTasks = window.locator('text=Completed Tasks');
+    const completedTasks = page.locator('text=Completed Tasks');
     await expect(completedTasks).toBeVisible();
 
     // Get the tasks progress value (format: "34/47")
@@ -65,25 +65,25 @@ test.describe('Execution Flow', () => {
     expect(progressValue).toBeTruthy();
   });
 
-  test('E2E-EX-003: should handle QA loop iterations', async ({ window }) => {
-    const dashboard = new DashboardPage(window);
+  test('E2E-EX-003: should handle QA loop iterations', async ({ window: page }) => {
+    const dashboard = new DashboardPage(page);
 
     // Navigate to Dashboard
-    await window.evaluate(() => {
+    await page.evaluate(() => {
       window.location.hash = '#/dashboard';
     });
-    await window.waitForLoadState('networkidle');
+    await page.waitForLoadState('networkidle');
 
     // Wait for dashboard to load
     await dashboard.waitForLoad();
 
     // Look for timeline section which shows QA events
-    const timelineSection = window.locator('text=Recent Activity, text=Timeline').first();
+    const timelineSection = page.locator('text=Recent Activity, text=Timeline').first();
     const hasTimeline = await timelineSection.isVisible().catch(() => false);
 
     if (hasTimeline) {
       // In demo mode, timeline should show QA iteration events
-      const qaEvent = window.locator('text=QA').first();
+      const qaEvent = page.locator('text=QA').first();
       const hasQAEvents = await qaEvent.isVisible().catch(() => false);
 
       // QA events may or may not be present depending on demo data
@@ -91,34 +91,34 @@ test.describe('Execution Flow', () => {
     }
 
     // Verify the dashboard structure is correct
-    const overviewCards = window.locator('text=Total Features');
+    const overviewCards = page.locator('text=Total Features');
     await expect(overviewCards).toBeVisible();
   });
 
-  test('E2E-EX-004: should complete and merge task', async ({ window }) => {
-    const dashboard = new DashboardPage(window);
+  test('E2E-EX-004: should complete and merge task', async ({ window: page }) => {
+    const dashboard = new DashboardPage(page);
 
     // Navigate to Dashboard
-    await window.evaluate(() => {
+    await page.evaluate(() => {
       window.location.hash = '#/dashboard';
     });
-    await window.waitForLoadState('networkidle');
+    await page.waitForLoadState('networkidle');
 
     // Wait for dashboard to load
     await dashboard.waitForLoad();
 
     // Check for completed features/tasks in the overview
-    const totalFeatures = window.locator('text=Total Features');
+    const totalFeatures = page.locator('text=Total Features');
     await expect(totalFeatures).toBeVisible({ timeout: 10000 });
 
     // Navigate to Kanban to verify Done column
-    await window.evaluate(() => {
+    await page.evaluate(() => {
       window.location.hash = '#/evolution';
     });
-    await window.waitForLoadState('networkidle');
+    await page.waitForLoadState('networkidle');
 
     // Wait for Kanban to load
-    const doneColumn = window.locator('h2:has-text("Done")');
+    const doneColumn = page.locator('h2:has-text("Done")');
     await expect(doneColumn).toBeVisible({ timeout: 10000 });
 
     // Check if there are completed features in the Done column

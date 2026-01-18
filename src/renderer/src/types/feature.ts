@@ -57,6 +57,7 @@ export interface Feature {
   priority: FeaturePriority;
   complexity: FeatureComplexity;
   tasks: FeatureTask[];
+  progress?: number;
   assignedAgent?: string;
   tags?: string[];
   createdAt: string;

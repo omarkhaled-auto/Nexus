@@ -42,11 +42,18 @@ function generateDemoData(): {
   const now = new Date()
 
   const overview: OverviewMetrics = {
+    projectId: 'demo-project',
+    projectName: 'Demo Project',
     totalFeatures: 12,
+    completedFeatures: 4,
     completedTasks: 34,
     totalTasks: 47,
+    failedTasks: 2,
     activeAgents: 3,
-    estimatedCompletion: new Date(now.getTime() + 75 * 60 * 1000) // 1h 15m from now
+    estimatedRemainingMinutes: 75,
+    estimatedCompletion: new Date(now.getTime() + 75 * 60 * 1000),
+    startedAt: new Date(now.getTime() - 2 * 60 * 60 * 1000),
+    updatedAt: now
   }
 
   const agents: AgentMetrics[] = [
@@ -56,8 +63,12 @@ function generateDemoData(): {
       type: 'coder',
       status: 'working',
       currentTask: 'auth.service.ts',
-      progress: 80,
-      lastActivity: new Date(now.getTime() - 30000)
+      currentTaskName: 'auth.service.ts',
+      tasksCompleted: 12,
+      tasksFailed: 1,
+      tokensUsed: 45000,
+      lastActivity: new Date(now.getTime() - 30000),
+      spawnedAt: new Date(now.getTime() - 2 * 60 * 60 * 1000)
     },
     {
       id: 'coder-2',
@@ -65,26 +76,36 @@ function generateDemoData(): {
       type: 'coder',
       status: 'working',
       currentTask: 'api.routes.ts',
-      progress: 35,
-      lastActivity: new Date(now.getTime() - 15000)
+      currentTaskName: 'api.routes.ts',
+      tasksCompleted: 8,
+      tasksFailed: 0,
+      tokensUsed: 32000,
+      lastActivity: new Date(now.getTime() - 15000),
+      spawnedAt: new Date(now.getTime() - 90 * 60 * 1000)
     },
     {
       id: 'tester-1',
       name: 'Tester',
       type: 'tester',
       status: 'waiting',
-      currentTask: null,
-      progress: 0,
-      lastActivity: new Date(now.getTime() - 120000)
+      currentTask: undefined,
+      tasksCompleted: 5,
+      tasksFailed: 0,
+      tokensUsed: 15000,
+      lastActivity: new Date(now.getTime() - 120000),
+      spawnedAt: new Date(now.getTime() - 60 * 60 * 1000)
     },
     {
       id: 'reviewer-1',
       name: 'Reviewer',
       type: 'reviewer',
       status: 'idle',
-      currentTask: null,
-      progress: 0,
-      lastActivity: null
+      currentTask: undefined,
+      tasksCompleted: 3,
+      tasksFailed: 0,
+      tokensUsed: 8000,
+      lastActivity: new Date(now.getTime() - 300000),
+      spawnedAt: new Date(now.getTime() - 45 * 60 * 1000)
     }
   ]
 
@@ -106,7 +127,8 @@ function generateDemoData(): {
     id: `event-${i + 1}`,
     type: e.type,
     title: e.title,
-    timestamp: new Date(now.getTime() - i * 120000), // 2 min apart
+    severity: e.type === 'task_failed' ? 'error' as const : 'info' as const,
+    timestamp: new Date(now.getTime() - i * 120000),
     metadata: {
       agentId: i % 2 === 0 ? 'coder-1' : 'coder-2',
       iteration: e.type === 'qa_iteration' ? 4 : undefined
@@ -115,22 +137,30 @@ function generateDemoData(): {
 
   const costs: CostMetrics = {
     totalCost: 12.47,
-    tokenBreakdown: {
-      input: 245000,
-      output: 89000
-    },
-    budgetLimit: 50,
-    currency: 'USD'
+    totalTokensUsed: 334000,
+    inputTokens: 245000,
+    outputTokens: 89000,
+    estimatedCostUSD: 12.47,
+    breakdownByModel: [
+      { model: 'claude-3-5-sonnet', provider: 'anthropic', inputTokens: 200000, outputTokens: 70000, costUSD: 9.50 },
+      { model: 'gemini-1.5-flash', provider: 'google', inputTokens: 45000, outputTokens: 19000, costUSD: 2.97 }
+    ],
+    breakdownByAgent: [
+      { agentType: 'coder', tokensUsed: 200000, costUSD: 8.00, taskCount: 20 },
+      { agentType: 'tester', tokensUsed: 80000, costUSD: 2.50, taskCount: 5 },
+      { agentType: 'reviewer', tokensUsed: 54000, costUSD: 1.97, taskCount: 3 }
+    ],
+    updatedAt: now
   }
 
   // Generate progress chart data
   const chartData: ProgressDataPoint[] = []
   for (let i = 0; i < 12; i++) {
-    const time = new Date(now.getTime() - (11 - i) * 10 * 60 * 1000)
+    const timestamp = new Date(now.getTime() - (11 - i) * 10 * 60 * 1000)
     chartData.push({
-      time: time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
-      tasksCompleted: Math.floor(3 + i * 2.8),
-      featuresCompleted: Math.floor(i * 0.9)
+      timestamp,
+      completed: Math.floor(3 + i * 2.8),
+      total: 47
     })
   }
 

@@ -16,10 +16,20 @@ const STAGES: InterviewStage[] = [
 // Short labels for each stage
 const STAGE_LABELS: Record<InterviewStage, string> = {
   welcome: 'Start',
+  project_name: 'Name',
   project_overview: 'Overview',
+  overview: 'Overview',
+  functional: 'Functional',
+  technical: 'Tech',
   technical_requirements: 'Tech',
   features: 'Features',
+  ui: 'UI/UX',
+  performance: 'Perf',
+  security: 'Security',
+  integration: 'Integr.',
   constraints: 'Limits',
+  testing: 'Testing',
+  summary: 'Summary',
   review: 'Review',
   complete: 'Done',
 };

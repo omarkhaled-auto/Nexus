@@ -1,5 +1,5 @@
 import { useState, type ReactElement } from 'react';
-import { ChevronDown, ChevronRight, Layers, Shield, Cpu, Lock, User } from 'lucide-react';
+import { ChevronDown, ChevronRight, Layers, Shield, Cpu, Lock, User, Palette, Zap, TestTube, Plug } from 'lucide-react';
 import { cn } from '@renderer/lib/utils';
 import type { Requirement, RequirementCategory } from '@renderer/types/interview';
 import { RequirementCard } from './RequirementCard';
@@ -18,7 +18,12 @@ const CATEGORY_CONFIG: Record<
   non_functional: { label: 'Non-Functional', icon: Shield },
   technical: { label: 'Technical', icon: Cpu },
   constraint: { label: 'Constraints', icon: Lock },
-  user_story: { label: 'User Stories', icon: User }
+  user_story: { label: 'User Stories', icon: User },
+  ui: { label: 'UI/UX', icon: Palette },
+  performance: { label: 'Performance', icon: Zap },
+  security: { label: 'Security', icon: Shield },
+  integration: { label: 'Integration', icon: Plug },
+  testing: { label: 'Testing', icon: TestTube }
 };
 
 /**

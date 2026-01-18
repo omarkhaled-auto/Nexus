@@ -1,5 +1,5 @@
 import { useState, type ReactElement } from 'react';
-import { Pencil, Trash2, Layers, Shield, Cpu, Lock, User } from 'lucide-react';
+import { Pencil, Trash2, Layers, Shield, Cpu, Lock, User, Palette, Zap, TestTube, Plug } from 'lucide-react';
 import { cn } from '@renderer/lib/utils';
 import type { Requirement, RequirementCategory } from '@renderer/types/interview';
 import { useInterviewStore } from '@renderer/stores/interviewStore';
@@ -28,7 +28,12 @@ const CATEGORY_ICONS: Record<RequirementCategory, typeof Layers> = {
   non_functional: Shield,
   technical: Cpu,
   constraint: Lock,
-  user_story: User
+  user_story: User,
+  ui: Palette,
+  performance: Zap,
+  security: Shield,
+  integration: Plug,
+  testing: TestTube
 };
 
 /**

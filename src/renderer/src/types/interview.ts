@@ -12,18 +12,23 @@
  * Interview stages representing the conversation flow
  */
 export type InterviewStage =
-  | 'welcome'        // Initial welcome message
-  | 'project_name'   // Getting project name
-  | 'overview'       // High-level project overview
-  | 'functional'     // Functional requirements
-  | 'technical'      // Technical requirements
-  | 'ui'             // UI/UX requirements
-  | 'performance'    // Performance requirements
-  | 'security'       // Security requirements
-  | 'integration'    // Integration requirements
-  | 'testing'        // Testing requirements
-  | 'summary'        // Summary and confirmation
-  | 'complete';      // Interview completed
+  | 'welcome'                // Initial welcome message
+  | 'project_name'           // Getting project name
+  | 'project_overview'       // Project overview questions
+  | 'overview'               // High-level project overview
+  | 'functional'             // Functional requirements
+  | 'technical'              // Technical requirements
+  | 'technical_requirements' // Technical requirements stage
+  | 'features'               // Features discovery
+  | 'ui'                     // UI/UX requirements
+  | 'performance'            // Performance requirements
+  | 'security'               // Security requirements
+  | 'integration'            // Integration requirements
+  | 'constraints'            // Project constraints
+  | 'testing'                // Testing requirements
+  | 'summary'                // Summary and confirmation
+  | 'review'                 // Review stage
+  | 'complete';              // Interview completed
 
 /**
  * Message role in the interview conversation
@@ -40,7 +45,10 @@ export type RequirementCategory =
   | 'performance'
   | 'security'
   | 'integration'
-  | 'testing';
+  | 'testing'
+  | 'user_story'
+  | 'non_functional'
+  | 'constraint';
 
 /**
  * Requirement priority levels

@@ -34,7 +34,16 @@ export type TimelineEventType =
   | 'agent_terminated'
   | 'checkpoint_created'
   | 'review_requested'
-  | 'error_occurred';
+  | 'error_occurred'
+  | 'agent_status_changed'
+  | 'qa_iteration'
+  | 'build_completed'
+  | 'agent_task_assigned'
+  | 'qa_passed'
+  | 'qa_failed'
+  | 'build_started'
+  | 'build_failed'
+  | 'error';
 
 /**
  * Severity levels for timeline events
@@ -58,6 +67,7 @@ export interface OverviewMetrics {
   completedFeatures: number;
   activeAgents: number;
   estimatedRemainingMinutes: number;
+  estimatedCompletion?: Date | null;
   startedAt: Date | null;
   updatedAt: Date;
 }
@@ -80,10 +90,12 @@ export interface TimelineEvent {
  */
 export interface AgentMetrics {
   id: string;
+  name?: string;
   type: AgentType;
   status: AgentStatus;
   currentTaskId?: string;
   currentTaskName?: string;
+  currentTask?: string;
   tasksCompleted: number;
   tasksFailed: number;
   tokensUsed: number;
@@ -99,6 +111,7 @@ export interface CostMetrics {
   inputTokens: number;
   outputTokens: number;
   estimatedCostUSD: number;
+  totalCost?: number;
   breakdownByModel: ModelCostBreakdown[];
   breakdownByAgent: AgentCostBreakdown[];
   updatedAt: Date;

@@ -56,10 +56,12 @@ export function RequirementsSidebar(): ReactElement {
         });
       }, 2000);
 
+      prevRequirements.current = current;
       return () => { clearTimeout(timeout); };
     }
 
     prevRequirements.current = current;
+    return undefined;
   }, [requirements]);
 
   // Group requirements by category

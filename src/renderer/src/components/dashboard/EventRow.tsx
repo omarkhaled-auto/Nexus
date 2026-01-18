@@ -4,12 +4,13 @@ import {
   XCircle,
   RefreshCw,
   Play,
-  
   AlertCircle,
   Bot,
   Flag,
   Package,
-  Zap
+  Zap,
+  Power,
+  MessageSquare
 } from 'lucide-react'
 import { cn } from '@renderer/lib/utils'
 import type { TimelineEvent, TimelineEventType } from '@renderer/types/metrics'
@@ -26,6 +27,8 @@ const EVENT_ICONS: Record<
   task_failed: { icon: XCircle, className: 'text-red-500' },
   agent_status_changed: { icon: Bot, className: 'text-muted-foreground' },
   agent_task_assigned: { icon: Bot, className: 'text-blue-500' },
+  agent_spawned: { icon: Bot, className: 'text-emerald-500' },
+  agent_terminated: { icon: Power, className: 'text-muted-foreground' },
   qa_iteration: { icon: RefreshCw, className: 'text-amber-500' },
   qa_passed: { icon: CheckCircle2, className: 'text-emerald-500' },
   qa_failed: { icon: XCircle, className: 'text-red-500' },
@@ -34,6 +37,8 @@ const EVENT_ICONS: Record<
   build_started: { icon: Package, className: 'text-blue-500' },
   build_completed: { icon: Package, className: 'text-emerald-500' },
   build_failed: { icon: Package, className: 'text-red-500' },
+  review_requested: { icon: MessageSquare, className: 'text-amber-500' },
+  error_occurred: { icon: AlertCircle, className: 'text-red-500' },
   error: { icon: AlertCircle, className: 'text-red-500' }
 }
 
@@ -55,7 +60,7 @@ export function EventRow({ event, className }: EventRowProps) {
   const { type, title, timestamp, metadata } = event
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- type may have unknown value at runtime
   const iconConfig = EVENT_ICONS[type] ?? { icon: AlertCircle, className: 'text-muted-foreground' }
-  const Icon = iconConfig.icon
+  const Icon: typeof CheckCircle2 = iconConfig.icon
 
   return (
     <div
@@ -76,7 +81,7 @@ export function EventRow({ event, className }: EventRowProps) {
       <span className="flex-1 text-sm truncate">{title}</span>
 
       {/* Agent name if present */}
-      {metadata.agentId && (
+      {metadata?.agentId && typeof metadata.agentId === 'string' && (
         <span className="text-xs text-muted-foreground flex-shrink-0">
           {formatAgentName(metadata.agentId)}
         </span>

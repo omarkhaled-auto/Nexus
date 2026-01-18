@@ -1,9 +1,11 @@
 import { defineConfig } from 'vitest/config';
 import { resolve } from 'path';
 import tsconfigPaths from 'vite-tsconfig-paths';
+import wasm from 'vite-plugin-wasm';
+import topLevelAwait from 'vite-plugin-top-level-await';
 
 export default defineConfig({
-  plugins: [tsconfigPaths()],
+  plugins: [tsconfigPaths(), wasm(), topLevelAwait()],
   test: {
     globals: true,
     environment: 'node',
@@ -20,9 +22,23 @@ export default defineConfig({
       reporter: ['text', 'json', 'html'],
       exclude: ['node_modules', 'dist', '**/*.test.ts', '**/*.test.tsx', 'config/**', 'tests/**'],
     },
-    // Mock browser APIs not available in jsdom
-    deps: {
-      inline: ['@dnd-kit/core', '@dnd-kit/sortable', '@dnd-kit/utilities'],
+    // Use forks pool for better WASM compatibility
+    pool: 'forks',
+    poolOptions: {
+      forks: {
+        singleFork: true, // Avoid WASM initialization race conditions
+      },
+    },
+    // Increase timeout for WASM initialization
+    testTimeout: 30000,
+    // Server deps configuration for proper module handling
+    server: {
+      deps: {
+        // Inline these packages for vitest
+        inline: ['@dnd-kit/core', '@dnd-kit/sortable', '@dnd-kit/utilities'],
+        // Don't transform web-tree-sitter - let Node.js handle it
+        external: ['web-tree-sitter', 'tree-sitter-typescript', 'tree-sitter-javascript'],
+      },
     },
   },
   resolve: {
@@ -30,5 +46,9 @@ export default defineConfig({
       '@': resolve(__dirname, './src'),
       '@renderer': resolve(__dirname, './src/renderer/src'),
     },
+  },
+  // Exclude WASM modules from optimization to prevent issues
+  optimizeDeps: {
+    exclude: ['web-tree-sitter', 'tree-sitter-typescript', 'tree-sitter-javascript'],
   },
 });
