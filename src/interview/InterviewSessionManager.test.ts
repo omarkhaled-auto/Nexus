@@ -392,11 +392,11 @@ describe('InterviewSessionManager', () => {
         ],
       });
 
-      // First call fails, second succeeds
+      // First call throws error, second succeeds
       const mockAdd = mockRequirementsDB.addRequirement as ReturnType<typeof vi.fn>;
       mockAdd
-        .mockRejectedValueOnce(new Error('Duplicate requirement'))
-        .mockResolvedValueOnce({});
+        .mockImplementationOnce(() => { throw new Error('Duplicate requirement'); })
+        .mockReturnValueOnce({});
 
       const count = await manager.exportToRequirementsDB(session, mockRequirementsDB);
 

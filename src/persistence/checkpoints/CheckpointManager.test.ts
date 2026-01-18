@@ -8,6 +8,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { DatabaseClient } from '../database/DatabaseClient';
 import { StateManager, type NexusState } from '../state/StateManager';
 import { EventBus } from '../../orchestration/events/EventBus';
+import { projects } from '../database/schema';
 import {
   CheckpointManager,
   CheckpointError,
@@ -15,6 +16,26 @@ import {
   RestoreError,
   type AutoCheckpointTrigger,
 } from './CheckpointManager';
+
+/**
+ * Helper to insert a project into the database for foreign key constraints
+ */
+async function insertTestProject(db: DatabaseClient, projectId: string): Promise<void> {
+  const now = new Date();
+  db.db.insert(projects).values({
+    id: projectId,
+    name: 'Test Project',
+    description: 'A test project',
+    mode: 'genesis',
+    status: 'planning',
+    rootPath: '/test/path',
+    repositoryUrl: null,
+    settings: null,
+    createdAt: now,
+    updatedAt: now,
+    completedAt: null,
+  }).run();
+}
 
 // Mock GitService
 const mockGitService = {
@@ -46,7 +67,7 @@ describe('CheckpointManager', () => {
 
   beforeEach(async () => {
     // Create in-memory database for testing
-    db = await DatabaseClient.create({
+    db = DatabaseClient.create({
       path: ':memory:',
       migrationsDir: 'src/persistence/database/migrations',
     });
@@ -57,12 +78,16 @@ describe('CheckpointManager', () => {
       gitService: mockGitService as never,
     });
 
+    // Insert test projects to satisfy foreign key constraints
+    await insertTestProject(db, 'proj-1');
+    await insertTestProject(db, 'proj-2');
+
     // Reset mocks
     vi.clearAllMocks();
   });
 
-  afterEach(async () => {
-    await db.close();
+  afterEach(() => {
+    db.close();
   });
 
   // ============================================================================

@@ -327,7 +327,7 @@ describe('LLMProvider', () => {
       expect(mockClaudeChat).toHaveBeenCalledWith(
         messages,
         expect.objectContaining({
-          thinking: expect.objectContaining({ type: 'enabled' }),
+          thinking: expect.objectContaining({ enabled: true }),
         })
       );
     });
