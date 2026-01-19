@@ -2046,15 +2046,52 @@ export default {
 ```
 
 ### Task 16 Completion Checklist
-- [ ] Config file schema defined
-- [ ] ConfigFileLoader created
-- [ ] Multiple file formats supported
-- [ ] Config file merges with settings
-- [ ] Config file takes precedence over settings
-- [ ] Example config file created
-- [ ] Documentation updated
+- [x] Config file schema defined
+- [x] ConfigFileLoader created
+- [x] Multiple file formats supported
+- [x] Config file merges with settings
+- [x] Config file takes precedence over settings
+- [x] Example config file created
+- [x] Documentation updated
 
-**[TASK 16 COMPLETE]** <- Mark when done
+**[TASK 16 COMPLETE]** - Completed on 2026-01-19
+
+### Task 16 Summary
+- **Files Created**:
+  - `src/config/nexus.config.schema.ts` (~350 lines) - Type definitions and validation
+  - `src/config/ConfigFileLoader.ts` (~280 lines) - Config file loading and merging
+  - `src/config/index.ts` - Module exports
+  - `nexus.config.example.ts` - TypeScript example config
+  - `nexus.config.example.json` - JSON example config
+
+- **Files Modified**:
+  - `src/main/services/SettingsLoader.ts` - Added config file merging to `loadAsFactoryConfig()`
+  - `src/index.ts` - Added config module exports
+
+**Supported Config Files (in priority order):**
+1. `nexus.config.ts` - TypeScript (recommended)
+2. `nexus.config.js` - JavaScript
+3. `nexus.config.mjs` - ES Module
+4. `nexus.config.cjs` - CommonJS
+5. `nexus.config.json` - JSON
+6. `.nexusrc` - JSON dotfile
+7. `.nexusrc.json` - JSON dotfile (explicit)
+
+**Configuration Priority:**
+1. Config file (highest) - project-level overrides
+2. Settings store - user preferences from UI
+3. Environment variables - CI/CD and automation
+4. Default values (lowest)
+
+**Security:**
+- API keys are NEVER read from config files
+- API keys must come from env vars or Settings UI
+
+**Key Classes/Functions:**
+- `ConfigFileLoader.load(projectRoot)` - Load and validate config file
+- `ConfigFileLoader.mergeWithFactoryConfig(settings, configFile)` - Merge with settings
+- `validateConfigFile(config)` - Validate config object
+- `hasConfigFile(projectRoot)` - Quick check for config file existence
 
 ---
 

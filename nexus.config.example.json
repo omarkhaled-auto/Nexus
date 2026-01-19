@@ -1,0 +1,48 @@
+{
+  "$schema": "./src/config/nexus.config.schema.json",
+  "_comment": "Copy this file to your project root as 'nexus.config.json' to customize Nexus. See nexus.config.example.ts for documentation.",
+
+  "llm": {
+    "claude": {
+      "backend": "cli",
+      "timeout": 300000,
+      "maxRetries": 2
+    },
+    "gemini": {
+      "backend": "cli",
+      "model": "gemini-2.5-pro",
+      "timeout": 300000
+    },
+    "embeddings": {
+      "backend": "local",
+      "localModel": "Xenova/all-MiniLM-L6-v2",
+      "dimensions": 384,
+      "cacheEnabled": true,
+      "maxCacheSize": 10000
+    }
+  },
+
+  "qa": {
+    "buildTimeout": 60000,
+    "lintTimeout": 120000,
+    "testTimeout": 300000,
+    "autoFixLint": false
+  },
+
+  "iteration": {
+    "maxIterations": 50,
+    "commitEachIteration": true
+  },
+
+  "agents": {
+    "maxAgentsByType": {
+      "coder": 3,
+      "tester": 2,
+      "reviewer": 2,
+      "merger": 1,
+      "architect": 1,
+      "debugger": 2,
+      "documenter": 1
+    }
+  }
+}

@@ -1,16 +1,26 @@
 /**
  * SettingsLoader - Bridge between Settings and NexusFactory
  * Phase 16 Task 15: Wire Settings to LLMProvider Selection
+ * Phase 16 Task 16: Config File Support
  *
  * This service loads settings from the settingsService and converts them
  * to NexusFactoryConfig format. It handles:
  * - API key decryption via safeStorage
  * - Environment variable fallbacks
  * - Default value merging
+ * - Config file merging (Task 16)
+ *
+ * Configuration Priority (highest to lowest):
+ * 1. Config file in project root (nexus.config.ts/js/json)
+ * 2. Settings store (user preferences from UI)
+ * 3. Environment variables
+ * 4. Default values
+ *
+ * Note: API keys are NEVER loaded from config files for security.
  *
  * Usage:
  * ```typescript
- * // Load settings as factory config
+ * // Load settings as factory config (includes config file merge)
  * const config = await SettingsLoader.loadAsFactoryConfig('/path/to/project');
  * const nexus = await NexusFactory.create(config);
  *
@@ -30,6 +40,7 @@ import type {
   LLMBackendType,
   EmbeddingsBackendType,
 } from '../../shared/types/settings';
+import { ConfigFileLoader, hasConfigFile } from '../../config';
 
 // ============================================================================
 // SettingsLoader Class
@@ -44,12 +55,15 @@ import type {
  */
 export class SettingsLoader {
   /**
-   * Load settings from store and environment, convert to NexusFactoryConfig.
+   * Load settings from store, environment, and config file, convert to NexusFactoryConfig.
    *
-   * Priority order for each setting:
-   * 1. Settings store (user-configured via UI)
-   * 2. Environment variables (fallback for CI/automation)
-   * 3. Default values
+   * Priority order for each setting (Task 16 updated):
+   * 1. Config file in project root (nexus.config.ts/js/json) - highest priority
+   * 2. Settings store (user-configured via UI)
+   * 3. Environment variables (fallback for CI/automation)
+   * 4. Default values
+   *
+   * Note: API keys are NEVER loaded from config files for security.
    *
    * @param workingDir - Project working directory (required for NexusFactory)
    * @returns NexusFactoryConfig ready for NexusFactory.create()
@@ -58,8 +72,8 @@ export class SettingsLoader {
     // Load current settings from store
     const llmSettings = this.getLLMSettings();
 
-    // Build config with decrypted API keys and fallbacks
-    const config: NexusFactoryConfig = {
+    // Build base config with decrypted API keys and fallbacks
+    const baseConfig: NexusFactoryConfig = {
       workingDir,
 
       // ========================================================================
@@ -107,7 +121,25 @@ export class SettingsLoader {
     };
 
     // Remove undefined values to allow NexusFactory defaults to apply
-    return this.removeUndefined(config);
+    const cleanedConfig = this.removeUndefined(baseConfig);
+
+    // ========================================================================
+    // Task 16: Merge with config file (highest priority)
+    // ========================================================================
+    try {
+      const configFile = await ConfigFileLoader.load(workingDir);
+      if (configFile) {
+        // Merge config file values (they take precedence over settings)
+        // Note: API keys are NOT merged from config file for security
+        const mergedConfig = ConfigFileLoader.mergeWithFactoryConfig(cleanedConfig, configFile);
+        return mergedConfig as NexusFactoryConfig;
+      }
+    } catch (error) {
+      // Log but don't fail - config file errors shouldn't break the app
+      console.warn('[SettingsLoader] Failed to load config file:', error instanceof Error ? error.message : error);
+    }
+
+    return cleanedConfig;
   }
 
   /**
@@ -313,6 +345,32 @@ export class SettingsLoader {
         hasApiKey: this.hasApiKey('openai'),
       },
     };
+  }
+
+  /**
+   * Get config file info for a project directory.
+   * Task 16: Config file support.
+   *
+   * @param projectRoot - Project root directory to search
+   * @returns Config file info or null if not found
+   */
+  static getConfigFileInfo(projectRoot: string): {
+    path: string;
+    filename: string;
+    format: 'typescript' | 'javascript' | 'json';
+  } | null {
+    return ConfigFileLoader.getConfigFileInfo(projectRoot);
+  }
+
+  /**
+   * Check if a project has a config file.
+   * Task 16: Config file support.
+   *
+   * @param projectRoot - Project root directory to search
+   * @returns true if a config file exists
+   */
+  static hasConfigFile(projectRoot: string): boolean {
+    return hasConfigFile(projectRoot);
   }
 }
 

@@ -285,6 +285,37 @@ export {
 } from './errors/LLMBackendErrors';
 
 // ============================================================================
+// Config (Phase 16 Task 16)
+// ============================================================================
+
+/**
+ * Configuration file support for technical users.
+ * Allows project-level config via nexus.config.ts/js/json files.
+ */
+export {
+  // Schema types
+  type NexusConfigFile,
+  type ClaudeConfigFile,
+  type GeminiConfigFile,
+  type EmbeddingsConfigFile,
+  type QAConfigFile,
+  type IterationConfigFile,
+  type AgentConfigFile,
+
+  // Defaults and validation
+  DEFAULT_CONFIG_FILE,
+  validateConfigFile,
+
+  // Loader
+  ConfigFileLoader,
+  ConfigFileError,
+  ConfigFileLoadError,
+  CONFIG_FILE_NAMES,
+  loadAndMergeConfig,
+  hasConfigFile,
+} from './config';
+
+// ============================================================================
 // Types
 // ============================================================================
 
