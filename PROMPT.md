@@ -655,15 +655,36 @@ export class GeminiCLIClient implements LLMClient {
 Modify the implementation based on actual Gemini CLI behavior discovered in Task 1.
 
 ### Task 5 Completion Checklist
-- [ ] GeminiCLIClient.ts created
-- [ ] Implements LLMClient interface
-- [ ] isAvailable() implemented
-- [ ] chat() implemented
-- [ ] stream() implemented
-- [ ] Retry logic implemented
-- [ ] Based on actual CLI research
+- [x] GeminiCLIClient.ts created
+- [x] Implements LLMClient interface
+- [x] isAvailable() implemented
+- [x] chat() implemented
+- [x] stream() implemented (chatStream with NDJSON support)
+- [x] Retry logic implemented (exponential backoff: 1s, 2s, 4s)
+- [x] Based on actual CLI research
 
-**[TASK 5 COMPLETE]** <- Mark when done
+**[TASK 5 COMPLETE]** - Completed on 2026-01-19
+
+### Task 5 Summary
+- **File Created**: `src/llm/clients/GeminiCLIClient.ts` (510 lines)
+- **Exports Added**: `src/llm/index.ts` updated with GeminiCLI exports
+- **Error Classes Created**:
+  - `GeminiCLIError` - Base error with exit code and error code
+  - `GeminiCLINotFoundError` - CLI not found (with helpful install instructions)
+  - `GeminiCLIAuthError` - Authentication failure (with gcloud instructions)
+  - `GeminiCLITimeoutError` - Request timeout
+
+**Key Implementation Details:**
+1. **LLMClient Interface**: Implements `chat()`, `chatStream()`, `countTokens()`
+2. **Non-interactive Mode**: Uses `--yolo` flag (Gemini's equivalent of Claude's `--print`)
+3. **JSON Output**: Uses `-o json` for structured parsing
+4. **Streaming**: Uses `-o stream-json` for NDJSON streaming with fallback
+5. **System Prompt**: Prepended to prompt (Gemini CLI lacks `--system-prompt`)
+6. **Message Conversion**: Human:/Assistant: format matching ClaudeCodeCLIClient
+7. **Retry Logic**: Exponential backoff (1s, 2s, 4s) with retriable error detection
+8. **Windows Support**: `shell: true` on Windows for PATH resolution
+9. **Timeout Handling**: Configurable timeout with SIGTERM on expiry
+10. **TypeScript**: Compiles without errors
 
 ---
 

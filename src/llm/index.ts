@@ -39,6 +39,23 @@ export type { GeminiClientOptions } from './clients/GeminiClient';
 export { ClaudeCodeCLIClient, CLIError, CLINotFoundError } from './clients/ClaudeCodeCLIClient';
 export type { ClaudeCodeCLIConfig } from './clients/ClaudeCodeCLIClient';
 
+// Gemini CLI Client (uses CLI instead of API)
+export {
+  GeminiCLIClient,
+  GeminiCLIError,
+  GeminiCLINotFoundError,
+  GeminiCLIAuthError,
+  GeminiCLITimeoutError,
+} from './clients/GeminiCLIClient';
+export type {
+  GeminiCLIConfig,
+  GeminiCLIResponse,
+  GeminiCLIRawResponse,
+  GeminiStreamChunk,
+  GeminiCLIErrorCode,
+  GeminiCLIErrorInfo,
+} from './clients/GeminiCLIClient.types';
+
 // Mock Clients (for testing)
 export { MockClaudeClient } from './clients/MockClaudeClient';
 export type { MockResponseConfig } from './clients/MockClaudeClient';
