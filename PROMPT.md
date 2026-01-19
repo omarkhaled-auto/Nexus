@@ -2295,5 +2295,44 @@ All 7 research tasks have been completed. Documentation created:
 
 ---
 
-**NEXT TASK:** Task 13 - Redesign Navigation and App Shell
+### PHASE 17C: CORE PAGES (Tasks 13-23)
+
+#### Task 13: Redesign Navigation and App Shell
+- **Status:** COMPLETED
+- **Output:**
+  - `src/renderer/src/components/layout/RootLayout.tsx` - Updated with smart page detection and sidebar integration
+  - `src/renderer/src/App.tsx` - Updated with new routes for Agents and Execution pages
+  - `src/renderer/src/pages/AgentsPage.tsx` - New Agents Activity page
+  - `src/renderer/src/pages/ExecutionPage.tsx` - New Execution Logs page
+- **Summary:** Redesigned the Nexus app shell with integrated sidebar navigation:
+  - **RootLayout Enhancement:**
+    - Smart page detection: Full-screen for landing page (/), sidebar layout for all other pages
+    - Sidebar integration with defaultNavigationItems and settingsNavigationItems
+    - Persistent collapsed state stored in localStorage
+    - Proper width calculation for main content area
+  - **Routing Updates:**
+    - Added `/agents` route for Agents Activity page
+    - Added `/execution` route for Execution Logs page
+    - Lazy-loaded all pages for optimal performance
+    - Updated PageLoader with Nexus design system styling (spinner, text colors)
+  - **AgentsPage Created:**
+    - Agent pool status overview with AgentPoolStatus component
+    - Active agents list with AgentCard components (selectable)
+    - Real-time agent output display via AgentActivity component
+    - QA pipeline status panel (Build/Lint/Test/Review)
+    - Pause/Resume All and Refresh controls
+    - Uses mock data (will be connected to real stores/IPC later)
+  - **ExecutionPage Created:**
+    - Tab-based navigation for Build, Lint, Test, Review logs
+    - Syntax-highlighted log viewer with line numbers
+    - Status indicators (success/error/running/pending) with icons
+    - Duration display and test counts
+    - Summary bar showing all QA step statuses
+    - Clear and Export log actions
+  - **Bug Fix:**
+    - Fixed TypeScript error in AgentCard.tsx (Progress variant "primary" → "default")
+
+---
+
+**NEXT TASK:** Task 14 - Redesign Dashboard Page
 
