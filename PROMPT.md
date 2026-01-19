@@ -261,12 +261,33 @@ Read `src/llm/clients/ClaudeCodeCLIClient.test.ts` to understand:
 Create `.agent/workspace/CLAUDE_CLI_PATTERNS.md` with findings.
 
 ### Task 2 Completion Checklist
-- [ ] ClaudeCodeCLIClient.ts fully analyzed
-- [ ] All patterns documented
-- [ ] Test patterns documented
-- [ ] Pattern document created
+- [x] ClaudeCodeCLIClient.ts fully analyzed
+- [x] All patterns documented
+- [x] Test patterns documented
+- [x] Pattern document created
 
-**[TASK 2 COMPLETE]** <- Mark when done
+**[TASK 2 COMPLETE]** - Completed on 2026-01-19
+
+### Task 2 Summary
+- **File Location**: `src/llm/clients/ClaudeCodeCLIClient.ts` (455 lines)
+- **Test File**: `src/llm/clients/ClaudeCodeCLIClient.test.ts` (849 lines, 46 tests)
+- **Pattern Document**: `.agent/workspace/CLAUDE_CLI_PATTERNS.md`
+
+**Key Patterns Identified:**
+1. **CLI Execution Pattern**: Uses `spawn()` with `shell: true` on Windows
+2. **Retry Logic**: Exponential backoff (1s, 2s, 4s)
+3. **Error Handling**: `CLIError` extends `LLMError`, `CLINotFoundError` for ENOENT
+4. **Response Parsing**: Handles multiple JSON field names, snake_case variants
+5. **Message Conversion**: `Human:` / `Assistant:` format, system prompt separate
+6. **Tool Mapping**: Maps Nexus tools to CLI tools (read_file -> Read)
+7. **Mock Pattern**: EventEmitter-based mock child process for tests
+
+**Key Differences for Gemini:**
+- Non-interactive: `--yolo` (not `--print`)
+- JSON output: `-o json` (not `--output-format json`)
+- Prompt: Positional argument (not `--message`)
+- Response: `response` field with nested `stats.models.<model>.tokens`
+- No `--system-prompt` support (prepend to prompt)
 
 ---
 
