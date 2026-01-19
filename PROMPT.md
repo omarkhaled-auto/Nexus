@@ -2172,5 +2172,128 @@ All 7 research tasks have been completed. Documentation created:
     - Full width content option
     - Persistent sidebar state across sessions
 
-**NEXT TASK:** Task 11 - Create feedback components (Toast, Modal, Loading)
+#### Task 11: Create feedback components (Toast, Modal, Loading)
+- **Status:** COMPLETED
+- **Output:**
+  - `src/renderer/src/components/ui/Toast.tsx` - Sonner-based toast notifications
+  - `src/renderer/src/components/ui/Alert.tsx` - Inline alert banners
+  - `src/renderer/src/components/ui/Progress.tsx` - Linear and circular progress indicators
+  - `src/renderer/src/components/ui/Tooltip.tsx` - Radix-based tooltips
+  - `src/renderer/src/components/ui/Skeleton.tsx` - Enhanced skeleton patterns
+  - `src/renderer/src/components/ui/Spinner.tsx` - Enhanced spinner variants
+- **Summary:** Comprehensive feedback components for the Nexus UI:
+  - **Toast (Toaster):**
+    - Built on Sonner library for toast notifications
+    - 5 variants: default, success, error, warning, info
+    - Support for title, description, action buttons, dismissible option
+    - Promise-based toasts, loading toasts, custom render function
+    - Nexus-styled with border-left accent colors
+  - **Alert:**
+    - 6 variants: default, success, warning, error, info, destructive
+    - AlertTitle and AlertDescription sub-components
+    - Dismissible option with onDismiss callback
+    - Automatic variant icons (CheckCircle, AlertTriangle, AlertCircle, Info)
+    - Accessibility: role="alert", proper ARIA attributes
+  - **Progress & CircularProgress:**
+    - Linear progress bar with 6 variants and 5 sizes
+    - Circular progress indicator with SVG rendering
+    - Indeterminate loading animation
+    - Shimmer animation option
+    - showValue option with custom formatValue function
+  - **Tooltip:**
+    - Built on Radix UI Tooltip primitive
+    - Configurable side (top/right/bottom/left) and alignment
+    - Custom delay duration, controlled/uncontrolled modes
+    - Title and content support
+    - TooltipProvider for shared delay settings
+  - **Skeleton (Enhanced):**
+    - 4 shape variants: text, circular, rectangular, rounded
+    - 3 animation types: pulse, wave, none
+    - Pre-built patterns: CardSkeleton, ListSkeleton, TableSkeleton, AvatarSkeleton, TextSkeleton, FormSkeleton
+  - **Spinner (Enhanced):**
+    - 5 sizes: xs, sm, md, lg, xl
+    - 8 colors: primary, secondary, white, muted, success, error, warning, inherit
+    - Helper components: LoadingOverlay, ButtonSpinner, InlineSpinner, PageLoading
+  - **Dependencies Added:**
+    - @radix-ui/react-tooltip
+    - @radix-ui/react-progress
+    - @radix-ui/react-select
+    - @radix-ui/react-switch
+  - **CSS Updates:**
+    - Added progress-indeterminate keyframe animation
+
+#### Task 12: Create agent-specific components (AgentBadge, StatusCard)
+- **Status:** COMPLETED
+- **Output:**
+  - `src/renderer/src/components/agents/AgentBadge.tsx` - Agent type badge with icon and status
+  - `src/renderer/src/components/agents/AgentCard.tsx` - Detailed agent information card
+  - `src/renderer/src/components/agents/AgentActivity.tsx` - Real-time terminal output display
+  - `src/renderer/src/components/agents/AgentPoolStatus.tsx` - Pool overview with status counts
+  - `src/renderer/src/components/agents/QAStatusPanel.tsx` - QA pipeline status (Build/Lint/Test/Review)
+  - `src/renderer/src/components/agents/IterationCounter.tsx` - Iteration counter with progress
+  - `src/renderer/src/components/agents/index.ts` - Component exports
+  - `src/renderer/src/components/ui/index.ts` - Updated to include agent components
+- **Summary:** Implemented all 6 agent-specific components for the Nexus UI:
+  - **AgentBadge:**
+    - 8 agent types: planner, coder, tester, reviewer, merger, architect, debugger, documenter
+    - 5 status states: idle, working, success, error, pending
+    - 3 sizes: sm, md, lg
+    - Type-specific icons (Lucide) and colors
+    - Status indicator dot with animations
+    - Interactive mode with click handler and keyboard support
+    - Full accessibility (ARIA, focus states)
+  - **AgentCard:**
+    - Displays agent type, status, model, current task
+    - Progress bar for task progress
+    - Iteration counter integration
+    - Metrics display (tokens used, duration)
+    - Selected state with glow effect
+    - Compact mode for list views
+    - Working state animation
+  - **AgentActivity:**
+    - Terminal-like output display with line numbers
+    - Real-time streaming support with auto-scroll
+    - Pause/resume auto-scroll functionality
+    - Color-coded output (success, error, warning)
+    - ANSI escape code parsing
+    - Clear output button
+    - Scroll-to-bottom button when scrolled up
+    - Live indicator when agent is working
+  - **AgentPoolStatus:**
+    - Grid view of all agents in pool
+    - Status counts (working, idle, error, complete)
+    - Capacity indicator with progress bar
+    - Empty slot placeholders
+    - Agent selection with callback
+    - Compact horizontal bar mode
+  - **QAStatusPanel:**
+    - 4 QA steps: Build, Lint, Test, Review
+    - 5 step statuses: pending, running, success, error, skipped
+    - Step-by-step progress with icons and connectors
+    - Duration display and test counts
+    - Error message display
+    - Horizontal and vertical orientations
+    - IterationCounter integration
+    - Click-to-view-logs callback
+  - **IterationCounter:**
+    - Current/max display
+    - Optional circular progress indicator
+    - Warning colors at 80%+ usage
+    - Error colors at 100% usage
+    - 2 sizes: sm, md
+
+---
+
+### PHASE 17B COMPLETE - FOUNDATION TASKS DONE
+
+**All Foundation Components Created:**
+- Task 8: Design system (colors, typography, spacing) ✓
+- Task 9: Base components (Button, Input, Select, Toggle, Card) ✓
+- Task 10: Layout components (Sidebar, Header, Breadcrumbs, PageLayout) ✓
+- Task 11: Feedback components (Toast, Modal, Alert, Progress, Tooltip, Skeleton, Spinner) ✓
+- Task 12: Agent-specific components (AgentBadge, AgentCard, AgentActivity, AgentPoolStatus, QAStatusPanel, IterationCounter) ✓
+
+---
+
+**NEXT TASK:** Task 13 - Redesign Navigation and App Shell
 

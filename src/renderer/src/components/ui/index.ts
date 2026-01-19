@@ -50,3 +50,6 @@ export * from './scroll-area'
 
 // Re-export layout components for convenience
 export * from '../layout'
+
+// Re-export agent components for convenience
+export * from '../agents'
