@@ -2101,5 +2101,36 @@ All 7 research tasks have been completed. Documentation created:
   - **Accessibility:** Reduced motion support, print styles
   - **TypeScript Tokens File:** Exports all tokens with types and helper functions
 
-**NEXT TASK:** Task 9 - Create base components (Button, Input, Select, Toggle, Card)
+#### Task 9: Create base components (Button, Input, Select, Toggle, Card)
+- **Status:** COMPLETED
+- **Output:**
+  - `src/renderer/src/components/ui/button.tsx` - Enhanced Button component
+  - `src/renderer/src/components/ui/Input.tsx` - New Input component
+  - `src/renderer/src/components/ui/Select.tsx` - New Select component
+  - `src/renderer/src/components/ui/Toggle.tsx` - New Toggle component
+  - `src/renderer/src/components/ui/index.ts` - Updated exports
+- **Summary:** Implemented 4 core form components with the Nexus design system:
+  - **Button:**
+    - 9 variants: primary, secondary, ghost, danger, success, link, outline, default, destructive
+    - 9 sizes: xs, sm, md, lg, xl, icon, icon-sm, icon-lg, default
+    - Features: loading state with spinner, icon support (left/right), fullWidth
+    - Nexus purple (#7C3AED) as primary, glow effects on hover
+    - Backward compatible with existing variant names
+  - **Input:**
+    - 3 sizes: sm, md, lg
+    - Features: label, hint, error states, icons (left/right), password toggle
+    - Character count display, clearable input
+    - Proper ARIA attributes for accessibility
+  - **Select:**
+    - Built on Radix UI Select for accessibility
+    - Features: searchable dropdown, grouped options, custom option icons
+    - Supports label, hint, error, clearable, required states
+    - Description text per option for model selections
+  - **Toggle:**
+    - 3 sizes: sm, md, lg
+    - Features: label, description, controlled/uncontrolled modes
+    - ToggleGroup component for grouping related toggles
+    - Nexus purple when checked
+
+**NEXT TASK:** Task 10 - Create layout components (Sidebar, Header, Page)
 
