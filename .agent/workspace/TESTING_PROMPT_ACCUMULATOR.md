@@ -15,7 +15,7 @@
 | 3 | ADRs & Constraints | COMPLETE | 105 |
 | 4 | Integration Sequences | COMPLETE | 120 |
 | 5 | Genesis Workflow | COMPLETE | 75 |
-| 6 | Evolution Workflow | PENDING | 0 |
+| 6 | Evolution Workflow | COMPLETE | 80 |
 | 7 | Phase 13 Features | PENDING | 0 |
 | 8 | Phase 14B Bindings | PENDING | 0 |
 | 9 | Silent Failures | PENDING | 0 |
@@ -2148,3 +2148,511 @@ Each test includes:
 - SILENT_FAILURE_CHECK statements
 
 Total tests added: ~75 new workflow tests
+
+---
+
+## SECTION 6: EVOLUTION MODE WORKFLOW TESTS
+
+### EVO-E2E-001: Add Simple Feature to Existing Codebase
+```
+TEST: Evolution mode adds simple feature to existing React application
+SETUP: Existing React app with basic routing (src/, package.json, tsconfig.json present)
+INPUT: "Add a dark mode toggle to the header"
+EXPECTED: Feature added matching existing patterns, all existing tests pass
+TIME_LIMIT: 45 minutes for simple feature
+
+PHASE 1: CONTEXT ANALYSIS
+VERIFY: PROJECT_LOAD event emitted with projectPath and mode='evolution'
+VERIFY: FileSystemService.glob() scans all source files (*.ts, *.tsx, *.js, *.jsx)
+VERIFY: File metadata collected (path, size, lastModified, type, language)
+VERIFY: LSPClient.initialize() starts TypeScript language server
+VERIFY: LSPClient returns ProjectStructure with entryPoints, modules, symbols
+VERIFY: Symbol index created (classes, functions, interfaces, variables)
+VERIFY: Dependency graph built (internal imports and external packages)
+VERIFY: MemorySystem.query() retrieves historical context from previous sessions
+VERIFY: CONTEXT_READY event emitted with fileCount, symbolCount, memoryCount
+VERIFY: KanbanPage displays project overview with detected patterns
+
+PHASE 2: FEATURE PLANNING
+VERIFY: User creates feature card "Add dark mode toggle"
+VERIFY: Drag to "In Progress" triggers complexity assessment
+VERIFY: ComplexityAssessment calculates score based on:
+  - fileCount: estimated files to modify
+  - dependencyDepth: component dependencies
+  - integrationPoints: system integrations
+  - estimatedDuration: time estimate
+VERIFY: Score <= 4 AND duration <= 60min → auto-task (no planning required)
+VERIFY: Score > 4 OR duration > 60min → planning required (user review)
+VERIFY: TaskDecomposer receives EvolutionPlanningContext with:
+  - relatedFiles (likely modified files)
+  - dependencies (files depending on related files)
+  - patterns (detected code patterns)
+  - previousDecisions (historical architectural decisions)
+  - constraints (backward compat, existing tests, protected files)
+VERIFY: Tasks include predicted file locations based on context
+
+PHASE 3: KANBAN WORKFLOW
+VERIFY: Tasks appear in Backlog column
+VERIFY: User can drag tasks between columns
+VERIFY: Drag to "In Progress" triggers execution
+VERIFY: Task status updates reflected in real-time
+VERIFY: FeatureCard shows progress (tasks completed / total)
+VERIFY: AgentStatusGrid shows active agents working on tasks
+
+PHASE 4: EXECUTION
+VERIFY: CoderAgent receives task with existing code context
+VERIFY: Agent prompt includes relevant existing files
+VERIFY: Generated code matches existing naming conventions (camelCase vs snake_case)
+VERIFY: Generated code matches existing file structure
+VERIFY: Generated code matches existing error handling patterns
+VERIFY: Generated code matches existing logging patterns
+VERIFY: Generated tests match existing test structure
+VERIFY: WorktreeManager creates isolated worktree for task
+
+PHASE 5: QA VALIDATION
+VERIFY: QALoopEngine runs Build → Lint → Test → Review sequence
+VERIFY: tsc --noEmit passes on generated code
+VERIFY: eslint passes with existing project rules
+VERIFY: NEW tests pass (vitest)
+VERIFY: EXISTING tests still pass (regression check)
+VERIFY: Gemini code review approves changes
+VERIFY: Code style consistent with existing codebase
+
+PHASE 6: INTEGRATION
+VERIFY: MergerRunner merges worktree changes to feature branch
+VERIFY: No unrelated files modified (scope isolation)
+VERIFY: Feature branch created: feature/{featureId}
+VERIFY: PR NOT created for simple features (direct merge)
+VERIFY: Task marked as 'done'
+VERIFY: TASK_COMPLETED event emitted
+
+INTEGRATION_CHECK: Context analysis results inform task decomposition
+INTEGRATION_CHECK: Generated code respects existing patterns
+INTEGRATION_CHECK: Existing tests remain green after changes
+SILENT_FAILURE_CHECK: Context analysis misses key files/patterns
+SILENT_FAILURE_CHECK: Generated code conflicts with existing code style
+SILENT_FAILURE_CHECK: Existing tests broken by changes but not detected
+SILENT_FAILURE_CHECK: Unrelated files modified, scope creep not detected
+```
+
+### EVO-E2E-002: Add Complex Multi-File Feature
+```
+TEST: Evolution handles complex feature requiring database, API, and frontend changes
+SETUP: Existing Node.js/Express API with authentication stub
+INPUT: "Add user authentication with JWT, login/logout endpoints, and protected routes"
+EXPECTED: Auth feature across multiple files/layers, all tests pass
+TIME_LIMIT: 2-4 hours for complex feature
+
+PHASE 1: CONTEXT ANALYSIS
+VERIFY: Full codebase scan identifies all relevant files:
+  - API routes (routes/*.ts)
+  - Middleware (middleware/*.ts)
+  - Database models (models/*.ts)
+  - Configuration (config/*.ts)
+  - Existing auth stub (if any)
+VERIFY: LSP identifies existing patterns:
+  - Route handler structure
+  - Error handling approach
+  - Request/response patterns
+  - Database access patterns
+VERIFY: Dependencies identified:
+  - Existing packages (express, etc.)
+  - Missing packages (jsonwebtoken, bcrypt)
+
+PHASE 2: FEATURE PLANNING
+VERIFY: Complexity assessment returns score > 4 (planning required)
+VERIFY: User presented with complexity breakdown
+VERIFY: TaskDecomposer creates hierarchical task breakdown:
+  - Task 1: Add JWT and bcrypt packages (5 min)
+  - Task 2: Create User model and migration (15 min)
+  - Task 3: Create auth middleware (20 min)
+  - Task 4: Create login endpoint (20 min)
+  - Task 5: Create logout endpoint (10 min)
+  - Task 6: Add protected route middleware (15 min)
+  - Task 7: Update existing routes with protection (15 min)
+  - Task 8: Add auth tests (25 min)
+VERIFY: DependencyResolver orders tasks correctly (migration before auth)
+VERIFY: All tasks estimated <= 30 minutes
+VERIFY: User reviews and approves plan
+
+PHASE 3: WAVE-BASED EXECUTION
+VERIFY: Tasks execute in dependency order
+VERIFY: Wave 1: Package installation, model creation
+VERIFY: Wave 2: Middleware, endpoints (can parallelize)
+VERIFY: Wave 3: Route updates, tests (depend on Wave 2)
+VERIFY: Parallel tasks execute concurrently within waves
+
+PHASE 4: DATABASE CHANGES
+VERIFY: Database migration created for users table
+VERIFY: Migration runs successfully in worktree
+VERIFY: Migration script follows existing migration patterns
+VERIFY: No existing data corrupted (test database)
+
+PHASE 5: API CHANGES
+VERIFY: New endpoints follow existing route structure
+VERIFY: Request validation consistent with existing patterns
+VERIFY: Response format consistent with existing API
+VERIFY: Error handling consistent with existing patterns
+VERIFY: Logging follows existing conventions
+
+PHASE 6: TESTS AND COVERAGE
+VERIFY: Unit tests for each component
+VERIFY: Integration tests for auth flow
+VERIFY: Test coverage for feature code >= 80%
+VERIFY: Existing API tests still pass
+VERIFY: No regression in existing functionality
+
+INTEGRATION_CHECK: Migration + API + Tests integrate correctly
+INTEGRATION_CHECK: Feature branch contains all related changes
+SILENT_FAILURE_CHECK: Migration created but not run (schema mismatch)
+SILENT_FAILURE_CHECK: Security vulnerability in auth code (weak JWT secret)
+SILENT_FAILURE_CHECK: Existing endpoints broken by middleware changes
+SILENT_FAILURE_CHECK: Tests pass but functionality doesn't match requirements
+```
+
+### EVO-E2E-003: Evolution Pattern Matching and Style Consistency
+```
+TEST: Evolution matches existing code patterns automatically
+SETUP: Codebase with specific conventions (PascalCase components, kebab-case files, etc.)
+INPUT: "Add a new UserSettings component and API endpoint"
+EXPECTED: New code follows all existing conventions exactly
+TIME_LIMIT: 30 minutes
+
+PHASE 1: PATTERN DETECTION
+VERIFY: FileSystemService detects file naming patterns:
+  - Component files: PascalCase.tsx
+  - Hook files: useCamelCase.ts
+  - Service files: camelCase.service.ts
+  - Test files: *.test.ts or *.spec.ts
+VERIFY: LSPClient detects code patterns:
+  - Function naming (camelCase vs PascalCase)
+  - Variable naming conventions
+  - Import organization (grouping, ordering)
+  - Export patterns (named vs default)
+VERIFY: Style patterns detected:
+  - Indentation (spaces vs tabs, count)
+  - Quotes (single vs double)
+  - Semicolons (required vs optional)
+  - Trailing commas
+VERIFY: Error handling patterns detected:
+  - try/catch structure
+  - Error types used
+  - Error response format
+VERIFY: Logging patterns detected:
+  - Logger used (console, winston, pino)
+  - Log levels (info, debug, error)
+  - Log format
+
+PHASE 2: PATTERN APPLICATION
+VERIFY: CoderAgent prompt includes detected patterns
+VERIFY: Generated component file named UserSettings.tsx (PascalCase)
+VERIFY: Generated hook file named useUserSettings.ts
+VERIFY: Generated service file named userSettings.service.ts
+VERIFY: Generated test file named UserSettings.test.tsx
+VERIFY: Function names follow detected casing
+VERIFY: Imports organized same as existing files
+VERIFY: Error handling matches existing patterns
+VERIFY: Logging matches existing patterns
+
+PHASE 3: STYLE VALIDATION
+VERIFY: ESLint with existing config passes
+VERIFY: Prettier format matches existing code
+VERIFY: No new linting warnings introduced
+VERIFY: TypeScript strict mode respected
+
+PHASE 4: INTEGRATION
+VERIFY: New files integrate with existing module structure
+VERIFY: No import cycles created
+VERIFY: Barrel exports updated if existing pattern
+
+INTEGRATION_CHECK: Patterns from analysis used in generation
+INTEGRATION_CHECK: Generated code indistinguishable from human-written
+SILENT_FAILURE_CHECK: Pattern detection fails, generic code generated
+SILENT_FAILURE_CHECK: Inconsistent style introduced (mixed conventions)
+SILENT_FAILURE_CHECK: Pattern applied to wrong context (backend pattern in frontend)
+```
+
+### EVO-E2E-004: Evolution with Merge Conflicts
+```
+TEST: Evolution handles merge conflicts when main branch changes during execution
+SETUP: Start feature, modify main branch during execution
+EXPECTED: Conflicts detected, analyzed, and resolved (auto or escalated)
+TIME_LIMIT: Variable (depends on conflict complexity)
+
+PHASE 1: CREATE CONFLICT SCENARIO
+VERIFY: Feature execution starts on branch feature/{featureId}
+VERIFY: Worktree created from main at commit C1
+VERIFY: While feature executes, main advances to commit C2
+VERIFY: Main changes overlap with feature changes (same files)
+
+PHASE 2: CONFLICT DETECTION
+VERIFY: Before merge, GitService detects main has advanced
+VERIFY: GitService.merge() attempts merge from main
+VERIFY: Conflict detected in overlapping files
+VERIFY: MERGE_CONFLICT event emitted with conflict details
+
+PHASE 3: CONFLICT ANALYSIS
+VERIFY: MergerAgent receives conflict context:
+  - conflictFiles: list of files with conflicts
+  - ourChanges: feature branch changes
+  - theirChanges: main branch changes
+  - conflictMarkers: specific conflict regions
+VERIFY: Conflict complexity assessed:
+  - Simple: Same file, different regions (auto-resolvable)
+  - Moderate: Same region, compatible changes (maybe auto-resolve)
+  - Complex: Same region, incompatible changes (escalate)
+
+PHASE 4A: AUTO-RESOLUTION (Simple/Moderate Conflicts)
+VERIFY: MergerAgent uses Claude to analyze both changes
+VERIFY: Resolution strategy determined:
+  - Keep both (different regions)
+  - Merge logic (compatible changes)
+  - Choose one (duplicate functionality)
+VERIFY: Merged code generated
+VERIFY: Merged code compiles (tsc --noEmit)
+VERIFY: Tests pass with merged code
+VERIFY: MERGE_RESOLVED event emitted with resolution summary
+
+PHASE 4B: ESCALATION (Complex Conflicts)
+VERIFY: MERGE_CONFLICT_ESCALATED event emitted
+VERIFY: Human notification sent with conflict details
+VERIFY: Task marked as 'conflict_pending'
+VERIFY: Conflict context preserved for human review:
+  - Base version
+  - Our version
+  - Their version
+  - Suggested resolutions
+VERIFY: Human can resolve manually
+VERIFY: After human resolution, execution continues
+
+PHASE 5: FINAL VERIFICATION
+VERIFY: Merged code passes all QA checks
+VERIFY: No code corruption from resolution
+VERIFY: Feature functionality preserved
+VERIFY: Main branch changes preserved
+
+INTEGRATION_CHECK: Conflict detection reliable
+INTEGRATION_CHECK: Auto-resolution produces valid code
+INTEGRATION_CHECK: Escalation path works correctly
+SILENT_FAILURE_CHECK: Conflict missed, code corrupted silently
+SILENT_FAILURE_CHECK: Auto-resolution produces invalid/incomplete code
+SILENT_FAILURE_CHECK: Escalation not triggered for complex conflict
+SILENT_FAILURE_CHECK: Merged code compiles but logic broken
+```
+
+### EVO-E2E-005: Evolution Context Freshness Between Tasks
+```
+TEST: Evolution uses fresh, accurate context for each task in sequence
+SETUP: Feature with multiple tasks that modify the same files sequentially
+INPUT: Feature requiring Task A to modify file.ts, then Task B to modify file.ts
+EXPECTED: Task B sees Task A's changes, no overwriting or stale context
+TIME_LIMIT: 60 minutes
+
+PHASE 1: INITIAL STATE
+VERIFY: File.ts exists with initial content
+VERIFY: Task A and Task B both target File.ts
+VERIFY: Task A executes first (dependency order)
+
+PHASE 2: TASK A EXECUTION
+VERIFY: CoderAgent for Task A sees initial File.ts content
+VERIFY: Task A modifies File.ts (adds function X)
+VERIFY: Task A completes, changes committed to worktree
+VERIFY: Worktree merged to feature branch
+
+PHASE 3: CONTEXT REFRESH
+VERIFY: FreshContextManager.reset() clears stale context
+VERIFY: FreshContextManager.initializeForTask(TaskB) loads fresh context
+VERIFY: Fresh context includes Task A's changes
+VERIFY: File.ts in context shows function X from Task A
+
+PHASE 4: TASK B EXECUTION
+VERIFY: CoderAgent for Task B sees updated File.ts (with function X)
+VERIFY: Task B modifies File.ts (adds function Y)
+VERIFY: Function X preserved (not overwritten)
+VERIFY: Task B completes, changes committed
+
+PHASE 5: FINAL VERIFICATION
+VERIFY: File.ts contains both function X (Task A) and function Y (Task B)
+VERIFY: No code lost between tasks
+VERIFY: No duplicate code created
+VERIFY: Tests pass for both functions
+
+PHASE 6: MEMORY SYSTEM UPDATE
+VERIFY: MemorySystem updated after each task completion
+VERIFY: Embeddings regenerated for modified files
+VERIFY: Subsequent context queries return fresh data
+
+INTEGRATION_CHECK: Context refresh happens between every task
+INTEGRATION_CHECK: Memory system stays synchronized with code
+SILENT_FAILURE_CHECK: Task uses stale context, overwrites previous changes
+SILENT_FAILURE_CHECK: Context size limit reached, critical code truncated
+SILENT_FAILURE_CHECK: Memory system out of sync, returns old file content
+SILENT_FAILURE_CHECK: Race condition between tasks causes data loss
+```
+
+### EVO-E2E-006: Evolution PR Creation for Complex Features
+```
+TEST: Evolution creates PR with proper documentation for complex features
+SETUP: Complex feature requiring human review before merge to main
+INPUT: "Add user profile management with avatar upload"
+EXPECTED: PR created with title, description, affected files, test summary
+TIME_LIMIT: 2-3 hours
+
+PHASE 1: FEATURE EXECUTION
+VERIFY: All tasks in feature complete successfully
+VERIFY: All QA checks pass
+VERIFY: Feature branch contains all changes
+
+PHASE 2: PR PREPARATION
+VERIFY: Feature complete triggers PR creation flow
+VERIFY: GitService identifies all commits in feature branch
+VERIFY: Changed files list compiled
+VERIFY: Test results summary compiled
+
+PHASE 3: PR CONTENT GENERATION
+VERIFY: PR title auto-generated from feature name
+VERIFY: PR body generated with:
+  - Summary of changes
+  - List of affected files (with change type: added/modified/deleted)
+  - Task breakdown with status
+  - Test results summary
+  - AI confidence score
+  - Potential risks/concerns identified
+VERIFY: PR labels applied from project config
+VERIFY: Reviewers assigned from project config
+
+PHASE 4: PR CREATION
+VERIFY: GitService creates PR via GitHub/GitLab API
+VERIFY: PR visible in repository
+VERIFY: Feature branch set as source
+VERIFY: main set as target
+VERIFY: PR status is 'open'
+
+PHASE 5: HUMAN NOTIFICATION
+VERIFY: HUMAN_REVIEW_REQUESTED event emitted
+VERIFY: Notification sent to configured reviewers
+VERIFY: In-app notification displayed
+VERIFY: Optional email/webhook notification
+
+INTEGRATION_CHECK: All PR metadata accurate
+INTEGRATION_CHECK: PR links to feature tracking
+SILENT_FAILURE_CHECK: PR created but no description
+SILENT_FAILURE_CHECK: PR created to wrong branch
+SILENT_FAILURE_CHECK: Notification not sent, PR orphaned
+SILENT_FAILURE_CHECK: PR contains unrelated commits
+```
+
+### EVO-E2E-007: Evolution Codebase Impact Analysis
+```
+TEST: Evolution accurately predicts and limits impact of changes
+SETUP: Large codebase with interconnected modules
+INPUT: "Rename User model to Account model"
+EXPECTED: All affected files identified, changes scoped correctly
+TIME_LIMIT: 1-2 hours
+
+PHASE 1: IMPACT ANALYSIS
+VERIFY: MemorySystem.findUsages('User') finds all references
+VERIFY: LSPClient.getReferences() confirms symbol usages
+VERIFY: Affected files categorized:
+  - Direct: Files defining User
+  - Imports: Files importing User
+  - Tests: Test files referencing User
+  - Docs: Documentation mentioning User
+VERIFY: Impact summary displayed to user:
+  - X files will be modified
+  - Y tests may need updates
+  - Z documentation references found
+VERIFY: User confirms scope before execution
+
+PHASE 2: SCOPED EXECUTION
+VERIFY: Tasks generated only for affected files
+VERIFY: Unaffected modules not touched
+VERIFY: Rename performed atomically (all or nothing)
+VERIFY: Import statements updated across codebase
+
+PHASE 3: VERIFICATION
+VERIFY: No broken imports after rename
+VERIFY: All tests pass after rename
+VERIFY: Type checking passes
+VERIFY: No orphaned references to old name
+
+INTEGRATION_CHECK: Impact analysis matches actual changes
+INTEGRATION_CHECK: No scope creep beyond predicted impact
+SILENT_FAILURE_CHECK: Impact analysis misses files, broken imports
+SILENT_FAILURE_CHECK: Some files renamed, others not (inconsistent state)
+SILENT_FAILURE_CHECK: Tests pass but runtime errors from missed references
+```
+
+### EVO-E2E-008: Evolution Rollback on Failure
+```
+TEST: Evolution rolls back cleanly when feature cannot complete
+SETUP: Feature that will fail (impossible requirement or persistent error)
+INPUT: Feature that triggers multiple QA failures and escalation
+EXPECTED: Worktree cleaned up, main branch unchanged, state restored
+TIME_LIMIT: Variable
+
+PHASE 1: TRIGGER FAILURE
+VERIFY: Feature execution starts
+VERIFY: Tasks begin executing
+VERIFY: Persistent failure encountered (can't be fixed by QA loop)
+VERIFY: Iteration count reaches 50
+VERIFY: Escalation triggered
+
+PHASE 2: HUMAN DECISION
+VERIFY: Human notified of failure
+VERIFY: Human chooses "Abort Feature" option
+VERIFY: FEATURE_ABORT event emitted
+
+PHASE 3: ROLLBACK EXECUTION
+VERIFY: All active agents for feature stopped
+VERIFY: Worktrees for feature tasks removed
+VERIFY: Feature branch deleted (or kept for debugging based on config)
+VERIFY: Main branch unchanged (no partial changes)
+VERIFY: Database state rolled back to pre-feature state
+VERIFY: TaskQueue cleared of feature's remaining tasks
+
+PHASE 4: STATE RESTORATION
+VERIFY: KanbanPage shows feature back in Backlog (or removed based on config)
+VERIFY: Project state consistent
+VERIFY: No orphaned resources (worktrees, branches, processes)
+
+PHASE 5: POST-MORTEM DATA
+VERIFY: Failure details logged for analysis:
+  - Iteration history
+  - Error messages
+  - Files attempted to modify
+  - QA results per iteration
+VERIFY: Data available for human review
+VERIFY: Learnings can be added to MemorySystem
+
+INTEGRATION_CHECK: Rollback is atomic and complete
+INTEGRATION_CHECK: No side effects on other features
+SILENT_FAILURE_CHECK: Partial rollback leaves inconsistent state
+SILENT_FAILURE_CHECK: Orphaned worktrees consume disk space
+SILENT_FAILURE_CHECK: Main branch has partial changes from feature
+```
+
+---
+
+**[TASK 6 COMPLETE]**
+
+Task 6 extracted 8 Evolution Mode E2E workflow tests:
+- EVO-E2E-001: Add Simple Feature to Existing Codebase - 50+ VERIFY statements
+- EVO-E2E-002: Add Complex Multi-File Feature - 35 VERIFY statements
+- EVO-E2E-003: Evolution Pattern Matching and Style Consistency - 30 VERIFY statements
+- EVO-E2E-004: Evolution with Merge Conflicts - 30 VERIFY statements
+- EVO-E2E-005: Evolution Context Freshness Between Tasks - 20 VERIFY statements
+- EVO-E2E-006: Evolution PR Creation for Complex Features - 25 VERIFY statements
+- EVO-E2E-007: Evolution Codebase Impact Analysis - 20 VERIFY statements
+- EVO-E2E-008: Evolution Rollback on Failure - 25 VERIFY statements
+
+Each test includes:
+- SETUP: Initial conditions and codebase state
+- INPUT: User request triggering Evolution mode
+- EXPECTED: Expected outcome
+- TIME_LIMIT: Estimated duration
+- Phase-by-phase VERIFY statements
+- INTEGRATION_CHECK statements
+- SILENT_FAILURE_CHECK statements
+
+Total tests added: ~80 new workflow tests
