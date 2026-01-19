@@ -1820,7 +1820,22 @@ REQUIRED OUTPUTS:
   - Model Configuration: All Claude, Gemini, and embedding models with helper functions
 
 #### Task R3: Extract Event System
-- **Status:** PENDING
+- **Status:** COMPLETED
+- **Output:** `.agent/workspace/PHASE_17_RESEARCH/EVENTS.md`
+- **Summary:** Comprehensive documentation of the complete event system:
+  - EventBus Architecture: Singleton pattern, type-safe emission/subscription, wildcard support
+  - 52 Event Types across 8 categories:
+    - Project Events (8): created, updated, status-changed, completed, failed, paused, resumed, deleted
+    - Feature Events (6): created, updated, status-changed, completed, failed, deleted
+    - Task Events (10): created, queued, assigned, started, progress, qa-iteration, completed, failed, blocked, escalated
+    - Agent Events (8): spawned, assigned, started, progress, idle, error, terminated, metrics-updated
+    - QA Events (6): build-started, build-completed, lint-completed, test-completed, review-completed, loop-completed
+    - Interview Events (7): started, question-asked, requirement-captured, category-completed, completed, cancelled, saved
+    - Human Review Events (3): requested, approved, rejected
+    - System Events (4): checkpoint-created, checkpoint-restored, error, warning
+  - IPC Event Forwarding: Main→Renderer via timeline:event, agent:metrics, task:updated channels
+  - Preload API: emitEvent, onTimelineEvent, onAgentMetrics, onTaskUpdated
+  - UI Integration Patterns with React hooks examples
 
 #### Task R4: Extract Configuration Options
 - **Status:** PENDING
