@@ -12,7 +12,7 @@
 |------|-------------|--------|-------------|
 | 1 | Layer Architecture | COMPLETE | 28 |
 | 2 | Component Catalog | COMPLETE | 85 |
-| 3 | ADRs & Constraints | PENDING | 0 |
+| 3 | ADRs & Constraints | COMPLETE | 105 |
 | 4 | Integration Sequences | PENDING | 0 |
 | 5 | Genesis Workflow | PENDING | 0 |
 | 6 | Evolution Workflow | PENDING | 0 |
@@ -936,3 +936,290 @@ Each component includes:
 - SILENT_FAILURE_CHECK statements
 
 Total tests added: ~85 new tests
+
+---
+
+## SECTION 3: ARCHITECTURE CONSTRAINT TESTS
+
+### ADR-001: Zustand + TanStack Query for State Management
+```
+TEST: State management uses Zustand and TanStack Query correctly
+CONSTRAINT: Client state via Zustand, server state via TanStack Query
+DECISION_RATIONALE: Simple API, excellent TypeScript support, minimal boilerplate
+
+VERIFY: useStore() returns current state from Zustand store
+VERIFY: setState() triggers React component re-render
+VERIFY: subscribe() calls listener on state change
+VERIFY: persist middleware saves to localStorage
+VERIFY: TanStack Query caches API responses
+VERIFY: TanStack Query handles background refetching
+VERIFY: TanStack Query supports optimistic updates
+VERIFY: State stores are properly typed with TypeScript
+VERIFY: DevTools integration works (Zustand/TanStack Query)
+
+INTEGRATION_CHECK: StateManager uses Zustand internally
+INTEGRATION_CHECK: UI components access state via hooks
+SILENT_FAILURE_CHECK: State updates but UI doesn't re-render
+SILENT_FAILURE_CHECK: Persistence fails, falls back to memory without warning
+SILENT_FAILURE_CHECK: Cache returns stale data without invalidation
+SILENT_FAILURE_CHECK: Optimistic update reverts but UI doesn't show error
+```
+
+### ADR-002: Five Specialized Agents
+```
+TEST: Five agent types exist with distinct roles and optimal models
+CONSTRAINT: Planner, Coder, Tester, Reviewer, Merger each have specific responsibilities
+DECISION_RATIONALE: Clear responsibility separation, optimal model per task
+
+VERIFY: Planner uses Claude Opus 4 (temperature 0.7) for strategic decomposition
+VERIFY: Coder uses Claude Sonnet 4 (temperature 0.3) for code generation
+VERIFY: Tester uses Claude Sonnet 4 (temperature 0.3) for test writing
+VERIFY: Reviewer uses Gemini 2.5 Pro (temperature 0.1) for code review
+VERIFY: Merger uses Claude Sonnet 4 (temperature 0.1) for conflict resolution
+VERIFY: Each agent type has focused system prompt
+VERIFY: Each agent type has limited, appropriate tool set
+VERIFY: AgentPool creates correct agent type for task type
+VERIFY: Agent types cannot be mixed (e.g., Coder cannot review)
+
+INTEGRATION_CHECK: AgentPool correctly spawns each agent type
+INTEGRATION_CHECK: SegmentRouter assigns task to correct agent type
+SILENT_FAILURE_CHECK: Wrong model used for agent type
+SILENT_FAILURE_CHECK: Agent assigned task outside its role
+SILENT_FAILURE_CHECK: Temperature setting ignored, using default
+SILENT_FAILURE_CHECK: Wrong tools available to agent
+```
+
+### ADR-003: SQLite + JSON Hybrid Storage
+```
+TEST: Data persistence uses SQLite with JSON columns validated by Zod
+CONSTRAINT: SQLite for structured data, JSON for requirements/state export
+DECISION_RATIONALE: Fast, zero-config, portable, human-readable exports
+
+VERIFY: SQLite database created on first run
+VERIFY: JSON columns serialize correctly (objects to JSON strings)
+VERIFY: JSON columns deserialize correctly (JSON strings to objects)
+VERIFY: Invalid JSON rejected with Zod validation error
+VERIFY: Zod schemas validate on insert operations
+VERIFY: Zod schemas validate on update operations
+VERIFY: STATE.md export is human-readable
+VERIFY: Database migrations run correctly
+VERIFY: Database is portable (can be copied)
+
+INTEGRATION_CHECK: DatabaseClient uses better-sqlite3
+INTEGRATION_CHECK: Schema definitions use Drizzle ORM
+INTEGRATION_CHECK: All persistence components use DatabaseClient
+SILENT_FAILURE_CHECK: Invalid JSON stored without validation
+SILENT_FAILURE_CHECK: Zod schema mismatch ignored at runtime
+SILENT_FAILURE_CHECK: Migration fails silently, schema outdated
+SILENT_FAILURE_CHECK: Concurrent writes corrupt database
+```
+
+### ADR-004: Git Worktrees for Parallel Execution
+```
+TEST: Each task gets isolated git worktree for execution
+CONSTRAINT: Task execution must not affect main branch until merge
+DECISION_RATIONALE: True filesystem isolation, native git support, clean merge path
+
+VERIFY: createWorktree() creates isolated directory for task
+VERIFY: Worktree path follows pattern: .nexus/worktrees/{taskId}
+VERIFY: Worktree has dedicated branch: nexus/task/{taskId}
+VERIFY: Changes in worktree don't appear in main
+VERIFY: Worktree cleaned up after task completes successfully
+VERIFY: Worktree preserved on failure for debugging
+VERIFY: Parallel tasks use separate worktrees
+VERIFY: Maximum worktree count enforced (equal to max agents)
+VERIFY: Orphaned worktrees detected and cleaned periodically
+
+INTEGRATION_CHECK: AgentPool creates worktree before agent execution
+INTEGRATION_CHECK: MergerRunner merges worktree to main
+INTEGRATION_CHECK: CheckpointManager can restore worktree state
+SILENT_FAILURE_CHECK: Worktree reused between tasks (contamination)
+SILENT_FAILURE_CHECK: Cleanup fails, orphaned worktrees accumulate
+SILENT_FAILURE_CHECK: Changes leak to main branch before merge
+SILENT_FAILURE_CHECK: Worktree path collision not detected
+```
+
+### ADR-005: EventEmitter3 for Internal Events
+```
+TEST: Event communication uses EventEmitter3 with typed events
+CONSTRAINT: All cross-component communication via EventBus
+DECISION_RATIONALE: Simple, fast, well-typed, good for single-process desktop app
+
+VERIFY: EventBus uses EventEmitter3 internally
+VERIFY: emit() calls all registered subscribers
+VERIFY: subscribe() registers event handler
+VERIFY: unsubscribe() removes event handler
+VERIFY: Events are strongly typed with TypeScript
+VERIFY: Event payloads match expected interface
+VERIFY: Multiple subscribers per event supported
+VERIFY: Subscriber errors don't crash the system
+VERIFY: Memory cleanup on component unmount
+
+INTEGRATION_CHECK: All 48 event types defined and typed
+INTEGRATION_CHECK: UI components subscribe to relevant events
+INTEGRATION_CHECK: Backend components emit lifecycle events
+SILENT_FAILURE_CHECK: Subscriber throws, other subscribers not called
+SILENT_FAILURE_CHECK: Event emitted but no subscribers registered
+SILENT_FAILURE_CHECK: Wrong event type delivered
+SILENT_FAILURE_CHECK: Memory leak from unremoved subscribers
+```
+
+### ADR-006: Multi-LLM Provider Strategy
+```
+TEST: Multiple LLM providers used for different tasks
+CONSTRAINT: Best model for each task type with fallback support
+DECISION_RATIONALE: Optimal performance per task, cost optimization, redundancy
+
+VERIFY: ClaudeClient connects to Anthropic API correctly
+VERIFY: GeminiClient connects to Google API correctly
+VERIFY: OpenAI API used for embeddings
+VERIFY: Planning uses Claude Opus (claude-opus-4)
+VERIFY: Coding uses Claude Sonnet (claude-sonnet-4)
+VERIFY: Testing uses Claude Sonnet (claude-sonnet-4)
+VERIFY: Review uses Gemini 2.5 Pro
+VERIFY: Merging uses Claude Sonnet (claude-sonnet-4)
+VERIFY: Embeddings use OpenAI text-embedding-3-small
+VERIFY: Rate limiting respected for all providers
+VERIFY: Fallback works when primary provider fails
+
+INTEGRATION_CHECK: LLMProviderFactory creates correct client
+INTEGRATION_CHECK: RateLimitWrapper throttles requests
+INTEGRATION_CHECK: API keys stored securely
+SILENT_FAILURE_CHECK: API key invalid but cached response returned
+SILENT_FAILURE_CHECK: Rate limit exceeded, requests silently queued forever
+SILENT_FAILURE_CHECK: Wrong provider used for task type
+SILENT_FAILURE_CHECK: Fallback activates without logging
+```
+
+### ADR-007: 30-Minute Task Hard Limit
+```
+TEST: No single task exceeds 30 minutes estimated duration
+CONSTRAINT: All atomic tasks must fit within 30-minute context window
+DECISION_RATIONALE: Context fit guaranteed, granular progress, easy rollback
+
+VERIFY: TaskDecomposer validates task duration <= 30 minutes
+VERIFY: Tasks estimated > 30 minutes rejected with error
+VERIFY: Oversized tasks automatically split by TaskSplitter
+VERIFY: TimeEstimator uses consistent estimation methodology
+VERIFY: Split tasks maintain correct dependencies
+VERIFY: UI shows time estimate for each task
+VERIFY: Validation runs BEFORE task execution starts
+
+SIZING_GUIDELINES_CHECK:
+- Atomic tasks: 5-15 minutes (single function, fix bug)
+- Small tasks: 15-25 minutes (component, API endpoint)
+- Medium tasks: 25-30 minutes (complex component + tests)
+- Over limit: >30 minutes - MUST DECOMPOSE
+
+INTEGRATION_CHECK: TimeEstimator used during planning phase
+INTEGRATION_CHECK: TaskDecomposer calls validateSize()
+SILENT_FAILURE_CHECK: 45-minute task accepted without split
+SILENT_FAILURE_CHECK: Time estimate wrong, task runs 2+ hours
+SILENT_FAILURE_CHECK: Split creates invalid task dependencies
+SILENT_FAILURE_CHECK: Estimation always returns 30 (max default)
+```
+
+### ADR-008: 50 QA Iteration Limit
+```
+TEST: QA loop enforces 50 iteration maximum with escalation
+CONSTRAINT: Prevent infinite loops, force human review for hard problems
+DECISION_RATIONALE: Prevents runaway costs, guarantees termination
+
+VERIFY: Iteration counter starts at 1 for new task
+VERIFY: Iteration counter increments after each QA cycle
+VERIFY: QALoopEngine checks counter before each iteration
+VERIFY: Escalation triggered at iteration 50 (not 51)
+VERIFY: Human notification sent on escalation
+VERIFY: Task marked as 'escalated' in database
+VERIFY: Detailed checkpoint created before escalation
+VERIFY: Other tasks can continue while one is escalated
+
+ESCALATION_FLOW_CHECK:
+- Iteration 1-10: Normal operation
+- Iteration 11-30: Increase context, try alternative approaches
+- Iteration 31-49: Alert human, create detailed checkpoint
+- Iteration 50: Escalate, pause task, notify human
+
+INTEGRATION_CHECK: QALoopEngine enforces limit
+INTEGRATION_CHECK: EscalationHandler receives notification
+INTEGRATION_CHECK: UI shows escalation status
+SILENT_FAILURE_CHECK: Counter resets accidentally, runs 100+ iterations
+SILENT_FAILURE_CHECK: Escalation triggered but handler not called
+SILENT_FAILURE_CHECK: Iteration 50 reached, continues anyway
+SILENT_FAILURE_CHECK: Counter not incremented on certain errors
+```
+
+### ADR-009: Electron Desktop Application
+```
+TEST: Application runs as Electron desktop app with full system access
+CONSTRAINT: Full filesystem access, native git integration, cross-platform
+DECISION_RATIONALE: Full access to git, file system, no CORS restrictions
+
+VERIFY: Electron main process starts correctly
+VERIFY: Electron renderer process loads React app
+VERIFY: IPC communication works between main and renderer
+VERIFY: Native file dialogs work (open, save)
+VERIFY: Full filesystem access available
+VERIFY: Git operations work via child process
+VERIFY: Application runs on Windows, macOS, Linux
+VERIFY: Auto-updater configured correctly
+VERIFY: Bundle size reasonable (~150MB or less)
+
+INTEGRATION_CHECK: electron.vite.config.ts configured correctly
+INTEGRATION_CHECK: Main process handles file system operations
+INTEGRATION_CHECK: Renderer process handles React UI
+SILENT_FAILURE_CHECK: Electron crash not reported to user
+SILENT_FAILURE_CHECK: IPC message lost between processes
+SILENT_FAILURE_CHECK: File system permission denied silently
+SILENT_FAILURE_CHECK: Git operations fail in packaged app
+```
+
+### ADR-010: Monorepo Structure
+```
+TEST: All code in single repository with layered architecture
+CONSTRAINT: Simpler deployment, shared types, unified versioning
+DECISION_RATIONALE: Atomic commits, no cross-repo sync issues
+
+VERIFY: All imports resolve within monorepo
+VERIFY: Shared types accessible from all layers (src/types/)
+VERIFY: Build produces single artifact
+VERIFY: No circular dependencies between layers
+VERIFY: Layer dependencies only flow downward (L1 → L7)
+VERIFY: TypeScript strict mode enabled
+VERIFY: Single package.json for all dependencies
+VERIFY: ESLint/Prettier configuration shared
+
+DIRECTORY_STRUCTURE_CHECK:
+- nexus/src/types/ - Shared types (all layers)
+- nexus/src/infrastructure/ - Layer 7
+- nexus/src/persistence/ - Layer 6
+- nexus/src/quality/ - Layer 5
+- nexus/src/execution/ - Layer 4
+- nexus/src/planning/ - Layer 3
+- nexus/src/orchestration/ - Layer 2
+- nexus/src/ui/ - Layer 1
+
+INTEGRATION_CHECK: TypeScript paths configured for layer imports
+INTEGRATION_CHECK: No external packages for core functionality
+SILENT_FAILURE_CHECK: Circular dependency not detected at compile time
+SILENT_FAILURE_CHECK: Type mismatch between layers at runtime
+SILENT_FAILURE_CHECK: Layer boundary violation not caught
+```
+
+---
+
+**[TASK 3 COMPLETE]**
+
+Task 3 extracted all 10 ADRs with testable constraints:
+- ADR-001: Zustand + TanStack Query (9 VERIFY + 4 SILENT_FAILURE_CHECK)
+- ADR-002: Five Specialized Agents (9 VERIFY + 4 SILENT_FAILURE_CHECK)
+- ADR-003: SQLite + JSON Hybrid (9 VERIFY + 4 SILENT_FAILURE_CHECK)
+- ADR-004: Git Worktrees (9 VERIFY + 4 SILENT_FAILURE_CHECK)
+- ADR-005: EventEmitter3 (9 VERIFY + 4 SILENT_FAILURE_CHECK)
+- ADR-006: Multi-LLM Provider (11 VERIFY + 4 SILENT_FAILURE_CHECK)
+- ADR-007: 30-Minute Task Limit (7 VERIFY + 4 SIZING_GUIDELINES + 4 SILENT_FAILURE_CHECK)
+- ADR-008: 50 QA Iteration Limit (8 VERIFY + 4 ESCALATION_FLOW + 4 SILENT_FAILURE_CHECK)
+- ADR-009: Electron Desktop (9 VERIFY + 4 SILENT_FAILURE_CHECK)
+- ADR-010: Monorepo Structure (8 VERIFY + 8 DIRECTORY_STRUCTURE + 3 SILENT_FAILURE_CHECK)
+
+Total tests added: ~105 new constraint tests
