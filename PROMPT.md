@@ -2697,4 +2697,93 @@ All 7 research tasks have been completed. Documentation created:
 
 ---
 
-**NEXT TASK:** Task 26 - TEST all Settings tabs with Playwright MCP (comprehensive testing)
+### Task 26: TEST all Settings tabs with Playwright MCP (comprehensive testing)
+- **Status:** COMPLETED
+- **Test Date:** 2026-01-19
+- **Output:** Screenshots saved to `.playwright-mcp/` directory
+- **Summary:** Comprehensive Playwright MCP testing of ALL Settings tabs:
+
+**LLM Providers Tab Tests:**
+- ✅ Page loads with Nexus design system (dark theme #0D1117)
+- ✅ Vertical tab navigation (LLM Providers, Agents, Checkpoints, UI, Projects)
+- ✅ Claude Configuration card displays:
+  - ✅ Backend toggle (CLI/API) switches correctly
+  - ✅ CLI detected status indicator shows green checkmark
+  - ✅ Model dropdown shows all 5 Claude models with descriptions
+  - ✅ Model selection updates description dynamically
+  - ✅ API Key input with visibility toggle
+  - ✅ Advanced section expands/collapses
+  - ✅ Timeout and Max Retries inputs in Advanced section
+- ✅ Gemini Configuration card displays with same features
+- ✅ Embeddings Configuration card:
+  - ✅ Backend toggle (Local/OpenAI API)
+  - ✅ Local model dropdown shows embedding models
+  - ✅ "No API key needed" status for local backend
+- ✅ Provider Settings card:
+  - ✅ Default Provider dropdown
+  - ✅ Enable Fallback checkbox
+
+**Agents Tab Tests:**
+- ✅ Tab navigation works
+- ✅ Agent Model Assignments table displays all 8 agent types:
+  - ✅ Planner (🧠), Coder (💻), Tester (🧪), Reviewer (👁)
+  - ✅ Merger (🔀), Architect (🏗), Debugger (🐛), Documenter (📝)
+- ✅ Provider dropdown (Claude/Gemini) works per agent
+- ✅ Model dropdown dynamically updates based on provider selection
+- ✅ "Use Recommended Defaults" button resets all assignments
+- ✅ Agent Pool Settings: Max Concurrent Agents, QA Iteration Limit, Task Time Limit
+- ✅ Retry Settings: Auto Retry toggle, Max Retries input
+
+**Checkpoints Tab Tests:**
+- ✅ Tab navigation works
+- ✅ Enable Auto-Checkpoint toggle
+- ✅ Checkpoint Interval input
+- ✅ Max Checkpoints to Keep input
+- ✅ Checkpoint on Feature Complete toggle
+
+**UI Tab Tests:**
+- ✅ Tab navigation works
+- ✅ Theme selector (Light/Dark/System) with card-style buttons
+- ✅ Theme selection highlights selected option with purple border
+- ✅ Sidebar Width input
+- ✅ Show Notifications toggle
+- ✅ Notification Duration input
+
+**Projects Tab Tests:**
+- ✅ Tab navigation works
+- ✅ Default Language input (typescript)
+- ✅ Default Test Framework input (vitest)
+- ✅ Output Directory input (.nexus)
+
+**Footer Tests:**
+- ✅ Cancel button present (disabled when no changes)
+- ✅ Save Changes button present (disabled when no changes)
+- ✅ Reset Defaults button in header
+
+**Screenshots Captured:**
+- `settings-llm-providers-initial.png` - LLM Providers tab initial view
+- `settings-backend-toggle-api.png` - Claude backend switched to API
+- `settings-advanced-section-open.png` - Advanced section expanded
+- `settings-model-changed-opus.png` - Model dropdown with Opus selected
+- `settings-agents-tab-full.png` - Full Agents tab view
+- `settings-agents-provider-switched.png` - Coder switched to Gemini
+- `settings-checkpoints-tab.png` - Checkpoints tab view
+- `settings-ui-tab.png` - UI tab view
+- `settings-ui-dark-selected.png` - Dark theme selected
+- `settings-projects-tab.png` - Projects tab view
+
+---
+
+### PHASE 17C-D TESTING COMPLETE
+
+All core pages and Settings tabs have been tested with Playwright MCP:
+- ✅ Dashboard Page - Tested
+- ✅ Interview Page - Tested
+- ✅ Tasks/Kanban Page - Tested
+- ✅ Agents Page - Tested
+- ✅ Execution Page - Tested
+- ✅ Settings Page (all 5 tabs) - Tested
+
+---
+
+**NEXT TASK:** Task 27 - Add animations and micro-interactions (Phase 17D polish)

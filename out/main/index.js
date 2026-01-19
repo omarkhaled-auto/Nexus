@@ -153,7 +153,7 @@ class EventBus {
       timestamp: /* @__PURE__ */ new Date(),
       payload,
       source: options.source ?? this.defaultSource,
-      correlationId: options.correlationId
+      ...options.correlationId !== void 0 ? { correlationId: options.correlationId } : {}
     };
     this.addToHistory(event);
     const typeSubscriptions = this.subscriptions.get(type) ?? [];
@@ -513,11 +513,28 @@ function registerIpcHandlers() {
       const eventBus = EventBus.getInstance();
       const projectId = state.projectId || "unknown";
       const categoryMap = {
-        non_functional: "non-functional",
-        user_story: "business-logic",
-        constraint: "technical"
+        non_functional: "performance",
+        user_story: "functional",
+        constraint: "technical",
+        functional: "functional",
+        technical: "technical",
+        ui: "ui",
+        performance: "performance",
+        security: "security"
       };
-      const mappedCategory = categoryMap[payload.category] || payload.category;
+      const mappedCategory = categoryMap[payload.category] ?? "functional";
+      const priorityMap = {
+        must: "critical",
+        should: "high",
+        could: "medium",
+        wont: "low",
+        critical: "critical",
+        high: "high",
+        medium: "medium",
+        low: "low"
+      };
+      const mappedPriority = priorityMap[payload.priority] ?? "medium";
+      const now = /* @__PURE__ */ new Date();
       void eventBus.emit(
         "interview:requirement-captured",
         {
@@ -526,15 +543,11 @@ function registerIpcHandlers() {
             id: payload.requirementId,
             projectId,
             category: mappedCategory,
-            description: payload.text,
-            priority: payload.priority,
-            userStories: [],
-            acceptanceCriteria: [],
-            linkedFeatures: [],
-            validated: false,
-            confidence: 1,
-            tags: [],
-            createdAt: /* @__PURE__ */ new Date()
+            content: payload.text,
+            priority: mappedPriority,
+            source: "interview",
+            createdAt: now,
+            updatedAt: now
           }
         },
         { source: "InterviewUI" }
@@ -742,12 +755,68 @@ function forwardTimelineEvent(timelineEvent) {
     eventForwardingWindow.webContents.send("timeline:event", timelineEvent);
   }
 }
+const DEFAULT_CLAUDE_MODEL = "claude-sonnet-4-5-20250929";
+const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";
+const LOCAL_EMBEDDING_MODELS = {
+  "Xenova/all-MiniLM-L6-v2": {
+    id: "Xenova/all-MiniLM-L6-v2",
+    name: "MiniLM L6 v2",
+    dimensions: 384,
+    description: "Fast, lightweight - Best for most use cases",
+    isDefault: true
+  },
+  "Xenova/all-mpnet-base-v2": {
+    id: "Xenova/all-mpnet-base-v2",
+    name: "MPNet Base v2",
+    dimensions: 768,
+    description: "Higher quality - Larger model"
+  },
+  "Xenova/bge-small-en-v1.5": {
+    id: "Xenova/bge-small-en-v1.5",
+    name: "BGE Small English",
+    dimensions: 384,
+    description: "Optimized for retrieval tasks"
+  },
+  "Xenova/bge-base-en-v1.5": {
+    id: "Xenova/bge-base-en-v1.5",
+    name: "BGE Base English",
+    dimensions: 768,
+    description: "Higher quality BGE model"
+  }
+};
+const DEFAULT_LOCAL_EMBEDDING_MODEL = "Xenova/all-MiniLM-L6-v2";
 const defaults = {
   llm: {
+    // Phase 16: Provider-specific settings with CLI-first defaults
+    claude: {
+      backend: "cli",
+      timeout: 3e5,
+      // 5 minutes
+      maxRetries: 2,
+      model: DEFAULT_CLAUDE_MODEL
+      // claude-sonnet-4-5-20250929
+    },
+    gemini: {
+      backend: "cli",
+      timeout: 3e5,
+      // 5 minutes
+      model: DEFAULT_GEMINI_MODEL
+      // gemini-2.5-flash
+    },
+    embeddings: {
+      backend: "local",
+      localModel: DEFAULT_LOCAL_EMBEDDING_MODEL,
+      // Xenova/all-MiniLM-L6-v2
+      dimensions: LOCAL_EMBEDDING_MODELS[DEFAULT_LOCAL_EMBEDDING_MODEL].dimensions,
+      cacheEnabled: true,
+      maxCacheSize: 1e4
+    },
+    // Orchestration settings
     defaultProvider: "claude",
-    defaultModel: "claude-sonnet-4-20250514",
+    defaultModel: DEFAULT_CLAUDE_MODEL,
+    // claude-sonnet-4-5-20250929
     fallbackEnabled: true,
-    fallbackOrder: ["claude", "gemini", "openai"]
+    fallbackOrder: ["claude", "gemini"]
   },
   agents: {
     maxParallelAgents: 4,
@@ -757,7 +826,7 @@ const defaults = {
   },
   checkpoints: {
     autoCheckpointEnabled: true,
-    autoCheckpointIntervalMinutes: 15,
+    autoCheckpointIntervalMinutes: 5,
     maxCheckpointsToKeep: 10,
     checkpointOnFeatureComplete: true
   },
@@ -770,17 +839,57 @@ const defaults = {
   project: {
     defaultLanguage: "typescript",
     defaultTestFramework: "vitest",
-    outputDirectory: "./output"
+    outputDirectory: ".nexus"
   }
 };
 const schema = {
   llm: {
     type: "object",
     properties: {
+      // Phase 16: Claude provider settings
+      claude: {
+        type: "object",
+        properties: {
+          backend: { type: "string", enum: ["cli", "api"] },
+          apiKeyEncrypted: { type: "string" },
+          cliPath: { type: "string" },
+          timeout: { type: "number", minimum: 1e3, maximum: 6e5 },
+          maxRetries: { type: "number", minimum: 0, maximum: 10 },
+          model: { type: "string" }
+        },
+        default: defaults.llm.claude
+      },
+      // Phase 16: Gemini provider settings
+      gemini: {
+        type: "object",
+        properties: {
+          backend: { type: "string", enum: ["cli", "api"] },
+          apiKeyEncrypted: { type: "string" },
+          cliPath: { type: "string" },
+          timeout: { type: "number", minimum: 1e3, maximum: 6e5 },
+          model: { type: "string" }
+        },
+        default: defaults.llm.gemini
+      },
+      // Phase 16: Embeddings provider settings
+      embeddings: {
+        type: "object",
+        properties: {
+          backend: { type: "string", enum: ["local", "api"] },
+          apiKeyEncrypted: { type: "string" },
+          localModel: { type: "string" },
+          dimensions: { type: "number", minimum: 1 },
+          cacheEnabled: { type: "boolean" },
+          maxCacheSize: { type: "number", minimum: 100 }
+        },
+        default: defaults.llm.embeddings
+      },
+      // Legacy API key fields (kept for backwards compatibility)
       claudeApiKeyEncrypted: { type: "string" },
       geminiApiKeyEncrypted: { type: "string" },
       openaiApiKeyEncrypted: { type: "string" },
-      defaultProvider: { type: "string", enum: ["claude", "gemini", "openai"] },
+      // Orchestration settings
+      defaultProvider: { type: "string", enum: ["claude", "gemini"] },
       defaultModel: { type: "string" },
       fallbackEnabled: { type: "boolean" },
       fallbackOrder: { type: "array", items: { type: "string" } }
@@ -840,6 +949,7 @@ class SettingsService {
   /**
    * Get all settings with public view (no encrypted keys)
    * Returns hasXxxKey booleans instead of actual encrypted values
+   * Phase 16: Updated to include provider-specific settings
    */
   getAll() {
     const llm = this.store.get("llm");
@@ -847,15 +957,44 @@ class SettingsService {
     const checkpoints = this.store.get("checkpoints");
     const ui = this.store.get("ui");
     const project = this.store.get("project");
+    const claude = llm.claude ?? defaults.llm.claude;
+    const gemini = llm.gemini ?? defaults.llm.gemini;
+    const embeddings = llm.embeddings ?? defaults.llm.embeddings;
     return {
       llm: {
-        defaultProvider: llm.defaultProvider,
-        defaultModel: llm.defaultModel,
-        fallbackEnabled: llm.fallbackEnabled,
-        fallbackOrder: llm.fallbackOrder,
-        hasClaudeKey: !!llm.claudeApiKeyEncrypted,
-        hasGeminiKey: !!llm.geminiApiKeyEncrypted,
-        hasOpenaiKey: !!llm.openaiApiKeyEncrypted
+        // Phase 16: Provider-specific public views
+        claude: {
+          backend: claude.backend ?? "cli",
+          hasApiKey: !!claude.apiKeyEncrypted || !!llm.claudeApiKeyEncrypted,
+          cliPath: claude.cliPath,
+          timeout: claude.timeout,
+          maxRetries: claude.maxRetries,
+          model: claude.model
+        },
+        gemini: {
+          backend: gemini.backend ?? "cli",
+          hasApiKey: !!gemini.apiKeyEncrypted || !!llm.geminiApiKeyEncrypted,
+          cliPath: gemini.cliPath,
+          timeout: gemini.timeout,
+          model: gemini.model
+        },
+        embeddings: {
+          backend: embeddings.backend ?? "local",
+          hasApiKey: !!embeddings.apiKeyEncrypted || !!llm.openaiApiKeyEncrypted,
+          localModel: embeddings.localModel,
+          dimensions: embeddings.dimensions,
+          cacheEnabled: embeddings.cacheEnabled,
+          maxCacheSize: embeddings.maxCacheSize
+        },
+        // Orchestration settings
+        defaultProvider: llm.defaultProvider ?? "claude",
+        defaultModel: llm.defaultModel ?? DEFAULT_CLAUDE_MODEL,
+        fallbackEnabled: llm.fallbackEnabled ?? true,
+        fallbackOrder: llm.fallbackOrder ?? ["claude", "gemini"],
+        // Legacy compatibility
+        hasClaudeKey: !!claude.apiKeyEncrypted || !!llm.claudeApiKeyEncrypted,
+        hasGeminiKey: !!gemini.apiKeyEncrypted || !!llm.geminiApiKeyEncrypted,
+        hasOpenaiKey: !!embeddings.apiKeyEncrypted || !!llm.openaiApiKeyEncrypted
       },
       agents,
       checkpoints,
@@ -919,7 +1058,7 @@ class SettingsService {
       return null;
     }
     const base64 = this.store.get(`llm.${provider}ApiKeyEncrypted`);
-    if (!base64) {
+    if (!base64 || typeof base64 !== "string") {
       return null;
     }
     try {
