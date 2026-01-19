@@ -1,6 +1,6 @@
 # Phase 17: Nexus UI Complete Redesign
 
-## Current task is: Task 31
+## Current task is: Task 33 (Task 31 COMPLETED, Task 32 was already completed in 30.1-30.6)
 
 ## MISSION STATEMENT
 
@@ -3166,4 +3166,75 @@ The Settings Page was already fully connected to the real backend data through p
 
 ---
 
-**NEXT TASK:** Task 31 - TEST all pages responsive design with Playwright MCP
+### Task 31: TEST all pages responsive design with Playwright MCP (+ Fix Mobile Sidebar)
+- **Status:** ✅ COMPLETED
+- **Date:** 2026-01-19
+- **Commit:** (pending)
+
+**Issue Fixed:**
+Task 29 identified a critical issue: On mobile viewports (< 768px), the sidebar remained visible and took up screen space, causing content overlap. This task implemented the fix and re-tested.
+
+**Implementation - Mobile Responsive Sidebar:**
+1. **Updated `src/renderer/src/components/layout/RootLayout.tsx`:**
+   - Added `useIsMobile()` hook from useMediaQuery to detect mobile viewports
+   - Implemented hamburger menu button (☰) with fixed position at top-left on mobile
+   - Added overlay sidebar pattern for mobile (sidebar slides in from left)
+   - Added dark backdrop overlay (bg-black/60 with blur) when menu is open
+   - Sidebar auto-closes on:
+     - Navigation to new page (route change)
+     - Clicking the overlay backdrop
+     - Pressing Escape key
+     - Switching from mobile to desktop viewport
+   - Prevents body scroll when mobile menu is open
+   - Added proper ARIA attributes for accessibility (aria-label, aria-expanded)
+   - Added data-testid attributes for testing (mobile-menu-button, mobile-menu-overlay)
+
+**Features Implemented:**
+- Hamburger menu (☰) toggles to close (✕) when menu is open
+- Smooth slide-in animation for sidebar (animate-in slide-in-from-left)
+- Fade-in animation for overlay backdrop
+- Escape key closes the menu
+- Click outside (on overlay) closes the menu
+- Menu automatically closes after navigation
+- Top padding added to main content area on mobile for hamburger button
+
+**Playwright MCP Test Results:**
+
+| Page | Mobile (375x812) | Tablet (768x1024) | Desktop (1920x1080) |
+|------|------------------|-------------------|---------------------|
+| Dashboard | ✅ Hamburger menu works, content full-width | ✅ Sidebar visible, 2x2 stats grid | ✅ Full layout, 4-col stats |
+| Interview | ✅ Hamburger menu, chat visible | ✅ Split pane adapts | ✅ Perfect |
+| Tasks/Kanban | ✅ Hamburger menu, horizontal scroll | ✅ Columns visible | ✅ All 6 columns |
+| Agents | ✅ Hamburger menu, agent grid adapts | ✅ Stacked layout | ✅ Full layout |
+| Execution | ✅ Hamburger menu, tabs scrollable | ✅ Good layout | ✅ Perfect |
+| Settings | ✅ Hamburger menu, tabs work | ✅ Sidebar+content | ✅ Perfect |
+
+**Screenshots Captured (6 new screenshots):**
+- `dashboard-mobile-375x812-new.png` - Mobile with hamburger menu
+- `dashboard-mobile-menu-open.png` - Mobile with sidebar overlay open
+- `interview-mobile-375x812-new.png` - Interview page mobile
+- `tasks-mobile-375x812-new.png` - Kanban mobile horizontal scroll
+- `agents-mobile-375x812-new.png` - Agents page mobile
+- `execution-mobile-375x812-new.png` - Execution page mobile
+- `settings-mobile-375x812-new.png` - Settings page mobile
+- `dashboard-tablet-768x1024-new.png` - Tablet with full sidebar
+- `dashboard-desktop-1920x1080-new.png` - Desktop full layout
+
+**Test Verification:**
+- ✅ Mobile: Hamburger menu appears at < 768px width
+- ✅ Mobile: Clicking hamburger opens sidebar as overlay
+- ✅ Mobile: Navigation items work and close the menu
+- ✅ Mobile: Escape key closes the menu
+- ✅ Mobile: Click on backdrop closes the menu
+- ✅ Tablet: Full sidebar visible at >= 768px
+- ✅ Desktop: Full sidebar with collapse toggle
+- ✅ All pages: No content overlap at any viewport size
+
+**Files Modified:**
+- `src/renderer/src/components/layout/RootLayout.tsx` - Added mobile responsive sidebar
+
+---
+
+**NEXT TASK:** Task 32 - Connect all pages to real data (Phase 17E Integration) - Already completed in Task 30.1-30.6
+
+**PHASE 17E STATUS:** Tasks 30.1-30.6 completed the data connection work. Phase 17E continues with Task 33.
