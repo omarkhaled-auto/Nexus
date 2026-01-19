@@ -4,6 +4,26 @@ import type { NexusSettingsPublic } from '../../../shared/types/settings'
 
 const mockSettings: NexusSettingsPublic = {
   llm: {
+    claude: {
+      backend: 'cli',
+      hasApiKey: true,
+      timeout: 300000,
+      maxRetries: 2,
+      model: 'claude-sonnet-4',
+    },
+    gemini: {
+      backend: 'cli',
+      hasApiKey: false,
+      model: 'gemini-2.5-pro',
+      timeout: 300000,
+    },
+    embeddings: {
+      backend: 'local',
+      hasApiKey: false,
+      localModel: 'all-MiniLM-L6-v2',
+      dimensions: 384,
+      cacheEnabled: true,
+    },
     defaultProvider: 'claude',
     defaultModel: 'claude-sonnet-4',
     fallbackEnabled: true,

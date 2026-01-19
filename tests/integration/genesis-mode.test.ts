@@ -16,7 +16,7 @@
  * Tests will skip gracefully if keys are not available.
  */
 
-import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, afterEach, beforeEach } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
@@ -558,7 +558,7 @@ describe('Genesis Mode - Integration Tests (API Required)', () => {
     conditionalIt(
       'should create a Nexus instance with all components wired',
       async () => {
-        nexus = NexusFactory.createForTesting({
+        nexus = await NexusFactory.createForTesting({
           claudeApiKey: getClaudeApiKey()!,
           geminiApiKey: getGeminiApiKey()!,
           workingDir: testDir,
@@ -582,7 +582,7 @@ describe('Genesis Mode - Integration Tests (API Required)', () => {
     conditionalIt(
       'should complete decompose -> resolve -> estimate pipeline',
       async () => {
-        nexus = NexusFactory.createForTesting({
+        nexus = await NexusFactory.createForTesting({
           claudeApiKey: getClaudeApiKey()!,
           geminiApiKey: getGeminiApiKey()!,
           workingDir: testDir,
@@ -622,7 +622,7 @@ describe('Genesis Mode - Integration Tests (API Required)', () => {
     conditionalIt(
       'should initialize coordinator for genesis mode',
       async () => {
-        nexus = NexusFactory.createForTesting({
+        nexus = await NexusFactory.createForTesting({
           claudeApiKey: getClaudeApiKey()!,
           geminiApiKey: getGeminiApiKey()!,
           workingDir: testDir,
@@ -650,7 +650,7 @@ describe('Genesis Mode - Integration Tests (API Required)', () => {
     conditionalIt(
       'should emit events during genesis flow',
       async () => {
-        nexus = NexusFactory.createForTesting({
+        nexus = await NexusFactory.createForTesting({
           claudeApiKey: getClaudeApiKey()!,
           geminiApiKey: getGeminiApiKey()!,
           workingDir: testDir,
