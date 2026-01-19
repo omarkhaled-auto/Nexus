@@ -14,7 +14,7 @@
 | 2 | Component Catalog | COMPLETE | 85 |
 | 3 | ADRs & Constraints | COMPLETE | 105 |
 | 4 | Integration Sequences | COMPLETE | 120 |
-| 5 | Genesis Workflow | PENDING | 0 |
+| 5 | Genesis Workflow | COMPLETE | 75 |
 | 6 | Evolution Workflow | PENDING | 0 |
 | 7 | Phase 13 Features | PENDING | 0 |
 | 8 | Phase 14B Bindings | PENDING | 0 |
@@ -1803,3 +1803,348 @@ Each sequence includes:
 - SILENT_FAILURE_CHECK statements
 
 Total tests added: ~120 new integration tests
+
+---
+
+## SECTION 5: GENESIS MODE WORKFLOW TESTS
+
+### GEN-E2E-001: Complete Genesis Flow (Simple CLI App)
+```
+TEST: Genesis mode creates simple CLI app from scratch
+INPUT: "I want a CLI calculator that adds and subtracts numbers"
+EXPECTED_OUTPUT: Working CLI app with tests, passing build, lint, and test
+TIME_LIMIT: 30 minutes for simple app
+
+PHASE 1: INTERVIEW
+VERIFY: Interview UI loads without errors
+VERIFY: User can enter initial project description
+VERIFY: ClaudeClient.stream() called with interview system prompt
+VERIFY: Claude generates at least 3 clarifying questions
+VERIFY: User answers are appended to conversation history
+VERIFY: Requirements extracted and displayed in sidebar
+VERIFY: Minimum 3 requirements captured before completion allowed
+VERIFY: INTERVIEW_COMPLETE event emitted with projectId, requirementCount
+VERIFY: Requirements persisted to RequirementsDB with categories and priorities
+
+PHASE 2: PLANNING
+VERIFY: PLANNING_START event emitted with projectId
+VERIFY: TaskDecomposer creates feature list from requirements
+VERIFY: Each feature decomposed into atomic tasks
+VERIFY: Each task estimated <= 30 minutes
+VERIFY: Tasks > 30 minutes automatically split by TaskSplitter
+VERIFY: DependencyResolver orders tasks with topological sort
+VERIFY: No circular dependencies detected
+VERIFY: TaskWave[] groups parallelizable tasks correctly
+VERIFY: Execution plan displayed for user review
+VERIFY: PLANNING_COMPLETE event emitted with taskCount, waveCount
+
+PHASE 3: EXECUTION
+VERIFY: EXECUTION_START event emitted with totalTasks, totalWaves
+VERIFY: Tasks execute in wave order
+VERIFY: Parallel tasks within wave execute concurrently (up to 4)
+VERIFY: CoderAgent generates code for each task
+VERIFY: Code written to correct worktree location
+VERIFY: [TASK_COMPLETE] marker detected after each task
+VERIFY: TASK_COMPLETED events emitted for each task
+VERIFY: Progress visible in Dashboard UI
+
+PHASE 4: QA VALIDATION
+VERIFY: QALoopEngine runs Build → Lint → Test → Review for each task
+VERIFY: tsc --noEmit passes (no TypeScript errors)
+VERIFY: eslint passes (no lint errors, warnings acceptable)
+VERIFY: vitest passes (all tests pass)
+VERIFY: Gemini code review approves changes
+VERIFY: If QA fails, CoderAgent receives errors and fixes
+VERIFY: Iteration count tracked correctly
+VERIFY: QA cycle completes within 50 iterations
+
+PHASE 5: DELIVERY
+VERIFY: All tasks complete with status 'done'
+VERIFY: MergerRunner merges all worktrees to main
+VERIFY: Final build passes (tsc --noEmit)
+VERIFY: Final lint passes (eslint)
+VERIFY: Final tests pass (vitest)
+VERIFY: EXECUTION_COMPLETE event emitted with tasksCompleted, tasksFailed, cost
+VERIFY: Project is runnable from command line
+
+SILENT_FAILURE_CHECK: Interview completes but requirements array empty
+SILENT_FAILURE_CHECK: Planning succeeds but 0 tasks generated
+SILENT_FAILURE_CHECK: Execution completes but code doesn't compile
+SILENT_FAILURE_CHECK: Tests pass but functionality doesn't match requirements
+SILENT_FAILURE_CHECK: QA loop exits without all steps passing
+SILENT_FAILURE_CHECK: Merge succeeds but files missing from main
+```
+
+### GEN-E2E-002: Genesis with Market Research
+```
+TEST: Genesis mode includes market research phase for competitive analysis
+INPUT: "Build a task management app like Todoist but simpler"
+EXPECTED: Research data influences feature planning and MVP scope
+TIME_LIMIT: 45 minutes (includes research phase)
+
+PHASE 1: INTERVIEW WITH RESEARCH TRIGGER
+VERIFY: Interview detects existing market competitors mentioned
+VERIFY: Research Engine activated when competitors detected
+VERIFY: RESEARCH_START event emitted
+
+PHASE 2: RESEARCH
+VERIFY: Competitor features analyzed (Todoist feature list extracted)
+VERIFY: UX patterns identified from similar apps
+VERIFY: Research summary generated with key differentiators
+VERIFY: RESEARCH_COMPLETE event emitted with insights
+
+PHASE 3: RESEARCH-INFORMED PLANNING
+VERIFY: TaskDecomposer receives research context
+VERIFY: Features align with identified patterns
+VERIFY: MVP scope suggested based on competitor analysis
+VERIFY: Unique differentiators captured as requirements
+VERIFY: Realistic scope based on market research
+
+INTEGRATION_CHECK: Research data flows to TaskDecomposer
+INTEGRATION_CHECK: MVP suggestions reflect competitive analysis
+SILENT_FAILURE_CHECK: Research fails silently, continues without data
+SILENT_FAILURE_CHECK: Research data ignored in planning phase
+SILENT_FAILURE_CHECK: Competitor features not reflected in requirements
+```
+
+### GEN-E2E-003: Genesis with Complex Multi-Feature App
+```
+TEST: Genesis handles complex multi-feature application over multiple waves
+INPUT: "Build a full-stack e-commerce site with auth, products, cart, checkout"
+EXPECTED: Large app built through wave-based parallel execution
+TIME_LIMIT: 8-48 hours depending on complexity
+
+PHASE 1: COMPREHENSIVE INTERVIEW
+VERIFY: Interview captures all major features (auth, products, cart, checkout)
+VERIFY: Sub-features captured (user registration, login, product listing, search, etc.)
+VERIFY: Technical requirements captured (database, API, frontend framework)
+VERIFY: Minimum 20+ requirements captured for complex app
+VERIFY: Interview duration may exceed 30 minutes for complex apps
+
+PHASE 2: HIERARCHICAL PLANNING
+VERIFY: Features decomposed hierarchically (Feature → Sub-feature → Task)
+VERIFY: Total task count > 50 for complex app
+VERIFY: All tasks <= 30 minutes estimated
+VERIFY: DependencyResolver handles complex dependency graph
+VERIFY: Multiple waves created (typically 5+ waves)
+VERIFY: Critical path identified through dependency graph
+
+PHASE 3: WAVE-BASED EXECUTION
+VERIFY: Wave 1 tasks have no dependencies (foundation tasks)
+VERIFY: Subsequent waves depend only on completed tasks
+VERIFY: Parallel tasks execute concurrently (up to max agents)
+VERIFY: Wave N+1 doesn't start until all Wave N tasks complete
+VERIFY: Checkpoints created every 2 hours of execution
+VERIFY: Progress percentage calculated correctly
+
+PHASE 4: CROSS-FEATURE INTEGRATION
+VERIFY: Features integrate correctly (auth used by cart/checkout)
+VERIFY: Shared components detected and created once
+VERIFY: API endpoints consistent across features
+VERIFY: Database schema migrations run in correct order
+VERIFY: Integration tests pass between features
+
+INTEGRATION_CHECK: Wave calculator optimizes parallel execution
+INTEGRATION_CHECK: Checkpoint manager creates recovery points
+SILENT_FAILURE_CHECK: Wave deadlock occurs, no progress
+SILENT_FAILURE_CHECK: Checkpoint restore fails mid-project
+SILENT_FAILURE_CHECK: Feature interaction bugs not caught by QA
+SILENT_FAILURE_CHECK: Database migration order wrong, breaks schema
+```
+
+### GEN-E2E-004: Genesis Recovery from Interruption
+```
+TEST: Genesis recovers gracefully from mid-execution interruption
+SETUP: Start Genesis with simple app, interrupt at 50% task completion
+EXPECTED: Resume from most recent checkpoint, continue to completion
+
+PHASE 1: SIMULATE INTERRUPTION
+VERIFY: Genesis started with valid project
+VERIFY: At least 50% of tasks completed
+VERIFY: Checkpoint exists with state hash
+VERIFY: Force stop execution (simulate crash/user stop)
+
+PHASE 2: CHECKPOINT VALIDATION
+VERIFY: CheckpointManager.list() returns available checkpoints
+VERIFY: Latest checkpoint has correct timestamp
+VERIFY: State hash validated (SHA256 match)
+VERIFY: Checkpoint contains tasksPending, tasksCompleted counts
+VERIFY: Git branch checkpoint/{timestamp} exists
+
+PHASE 3: RECOVERY PROCESS
+VERIFY: CheckpointManager.restore() called with selected checkpoint
+VERIFY: AgentPool.pauseAll() called before restore
+VERIFY: GitService.checkout() switches to checkpoint branch
+VERIFY: StateManager.restore() loads serialized state
+VERIFY: TaskQueue re-populated with pending tasks only
+VERIFY: Completed tasks NOT re-executed
+
+PHASE 4: RESUME EXECUTION
+VERIFY: AgentPool.resetAll() clears stale agent states
+VERIFY: Execution continues from checkpoint position
+VERIFY: CHECKPOINT_RESTORED event emitted with tasksRequeued, dataLost
+VERIFY: Remaining tasks complete successfully
+VERIFY: Final project state identical to uninterrupted run
+
+INTEGRATION_CHECK: State serialization is reversible
+INTEGRATION_CHECK: Git state matches database state after restore
+SILENT_FAILURE_CHECK: Checkpoint corrupted, full restart required
+SILENT_FAILURE_CHECK: Some tasks re-executed unnecessarily (wasted work)
+SILENT_FAILURE_CHECK: State mismatch after restore (inconsistent data)
+SILENT_FAILURE_CHECK: Worktrees orphaned during restore
+```
+
+### GEN-E2E-005: Genesis Human Escalation at QA Limit
+```
+TEST: Genesis escalates stuck tasks to human after 50 QA iterations
+SETUP: Task with intentionally unfixable issue (e.g., impossible requirement)
+EXPECTED: Human notification sent, task paused, other tasks continue
+
+PHASE 1: TRIGGER ESCALATION
+VERIFY: Task encounters persistent QA failure
+VERIFY: CoderAgent attempts fix each iteration
+VERIFY: Iteration counter increments correctly (1→2→3...→50)
+VERIFY: QALoopEngine tracks iteration count in state
+
+PHASE 2: ESCALATION THRESHOLD
+VERIFY: At iteration 30, warning event emitted (ESCALATION_WARNING)
+VERIFY: At iteration 40, detailed checkpoint created
+VERIFY: At iteration 50, EscalationHandler.escalate() called
+VERIFY: ESCALATION_TRIGGERED event emitted with taskId, iterationCount, errors
+
+PHASE 3: ESCALATION HANDLING
+VERIFY: Human notification sent (in-app notification, optional email/webhook)
+VERIFY: Task status changed to 'escalated'
+VERIFY: Task removed from active execution queue
+VERIFY: Detailed error context preserved for human review
+VERIFY: Suggested fixes presented to human
+
+PHASE 4: CONTINUED EXECUTION
+VERIFY: Other tasks in project continue executing
+VERIFY: Dependent tasks wait but don't block entire system
+VERIFY: AgentPool resources released from escalated task
+VERIFY: Project progress shows "X tasks complete, 1 escalated"
+
+PHASE 5: HUMAN RESOLUTION
+VERIFY: Human can view escalated task details
+VERIFY: Human can provide fix or skip task
+VERIFY: On human fix: task re-queued for verification
+VERIFY: On human skip: task marked 'skipped', dependents notified
+VERIFY: ESCALATION_RESOLVED event emitted
+
+INTEGRATION_CHECK: Escalation doesn't block entire project
+INTEGRATION_CHECK: Human interface shows all context needed for decision
+SILENT_FAILURE_CHECK: Escalation triggered but notification not sent
+SILENT_FAILURE_CHECK: Notification lost in delivery
+SILENT_FAILURE_CHECK: System hangs waiting for human response indefinitely
+SILENT_FAILURE_CHECK: Iteration counter resets, bypasses escalation
+```
+
+### GEN-E2E-006: Genesis with Minimal Requirements
+```
+TEST: Genesis handles minimal input and prompts for more detail
+INPUT: "Make me an app"
+EXPECTED: Interview guides user to provide sufficient detail
+
+PHASE 1: MINIMAL INPUT DETECTION
+VERIFY: Interview detects vague/minimal input
+VERIFY: Claude responds with targeted clarifying questions
+VERIFY: Questions guide toward: purpose, users, features, constraints
+
+PHASE 2: ITERATIVE REFINEMENT
+VERIFY: Each user response triggers more specific questions
+VERIFY: Requirements accumulate through conversation
+VERIFY: No premature completion allowed with < 3 requirements
+VERIFY: Completion warning shows if requirements seem insufficient
+
+PHASE 3: ADEQUATE REQUIREMENTS
+VERIFY: Eventually, requirements reach threshold for planning
+VERIFY: User explicitly confirms completion
+VERIFY: Planning proceeds only with confirmed requirements
+
+INTEGRATION_CHECK: Interview system prompt encourages detail extraction
+SILENT_FAILURE_CHECK: Vague requirements passed to planning without refinement
+SILENT_FAILURE_CHECK: User allowed to proceed with empty requirements
+```
+
+### GEN-E2E-007: Genesis with Conflicting Requirements
+```
+TEST: Genesis detects and resolves conflicting requirements
+INPUT: Project with conflicting requirements (e.g., "must be offline-only" AND "must sync in real-time")
+EXPECTED: Conflict detected during interview, user prompted to resolve
+
+PHASE 1: CONFLICT DETECTION
+VERIFY: Interview captures all requirements including conflicting ones
+VERIFY: Conflict detection runs before planning starts
+VERIFY: REQUIREMENTS_CONFLICT event emitted with conflicting pairs
+
+PHASE 2: CONFLICT RESOLUTION
+VERIFY: User presented with conflicting requirements
+VERIFY: User can choose which to prioritize or modify
+VERIFY: Modified requirements updated in RequirementsDB
+VERIFY: Conflict resolved before planning proceeds
+
+PHASE 3: VERIFIED PLANNING
+VERIFY: TaskDecomposer receives conflict-free requirements
+VERIFY: Planning produces consistent, achievable tasks
+
+SILENT_FAILURE_CHECK: Conflicting requirements accepted, impossible tasks created
+SILENT_FAILURE_CHECK: Conflict detected but user not notified
+```
+
+### GEN-E2E-008: Genesis Cost Tracking
+```
+TEST: Genesis accurately tracks API costs throughout execution
+INPUT: Any valid project
+EXPECTED: Cost tracking shows accurate per-task and total costs
+
+PHASE 1: COST TRACKING INITIALIZATION
+VERIFY: CostTracker initialized at project start
+VERIFY: Initial cost is $0.00
+
+PHASE 2: PER-REQUEST TRACKING
+VERIFY: Each LLM API call tracked with model and tokens
+VERIFY: Claude Opus calls tracked at correct rate
+VERIFY: Claude Sonnet calls tracked at correct rate
+VERIFY: Gemini calls tracked at correct rate
+VERIFY: Embedding API calls tracked
+
+PHASE 3: PER-TASK AGGREGATION
+VERIFY: Each task has associated cost
+VERIFY: Task cost = sum of all LLM calls during task execution
+VERIFY: QA iterations add to task cost
+
+PHASE 4: PROJECT TOTAL
+VERIFY: Project total = sum of all task costs
+VERIFY: EXECUTION_COMPLETE event includes totalCost
+VERIFY: Dashboard shows cost breakdown by phase and task
+VERIFY: Cost stays within estimate (±50% of estimate)
+
+INTEGRATION_CHECK: CostTracker receives all LLM call notifications
+SILENT_FAILURE_CHECK: API calls not tracked, cost shows $0.00
+SILENT_FAILURE_CHECK: Cost calculation uses wrong token rates
+SILENT_FAILURE_CHECK: Cost tracking stops mid-project
+```
+
+---
+
+**[TASK 5 COMPLETE]**
+
+Task 5 extracted 8 Genesis Mode E2E workflow tests:
+- GEN-E2E-001: Complete Genesis Flow (Simple CLI App) - 40+ VERIFY statements
+- GEN-E2E-002: Genesis with Market Research - 15 VERIFY statements
+- GEN-E2E-003: Genesis with Complex Multi-Feature App - 20 VERIFY statements
+- GEN-E2E-004: Genesis Recovery from Interruption - 20 VERIFY statements
+- GEN-E2E-005: Genesis Human Escalation at QA Limit - 25 VERIFY statements
+- GEN-E2E-006: Genesis with Minimal Requirements - 10 VERIFY statements
+- GEN-E2E-007: Genesis with Conflicting Requirements - 10 VERIFY statements
+- GEN-E2E-008: Genesis Cost Tracking - 15 VERIFY statements
+
+Each test includes:
+- INPUT/EXPECTED specifications
+- TIME_LIMIT where applicable
+- Phase-by-phase VERIFY statements
+- INTEGRATION_CHECK statements
+- SILENT_FAILURE_CHECK statements
+
+Total tests added: ~75 new workflow tests
