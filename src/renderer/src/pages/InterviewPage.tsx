@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactElement } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { InterviewLayout, ChatPanel, RequirementsSidebar } from '@renderer/components/interview';
 import { useInterviewStore, useIsInterviewing, useRequirements } from '@renderer/stores/interviewStore';
 import { useInterviewPersistence } from '@renderer/hooks';

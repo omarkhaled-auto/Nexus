@@ -7,6 +7,9 @@ export default defineConfig({
     plugins: [externalizeDepsPlugin()],
     build: {
       outDir: 'out/main',
+      lib: {
+        entry: resolve(__dirname, 'src/main/index.ts'),
+      },
       rollupOptions: {
         external: ['better-sqlite3', '@google/generative-ai', 'openai'],
       },

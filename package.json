@@ -51,6 +51,7 @@
     "fast-glob": "^3.3.2",
     "framer-motion": "^12.26.2",
     "fs-extra": "^11.2.0",
+    "glob": "^13.0.0",
     "lucide-react": "^0.562.0",
     "minimatch": "^10.1.1",
     "nanoid": "^5.0.9",
