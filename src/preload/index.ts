@@ -58,6 +58,13 @@ const nexusAPI = {
     ipcRenderer.invoke('project:get', id),
 
   /**
+   * List all projects
+   * @returns Promise with array of all projects
+   */
+  getProjects: (): Promise<unknown[]> =>
+    ipcRenderer.invoke('projects:list'),
+
+  /**
    * Create a new project
    * @param input - Project name and mode
    * @returns Promise with new project ID
@@ -66,6 +73,24 @@ const nexusAPI = {
     name: string
     mode: 'genesis' | 'evolution'
   }): Promise<{ id: string }> => ipcRenderer.invoke('project:create', input),
+
+  // ========================================
+  // Dashboard Data API (Phase 17)
+  // ========================================
+
+  /**
+   * Get dashboard metrics overview
+   * @returns Promise with aggregated metrics for dashboard
+   */
+  getDashboardMetrics: (): Promise<unknown> =>
+    ipcRenderer.invoke('dashboard:getMetrics'),
+
+  /**
+   * Get cost metrics
+   * @returns Promise with token usage and cost breakdown
+   */
+  getDashboardCosts: (): Promise<unknown> =>
+    ipcRenderer.invoke('dashboard:getCosts'),
 
   // ========================================
   // Task Operations

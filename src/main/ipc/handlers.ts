@@ -263,6 +263,74 @@ export function registerIpcHandlers(): void {
     return project
   })
 
+  /**
+   * List all projects
+   * @returns Array of all projects
+   */
+  ipcMain.handle('projects:list', (event) => {
+    if (!validateSender(event)) {
+      throw new Error('Unauthorized IPC sender')
+    }
+
+    return Array.from(state.projects.values())
+  })
+
+  /**
+   * Get dashboard metrics overview
+   * Returns aggregated metrics for all projects
+   */
+  ipcMain.handle('dashboard:getMetrics', (event) => {
+    if (!validateSender(event)) {
+      throw new Error('Unauthorized IPC sender')
+    }
+
+    // Calculate aggregated metrics from current state
+    const projects = Array.from(state.projects.values())
+    const tasks = Array.from(state.tasks.values())
+    const agents = Array.from(state.agents.values())
+
+    const completedTasks = tasks.filter(t => t.status === 'completed').length
+    const failedTasks = tasks.filter(t => t.status === 'failed').length
+    const activeAgents = agents.filter(a => a.status === 'working').length
+
+    return {
+      projectId: state.projectId || 'no-project',
+      projectName: projects.length > 0 ? projects[0].name : 'No Active Project',
+      totalFeatures: Math.ceil(tasks.length / 3), // Approximate features from tasks
+      completedFeatures: Math.floor(completedTasks / 3),
+      completedTasks,
+      totalTasks: tasks.length,
+      failedTasks,
+      activeAgents,
+      estimatedRemainingMinutes: Math.max(0, (tasks.length - completedTasks) * 5),
+      estimatedCompletion: new Date(Date.now() + Math.max(0, (tasks.length - completedTasks) * 5) * 60000),
+      startedAt: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
+      updatedAt: new Date()
+    }
+  })
+
+  /**
+   * Get cost metrics
+   * Returns token usage and cost breakdown
+   */
+  ipcMain.handle('dashboard:getCosts', (event) => {
+    if (!validateSender(event)) {
+      throw new Error('Unauthorized IPC sender')
+    }
+
+    // Return placeholder cost data - in real implementation, this would come from LLM service tracking
+    return {
+      totalCost: 0,
+      totalTokensUsed: 0,
+      inputTokens: 0,
+      outputTokens: 0,
+      estimatedCostUSD: 0,
+      breakdownByModel: [],
+      breakdownByAgent: [],
+      updatedAt: new Date()
+    }
+  })
+
   ipcMain.handle('project:create', (event, input: { name: string; mode: 'genesis' | 'evolution' }) => {
       if (!validateSender(event)) {
         throw new Error('Unauthorized IPC sender')

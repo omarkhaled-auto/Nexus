@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactElement } from 'react'
+import { useEffect, useRef, useState, useCallback, type ReactElement } from 'react'
 import { Link } from 'react-router'
 import {
   CostTracker,
@@ -12,7 +12,7 @@ import { AnimatedPage } from '../components/AnimatedPage'
 import { CardSkeleton } from '../components/ui/Skeleton'
 import { Button } from '../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
-import { useMetricsStore, useIsMetricsLoading, useOverview } from '../stores'
+import { useMetricsStore, useIsMetricsLoading, useOverview, useAgentMetrics } from '../stores'
 import {
   Plus,
   FolderOpen,
@@ -389,11 +389,16 @@ function StatCard({
 export default function DashboardPage(): ReactElement {
   const isLoading = useIsMetricsLoading()
   const overview = useOverview()
-  const { setOverview, setAgents, setCosts, setLoading, addTimelineEvent } =
+  const agents = useAgentMetrics()
+  const { setOverview, setAgents, setCosts, setLoading, addTimelineEvent, updateAgentMetrics } =
     useMetricsStore.getState()
 
   // Track if we've initialized to prevent re-running
   const initializedRef = useRef(false)
+
+  // State for real projects from backend
+  const [projects, setProjects] = useState<DemoProject[]>(demoProjects)
+  const [realDataMode, setRealDataMode] = useState(false)
 
   // Generate demo data only once (memoized via ref to avoid regeneration)
   const demoDataRef = useRef<ReturnType<typeof generateDemoData> | null>(null)
@@ -402,33 +407,148 @@ export default function DashboardPage(): ReactElement {
   }
   const demoData = demoDataRef.current
 
-  // Populate metricsStore with demo data on mount ONLY in demo mode
-  // In production, real data flows via EventBus → IPC → UIBackendBridge
+  /**
+   * Load initial data from backend
+   * Called when NOT in demo mode
+   */
+  const loadRealData = useCallback(async () => {
+    try {
+      // Load dashboard metrics
+      const metricsData = await window.nexusAPI.getDashboardMetrics()
+      if (metricsData) {
+        setOverview(metricsData as OverviewMetrics)
+      }
+
+      // Load cost data
+      const costsData = await window.nexusAPI.getDashboardCosts()
+      if (costsData) {
+        setCosts(costsData as CostMetrics)
+      }
+
+      // Load agent status
+      const agentData = await window.nexusAPI.getAgentStatus()
+      if (Array.isArray(agentData) && agentData.length > 0) {
+        setAgents(agentData as AgentMetrics[])
+      }
+
+      // Load projects
+      const projectsData = await window.nexusAPI.getProjects()
+      if (Array.isArray(projectsData) && projectsData.length > 0) {
+        // Transform backend project data to DemoProject format
+        const transformedProjects: DemoProject[] = projectsData.map((p: unknown) => {
+          const proj = p as { id: string; name: string; mode: 'genesis' | 'evolution' }
+          return {
+            id: proj.id,
+            name: proj.name,
+            mode: proj.mode,
+            status: 'in_progress' as const,
+            progress: 0,
+            activeAgents: 0,
+            updatedAt: new Date()
+          }
+        })
+        setProjects(transformedProjects)
+      }
+
+      setRealDataMode(true)
+    } catch (error) {
+      console.warn('Failed to load real data, using demo mode:', error)
+    }
+  }, [setOverview, setCosts, setAgents])
+
+  /**
+   * Subscribe to real-time events from backend
+   */
+  const subscribeToEvents = useCallback(() => {
+    const unsubscribers: Array<() => void> = []
+
+    // Subscribe to metrics updates
+    unsubscribers.push(
+      window.nexusAPI.onMetricsUpdate((metrics) => {
+        setOverview(metrics as OverviewMetrics)
+      })
+    )
+
+    // Subscribe to agent status updates
+    unsubscribers.push(
+      window.nexusAPI.onAgentStatusUpdate((agentData) => {
+        const agent = agentData as { id: string; status?: string; currentTask?: string }
+        if (agent.id) {
+          updateAgentMetrics(agent.id, agent as Partial<AgentMetrics>)
+        }
+      })
+    )
+
+    // Subscribe to timeline events
+    unsubscribers.push(
+      window.nexusAPI.onTimelineEvent((event) => {
+        addTimelineEvent(event as TimelineEvent)
+      })
+    )
+
+    // Subscribe to cost updates
+    unsubscribers.push(
+      window.nexusAPI.onCostUpdate((costs) => {
+        setCosts(costs as CostMetrics)
+      })
+    )
+
+    // Return cleanup function
+    return () => {
+      unsubscribers.forEach(unsub => unsub())
+    }
+  }, [setOverview, updateAgentMetrics, addTimelineEvent, setCosts])
+
+  // Initialize data and subscriptions on mount
   useEffect(() => {
     if (initializedRef.current) return
     initializedRef.current = true
 
-    // Only load demo data if we're in demo mode (no real backend)
-    if (isDemoMode()) {
-      // Set overview metrics
-      setOverview(demoData.overview)
+    // Check if we're in Electron mode (real backend available)
+    if (!isDemoMode()) {
+      // Load initial data from backend
+      loadRealData()
+        .then(() => {
+          setLoading(false)
+        })
+        .catch((err) => {
+          console.error('Error loading dashboard data:', err)
+          // Fall back to demo data
+          setOverview(demoData.overview)
+          setAgents(demoData.agents)
+          setCosts(demoData.costs)
+          const reversedTimeline = [...demoData.timeline].reverse()
+          reversedTimeline.forEach((event) => {
+            addTimelineEvent(event)
+          })
+          setLoading(false)
+        })
 
-      // Set agents
-      setAgents(demoData.agents)
+      // Subscribe to real-time events
+      const unsubscribe = subscribeToEvents()
 
-      // Set costs
-      setCosts(demoData.costs)
-
-      // Add timeline events (in reverse to maintain order)
-      const reversedTimeline = [...demoData.timeline].reverse()
-      reversedTimeline.forEach((event) => {
-        addTimelineEvent(event)
-      })
+      // Cleanup on unmount
+      return () => {
+        unsubscribe()
+      }
     }
 
-    // Mark loading complete (whether demo or real data)
+    // Demo mode - use generated data
+    setOverview(demoData.overview)
+    setAgents(demoData.agents)
+    setCosts(demoData.costs)
+
+    // Add timeline events (in reverse to maintain order)
+    const reversedTimeline = [...demoData.timeline].reverse()
+    reversedTimeline.forEach((event) => {
+      addTimelineEvent(event)
+    })
+
     setLoading(false)
-  }, [])
+
+    // No cleanup needed for demo mode
+    return undefined
+  }, [loadRealData, subscribeToEvents, setOverview, setAgents, setCosts, addTimelineEvent, setLoading, demoData])
 
   // Calculate stats
   const progressPercent = overview && overview.totalTasks > 0
@@ -499,8 +619,8 @@ export default function DashboardPage(): ReactElement {
             <StatCard
               testId="stat-card-projects"
               title="Active Projects"
-              value={demoProjects.filter(p => p.status !== 'completed').length}
-              subtitle={`${demoProjects.filter(p => p.status === 'completed').length} completed`}
+              value={projects.filter(p => p.status !== 'completed').length}
+              subtitle={`${projects.filter(p => p.status === 'completed').length} completed`}
               icon={FolderOpen}
               iconColor="text-accent-warning"
             />
@@ -528,7 +648,7 @@ export default function DashboardPage(): ReactElement {
             </Link>
           </CardHeader>
           <CardContent className="space-y-3">
-            {demoProjects.map((project) => (
+            {projects.map((project) => (
               <ProjectCard key={project.id} project={project} />
             ))}
           </CardContent>

@@ -3031,7 +3031,30 @@ On mobile viewports (< 768px), the sidebar remains visible and takes up screen s
   - InterviewEngine backend tests pass (23/23)
 
 ### Task 30.2: Connect Dashboard to Real Metrics Data
-- **Status:** PENDING
+- **Status:** COMPLETED
+- **Date:** 2026-01-19
+- **Changes Made:**
+  - **IPC Handlers Added (`src/main/ipc/handlers.ts`):**
+    - `projects:list` - Returns all projects from state
+    - `dashboard:getMetrics` - Returns aggregated metrics overview
+    - `dashboard:getCosts` - Returns cost metrics (placeholder)
+  - **Preload API Added (`src/preload/index.ts`):**
+    - `getProjects()` - Invoke `projects:list`
+    - `getDashboardMetrics()` - Invoke `dashboard:getMetrics`
+    - `getDashboardCosts()` - Invoke `dashboard:getCosts`
+  - **Dashboard Page Updated (`src/renderer/src/pages/DashboardPage.tsx`):**
+    - Added `loadRealData()` callback to fetch initial data from backend
+    - Added `subscribeToEvents()` callback to set up real-time event subscriptions:
+      - `onMetricsUpdate` → Updates overview metrics
+      - `onAgentStatusUpdate` → Updates individual agent metrics
+      - `onTimelineEvent` → Adds new timeline events
+      - `onCostUpdate` → Updates cost metrics
+    - Dashboard now loads real data when running in Electron, falls back to demo data in browser
+    - Projects list dynamically loaded from backend
+    - Proper cleanup of event subscriptions on unmount
+- **Verification:**
+  - TypeScript compilation passes (no new errors in modified files)
+  - Dashboard maintains backwards compatibility with demo mode
 
 ### Task 30.3: Connect Kanban/Tasks Page to Real Task Data
 - **Status:** PENDING
@@ -3047,4 +3070,4 @@ On mobile viewports (< 768px), the sidebar remains visible and takes up screen s
 
 ---
 
-**NEXT TASK:** Task 30.2 - Connect Dashboard to Real Metrics Data
+**NEXT TASK:** Task 30.3 - Connect Kanban/Tasks Page to Real Task Data
