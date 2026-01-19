@@ -229,7 +229,7 @@ export const AgentCard = React.forwardRef<HTMLDivElement, AgentCardProps>(
             {hasProgress && (
               <Progress
                 value={agent.currentTask!.progress!}
-                variant="primary"
+                variant="default"
                 size="sm"
                 showValue
                 className="mt-2"

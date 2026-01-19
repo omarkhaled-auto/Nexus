@@ -15,14 +15,20 @@ const InterviewPage = lazy(() => import('./pages/InterviewPage'));
 const KanbanPage = lazy(() => import('./pages/KanbanPage'));
 const DashboardPage = lazy(() => import('./pages/DashboardPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
+const AgentsPage = lazy(() => import('./pages/AgentsPage'));
+const ExecutionPage = lazy(() => import('./pages/ExecutionPage'));
 
 /**
  * Loading fallback component for lazy-loaded pages.
+ * Uses Nexus design system colors for consistency.
  */
 function PageLoader(): ReactElement {
   return (
-    <div className="flex items-center justify-center min-h-screen">
-      <div className="animate-pulse text-muted-foreground">Loading...</div>
+    <div className="flex items-center justify-center min-h-screen bg-bg-dark" data-testid="page-loader">
+      <div className="flex flex-col items-center gap-3">
+        <div className="w-8 h-8 rounded-full border-2 border-accent-primary border-t-transparent animate-spin" />
+        <span className="text-sm text-text-secondary animate-pulse">Loading...</span>
+      </div>
     </div>
   );
 }
@@ -35,6 +41,8 @@ function PageLoader(): ReactElement {
  * - /genesis → Interview Page (Phase 6)
  * - /evolution → Kanban Page (Phase 7)
  * - /dashboard → Dashboard Page (Phase 8)
+ * - /agents → Agents Activity Page (Phase 17)
+ * - /execution → Execution Logs Page (Phase 17)
  * - /settings → Settings Page (Phase 12)
  */
 const router = createBrowserRouter([
@@ -67,6 +75,22 @@ const router = createBrowserRouter([
         element: (
           <Suspense fallback={<PageLoader />}>
             <DashboardPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'agents',
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <AgentsPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'execution',
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <ExecutionPage />
           </Suspense>
         ),
       },
