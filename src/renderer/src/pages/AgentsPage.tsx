@@ -1,7 +1,9 @@
 import type { ReactElement } from 'react';
 import { Header } from '@renderer/components/layout/Header';
-import { Bot, Play, Pause, RefreshCw } from 'lucide-react';
+import { Bot, Play, Pause, RefreshCw, AlertCircle } from 'lucide-react';
 import { Button } from '@renderer/components/ui/button';
+import { Alert, AlertDescription } from '@renderer/components/ui/Alert';
+import { Spinner } from '@renderer/components/ui/Spinner';
 import {
   AgentPoolStatus,
   AgentCard,
@@ -10,10 +12,63 @@ import {
   type AgentData,
   type PoolAgent,
   type QAStep,
-  type QAStepType,
 } from '@renderer/components/agents';
-import { useState } from 'react';
-import { type AgentType, type AgentStatus } from '@renderer/styles/tokens';
+import { useState, useEffect, useCallback } from 'react';
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+/**
+ * Check if we are running in Electron environment with nexusAPI available
+ */
+function isElectronEnvironment(): boolean {
+  return typeof window !== 'undefined' && 'nexusAPI' in window && window.nexusAPI !== undefined;
+}
+
+/**
+ * Map backend agent data to frontend AgentData format
+ */
+function mapBackendAgent(agent: unknown): AgentData {
+  const a = agent as Record<string, unknown>;
+  return {
+    id: (a.id as string) || 'unknown',
+    type: (a.type as AgentData['type']) || 'coder',
+    status: (a.status as AgentData['status']) || 'idle',
+    model: a.model as string | undefined,
+    currentTask: a.currentTask as AgentData['currentTask'] | undefined,
+    iteration: a.iteration as AgentData['iteration'] | undefined,
+    metrics: a.metrics as AgentData['metrics'] | undefined,
+    currentFile: a.currentFile as string | undefined,
+  };
+}
+
+/**
+ * Map backend QA status to frontend QAStep format
+ */
+function mapQAStatus(qaStatus: unknown): QAStep[] {
+  const defaultSteps: QAStep[] = [
+    { type: 'build', status: 'pending' },
+    { type: 'lint', status: 'pending' },
+    { type: 'test', status: 'pending' },
+    { type: 'review', status: 'pending' },
+  ];
+  if (!qaStatus) return defaultSteps;
+  const qa = qaStatus as { steps?: unknown[] };
+  if (qa.steps && Array.isArray(qa.steps)) {
+    return qa.steps.map((step: unknown) => {
+      const s = step as Record<string, unknown>;
+      return {
+        type: (s.type as QAStep['type']) || 'build',
+        status: (s.status as QAStep['status']) || 'pending',
+        duration: s.duration as number | undefined,
+        error: s.error as string | undefined,
+        testCounts: s.testCounts as QAStep['testCounts'] | undefined,
+      };
+    });
+  }
+  return defaultSteps;
+}
 
 // ============================================================================
 // Mock Data (will be replaced with real data from stores/IPC)
@@ -74,13 +129,6 @@ const mockAgents: AgentData[] = [
   },
 ];
 
-const mockPoolAgents: PoolAgent[] = mockAgents.map((a) => ({
-  id: a.id,
-  type: a.type,
-  status: a.status,
-  taskName: a.currentTask?.name,
-}));
-
 const mockQASteps: QAStep[] = [
   { type: 'build', status: 'success', duration: 2300 },
   { type: 'lint', status: 'success', duration: 1100 },
@@ -120,23 +168,108 @@ const mockAgentOutput = [
  * - QA pipeline status
  */
 export default function AgentsPage(): ReactElement {
+  // State for agents and UI
+  const [agents, setAgents] = useState<AgentData[]>(mockAgents);
+  const [qaSteps, setQASteps] = useState<QAStep[]>(mockQASteps);
+  const [iteration, setIteration] = useState<{ current: number; max: number }>({ current: 3, max: 50 });
+  const [agentOutput, setAgentOutput] = useState<string[]>(mockAgentOutput);
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>('agent-1');
   const [isPaused, setIsPaused] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const selectedAgent = mockAgents.find((a) => a.id === selectedAgentId);
+  // Get selected agent from current agents state
+  const selectedAgent = agents.find((a) => a.id === selectedAgentId);
 
-  const handlePauseAll = () => {
+  // Load real data from backend API
+  const loadRealData = useCallback(async () => {
+    if (!isElectronEnvironment()) return;
+    setIsLoading(true);
+    setError(null);
+    try {
+      const api = window.nexusAPI;
+      const [agentsData, qaStatusData] = await Promise.all([
+        api.getAgents(),
+        api.getQAStatus(),
+      ]);
+      if (agentsData && Array.isArray(agentsData) && agentsData.length > 0) {
+        setAgents(agentsData.map(mapBackendAgent));
+      }
+      if (qaStatusData) {
+        const qa = qaStatusData as { iteration?: number; maxIterations?: number };
+        setQASteps(mapQAStatus(qaStatusData));
+        if (qa.iteration !== undefined && qa.maxIterations !== undefined) {
+          setIteration({ current: qa.iteration, max: qa.maxIterations });
+        }
+      }
+      if (selectedAgentId) {
+        try {
+          const output = await api.getAgentOutput(selectedAgentId);
+          if (output && output.length > 0) setAgentOutput(output);
+        } catch { /* Ignore output fetch errors */ }
+      }
+    } catch (err) {
+      console.error('Failed to load agent data:', err);
+      setError('Failed to load agent data. Using demo data.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [selectedAgentId]);
+
+  // Subscribe to real-time events
+  const subscribeToEvents = useCallback(() => {
+    if (!isElectronEnvironment()) return () => {};
+    const api = window.nexusAPI;
+    const unsubscribers: (() => void)[] = [];
+    unsubscribers.push(api.onAgentStatus((status) => {
+      const s = status as { id?: string; agentId?: string } & Record<string, unknown>;
+      const agentId = s.id || s.agentId;
+      if (agentId) {
+        setAgents((prev) => prev.map((a) => a.id === agentId ? { ...a, status: (s.status as AgentData['status']) || a.status } : a));
+      }
+    }));
+    unsubscribers.push(api.onAgentOutput((data) => {
+      if (data.agentId === selectedAgentId) setAgentOutput((prev) => [...prev, data.line]);
+    }));
+    unsubscribers.push(api.onQAStatusUpdate((status) => {
+      setQASteps(mapQAStatus(status));
+      const qa = status as { iteration?: number; maxIterations?: number };
+      if (qa.iteration !== undefined && qa.maxIterations !== undefined) setIteration({ current: qa.iteration, max: qa.maxIterations });
+    }));
+    return () => { unsubscribers.forEach((unsub) => unsub()); };
+  }, [selectedAgentId]);
+
+  // Load data and subscribe to events on mount
+  useEffect(() => {
+    void loadRealData();
+    const cleanup = subscribeToEvents();
+    return cleanup;
+  }, [loadRealData, subscribeToEvents]);
+
+  // Event handlers
+  const handlePauseAll = async () => {
     setIsPaused((prev) => !prev);
-    // TODO: Implement actual pause/resume via IPC
+    if (isElectronEnvironment()) {
+      try { await window.nexusAPI.pauseExecution(isPaused ? 'user_resume' : 'user_pause'); }
+      catch (err) { console.error('Failed to pause/resume:', err); }
+    }
   };
 
-  const handleRefresh = () => {
-    // TODO: Implement refresh via IPC
-  };
+  const handleRefresh = () => { void loadRealData(); };
 
   const handleAgentSelect = (agentId: string) => {
     setSelectedAgentId(agentId);
+    if (isElectronEnvironment()) {
+      void window.nexusAPI.getAgentOutput(agentId).then((output) => {
+        if (output && output.length > 0) setAgentOutput(output);
+        else setAgentOutput(mockAgentOutput);
+      });
+    }
   };
+
+  // Prepare pool agents for display
+  const poolAgents: PoolAgent[] = agents.map((a) => ({ id: a.id, type: a.type, status: a.status, taskName: a.currentTask?.name }));
+  const refreshIconClass = isLoading ? 'w-4 h-4 mr-2 animate-spin' : 'w-4 h-4 mr-2';
 
   return (
     <div className="flex flex-col h-screen" data-testid="agents-page">
@@ -152,9 +285,10 @@ export default function AgentsPage(): ReactElement {
               variant="outline"
               size="sm"
               onClick={handleRefresh}
+              disabled={isLoading}
               data-testid="refresh-agents-button"
             >
-              <RefreshCw className="w-4 h-4 mr-2" />
+              <RefreshCw className={refreshIconClass} />
               Refresh
             </Button>
             <Button
@@ -179,13 +313,31 @@ export default function AgentsPage(): ReactElement {
         }
       />
 
+      {/* Error Banner */}
+      {error && (
+        <div className="px-6 pt-4">
+          <Alert variant="warning" dismissible onDismiss={() => setError(null)}>
+            <AlertCircle className="w-4 h-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        </div>
+      )}
+
+      {/* Loading State */}
+      {isLoading && (
+        <div className="flex items-center justify-center p-4">
+          <Spinner size="sm" className="mr-2" />
+          <span className="text-text-secondary">Loading agent data...</span>
+        </div>
+      )}
+
       {/* Main Content */}
       <div className="flex-1 overflow-hidden p-6">
         <div className="h-full flex flex-col gap-6">
           {/* Agent Pool Status */}
           <AgentPoolStatus
-            agents={mockPoolAgents}
-            maxAgents={5}
+            agents={poolAgents}
+            maxAgents={10}
             selectedAgent={selectedAgentId ?? undefined}
             onSelectAgent={handleAgentSelect}
             className="shrink-0"
@@ -200,12 +352,12 @@ export default function AgentsPage(): ReactElement {
                 Active Agents
               </h2>
               <div className="space-y-3">
-                {mockAgents.map((agent) => (
+                {agents.map((agent) => (
                   <AgentCard
                     key={agent.id}
                     agent={agent}
                     selected={agent.id === selectedAgentId}
-                    onClick={() => setSelectedAgentId(agent.id)}
+                    onClick={() => handleAgentSelect(agent.id)}
                     data-testid={`agent-card-${agent.id}`}
                   />
                 ))}
@@ -221,7 +373,7 @@ export default function AgentsPage(): ReactElement {
                   </h2>
                   <AgentActivity
                     agentId={selectedAgent.id}
-                    output={mockAgentOutput}
+                    output={agentOutput}
                     status={selectedAgent.status}
                     className="flex-1 min-h-0"
                     data-testid="agent-activity"
@@ -233,9 +385,9 @@ export default function AgentsPage(): ReactElement {
                       QA Status
                     </h3>
                     <QAStatusPanel
-                      steps={mockQASteps}
-                      iteration={selectedAgent.iteration?.current ?? 0}
-                      maxIterations={selectedAgent.iteration?.max ?? 50}
+                      steps={qaSteps}
+                      iteration={selectedAgent.iteration?.current ?? iteration.current}
+                      maxIterations={selectedAgent.iteration?.max ?? iteration.max}
                       orientation="horizontal"
                       data-testid="qa-status-panel"
                     />

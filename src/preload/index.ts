@@ -174,15 +174,80 @@ const nexusAPI = {
   },
 
   // ========================================
-  // Agent Operations
+  // Agent Operations (Phase 17 - Agents Page)
   // ========================================
 
   /**
-   * Get status of all agents
+   * Get status of all agents (legacy)
    * @returns Promise with array of agent statuses
    */
   getAgentStatus: (): Promise<unknown[]> => ipcRenderer.invoke('agents:status'),
 
+  /**
+   * List all agents with detailed data
+   * @returns Promise with array of agent data
+   */
+  getAgents: (): Promise<unknown[]> => ipcRenderer.invoke('agents:list'),
+
+  /**
+   * Get a single agent by ID
+   * @param id - Agent ID
+   * @returns Promise with agent data or null
+   */
+  getAgent: (id: string): Promise<unknown> => ipcRenderer.invoke('agents:get', id),
+
+  /**
+   * Get agent pool status overview
+   * @returns Promise with pool status
+   */
+  getAgentPoolStatus: (): Promise<unknown> => ipcRenderer.invoke('agents:getPoolStatus'),
+
+  /**
+   * Get agent output/logs
+   * @param id - Agent ID
+   * @returns Promise with array of log lines
+   */
+  getAgentOutput: (id: string): Promise<string[]> => ipcRenderer.invoke('agents:getOutput', id),
+
+  /**
+   * Get QA status for current execution
+   * @returns Promise with QA pipeline status
+   */
+  getQAStatus: (): Promise<unknown> => ipcRenderer.invoke('agents:getQAStatus'),
+
+  /**
+   * Subscribe to agent output events (streaming logs)
+   * @param callback - Called when new log line arrives
+   * @returns Unsubscribe function
+   */
+  onAgentOutput: (callback: (data: { agentId: string; line: string }) => void): Unsubscribe => {
+    const handler = (_event: IpcRendererEvent, data: { agentId: string; line: string }): void => {
+      callback(data)
+    }
+    ipcRenderer.on('agent:output', handler)
+    return () => {
+      ipcRenderer.removeListener('agent:output', handler)
+    }
+  },
+
+  /**
+   * Subscribe to QA status update events
+   * @param callback - Called when QA status changes
+   * @returns Unsubscribe function
+   */
+  onQAStatusUpdate: (callback: (status: unknown) => void): Unsubscribe => {
+    const handler = (_event: IpcRendererEvent, status: unknown): void => {
+      callback(status)
+    }
+    ipcRenderer.on('qa:status', handler)
+    return () => {
+      ipcRenderer.removeListener('qa:status', handler)
+    }
+  },
+
+  // ========================================
+  // Execution Control
+  // ========================================
   // ========================================
   // Execution Control
   // ========================================

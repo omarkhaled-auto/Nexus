@@ -406,7 +406,38 @@ export function registerIpcHandlers(): void {
     }
   )
 
-  // Agent operations
+  // ========================================
+  // Agent Operations (Phase 17 - Agents Page)
+  // ========================================
+
+  /**
+   * UI-friendly agent data interface for the Agents page
+   */
+  interface UIAgent {
+    id: string
+    type: 'planner' | 'coder' | 'tester' | 'reviewer' | 'merger' | 'architect' | 'debugger' | 'documenter'
+    status: 'idle' | 'working' | 'success' | 'error' | 'pending'
+    model?: string
+    currentTask?: {
+      id: string
+      name: string
+      progress: number
+    }
+    iteration?: {
+      current: number
+      max: number
+    }
+    metrics?: {
+      tokensUsed: number
+      duration: number
+    }
+    currentFile?: string
+  }
+
+  /**
+   * Get status of all agents (legacy - for backward compatibility)
+   * @returns Array of agent statuses
+   */
   ipcMain.handle('agents:status', (event) => {
     if (!validateSender(event)) {
       throw new Error('Unauthorized IPC sender')
@@ -415,6 +446,152 @@ export function registerIpcHandlers(): void {
     return Array.from(state.agents.values())
   })
 
+  /**
+   * List all agents with detailed data (Phase 17)
+   * @returns Array of UI-friendly agent data
+   */
+  ipcMain.handle('agents:list', (event) => {
+    if (!validateSender(event)) {
+      throw new Error('Unauthorized IPC sender')
+    }
+
+    // Return agents with UI-friendly format
+    const agents: UIAgent[] = Array.from(state.agents.values()).map(agent => ({
+      id: agent.id,
+      type: (agent.type || 'coder') as UIAgent['type'],
+      status: (agent.status || 'idle') as UIAgent['status'],
+      model: undefined,
+      currentTask: undefined,
+      iteration: undefined,
+      metrics: undefined,
+      currentFile: undefined
+    }))
+
+    return agents
+  })
+
+  /**
+   * Get a single agent by ID
+   * @param id - Agent ID
+   * @returns Agent data or null
+   */
+  ipcMain.handle('agents:get', (event, id: string) => {
+    if (!validateSender(event)) {
+      throw new Error('Unauthorized IPC sender')
+    }
+    if (typeof id !== 'string' || !id) {
+      throw new Error('Invalid agent id')
+    }
+
+    const agent = state.agents.get(id)
+    if (!agent) {
+      return null
+    }
+
+    return {
+      id: agent.id,
+      type: agent.type || 'coder',
+      status: agent.status || 'idle',
+      model: undefined,
+      currentTask: undefined,
+      iteration: undefined,
+      metrics: undefined,
+      currentFile: undefined
+    }
+  })
+
+  /**
+   * Get agent pool status (Phase 17)
+   * @returns Pool status overview
+   */
+  ipcMain.handle('agents:getPoolStatus', (event) => {
+    if (!validateSender(event)) {
+      throw new Error('Unauthorized IPC sender')
+    }
+
+    const agents = Array.from(state.agents.values())
+
+    // Count by status
+    const working = agents.filter(a => a.status === 'working').length
+    const idle = agents.filter(a => a.status === 'idle' || !a.status).length
+    const error = agents.filter(a => a.status === 'error').length
+    const complete = agents.filter(a => a.status === 'complete').length
+
+    // Count by type
+    const byType: Record<string, { total: number; active: number; idle: number; max: number }> = {
+      planner: { total: 0, active: 0, idle: 0, max: 1 },
+      coder: { total: 0, active: 0, idle: 0, max: 4 },
+      tester: { total: 0, active: 0, idle: 0, max: 2 },
+      reviewer: { total: 0, active: 0, idle: 0, max: 2 },
+      merger: { total: 0, active: 0, idle: 0, max: 1 }
+    }
+
+    for (const agent of agents) {
+      const agentType = agent.type || 'coder'
+      if (byType[agentType]) {
+        byType[agentType].total++
+        if (agent.status === 'working') {
+          byType[agentType].active++
+        } else {
+          byType[agentType].idle++
+        }
+      }
+    }
+
+    return {
+      totalAgents: agents.length,
+      maxAgents: 10, // Default maximum
+      working,
+      idle,
+      error,
+      complete,
+      byType,
+      tasksInProgress: working
+    }
+  })
+
+  /**
+   * Get agent output/logs
+   * @param id - Agent ID
+   * @returns Array of log lines
+   */
+  ipcMain.handle('agents:getOutput', (event, id: string) => {
+    if (!validateSender(event)) {
+      throw new Error('Unauthorized IPC sender')
+    }
+    if (typeof id !== 'string' || !id) {
+      throw new Error('Invalid agent id')
+    }
+
+    // For now, return empty array - in real implementation, this would fetch from agent logs
+    return []
+  })
+
+  /**
+   * Get QA status for current execution
+   * @returns QA pipeline status
+   */
+  ipcMain.handle('agents:getQAStatus', (event) => {
+    if (!validateSender(event)) {
+      throw new Error('Unauthorized IPC sender')
+    }
+
+    // Return placeholder QA status - in real implementation, this would come from QA runners
+    return {
+      steps: [
+        { type: 'build', status: 'pending' },
+        { type: 'lint', status: 'pending' },
+        { type: 'test', status: 'pending' },
+        { type: 'review', status: 'pending' }
+      ],
+      iteration: 0,
+      maxIterations: 50
+    }
+  })
+
+  // ========================================
+  // Feature Operations (Phase 17 - Kanban)
+  // ========================================
   // ========================================
   // Feature Operations (Phase 17 - Kanban)
   // ========================================
