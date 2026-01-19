@@ -57,6 +57,14 @@ export {
   DEFAULT_LOCAL_EMBEDDINGS_CONFIG,
 } from './LocalEmbeddingsService.types';
 
+export {
+  LocalEmbeddingsService,
+  LocalEmbeddingsError,
+  LocalEmbeddingsInitError,
+  LocalEmbeddingsNotInitializedError,
+  LocalEmbeddingsInferenceError,
+} from './LocalEmbeddingsService';
+
 // ============================================================================
 // Code Memory (Plan 13-03)
 // ============================================================================
