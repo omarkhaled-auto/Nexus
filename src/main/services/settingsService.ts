@@ -1,6 +1,7 @@
 /**
  * Settings Service - Main Process
  * Phase 12-01: Settings backend infrastructure
+ * Phase 16: Full CLI Support Integration - CLI-first backend selection
  *
  * Provides secure settings storage using:
  * - electron-store for non-sensitive settings (JSON with schema)
@@ -10,6 +11,11 @@
  * - API keys encrypted via safeStorage before storage
  * - Never returns raw encrypted values to renderer
  * - Uses hasXxxKey booleans instead of exposing keys
+ *
+ * Phase 16 Additions:
+ * - CLI-first backend selection for Claude and Gemini
+ * - Local-first embeddings configuration
+ * - Provider-specific settings (cliPath, timeout, model)
  */
 
 import Store from 'electron-store'
@@ -17,18 +23,43 @@ import { safeStorage } from 'electron'
 import type {
   NexusSettings,
   NexusSettingsPublic,
-  LLMProvider
+  LLMProvider,
+  LLMSettings,
+  ClaudeProviderSettings,
+  GeminiProviderSettings,
+  EmbeddingsProviderSettings,
 } from '../../shared/types/settings'
 
 /**
  * Default settings values
+ * Phase 16: Updated with CLI-first defaults and provider-specific settings
  */
 const defaults: NexusSettings = {
   llm: {
+    // Phase 16: Provider-specific settings with CLI-first defaults
+    claude: {
+      backend: 'cli',
+      timeout: 300000, // 5 minutes
+      maxRetries: 2,
+      model: 'claude-sonnet-4-20250514',
+    },
+    gemini: {
+      backend: 'cli',
+      timeout: 300000, // 5 minutes
+      model: 'gemini-2.5-pro',
+    },
+    embeddings: {
+      backend: 'local',
+      localModel: 'Xenova/all-MiniLM-L6-v2',
+      dimensions: 384,
+      cacheEnabled: true,
+      maxCacheSize: 10000,
+    },
+    // Orchestration settings
     defaultProvider: 'claude',
     defaultModel: 'claude-sonnet-4-20250514',
     fallbackEnabled: true,
-    fallbackOrder: ['claude', 'gemini', 'openai']
+    fallbackOrder: ['claude', 'gemini'],
   },
   agents: {
     maxParallelAgents: 4,
@@ -38,7 +69,7 @@ const defaults: NexusSettings = {
   },
   checkpoints: {
     autoCheckpointEnabled: true,
-    autoCheckpointIntervalMinutes: 15,
+    autoCheckpointIntervalMinutes: 5,
     maxCheckpointsToKeep: 10,
     checkpointOnFeatureComplete: true
   },
@@ -51,21 +82,62 @@ const defaults: NexusSettings = {
   project: {
     defaultLanguage: 'typescript',
     defaultTestFramework: 'vitest',
-    outputDirectory: './output'
+    outputDirectory: '.nexus'
   }
 }
 
 /**
  * electron-store schema for type-safe storage
+ * Phase 16: Updated with provider-specific settings
  */
 const schema = {
   llm: {
     type: 'object' as const,
     properties: {
+      // Phase 16: Claude provider settings
+      claude: {
+        type: 'object' as const,
+        properties: {
+          backend: { type: 'string' as const, enum: ['cli', 'api'] },
+          apiKeyEncrypted: { type: 'string' as const },
+          cliPath: { type: 'string' as const },
+          timeout: { type: 'number' as const, minimum: 1000, maximum: 600000 },
+          maxRetries: { type: 'number' as const, minimum: 0, maximum: 10 },
+          model: { type: 'string' as const },
+        },
+        default: defaults.llm.claude,
+      },
+      // Phase 16: Gemini provider settings
+      gemini: {
+        type: 'object' as const,
+        properties: {
+          backend: { type: 'string' as const, enum: ['cli', 'api'] },
+          apiKeyEncrypted: { type: 'string' as const },
+          cliPath: { type: 'string' as const },
+          timeout: { type: 'number' as const, minimum: 1000, maximum: 600000 },
+          model: { type: 'string' as const },
+        },
+        default: defaults.llm.gemini,
+      },
+      // Phase 16: Embeddings provider settings
+      embeddings: {
+        type: 'object' as const,
+        properties: {
+          backend: { type: 'string' as const, enum: ['local', 'api'] },
+          apiKeyEncrypted: { type: 'string' as const },
+          localModel: { type: 'string' as const },
+          dimensions: { type: 'number' as const, minimum: 1 },
+          cacheEnabled: { type: 'boolean' as const },
+          maxCacheSize: { type: 'number' as const, minimum: 100 },
+        },
+        default: defaults.llm.embeddings,
+      },
+      // Legacy API key fields (kept for backwards compatibility)
       claudeApiKeyEncrypted: { type: 'string' as const },
       geminiApiKeyEncrypted: { type: 'string' as const },
       openaiApiKeyEncrypted: { type: 'string' as const },
-      defaultProvider: { type: 'string' as const, enum: ['claude', 'gemini', 'openai'] },
+      // Orchestration settings
+      defaultProvider: { type: 'string' as const, enum: ['claude', 'gemini'] },
       defaultModel: { type: 'string' as const },
       fallbackEnabled: { type: 'boolean' as const },
       fallbackOrder: { type: 'array' as const, items: { type: 'string' as const } }
@@ -132,6 +204,7 @@ class SettingsService {
   /**
    * Get all settings with public view (no encrypted keys)
    * Returns hasXxxKey booleans instead of actual encrypted values
+   * Phase 16: Updated to include provider-specific settings
    */
   getAll(): NexusSettingsPublic {
     const llm = this.store.get('llm')
@@ -140,15 +213,46 @@ class SettingsService {
     const ui = this.store.get('ui')
     const project = this.store.get('project')
 
+    // Phase 16: Build provider-specific public views
+    const claude = llm.claude ?? defaults.llm.claude
+    const gemini = llm.gemini ?? defaults.llm.gemini
+    const embeddings = llm.embeddings ?? defaults.llm.embeddings
+
     return {
       llm: {
-        defaultProvider: llm.defaultProvider,
-        defaultModel: llm.defaultModel,
-        fallbackEnabled: llm.fallbackEnabled,
-        fallbackOrder: llm.fallbackOrder,
-        hasClaudeKey: !!llm.claudeApiKeyEncrypted,
-        hasGeminiKey: !!llm.geminiApiKeyEncrypted,
-        hasOpenaiKey: !!llm.openaiApiKeyEncrypted
+        // Phase 16: Provider-specific public views
+        claude: {
+          backend: claude.backend ?? 'cli',
+          hasApiKey: !!claude.apiKeyEncrypted || !!llm.claudeApiKeyEncrypted,
+          cliPath: claude.cliPath,
+          timeout: claude.timeout,
+          maxRetries: claude.maxRetries,
+          model: claude.model,
+        },
+        gemini: {
+          backend: gemini.backend ?? 'cli',
+          hasApiKey: !!gemini.apiKeyEncrypted || !!llm.geminiApiKeyEncrypted,
+          cliPath: gemini.cliPath,
+          timeout: gemini.timeout,
+          model: gemini.model,
+        },
+        embeddings: {
+          backend: embeddings.backend ?? 'local',
+          hasApiKey: !!embeddings.apiKeyEncrypted || !!llm.openaiApiKeyEncrypted,
+          localModel: embeddings.localModel,
+          dimensions: embeddings.dimensions,
+          cacheEnabled: embeddings.cacheEnabled,
+          maxCacheSize: embeddings.maxCacheSize,
+        },
+        // Orchestration settings
+        defaultProvider: llm.defaultProvider ?? 'claude',
+        defaultModel: llm.defaultModel ?? 'claude-sonnet-4-20250514',
+        fallbackEnabled: llm.fallbackEnabled ?? true,
+        fallbackOrder: llm.fallbackOrder ?? ['claude', 'gemini'],
+        // Legacy compatibility
+        hasClaudeKey: !!claude.apiKeyEncrypted || !!llm.claudeApiKeyEncrypted,
+        hasGeminiKey: !!gemini.apiKeyEncrypted || !!llm.geminiApiKeyEncrypted,
+        hasOpenaiKey: !!embeddings.apiKeyEncrypted || !!llm.openaiApiKeyEncrypted,
       },
       agents,
       checkpoints,

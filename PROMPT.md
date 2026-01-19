@@ -1873,13 +1873,40 @@ export async function createNexusFromSettings(): Promise<NexusInstance> {
 ```
 
 ### Task 15 Completion Checklist
-- [ ] SettingsLoader created/updated
-- [ ] loadAsFactoryConfig() implemented
-- [ ] Environment variable fallbacks
-- [ ] API key decryption integrated
-- [ ] createNexusFromSettings() exported
+- [x] SettingsLoader created/updated
+- [x] loadAsFactoryConfig() implemented
+- [x] Environment variable fallbacks
+- [x] API key decryption integrated
+- [x] createNexusFromSettings() exported
 
-**[TASK 15 COMPLETE]** <- Mark when done
+**[TASK 15 COMPLETE]** - Completed on 2026-01-19
+
+### Task 15 Summary
+- **File Created**: `src/main/services/SettingsLoader.ts` (~280 lines)
+- **File Created**: `src/main/services/index.ts` (exports for main services)
+- **File Modified**: `src/main/services/settingsService.ts` (Phase 16 schema + getAll updates)
+
+**Key Implementation Details:**
+1. **SettingsLoader class**: Static methods for loading settings as NexusFactoryConfig
+2. **loadAsFactoryConfig(workingDir)**: Main method that builds complete config from settings
+3. **API Key Resolution Priority**:
+   - Settings store (decrypted via safeStorage)
+   - Environment variables (ANTHROPIC_API_KEY, GOOGLE_AI_API_KEY, OPENAI_API_KEY)
+4. **Backend Mapping**: Maps settings types to NexusFactory types
+5. **Helper Methods**:
+   - `isCLIBackendConfigured(provider)` - Check if CLI backend is selected
+   - `hasApiKey(provider)` - Check if API key is available (store or env)
+   - `getBackendStatus()` - Get summary of all backend configurations
+
+**Convenience Functions Exported:**
+- `createNexusFromSettings(workingDir)` - Create Nexus from settings store
+- `createTestingNexusFromSettings(workingDir, options)` - Create testing Nexus from settings
+
+**settingsService.ts Updates:**
+- Schema updated with Phase 16 provider-specific settings (claude, gemini, embeddings)
+- getAll() returns Phase 16 public view format with provider settings
+- Default values set to CLI-first/local-first
+- Backwards compatible with legacy API key storage
 
 ---
 
