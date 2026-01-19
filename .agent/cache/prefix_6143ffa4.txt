@@ -1,3 +1,0 @@
-# Plans 13-05 & 13-06: Dynamic Context Provider + Ralph-Style Iterator
-
-## Context

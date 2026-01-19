@@ -1,5 +1,0 @@
-# Phase 14B: Execution Bindings Implementation
-
-## CRITICAL CONTEXT - READ FIRST
-
-### What Ralph Built (DO NOT BREAK)

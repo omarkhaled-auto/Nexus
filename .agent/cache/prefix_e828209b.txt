@@ -1,3 +1,0 @@
-# Phase 14: Nexus Core Engine Implementation
-
-## Critical Context
