@@ -39,6 +39,25 @@ export {
 } from './EmbeddingsService';
 
 // ============================================================================
+// Local Embeddings Service (Phase 16 - CLI Support)
+// ============================================================================
+
+export {
+  type LocalEmbeddingsConfig,
+  type LocalEmbeddingsLogger,
+  type LocalEmbeddingResult,
+  type LocalEmbeddingsStats,
+  type LocalModelInfo,
+  type LocalEmbeddingsErrorInfo,
+  type ILocalEmbeddingsService,
+  LocalEmbeddingsErrorCode,
+  LOCAL_EMBEDDING_MODELS,
+  MODEL_DIMENSIONS,
+  DEFAULT_LOCAL_MODEL,
+  DEFAULT_LOCAL_EMBEDDINGS_CONFIG,
+} from './LocalEmbeddingsService.types';
+
+// ============================================================================
 // Code Memory (Plan 13-03)
 // ============================================================================
 
