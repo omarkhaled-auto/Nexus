@@ -1,6 +1,4 @@
-import React from 'react'
 import { format } from 'date-fns'
-import type { LucideIcon } from 'lucide-react'
 import {
   CheckCircle2,
   XCircle,
@@ -17,91 +15,66 @@ import {
 import { cn } from '@renderer/lib/utils'
 import type { TimelineEvent, TimelineEventType } from '@renderer/types/metrics'
 
-type IconConfig = { icon: LucideIcon; className: string };
-
-/**
- * Icon configuration for each event type
- */
-const EVENT_ICONS: Record<TimelineEventType, IconConfig> = {
-  task_started: { icon: Play, className: 'text-blue-500' },
-  task_completed: { icon: CheckCircle2, className: 'text-emerald-500' },
-  task_failed: { icon: XCircle, className: 'text-red-500' },
-  agent_status_changed: { icon: Bot, className: 'text-muted-foreground' },
-  agent_task_assigned: { icon: Bot, className: 'text-blue-500' },
-  agent_spawned: { icon: Bot, className: 'text-emerald-500' },
-  agent_terminated: { icon: Power, className: 'text-muted-foreground' },
-  qa_iteration: { icon: RefreshCw, className: 'text-amber-500' },
-  qa_passed: { icon: CheckCircle2, className: 'text-emerald-500' },
-  qa_failed: { icon: XCircle, className: 'text-red-500' },
-  checkpoint_created: { icon: Flag, className: 'text-purple-500' },
-  feature_completed: { icon: Zap, className: 'text-emerald-500' },
-  build_started: { icon: Package, className: 'text-blue-500' },
-  build_completed: { icon: Package, className: 'text-emerald-500' },
-  build_failed: { icon: Package, className: 'text-red-500' },
-  review_requested: { icon: MessageSquare, className: 'text-amber-500' },
-  error_occurred: { icon: AlertCircle, className: 'text-red-500' },
-  error: { icon: AlertCircle, className: 'text-red-500' }
-};
-
-function getIconConfig(type: TimelineEventType): IconConfig {
-  return EVENT_ICONS[type];
-}
-
 export interface EventRowProps {
   event: TimelineEvent
   className?: string
 }
 
 /**
- * EventRow - Single row in the activity timeline.
- * Shows time, icon, title, and associated agent.
- *
- * Visual design:
- * ```
- * │  14:25  ✓  Task api.routes.ts completed         Coder-2    │
- * ```
+ * Get icon and styling for event type
  */
-export function EventRow({ event, className }: EventRowProps) {
-  const { type, title, timestamp, metadata } = event
-  const config = getIconConfig(type)
-  const iconClassName = config.className
-  // Pre-render icon - using explicit JSX.Element type for React 19 compatibility
-  // @ts-expect-error - LucideIcon dynamic lookup
-  const iconElement: JSX.Element = <config.icon className={cn('h-4 w-4 flex-shrink-0', iconClassName)} />;
+function getEventStyles(type: TimelineEventType): { iconClass: string; bgClass: string } {
+  switch (type) {
+    case 'task_started':
+    case 'build_started':
+      return { iconClass: 'text-status-working', bgClass: 'bg-status-working/10' }
+    case 'task_completed':
+    case 'qa_passed':
+    case 'agent_spawned':
+    case 'feature_completed':
+    case 'build_completed':
+      return { iconClass: 'text-accent-success', bgClass: 'bg-accent-success/10' }
+    case 'task_failed':
+    case 'qa_failed':
+    case 'build_failed':
+    case 'error_occurred':
+    case 'error':
+      return { iconClass: 'text-accent-error', bgClass: 'bg-accent-error/10' }
+    case 'agent_task_assigned':
+      return { iconClass: 'text-accent-secondary', bgClass: 'bg-accent-secondary/10' }
+    case 'qa_iteration':
+    case 'review_requested':
+      return { iconClass: 'text-accent-warning', bgClass: 'bg-accent-warning/10' }
+    case 'checkpoint_created':
+      return { iconClass: 'text-accent-primary', bgClass: 'bg-accent-primary/10' }
+    case 'agent_status_changed':
+    case 'agent_terminated':
+    default:
+      return { iconClass: 'text-text-tertiary', bgClass: 'bg-bg-hover' }
+  }
+}
 
-  return (
-    <div
-      className={cn(
-        'flex items-center gap-3 px-4 py-2 border-b border-border hover:bg-muted/30 transition-colors',
-        className
-      )}
-    >
-      {/* Timestamp */}
-      <span className="text-xs text-muted-foreground font-mono w-12 flex-shrink-0">
-        {format(new Date(timestamp), 'HH:mm')}
-      </span>
+/**
+ * Icon component with icon class
+ */
+function EventIconWrapper({ type, iconClass }: { type: TimelineEventType; iconClass: string }) {
+  const iconClassName = cn('h-3.5 w-3.5 flex-shrink-0', iconClass)
 
-      {/* Event icon */}
-      {iconElement}
-
-      {/* Event title */}
-      <span className="flex-1 text-sm truncate">{title}</span>
-
-      {/* Agent name if present */}
-      {metadata?.agentId && typeof metadata.agentId === 'string' && (
-        <span className="text-xs text-muted-foreground flex-shrink-0">
-          {formatAgentName(metadata.agentId)}
-        </span>
-      )}
-    </div>
-  )
+  if (type === 'task_started') return <Play className={iconClassName} />
+  if (type === 'task_completed' || type === 'qa_passed') return <CheckCircle2 className={iconClassName} />
+  if (type === 'task_failed' || type === 'qa_failed') return <XCircle className={iconClassName} />
+  if (type === 'agent_status_changed' || type === 'agent_task_assigned' || type === 'agent_spawned') return <Bot className={iconClassName} />
+  if (type === 'agent_terminated') return <Power className={iconClassName} />
+  if (type === 'qa_iteration') return <RefreshCw className={iconClassName} />
+  if (type === 'checkpoint_created') return <Flag className={iconClassName} />
+  if (type === 'feature_completed') return <Zap className={iconClassName} />
+  if (type === 'build_started' || type === 'build_completed' || type === 'build_failed') return <Package className={iconClassName} />
+  if (type === 'review_requested') return <MessageSquare className={iconClassName} />
+  return <AlertCircle className={iconClassName} />
 }
 
 /**
  * Format agent ID into a readable display name.
- * Examples:
- * - "coder-agent-123" -> "Coder"
- * - "qa_agent" -> "QA"
  */
 function formatAgentName(agentId: string): string {
   const agentTypes: Record<string, string> = {
@@ -121,4 +94,52 @@ function formatAgentName(agentId: string): string {
 
   const firstPart = agentId.split(/[-_]/)[0]
   return firstPart ? firstPart.charAt(0).toUpperCase() + firstPart.slice(1) : 'Agent'
+}
+
+/**
+ * EventRow - Single row in the activity timeline.
+ * Shows time, icon, title, and associated agent.
+ * Enhanced with Nexus design system styling.
+ */
+export function EventRow({ event, className }: EventRowProps) {
+  const { type, title, timestamp, metadata } = event
+  const { iconClass, bgClass } = getEventStyles(type)
+  const isError = type.includes('failed') || type.includes('error')
+
+  // Get agent ID from metadata with proper type checking
+  const agentId = metadata?.agentId
+  const agentIdStr = typeof agentId === 'string' ? agentId : null
+
+  return (
+    <div
+      data-testid="timeline-item"
+      className={cn(
+        'flex items-center gap-3 px-4 py-2.5 border-b border-border-default/50 transition-colors',
+        'hover:bg-bg-hover',
+        isError && 'bg-accent-error/5',
+        className
+      )}
+    >
+      <span className="text-xs text-text-tertiary font-mono w-12 flex-shrink-0">
+        {format(new Date(timestamp), 'HH:mm')}
+      </span>
+
+      <div className={cn('p-1 rounded', bgClass)}>
+        <EventIconWrapper type={type} iconClass={iconClass} />
+      </div>
+
+      <span className={cn(
+        'flex-1 text-sm truncate',
+        isError ? 'text-text-primary' : 'text-text-secondary'
+      )}>
+        {title}
+      </span>
+
+      {agentIdStr !== null && (
+        <span className="text-xs text-text-tertiary flex-shrink-0 px-2 py-0.5 rounded bg-bg-hover">
+          {formatAgentName(agentIdStr)}
+        </span>
+      )}
+    </div>
+  )
 }

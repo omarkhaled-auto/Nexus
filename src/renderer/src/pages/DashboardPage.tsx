@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ReactElement } from 'react'
+import { Link } from 'react-router'
 import {
   CostTracker,
   OverviewCards,
@@ -9,7 +10,21 @@ import {
 } from '../components/dashboard'
 import { AnimatedPage } from '../components/AnimatedPage'
 import { CardSkeleton } from '../components/ui/Skeleton'
+import { Button } from '../components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { useMetricsStore, useIsMetricsLoading, useOverview } from '../stores'
+import {
+  Plus,
+  FolderOpen,
+  Activity,
+  TrendingUp,
+  ChevronRight,
+  Sparkles,
+  Zap,
+  CheckCircle2,
+  Clock
+} from 'lucide-react'
+import { cn } from '../lib/utils'
 import type {
   OverviewMetrics,
   AgentMetrics,
@@ -27,6 +42,49 @@ import type {
 const isDemoMode = (): boolean => {
   return typeof window.nexusAPI === 'undefined'
 }
+
+/**
+ * Demo project data for visual testing
+ */
+interface DemoProject {
+  id: string
+  name: string
+  mode: 'genesis' | 'evolution'
+  status: 'in_progress' | 'completed' | 'planning'
+  progress: number
+  activeAgents: number
+  updatedAt: Date
+}
+
+const demoProjects: DemoProject[] = [
+  {
+    id: 'proj-1',
+    name: 'my-saas-app',
+    mode: 'genesis',
+    status: 'in_progress',
+    progress: 80,
+    activeAgents: 2,
+    updatedAt: new Date(Date.now() - 5 * 60 * 1000)
+  },
+  {
+    id: 'proj-2',
+    name: 'legacy-refactor',
+    mode: 'evolution',
+    status: 'completed',
+    progress: 100,
+    activeAgents: 0,
+    updatedAt: new Date(Date.now() - 2 * 60 * 60 * 1000)
+  },
+  {
+    id: 'proj-3',
+    name: 'mobile-app',
+    mode: 'genesis',
+    status: 'planning',
+    progress: 15,
+    activeAgents: 1,
+    updatedAt: new Date(Date.now() - 45 * 60 * 1000)
+  }
+]
 
 /**
  * Generate demo data for visual testing
@@ -168,25 +226,169 @@ function generateDemoData(): {
 }
 
 /**
+ * ProjectCard - Displays a single project in the recent projects list
+ */
+function ProjectCard({ project }: { project: DemoProject }): ReactElement {
+  const getStatusIcon = () => {
+    switch (project.status) {
+      case 'completed':
+        return <CheckCircle2 className="h-4 w-4 text-accent-success" />
+      case 'in_progress':
+        return <Zap className="h-4 w-4 text-accent-primary" />
+      case 'planning':
+        return <Clock className="h-4 w-4 text-accent-warning" />
+    }
+  }
+
+  const getStatusLabel = () => {
+    switch (project.status) {
+      case 'completed':
+        return 'Completed'
+      case 'in_progress':
+        return `${project.activeAgents} agent${project.activeAgents !== 1 ? 's' : ''} active`
+      case 'planning':
+        return 'Planning'
+    }
+  }
+
+  const getModeIcon = () => {
+    return project.mode === 'genesis' ? (
+      <Sparkles className="h-4 w-4 text-accent-primary" />
+    ) : (
+      <TrendingUp className="h-4 w-4 text-accent-secondary" />
+    )
+  }
+
+  const getTimeAgo = (date: Date) => {
+    const minutes = Math.floor((Date.now() - date.getTime()) / 60000)
+    if (minutes < 60) return `${minutes}m ago`
+    const hours = Math.floor(minutes / 60)
+    if (hours < 24) return `${hours}h ago`
+    return `${Math.floor(hours / 24)}d ago`
+  }
+
+  return (
+    <Link
+      to={`/project/${project.id}`}
+      data-testid="project-card"
+      className="block group"
+    >
+      <div className="flex items-center gap-4 p-4 rounded-lg bg-bg-card border border-border-default hover:border-accent-primary/50 hover:bg-bg-hover transition-all duration-200 group-hover:shadow-md">
+        {/* Project Icon */}
+        <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-bg-hover flex items-center justify-center group-hover:bg-accent-primary/10 transition-colors">
+          {getModeIcon()}
+        </div>
+
+        {/* Project Info */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <h3 className="font-medium text-text-primary truncate">{project.name}</h3>
+            <span className="text-xs px-2 py-0.5 rounded-full bg-bg-hover text-text-secondary capitalize">
+              {project.mode}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 text-sm text-text-secondary">
+            {getStatusIcon()}
+            <span>{getStatusLabel()}</span>
+            <span className="text-text-tertiary">•</span>
+            <span className="text-text-tertiary">{getTimeAgo(project.updatedAt)}</span>
+          </div>
+        </div>
+
+        {/* Progress Bar */}
+        <div className="flex-shrink-0 w-24">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-xs text-text-secondary">{project.progress}%</span>
+          </div>
+          <div className="h-2 bg-bg-hover rounded-full overflow-hidden">
+            <div
+              className={cn(
+                'h-full rounded-full transition-all duration-500',
+                project.status === 'completed'
+                  ? 'bg-accent-success'
+                  : project.progress >= 50
+                    ? 'bg-accent-primary'
+                    : 'bg-accent-warning'
+              )}
+              style={{ width: `${project.progress}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Chevron */}
+        <ChevronRight className="h-5 w-5 text-text-tertiary group-hover:text-accent-primary transition-colors" />
+      </div>
+    </Link>
+  )
+}
+
+/**
+ * StatCard - Enhanced stat card component with icon and trend
+ */
+function StatCard({
+  title,
+  value,
+  subtitle,
+  icon: Icon,
+  iconColor,
+  trend,
+  testId
+}: {
+  title: string
+  value: string | number
+  subtitle: string
+  icon: React.ElementType
+  iconColor: string
+  trend?: { value: string; positive: boolean }
+  testId: string
+}): ReactElement {
+  return (
+    <Card data-testid={testId} className="bg-bg-card border-border-default hover:border-border-subtle transition-colors">
+      <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+        <CardTitle className="text-sm font-medium text-text-secondary">{title}</CardTitle>
+        <div className={cn('p-2 rounded-lg', iconColor.replace('text-', 'bg-').replace('500', '500/10'))}>
+          <Icon className={cn('h-4 w-4', iconColor)} />
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="text-2xl font-bold text-text-primary">{value}</div>
+        <div className="flex items-center gap-2 mt-1">
+          <p className="text-xs text-text-secondary">{subtitle}</p>
+          {trend && (
+            <span className={cn(
+              'text-xs font-medium',
+              trend.positive ? 'text-accent-success' : 'text-accent-error'
+            )}>
+              {trend.positive ? '↑' : '↓'} {trend.value}
+            </span>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+/**
  * DashboardPage - Real-time observability dashboard.
  *
  * Layout (responsive grid):
  * ```
  * ┌─────────────────────────────────────────────────────────────┐
- * │  Dashboard                                    [CostTracker] │
+ * │  Dashboard                                   [+ New Project] │
  * ├─────────────────────────────────────────────────────────────┤
- * │  [OverviewCards - 4 metric cards in row]                    │
+ * │  [Stats Cards - 4 metric cards in row]                      │
  * ├─────────────────────────────────────────────────────────────┤
- * │  [ProgressChart]              │  [AgentActivity]            │
- * │  (60% width)                  │  (40% width)                │
+ * │  [Recent Projects]         │  [Cost Tracker + Agent Activity]│
+ * │  (60% width)               │  (40% width)                    │
  * ├─────────────────────────────────────────────────────────────┤
- * │  [TaskTimeline - full width, flexible height]               │
+ * │  [ProgressChart]           │  [TaskTimeline]                 │
+ * │  (40% width)               │  (60% width)                    │
  * └─────────────────────────────────────────────────────────────┘
  * ```
  */
 export default function DashboardPage(): ReactElement {
   const isLoading = useIsMetricsLoading()
-  const _overview = useOverview()
+  const overview = useOverview()
   const { setOverview, setAgents, setCosts, setLoading, addTimelineEvent } =
     useMetricsStore.getState()
 
@@ -228,44 +430,132 @@ export default function DashboardPage(): ReactElement {
     setLoading(false)
   }, [])
 
+  // Calculate stats
+  const progressPercent = overview && overview.totalTasks > 0
+    ? Math.round((overview.completedTasks / overview.totalTasks) * 100)
+    : 0
+
   return (
-    <AnimatedPage className="flex flex-col h-full p-6 gap-6 overflow-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between flex-shrink-0">
+    <AnimatedPage className="flex flex-col h-full p-6 gap-6 overflow-auto bg-bg-dark">
+      {/* Page Header */}
+      <div
+        className="flex items-center justify-between flex-shrink-0"
+        data-testid="dashboard-header"
+      >
         <div>
-          <h1 className="text-2xl font-bold">Dashboard</h1>
-          <p className="text-sm text-muted-foreground">Real-time project monitoring</p>
+          <h1 className="text-2xl font-bold text-text-primary">Dashboard</h1>
+          <p className="text-sm text-text-secondary">Real-time project monitoring and agent activity</p>
         </div>
-        <CostTracker />
+        <Button
+          variant="primary"
+          size="md"
+          data-testid="new-project-button"
+          className="gap-2"
+        >
+          <Plus className="h-4 w-4" />
+          New Project
+        </Button>
       </div>
 
-      {/* Overview Cards with loading skeletons */}
-      <div className="flex-shrink-0">
+      {/* Stats Cards */}
+      <div
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 flex-shrink-0"
+        data-testid="stats-cards"
+      >
         {isLoading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <>
             <CardSkeleton />
             <CardSkeleton />
             <CardSkeleton />
             <CardSkeleton />
-          </div>
+          </>
         ) : (
-          <OverviewCards />
+          <>
+            <StatCard
+              testId="stat-card-progress"
+              title="Progress"
+              value={`${progressPercent}%`}
+              subtitle={`${overview?.completedTasks ?? 0} of ${overview?.totalTasks ?? 0} tasks`}
+              icon={TrendingUp}
+              iconColor="text-accent-success"
+              trend={{ value: '12%', positive: true }}
+            />
+            <StatCard
+              testId="stat-card-features"
+              title="Features"
+              value={overview?.completedFeatures ?? 0}
+              subtitle={`of ${overview?.totalFeatures ?? 0} completed`}
+              icon={Sparkles}
+              iconColor="text-accent-primary"
+            />
+            <StatCard
+              testId="stat-card-agents"
+              title="Active Agents"
+              value={overview?.activeAgents ?? 0}
+              subtitle="currently working"
+              icon={Activity}
+              iconColor="text-accent-secondary"
+            />
+            <StatCard
+              testId="stat-card-projects"
+              title="Active Projects"
+              value={demoProjects.filter(p => p.status !== 'completed').length}
+              subtitle={`${demoProjects.filter(p => p.status === 'completed').length} completed`}
+              icon={FolderOpen}
+              iconColor="text-accent-warning"
+            />
+          </>
         )}
       </div>
 
-      {/* Middle row: Chart + Agents */}
+      {/* Main Content Row 1: Recent Projects + Cost/Agent */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 flex-shrink-0">
-        <div className="lg:col-span-3">
-          <ProgressChart data={isDemoMode() ? demoData.chartData : []} height={280} />
-        </div>
-        <div className="lg:col-span-2">
-          <AgentActivity />
+        {/* Recent Projects */}
+        <Card
+          className="lg:col-span-3 bg-bg-card border-border-default"
+          data-testid="recent-projects"
+        >
+          <CardHeader className="flex flex-row items-center justify-between pb-4">
+            <CardTitle className="flex items-center gap-2 text-base font-semibold text-text-primary">
+              <FolderOpen className="h-4 w-4 text-accent-primary" />
+              Recent Projects
+            </CardTitle>
+            <Link
+              to="/projects"
+              className="text-sm text-accent-primary hover:text-accent-primary/80 flex items-center gap-1 transition-colors"
+            >
+              View All <ChevronRight className="h-4 w-4" />
+            </Link>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {demoProjects.map((project) => (
+              <ProjectCard key={project.id} project={project} />
+            ))}
+          </CardContent>
+        </Card>
+
+        {/* Right Column: Cost + Agent Activity */}
+        <div className="lg:col-span-2 flex flex-col gap-6">
+          <CostTracker className="bg-bg-card border-border-default" />
+          <AgentActivity className="flex-1 bg-bg-card border-border-default" />
         </div>
       </div>
 
-      {/* Timeline */}
-      <div className="flex-1 min-h-[300px]">
-        <TaskTimeline height={350} />
+      {/* Main Content Row 2: Progress Chart + Timeline */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 flex-1 min-h-[300px]">
+        <div className="lg:col-span-2">
+          <ProgressChart
+            data={isDemoMode() ? demoData.chartData : []}
+            height={280}
+            className="h-full bg-bg-card border-border-default"
+          />
+        </div>
+        <div className="lg:col-span-3">
+          <TaskTimeline
+            height={280}
+            className="h-full bg-bg-card border-border-default"
+          />
+        </div>
       </div>
     </AnimatedPage>
   )
