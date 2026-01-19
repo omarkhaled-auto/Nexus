@@ -17,7 +17,7 @@
 | 5 | Genesis Workflow | COMPLETE | 75 |
 | 6 | Evolution Workflow | COMPLETE | 80 |
 | 7 | Phase 13 Features | COMPLETE | 70 |
-| 8 | Phase 14B Bindings | PENDING | 0 |
+| 8 | Phase 14B Bindings | COMPLETE | 85 |
 | 9 | Silent Failures | PENDING | 0 |
 | 10 | Edge Cases | PENDING | 0 |
 | 11 | Synthesis | PENDING | 0 |
@@ -3072,3 +3072,537 @@ Each feature includes:
 - SILENT_FAILURE_CHECK: Potential silent failure modes
 
 Total tests added: ~70 new Phase 13 tests
+
+---
+
+## SECTION 8: PHASE 14B EXECUTION BINDINGS TESTS
+
+### QA RUNNERS
+
+#### P14B-QA-001: BuildRunner
+```
+TEST: BuildRunner spawns real tsc process
+LOCATION: src/execution/qa/BuildRunner.ts
+METHODS: run(), createCallback(), parseErrors()
+
+VERIFY: run() spawns 'npx tsc --noEmit' process
+VERIFY: run() uses ProcessRunner for command execution
+VERIFY: run() respects timeout (default 60s)
+VERIFY: run() handles spawn errors gracefully
+VERIFY: parseErrors() extracts file, line, column, code, message from tsc output
+VERIFY: parseErrors() returns ErrorEntry[] with type='build'
+VERIFY: Returns BuildResult with:
+  - success: boolean (true if no errors)
+  - errors: ErrorEntry[] (parsed errors)
+  - warnings: ErrorEntry[] (parsed warnings)
+  - duration: number (ms)
+VERIFY: createCallback() returns QARunner.build compatible function
+VERIFY: createCallback() captures workingDir via closure
+
+REAL_EXECUTION_TEST: Create TypeScript file with error, verify detection
+REAL_EXECUTION_TEST: Create clean TypeScript file, verify success
+REAL_EXECUTION_TEST: Test timeout handling with hanging process
+
+INTEGRATION_CHECK: Plugs into RalphStyleIterator via QARunner.build
+INTEGRATION_CHECK: Uses ProcessRunner for command execution
+INTEGRATION_CHECK: ErrorEntry has iteration field set correctly
+SILENT_FAILURE_CHECK: tsc returns non-zero but errors array empty
+SILENT_FAILURE_CHECK: Wrong tsconfig.json used (not project root)
+SILENT_FAILURE_CHECK: Timeout reached but partial result returned as success
+SILENT_FAILURE_CHECK: tsc not found in PATH, fails silently
+SILENT_FAILURE_CHECK: Working directory incorrect, wrong files analyzed
+```
+
+#### P14B-QA-002: LintRunner
+```
+TEST: LintRunner spawns real eslint process
+LOCATION: src/execution/qa/LintRunner.ts
+METHODS: run(), runWithFix(), createCallback(), parseJsonOutput()
+
+VERIFY: run() spawns 'npx eslint --format json' process
+VERIFY: run() targets correct files/directories
+VERIFY: run() uses ProcessRunner for command execution
+VERIFY: runWithFix() passes --fix flag for auto-fixing
+VERIFY: parseJsonOutput() extracts errors and warnings separately
+VERIFY: parseJsonOutput() handles ESLint JSON format correctly
+VERIFY: Returns LintResult with:
+  - success: boolean (true if no errors)
+  - errors: ErrorEntry[] (type='lint', severity='error')
+  - warnings: ErrorEntry[] (type='lint', severity='warning')
+  - fixable: number (count of auto-fixable issues)
+VERIFY: createCallback() returns QARunner.lint compatible function
+VERIFY: createCallback() captures workingDir via closure
+
+REAL_EXECUTION_TEST: Create file with lint errors, verify detection
+REAL_EXECUTION_TEST: Test auto-fix with fixable errors
+REAL_EXECUTION_TEST: Test with no lint config (should handle gracefully)
+
+INTEGRATION_CHECK: Plugs into RalphStyleIterator via QARunner.lint
+INTEGRATION_CHECK: Uses ProcessRunner for command execution
+SILENT_FAILURE_CHECK: ESLint config missing, runs with defaults silently
+SILENT_FAILURE_CHECK: --fix fails silently (no write permissions)
+SILENT_FAILURE_CHECK: Warnings treated as success when they shouldn't be
+SILENT_FAILURE_CHECK: JSON parsing fails, empty result returned
+SILENT_FAILURE_CHECK: eslint not found in PATH, fails silently
+SILENT_FAILURE_CHECK: Ignore patterns incorrectly configured
+```
+
+#### P14B-QA-003: TestRunner
+```
+TEST: TestRunner spawns real vitest process
+LOCATION: src/execution/qa/TestRunner.ts
+METHODS: run(), runFiles(), runWithCoverage(), createCallback(), parseOutput()
+
+VERIFY: run() spawns 'npx vitest run --reporter=json' process
+VERIFY: run() uses ProcessRunner for command execution
+VERIFY: runFiles() runs specific test files only
+VERIFY: runWithCoverage() includes --coverage flag
+VERIFY: parseOutput() extracts passed, failed, skipped counts
+VERIFY: parseOutput() captures test failure details:
+  - testName, file, error message, expected vs actual
+VERIFY: Returns TestResult with:
+  - success: boolean (true if all pass)
+  - passed: number
+  - failed: number
+  - skipped: number
+  - errors: ErrorEntry[] (type='test')
+  - duration: number (ms)
+VERIFY: createCallback() returns QARunner.test compatible function
+VERIFY: createCallback() captures workingDir via closure
+
+REAL_EXECUTION_TEST: Create failing test, verify detection
+REAL_EXECUTION_TEST: Create passing tests, verify success
+REAL_EXECUTION_TEST: Test coverage threshold detection
+
+INTEGRATION_CHECK: Plugs into RalphStyleIterator via QARunner.test
+INTEGRATION_CHECK: Uses ProcessRunner for command execution
+SILENT_FAILURE_CHECK: Tests skip but reported as pass (skipped > 0, failed = 0)
+SILENT_FAILURE_CHECK: Coverage below threshold but not flagged
+SILENT_FAILURE_CHECK: Test timeout not enforced, hangs indefinitely
+SILENT_FAILURE_CHECK: Test file not found, returns success
+SILENT_FAILURE_CHECK: vitest not found in PATH, fails silently
+SILENT_FAILURE_CHECK: watch mode accidentally enabled
+```
+
+#### P14B-QA-004: ReviewRunner
+```
+TEST: ReviewRunner calls Gemini API for code review
+LOCATION: src/execution/qa/ReviewRunner.ts
+METHODS: run(), createCallback(), parseReviewResponse(), buildReviewPrompt()
+
+VERIFY: run() calls GeminiClient with review prompt
+VERIFY: buildReviewPrompt() includes git diff
+VERIFY: buildReviewPrompt() includes task context
+VERIFY: buildReviewPrompt() respects token limits
+VERIFY: parseReviewResponse() extracts approval status (boolean)
+VERIFY: parseReviewResponse() extracts comments, suggestions, blockers
+VERIFY: Returns ReviewResult with:
+  - approved: boolean
+  - comments: string[]
+  - suggestions: string[]
+  - blockers: string[]
+VERIFY: createCallback() returns QARunner.review compatible function
+VERIFY: createCallback() captures GeminiClient and GitService via closure
+VERIFY: Handles API timeout gracefully (default 60s)
+
+REAL_EXECUTION_TEST: Submit code change, verify review response structure
+REAL_EXECUTION_TEST: Test with empty diff (should handle gracefully)
+REAL_EXECUTION_TEST: Test with very large diff (truncation handling)
+
+INTEGRATION_CHECK: Uses GeminiClient for AI review
+INTEGRATION_CHECK: Uses GitService for diff generation
+INTEGRATION_CHECK: Plugs into RalphStyleIterator via QARunner.review
+SILENT_FAILURE_CHECK: Gemini API fails, returns approved=true anyway
+SILENT_FAILURE_CHECK: Prompt too long, truncated without warning
+SILENT_FAILURE_CHECK: JSON parse fails, default approval returned
+SILENT_FAILURE_CHECK: Empty diff returns false positive approval
+SILENT_FAILURE_CHECK: Rate limiting causes silent retry loop
+SILENT_FAILURE_CHECK: Blockers identified but approval=true
+```
+
+#### P14B-QA-005: QARunnerFactory
+```
+TEST: QARunnerFactory creates complete QARunner object
+LOCATION: src/execution/qa/QARunnerFactory.ts
+METHODS: create(), createMock(), createPartial()
+
+VERIFY: create() returns object implementing QARunner interface:
+  - build: (taskId: string) => Promise<BuildResult>
+  - lint: (taskId: string) => Promise<LintResult>
+  - test: (taskId: string) => Promise<TestResult>
+  - review: (taskId: string) => Promise<ReviewResult>
+VERIFY: Each method is callable with taskId parameter
+VERIFY: Working directory correctly passed to each runner
+VERIFY: GeminiClient and GitService passed to ReviewRunner
+VERIFY: createMock() returns mock implementation for testing
+VERIFY: createPartial() returns QARunner with only specified runners
+VERIFY: Factory validates dependencies before creation
+
+FACTORY_TEST: Create QARunner and execute each method
+FACTORY_TEST: Create mock and verify mock behavior
+FACTORY_TEST: Create partial with only build+test
+
+INTEGRATION_CHECK: Returned QARunner works with RalphStyleIterator
+INTEGRATION_CHECK: All dependencies injected correctly
+SILENT_FAILURE_CHECK: One runner fails to create, others missing
+SILENT_FAILURE_CHECK: Working directory not validated
+SILENT_FAILURE_CHECK: Dependencies null but no error thrown
+```
+
+### PLANNING
+
+#### P14B-PLN-001: TaskDecomposer
+```
+TEST: TaskDecomposer calls Claude for task decomposition
+LOCATION: src/planning/decomposition/TaskDecomposer.ts
+METHODS: decompose(), validateTaskSize(), splitTask(), estimateTime()
+INTERFACE: ITaskDecomposer
+
+VERIFY: Implements ITaskDecomposer interface
+VERIFY: decompose() accepts featureDescription string
+VERIFY: decompose() accepts DecompositionOptions:
+  - maxTaskMinutes?: number (default 30)
+  - generateTestCriteria?: boolean
+  - contextFiles?: string[]
+  - useTDD?: boolean
+VERIFY: decompose() calls ClaudeClient with decomposition prompt
+VERIFY: decompose() parses JSON response into PlanningTask[]
+VERIFY: Each PlanningTask has:
+  - id, name, description, type, size
+  - estimatedMinutes (<= 30)
+  - dependsOn: string[]
+  - testCriteria: string[]
+  - files: string[]
+VERIFY: validateTaskSize() returns TaskValidationResult:
+  - valid: boolean
+  - errors: string[]
+  - warnings: string[]
+VERIFY: validateTaskSize() rejects tasks > maxTaskMinutes
+VERIFY: splitTask() divides large tasks into subtasks
+VERIFY: splitTask() maintains dependency integrity
+VERIFY: estimateTime() returns minutes estimate
+
+REAL_EXECUTION_TEST: Decompose "build login page", verify task structure
+REAL_EXECUTION_TEST: Decompose complex feature, verify 30-min limit
+REAL_EXECUTION_TEST: Test invalid Claude response handling
+
+INTEGRATION_CHECK: Works with NexusCoordinator.decomposer
+INTEGRATION_CHECK: Uses ClaudeClient for LLM calls
+SILENT_FAILURE_CHECK: Claude returns malformed JSON, partial tasks created
+SILENT_FAILURE_CHECK: 45-minute task accepted without split
+SILENT_FAILURE_CHECK: Split creates circular dependencies
+SILENT_FAILURE_CHECK: Empty response treated as success
+SILENT_FAILURE_CHECK: estimatedMinutes always 30 (no real estimation)
+```
+
+#### P14B-PLN-002: DependencyResolver
+```
+TEST: DependencyResolver implements topological sort
+LOCATION: src/planning/dependency/DependencyResolver.ts
+METHODS: calculateWaves(), topologicalSort(), hasCircularDependency(), detectCycles(), getAllDependencies()
+INTERFACE: IDependencyResolver
+
+VERIFY: Implements IDependencyResolver interface
+VERIFY: calculateWaves() returns Wave[] with:
+  - id: number (wave number)
+  - tasks: PlanningTask[] (tasks in wave)
+  - estimatedMinutes: number (total time)
+VERIFY: calculateWaves() groups parallelizable tasks
+VERIFY: calculateWaves() respects dependsOn constraints
+VERIFY: topologicalSort() returns tasks in execution order
+VERIFY: hasCircularDependency() returns boolean
+VERIFY: detectCycles() returns { taskIds: string[] }[] for each cycle
+VERIFY: getAllDependencies() returns transitive dependencies
+VERIFY: Empty task list handled gracefully (returns empty waves)
+VERIFY: Single task handled correctly (single wave)
+
+ALGORITHM_TEST: Linear dependency chain (A→B→C→D)
+ALGORITHM_TEST: Diamond dependency (A→B,C→D where B,C both depend on A and D depends on both)
+ALGORITHM_TEST: Multiple independent chains
+ALGORITHM_TEST: Circular dependency detection (A→B→C→A)
+
+INTEGRATION_CHECK: Works with NexusCoordinator.resolver
+INTEGRATION_CHECK: detectCycles() format matches NexusCoordinator expectations
+SILENT_FAILURE_CHECK: Cycle not detected, execution deadlocks
+SILENT_FAILURE_CHECK: Parallel tasks serialized unnecessarily
+SILENT_FAILURE_CHECK: Transitive dependencies missed
+SILENT_FAILURE_CHECK: Self-dependency not detected
+```
+
+#### P14B-PLN-003: TimeEstimator
+```
+TEST: TimeEstimator calculates task duration
+LOCATION: src/planning/estimation/TimeEstimator.ts
+METHODS: estimate(), estimateTotal(), calibrate()
+INTERFACE: ITimeEstimator
+
+VERIFY: Implements ITimeEstimator interface
+VERIFY: estimate() returns Promise<number> (minutes)
+VERIFY: estimate() uses heuristics:
+  - Task complexity
+  - File count
+  - Historical data
+VERIFY: estimateTotal() returns total time for task set
+VERIFY: estimateTotal() considers parallelism
+VERIFY: calibrate() records actual vs estimated
+VERIFY: calibrate() adjusts future estimates based on history
+VERIFY: Minimum estimate is 5 minutes
+VERIFY: Maximum estimate is 30 minutes (ADR-007)
+
+ACCURACY_TEST: Estimate simple task (< 10 min)
+ACCURACY_TEST: Estimate complex task (20-30 min)
+ACCURACY_TEST: Test calibration improves estimates over time
+
+INTEGRATION_CHECK: Works with NexusCoordinator.estimator
+INTEGRATION_CHECK: Calibration data persisted
+SILENT_FAILURE_CHECK: Estimation always returns 30 (max)
+SILENT_FAILURE_CHECK: Historical data not loaded
+SILENT_FAILURE_CHECK: Calibration not persisted
+SILENT_FAILURE_CHECK: Parallel time not considered in total
+```
+
+### AGENTS
+
+#### P14B-AGT-001: BaseAgentRunner
+```
+TEST: BaseAgentRunner implements agent loop base class
+LOCATION: src/execution/agents/BaseAgentRunner.ts
+METHODS: runAgentLoop(), handleResponse(), detectCompletion(), emitEvent()
+
+VERIFY: BaseAgentRunner is abstract class (cannot instantiate)
+VERIFY: runAgentLoop() iterates until completion or limit
+VERIFY: runAgentLoop() respects iteration limit (50)
+VERIFY: runAgentLoop() handles LLM responses
+VERIFY: detectCompletion() finds [TASK_COMPLETE] marker
+VERIFY: Emits events via EventBus:
+  - AGENT_STARTED
+  - AGENT_ITERATION
+  - AGENT_COMPLETED
+  - AGENT_ERROR
+VERIFY: Handles API errors gracefully
+VERIFY: Logs each iteration for debugging
+
+ABSTRACT_CHECK: Cannot instantiate BaseAgentRunner directly
+ABSTRACT_CHECK: Subclasses must implement getSystemPrompt()
+ABSTRACT_CHECK: Subclasses must implement processResponse()
+
+INTEGRATION_CHECK: Uses ClaudeClient or GeminiClient for LLM
+INTEGRATION_CHECK: Uses ToolExecutor for tool calls
+INTEGRATION_CHECK: Emits events to EventBus
+SILENT_FAILURE_CHECK: Iteration limit bypassed
+SILENT_FAILURE_CHECK: Events not emitted
+SILENT_FAILURE_CHECK: [TASK_COMPLETE] marker in middle of response
+SILENT_FAILURE_CHECK: API error causes silent exit
+```
+
+#### P14B-AGT-002: CoderAgent
+```
+TEST: CoderAgent generates code for tasks
+LOCATION: src/execution/agents/CoderAgent.ts
+METHODS: execute(), generateCode(), writeFile(), getSystemPrompt()
+EXTENDS: BaseAgentRunner
+
+VERIFY: Extends BaseAgentRunner
+VERIFY: Uses ClaudeClient for code generation
+VERIFY: getSystemPrompt() returns coding-focused prompt
+VERIFY: execute() returns TaskResult with:
+  - taskId, success, files[], metrics
+VERIFY: Detects [TASK_COMPLETE] marker in response
+VERIFY: Writes generated code to correct files
+VERIFY: Handles file creation and modification
+VERIFY: Tracks tokens used and time spent
+
+REAL_EXECUTION_TEST: Generate simple function, verify code
+REAL_EXECUTION_TEST: Modify existing file, verify changes
+REAL_EXECUTION_TEST: Test iteration limit (should not loop forever)
+
+INTEGRATION_CHECK: Uses ToolExecutor for file operations
+INTEGRATION_CHECK: Works within WorktreeManager isolation
+INTEGRATION_CHECK: Returns TaskResult compatible with QA loop
+SILENT_FAILURE_CHECK: Code generated but not written to file
+SILENT_FAILURE_CHECK: Infinite loop without completion marker
+SILENT_FAILURE_CHECK: Wrong file modified
+SILENT_FAILURE_CHECK: Partial code written on error
+SILENT_FAILURE_CHECK: Token count not tracked
+```
+
+#### P14B-AGT-003: TesterAgent
+```
+TEST: TesterAgent writes tests for code
+LOCATION: src/execution/agents/TesterAgent.ts
+METHODS: execute(), writeTests(), analyzeCode(), getSystemPrompt()
+EXTENDS: BaseAgentRunner
+
+VERIFY: Extends BaseAgentRunner
+VERIFY: Uses ClaudeClient for test generation
+VERIFY: getSystemPrompt() returns testing-focused prompt
+VERIFY: execute() returns TaskResult with files
+VERIFY: Generates tests that match target code
+VERIFY: Places test files in correct location
+VERIFY: Uses appropriate test framework (Vitest)
+VERIFY: Includes edge cases and error handling tests
+
+REAL_EXECUTION_TEST: Generate tests for simple function
+REAL_EXECUTION_TEST: Test coverage of target code
+
+INTEGRATION_CHECK: Uses TestRunner to validate generated tests
+INTEGRATION_CHECK: Works within WorktreeManager isolation
+SILENT_FAILURE_CHECK: Tests generated but don't actually test anything
+SILENT_FAILURE_CHECK: Tests pass but don't cover target code
+SILENT_FAILURE_CHECK: Test file created in wrong location
+SILENT_FAILURE_CHECK: Import paths incorrect
+```
+
+#### P14B-AGT-004: ReviewerAgent
+```
+TEST: ReviewerAgent reviews code changes
+LOCATION: src/execution/agents/ReviewerAgent.ts
+METHODS: execute(), reviewChanges(), formatFeedback(), getSystemPrompt()
+EXTENDS: BaseAgentRunner
+
+VERIFY: Extends BaseAgentRunner
+VERIFY: Uses GeminiClient for code review
+VERIFY: getSystemPrompt() returns review-focused prompt
+VERIFY: execute() returns TaskResult with review outcome
+VERIFY: Reviews git diff for changes
+VERIFY: Returns approval status and issue list
+VERIFY: Formats feedback for CoderAgent consumption
+
+REAL_EXECUTION_TEST: Review code change, verify issues identified
+REAL_EXECUTION_TEST: Review clean code, verify approval
+
+INTEGRATION_CHECK: Coordinates with CoderRunner for fix cycle
+INTEGRATION_CHECK: Uses GitService for diff generation
+SILENT_FAILURE_CHECK: Always approves regardless of quality
+SILENT_FAILURE_CHECK: Issues identified but not reported
+SILENT_FAILURE_CHECK: API failure returns false approval
+SILENT_FAILURE_CHECK: Review prompt too large (truncated)
+```
+
+#### P14B-AGT-005: MergerAgent
+```
+TEST: MergerAgent handles merge operations
+LOCATION: src/execution/agents/MergerAgent.ts
+METHODS: execute(), resolveConflicts(), analyzeDiff(), getSystemPrompt()
+EXTENDS: BaseAgentRunner
+
+VERIFY: Extends BaseAgentRunner
+VERIFY: Uses ClaudeClient for conflict resolution
+VERIFY: getSystemPrompt() returns merge-focused prompt
+VERIFY: execute() returns TaskResult with merge outcome
+VERIFY: Analyzes merge conflicts from git
+VERIFY: Proposes conflict resolutions
+VERIFY: Escalates complex conflicts to human
+VERIFY: Preserves both sides' intent when resolving
+
+REAL_EXECUTION_TEST: Resolve simple conflict
+REAL_EXECUTION_TEST: Detect complex conflict requiring escalation
+
+INTEGRATION_CHECK: Uses GitService for merge operations
+INTEGRATION_CHECK: Works with WorktreeManager
+INTEGRATION_CHECK: Coordinates with EscalationHandler
+SILENT_FAILURE_CHECK: Conflict ignored, code corrupted
+SILENT_FAILURE_CHECK: Auto-resolution produces invalid code
+SILENT_FAILURE_CHECK: Complex conflict not escalated
+SILENT_FAILURE_CHECK: Merge markers left in code
+```
+
+#### P14B-AGT-006: AgentPool
+```
+TEST: AgentPool manages agent lifecycle
+LOCATION: src/orchestration/agents/AgentPool.ts
+METHODS: spawn(), terminate(), assign(), release(), getAll(), getActive(), getAvailable(), getById(), size()
+INTERFACE: IAgentPool
+
+VERIFY: Implements IAgentPool interface
+VERIFY: spawn() creates PoolAgent with:
+  - id: unique identifier
+  - type: AgentType
+  - status: 'idle'
+  - metrics: initialized AgentMetrics
+  - spawnedAt: Date
+VERIFY: spawn() respects max agents per type
+VERIFY: terminate() destroys agent and cleans up
+VERIFY: assign() links agent to task
+VERIFY: assign() accepts optional worktreePath
+VERIFY: assign() updates status to 'assigned'
+VERIFY: release() returns agent to pool
+VERIFY: release() updates status to 'idle'
+VERIFY: release() updates lastActiveAt
+VERIFY: getAll() returns all agents
+VERIFY: getActive() returns non-idle agents
+VERIFY: getAvailable() returns first idle agent or undefined
+VERIFY: getById() returns agent or undefined
+VERIFY: size() returns current pool size
+
+STUB_CHECK: NO stub markers in code (TODO, FIXME, stub, placeholder)
+REAL_CHECK: spawn() actually creates agent instances
+REAL_CHECK: Agents can execute tasks
+
+INTEGRATION_CHECK: Works with NexusCoordinator.agentPool
+INTEGRATION_CHECK: spawn() creates correct agent runner type
+SILENT_FAILURE_CHECK: Pool exhausted without error
+SILENT_FAILURE_CHECK: Agent leaked, not returned to pool
+SILENT_FAILURE_CHECK: Terminated agent still in pool
+SILENT_FAILURE_CHECK: Metrics not updated on task completion
+```
+
+### WIRING
+
+#### P14B-WIRE-001: NexusFactory
+```
+TEST: NexusFactory creates complete Nexus instance
+LOCATION: src/NexusFactory.ts
+METHODS: create(), createForTesting(), createNexus()
+
+VERIFY: create() returns NexusInstance with:
+  - coordinator: NexusCoordinator
+  - agentPool: AgentPool
+  - taskQueue: TaskQueue
+  - qaRunner: QARunner (from QARunnerFactory)
+  - iterator: RalphStyleIterator
+  - checkpointManager: CheckpointManager
+VERIFY: All dependencies wired correctly:
+  - ClaudeClient created with API key
+  - GeminiClient created with API key
+  - TaskDecomposer with ClaudeClient
+  - DependencyResolver
+  - TimeEstimator
+  - AgentPool with both clients
+  - QARunnerFactory with GeminiClient, GitService
+  - RalphStyleIterator with QARunner
+  - NexusCoordinator with all dependencies
+VERIFY: createForTesting() returns mock-enabled instance
+VERIFY: createForTesting() allows dependency injection
+VERIFY: createNexus() is convenience function for create()
+
+INTEGRATION_CHECK: Returned instance can run Genesis mode
+INTEGRATION_CHECK: Returned instance can run Evolution mode
+INTEGRATION_CHECK: All components communicate correctly
+SILENT_FAILURE_CHECK: Dependency missing, null reference later
+SILENT_FAILURE_CHECK: Wrong client passed to wrong component
+SILENT_FAILURE_CHECK: API keys not validated
+SILENT_FAILURE_CHECK: Environment variables missing but no error
+```
+
+---
+
+**[TASK 8 COMPLETE]**
+
+Task 8 extracted all Phase 14B Execution Bindings:
+- P14B-QA-001 through P14B-QA-005: QA Runners (5 components)
+- P14B-PLN-001 through P14B-PLN-003: Planning (3 components)
+- P14B-AGT-001 through P14B-AGT-006: Agents (6 components)
+- P14B-WIRE-001: NexusFactory (1 component)
+
+Total: 15 Phase 14B components with ~85 new tests
+
+Each component includes:
+- LOCATION: Source file path
+- METHODS: Key methods to test
+- INTERFACE: Interface implemented (if applicable)
+- VERIFY: Specific behavior verifications
+- REAL_EXECUTION_TEST: Tests requiring actual execution
+- INTEGRATION_CHECK: Integration points
+- SILENT_FAILURE_CHECK: Potential silent failure modes
+- STUB_CHECK: Verification that no stubs remain
