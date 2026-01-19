@@ -1,10 +1,30 @@
-# Phase 16: Full CLI Support Integration
+# Phase 17: Nexus UI Complete Redesign
 
-## MISSION CRITICAL - READ CAREFULLY
+## MISSION STATEMENT
 
-Integrate full CLI support for Claude and Gemini into Nexus, plus local embeddings support. This must integrate **flawlessly** with the existing infrastructure, matching patterns, not breaking any existing functionality.
+Design and implement a complete UI overhaul for Nexus that reflects **every capability** of the powerful backend system. The UI must be professional, clean, and provide the **best user experience** in the AI development tool space.
 
-**Philosophy:** CLI-first (prefer CLI over API), but BOTH must be available options.
+**Philosophy:** "The UI should be a window into Nexus's power, not a wall hiding it."
+
+---
+
+## CRITICAL CONSTRAINTS
+
+```
+╔════════════════════════════════════════════════════════════════════════════════╗
+║  ⚠️  READ CAREFULLY - THESE ARE NON-NEGOTIABLE                                 ║
+╠════════════════════════════════════════════════════════════════════════════════╣
+║                                                                                ║
+║  1. NO FUNCTIONALITY CHANGES - Backend works perfectly, don't touch logic      ║
+║  2. NO BREAKING CHANGES - All 2,084+ tests must continue to pass              ║
+║  3. NO BACKEND MODIFICATIONS - UI only, call existing APIs/services           ║
+║  4. MINOR FIXES ALLOWED - Only if absolutely necessary and non-breaking       ║
+║                                                                                ║
+║  The backend is a tested, working powerhouse. Your job is to EXPOSE it,       ║
+║  not change it.                                                                ║
+║                                                                                ║
+╚════════════════════════════════════════════════════════════════════════════════╝
+```
 
 ---
 
@@ -16,2396 +36,1788 @@ C:\Users\Omar Khaled\OneDrive\Desktop\Nexus
 
 ---
 
-## Current State (From Analysis)
+# ═══════════════════════════════════════════════════════════════════════════════
+# PART 1: RESEARCH & EXTRACTION PHASE
+# ═══════════════════════════════════════════════════════════════════════════════
 
-| Client | API | CLI | Status |
-|--------|-----|-----|--------|
-| Claude | ✅ ClaudeClient | ✅ ClaudeCodeCLIClient (46 tests) | CLI exists but not exposed in NexusFactory |
-| Gemini | ✅ GeminiClient | ❌ Missing | Need to create GeminiCLIClient |
-| OpenAI | ✅ EmbeddingsService | N/A | Keep as-is for API |
-| Local Embeddings | ❌ Missing | N/A | Need to add (like auto-claude) |
+## Objective
+
+Before designing anything, you must deeply understand EVERY capability Nexus has. Extract a complete map of:
+- All services and their methods
+- All data models and their fields
+- All events and their payloads
+- All user-configurable options
+- All real-time data streams
+
+## Research Tasks
+
+### Task R1: Extract Service Layer Capabilities
+
+**Goal:** Map every service that the UI can call.
+
+```bash
+# Find all services
+find src -name "*Service*.ts" -o -name "*service*.ts" | grep -v test | grep -v ".d.ts"
+
+# Find all public methods in services
+for file in $(find src -name "*Service*.ts" | grep -v test); do
+  echo "=== $file ==="
+  grep -E "^\s*(public |async |export ).*\(" "$file" | head -30
+done
+```
+
+**Document in** `.agent/workspace/PHASE_17_RESEARCH/SERVICES.md`:
+
+```markdown
+# Nexus Services Map
+
+## Interview Services
+- InterviewEngine
+  - startSession(): Creates new interview
+  - processMessage(): Handles user input
+  - extractRequirements(): Parses requirements
+  - ...
+
+## Planning Services  
+- TaskDecomposer
+  - decompose(): Breaks features into tasks
+  - ...
+
+## Execution Services
+- AgentPool
+  - ...
+
+[Continue for ALL services]
+```
+
+### Task R2: Extract Data Models & Types
+
+**Goal:** Understand all data structures the UI needs to display.
+
+```bash
+# Find all type definitions
+find src -name "types.ts" -o -name "*.types.ts" | grep -v node_modules
+
+# Find all interfaces
+grep -rn "^export interface" src/ --include="*.ts" | grep -v test | grep -v node_modules
+```
+
+**Document in** `.agent/workspace/PHASE_17_RESEARCH/DATA_MODELS.md`:
+
+```markdown
+# Nexus Data Models
+
+## Core Entities
+- Project: { id, name, path, mode, status, ... }
+- Task: { id, name, description, status, assignedAgent, ... }
+- Agent: { id, type, status, currentTask, ... }
+
+## Settings
+- LLMProviderSettings: { claude, gemini, embeddings }
+- ClaudeSettings: { backend, model, apiKey, ... }
+
+[Continue for ALL models]
+```
+
+### Task R3: Extract Event System
+
+**Goal:** Map all events the UI can subscribe to for real-time updates.
+
+```bash
+# Find EventBus usage
+grep -rn "eventBus\|EventBus\|emit\|on(" src/ --include="*.ts" | grep -v test | head -50
+
+# Find event types
+grep -rn "Event\s*=" src/ --include="*.ts" | grep -v test
+```
+
+**Document in** `.agent/workspace/PHASE_17_RESEARCH/EVENTS.md`:
+
+```markdown
+# Nexus Event System
+
+## Interview Events
+- interview:started - { sessionId, timestamp }
+- interview:message - { sessionId, role, content }
+- interview:complete - { sessionId, requirements }
+
+## Agent Events
+- agent:spawned - { agentId, type }
+- agent:working - { agentId, taskId, progress }
+- agent:complete - { agentId, taskId, result }
+
+## QA Events
+- qa:build:start - { taskId }
+- qa:build:complete - { taskId, success, errors }
+- qa:lint:start - ...
+
+[Continue for ALL events]
+```
+
+### Task R4: Extract Configuration Options
+
+**Goal:** Find every setting the user can configure.
+
+```bash
+# Find settings/config types
+grep -rn "Settings\|Config" src/shared/types/ --include="*.ts"
+cat src/shared/types/settings.ts
+
+# Find defaults
+grep -rn "DEFAULT_" src/ --include="*.ts" | grep -v test | grep -v node_modules
+```
+
+**Document in** `.agent/workspace/PHASE_17_RESEARCH/CONFIG_OPTIONS.md`:
+
+```markdown
+# Nexus Configuration Options
+
+## LLM Configuration
+### Claude
+- backend: 'cli' | 'api' (default: 'cli')
+- model: string (default: 'claude-sonnet-4-5-20250929')
+- Available models: [list from models.ts]
+- timeout: number (default: 300000)
+- maxRetries: number (default: 2)
+
+### Gemini
+- backend: 'cli' | 'api' (default: 'cli')
+- model: string (default: 'gemini-2.5-flash')
+- Available models: [list from models.ts]
+...
+
+## Agent Configuration
+- Agent pool limits
+- Per-agent model assignments
+
+## Checkpoint Configuration
+- Auto-save interval
+- Max checkpoints
+
+[Continue for ALL configurable options]
+```
+
+### Task R5: Extract Database Schema
+
+**Goal:** Understand what data is persisted and can be displayed.
+
+```bash
+# Find database/schema files
+find src -name "*schema*" -o -name "*database*" -o -name "*migration*" | grep -v node_modules
+
+# Find table/collection definitions
+grep -rn "CREATE TABLE\|createTable\|schema\." src/ --include="*.ts" | grep -v test
+```
+
+**Document in** `.agent/workspace/PHASE_17_RESEARCH/DATABASE.md`:
+
+```markdown
+# Nexus Database Schema
+
+## Tables
+### projects
+- id: string (primary key)
+- name: string
+- path: string
+- mode: 'genesis' | 'evolution'
+- created_at: timestamp
+- updated_at: timestamp
+
+### tasks
+- id: string (primary key)
+- project_id: string (foreign key)
+- name: string
+- status: 'pending' | 'in_progress' | 'complete' | 'failed'
+...
+
+[Continue for ALL tables]
+```
+
+### Task R6: Extract Existing UI Components
+
+**Goal:** Inventory current components to understand what exists and what needs redesign.
+
+```bash
+# Find all React components
+find src/renderer -name "*.tsx" | grep -v test
+
+# Find component structure
+ls -la src/renderer/src/components/
+ls -la src/renderer/src/pages/
+
+# Find Zustand stores
+find src -name "*store*" -o -name "*Store*" | grep -v node_modules | grep -v test
+```
+
+**Document in** `.agent/workspace/PHASE_17_RESEARCH/EXISTING_UI.md`:
+
+```markdown
+# Existing Nexus UI
+
+## Pages
+- InterviewPage.tsx - [current state description]
+- KanbanPage.tsx - [current state description]
+- SettingsPage.tsx - [current state description]
+- DashboardPage.tsx - [if exists]
+
+## Components
+- [list all components]
+
+## Stores (Zustand)
+- settingsStore - [what it manages]
+- projectStore - [if exists]
+...
+
+## Gaps Identified
+- No real-time agent activity view
+- No execution logs view
+- Settings missing model dropdowns
+...
+```
+
+### Task R7: Create Feature-to-UI Mapping
+
+**Goal:** Create the master mapping of backend features to UI elements.
+
+**Document in** `.agent/workspace/PHASE_17_RESEARCH/FEATURE_UI_MAP.md`:
+
+```markdown
+# Feature to UI Mapping
+
+| Backend Feature | Current UI | Required UI | Priority |
+|-----------------|------------|-------------|----------|
+| InterviewEngine | InterviewPage (basic) | Enhanced chat with requirement cards | HIGH |
+| TaskDecomposer | None visible | Task breakdown visualization | HIGH |
+| AgentPool | Kanban (basic) | Real-time agent activity panel | HIGH |
+| QA Runners | None | Build/Lint/Test/Review status cards | HIGH |
+| CheckpointManager | None | Checkpoint history timeline | MEDIUM |
+| MemorySystem | None | Context/memory visualization | MEDIUM |
+| CLI Backend Toggle | None | Settings toggle | HIGH |
+| Model Selection | Text input | Dropdown with all models | HIGH |
+| Per-Agent Models | None | Agent configuration panel | MEDIUM |
+...
+
+[Map EVERY backend feature]
+```
+
+---
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# PART 2: NEXUS DESIGN IDENTITY
+# ═══════════════════════════════════════════════════════════════════════════════
+
+## Design Philosophy
+
+Nexus is an **autonomous AI application builder**. The UI should convey:
+- **Power** - This tool builds entire applications
+- **Intelligence** - AI agents working in harmony
+- **Trust** - Professional, reliable, enterprise-ready
+- **Clarity** - Complex processes made understandable
+
+## Visual Identity
+
+### Color Palette
+
+```
+PRIMARY COLORS
+==============
+Background Dark:    #0D1117  (GitHub-like deep dark)
+Background Card:    #161B22  (Elevated surfaces)
+Background Hover:   #21262D  (Interactive states)
+
+Accent Primary:     #7C3AED  (Nexus Purple - AI/Intelligence)
+Accent Secondary:   #06B6D4  (Cyan - Technology/Speed)
+Accent Success:     #10B981  (Green - Success/Complete)
+Accent Warning:     #F59E0B  (Amber - Attention)
+Accent Error:       #EF4444  (Red - Error/Failed)
+
+Text Primary:       #F0F6FC  (High contrast)
+Text Secondary:     #8B949E  (Muted/descriptions)
+Text Tertiary:      #6E7681  (Disabled/hints)
+
+Border Default:     #30363D  (Subtle separation)
+Border Focus:       #7C3AED  (Focus states - accent)
+```
+
+### Typography
+
+```
+Font Family:        'Inter', -apple-system, BlinkMacSystemFont, sans-serif
+Font Mono:          'JetBrains Mono', 'Fira Code', monospace
+
+Headings:
+  H1: 28px / 700 weight / -0.02em tracking
+  H2: 22px / 600 weight / -0.01em tracking  
+  H3: 18px / 600 weight / normal tracking
+  H4: 16px / 500 weight / normal tracking
+
+Body:
+  Large:  16px / 400 weight / 1.6 line-height
+  Normal: 14px / 400 weight / 1.5 line-height
+  Small:  12px / 400 weight / 1.4 line-height
+
+Code:
+  Normal: 13px / 400 weight / 1.5 line-height
+```
+
+### Spacing System
+
+```
+Base unit: 4px
+
+Spacing scale:
+  xs:   4px   (0.25rem)
+  sm:   8px   (0.5rem)
+  md:   16px  (1rem)
+  lg:   24px  (1.5rem)
+  xl:   32px  (2rem)
+  2xl:  48px  (3rem)
+  3xl:  64px  (4rem)
+```
+
+### Border Radius
+
+```
+None:     0px      (Sharp edges for code blocks)
+Small:    4px      (Buttons, inputs, small elements)
+Medium:   8px      (Cards, panels)
+Large:    12px     (Modal dialogs, large cards)
+Full:     9999px   (Pills, avatars, circular elements)
+```
+
+### Shadows
+
+```
+Elevation 1:  0 1px 2px rgba(0, 0, 0, 0.3)           (Subtle lift)
+Elevation 2:  0 4px 8px rgba(0, 0, 0, 0.4)           (Cards, dropdowns)
+Elevation 3:  0 8px 16px rgba(0, 0, 0, 0.5)          (Modals, overlays)
+Glow:         0 0 20px rgba(124, 58, 237, 0.3)       (Accent glow effect)
+```
+
+### Iconography
+
+```
+Icon Library:       Lucide React (consistent, clean)
+Icon Size Small:    16px
+Icon Size Normal:   20px
+Icon Size Large:    24px
+Icon Stroke:        1.5px (matches Inter weight)
+```
+
+---
+
+## UI/UX Principles
+
+### 1. Progressive Disclosure
+
+```
+DEFAULT VIEW                    EXPANDED VIEW
+============                    =============
+Summary card                    Full details panel
+"3 tasks complete"    →         List of all tasks with details
+Progress bar                    Step-by-step breakdown
+                                Logs and output
+```
+
+**Implementation:**
+- Every summary should be expandable
+- Click/hover to reveal more
+- "Show more" / "Show less" patterns
+- Collapsible sections
+
+### 2. Real-Time Feedback
+
+```
+Every action should have immediate visual feedback:
+
+User clicks "Start"  →  Button shows loading state
+                     →  Status changes to "Starting..."
+                     →  Progress indicator appears
+                     →  Real-time updates stream in
+                     →  Completion animation
+```
+
+### 3. Information Hierarchy
+
+```
+MOST IMPORTANT (Always visible)
+├── Current status
+├── Active task
+└── Critical errors
+
+IMPORTANT (Visible on page)
+├── Progress indicators
+├── Recent activity
+└── Quick actions
+
+DETAILS (On demand)
+├── Full logs
+├── Configuration
+└── Historical data
+```
+
+### 4. Consistent Patterns
+
+```
+CARDS - For discrete pieces of information
+TABLES - For lists of similar items
+PANELS - For detailed views
+MODALS - For focused actions (sparingly)
+TOASTS - For transient notifications
+```
+
+---
+
+## Component Design Standards
+
+### Buttons
+
+```tsx
+// Primary - Main actions
+<Button variant="primary">Start Genesis</Button>
+// Background: accent-primary, Text: white
+
+// Secondary - Secondary actions  
+<Button variant="secondary">View Details</Button>
+// Background: transparent, Border: border-default, Text: text-primary
+
+// Ghost - Tertiary actions
+<Button variant="ghost">Cancel</Button>
+// Background: transparent, Text: text-secondary
+
+// Danger - Destructive actions
+<Button variant="danger">Delete Project</Button>
+// Background: accent-error, Text: white
+
+// States: hover, active, disabled, loading
+```
+
+### Inputs
+
+```tsx
+// Text input with label
+<Input 
+  label="Project Name"
+  placeholder="my-awesome-app"
+  hint="Letters, numbers, and hyphens only"
+  error="Name is required"
+/>
+
+// Select dropdown
+<Select
+  label="Claude Model"
+  options={getClaudeModelList()}
+  value={settings.claude.model}
+  onChange={...}
+/>
+
+// Toggle switch
+<Toggle
+  label="Use CLI Backend"
+  checked={settings.claude.backend === 'cli'}
+  onChange={...}
+/>
+```
+
+### Cards
+
+```tsx
+// Status card with expandable details
+<StatusCard
+  title="Build"
+  status="success" // success | error | running | pending
+  summary="Compiled successfully"
+  expandable={true}
+>
+  <CodeBlock>{buildOutput}</CodeBlock>
+</StatusCard>
+```
+
+### Agent Indicators
+
+```tsx
+// Agent status badge
+<AgentBadge
+  type="coder"        // planner | coder | tester | reviewer | merger
+  status="working"    // idle | working | complete | error
+  task="Implementing auth middleware"
+/>
+```
+
+---
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# PART 3: PAGE DESIGNS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+## Navigation Structure
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│  [Nexus Logo]   Dashboard  Projects  Settings          [?] [⚙️] [👤] │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│                         PAGE CONTENT                                │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**Navigation Items:**
+- **Dashboard** - Overview of all projects and activity
+- **Projects** - List/manage projects (Genesis & Evolution)
+- **Settings** - All configuration options
+
+**Within a Project:**
+- **Overview** - Project status and summary
+- **Interview** - Requirements gathering (Genesis mode)
+- **Tasks** - Kanban board of all tasks
+- **Agents** - Real-time agent activity
+- **Execution** - Build/Test/Review logs
+- **Memory** - Context and learned information
+- **Settings** - Project-specific settings
+
+---
+
+## Page: Dashboard
+
+**Purpose:** High-level overview of Nexus activity across all projects.
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ Dashboard                                                    [+ New Project] │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐             │
+│  │ Active Projects │  │  Tasks Today    │  │  Agent Activity │             │
+│  │       3         │  │      12         │  │    5 working    │             │
+│  └─────────────────┘  └─────────────────┘  └─────────────────┘             │
+│                                                                             │
+│  Recent Projects                                              [View All →]  │
+│  ┌──────────────────────────────────────────────────────────────────────┐  │
+│  │ 🚀 my-saas-app          Genesis    ████████░░ 80%    2 agents active │  │
+│  │ 🔄 legacy-refactor      Evolution  ██████████ Done   Completed today │  │
+│  │ 🆕 mobile-app           Genesis    ██░░░░░░░░ 15%    Planning phase  │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+│                                                                             │
+│  Live Agent Feed                                                            │
+│  ┌──────────────────────────────────────────────────────────────────────┐  │
+│  │ [Coder]    Working on: auth/middleware.ts         my-saas-app        │  │
+│  │ [Tester]   Running tests: 47/52 passed            my-saas-app        │  │
+│  │ [Reviewer] Reviewing: database schema             mobile-app         │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Data Sources:**
+- Project list from database
+- Task counts from TaskQueue
+- Agent status from AgentPool
+- Real-time updates from EventBus
+
+---
+
+## Page: Interview (Genesis Mode)
+
+**Purpose:** Guided conversation to gather project requirements.
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ ← Back    Interview: my-saas-app                    [Save Draft] [Complete] │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌─────────────────────────────────────┬───────────────────────────────────┐│
+│  │         CONVERSATION                │      EXTRACTED REQUIREMENTS       ││
+│  │                                     │                                   ││
+│  │  ┌─────────────────────────────┐   │  Requirements (7)      [Export]   ││
+│  │  │ 🤖 What kind of application │   │                                   ││
+│  │  │    would you like to build? │   │  ┌─────────────────────────────┐ ││
+│  │  └─────────────────────────────┘   │  │ ✓ User Authentication       │ ││
+│  │                                     │  │   - Email/password login    │ ││
+│  │  ┌─────────────────────────────┐   │  │   - OAuth (Google, GitHub)  │ ││
+│  │  │ 👤 I want to build a SaaS   │   │  │   Priority: HIGH            │ ││
+│  │  │    platform for project     │   │  └─────────────────────────────┘ ││
+│  │  │    management with team     │   │                                   ││
+│  │  │    collaboration features   │   │  ┌─────────────────────────────┐ ││
+│  │  └─────────────────────────────┘   │  │ ✓ Team Management           │ ││
+│  │                                     │  │   - Create/join teams       │ ││
+│  │  ┌─────────────────────────────┐   │  │   - Role-based permissions  │ ││
+│  │  │ 🤖 Great! Let me understand │   │  │   Priority: HIGH            │ ││
+│  │  │    the authentication...    │   │  └─────────────────────────────┘ ││
+│  │  └─────────────────────────────┘   │                                   ││
+│  │                                     │  ┌─────────────────────────────┐ ││
+│  │  [Type your response...]     [Send] │  │ ○ Real-time Updates         │ ││
+│  │                                     │  │   - WebSocket connections   │ ││
+│  └─────────────────────────────────────┴───────────────────────────────────┘│
+│                                                                             │
+│  Interview Progress: ████████████████░░░░░░░░ 65%  ~5 questions remaining   │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Data Sources:**
+- InterviewEngine for conversation
+- RequirementExtractor for right panel
+- Real-time message events
+
+---
+
+## Page: Tasks (Kanban Board)
+
+**Purpose:** Visual task management with agent assignments.
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ ← Back    Tasks: my-saas-app                      [Filter ▼] [+ Add Task]  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐           │
+│  │  PLANNED    │ │ IN PROGRESS │ │  IN REVIEW  │ │  COMPLETE   │           │
+│  │     (5)     │ │     (3)     │ │     (2)     │ │    (12)     │           │
+│  ├─────────────┤ ├─────────────┤ ├─────────────┤ ├─────────────┤           │
+│  │             │ │             │ │             │ │             │           │
+│  │ ┌─────────┐ │ │ ┌─────────┐ │ │ ┌─────────┐ │ │ ┌─────────┐ │           │
+│  │ │ Setup   │ │ │ │ Auth    │ │ │ │ Database│ │ │ │ Init    │ │           │
+│  │ │ CI/CD   │ │ │ │ System  │ │ │ │ Schema  │ │ │ │ Project │ │           │
+│  │ │         │ │ │ │ ───────  │ │ │ │ ──────── │ │ │ │ ✓       │ │           │
+│  │ │ 25 min  │ │ │ │ [Coder] │ │ │ │[Reviewer]│ │ │ │ 15 min  │ │           │
+│  │ │ ○○○○○   │ │ │ │ ████░░  │ │ │ │ Pending │ │ │ │ ●●●●●   │ │           │
+│  │ └─────────┘ │ │ └─────────┘ │ │ └─────────┘ │ │ └─────────┘ │           │
+│  │             │ │             │ │             │ │             │           │
+│  │ ┌─────────┐ │ │ ┌─────────┐ │ │ ┌─────────┐ │ │ ┌─────────┐ │           │
+│  │ │ Payment │ │ │ │ API     │ │ │ │ User    │ │ │ │ Package │ │           │
+│  │ │ Gateway │ │ │ │ Routes  │ │ │ │ Tests   │ │ │ │ Setup   │ │           │
+│  │ │         │ │ │ │ ──────── │ │ │ │ ──────── │ │ │ │ ✓       │ │           │
+│  │ │ 30 min  │ │ │ │ [Coder] │ │ │ │[Tester] │ │ │ │ 10 min  │ │           │
+│  │ └─────────┘ │ │ └─────────┘ │ │ └─────────┘ │ │ └─────────┘ │           │
+│  │             │ │             │ │             │ │             │           │
+│  └─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘           │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Data Sources:**
+- TaskQueue for task list
+- DependencyResolver for ordering
+- AgentPool for assignments
+- Real-time task status events
+
+---
+
+## Page: Agents (Real-Time Activity)
+
+**Purpose:** Watch AI agents work in real-time.
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ ← Back    Agent Activity: my-saas-app                          [Pause All] │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  Agent Pool Status                                                          │
+│  ┌───────────────────────────────────────────────────────────────────────┐ │
+│  │ [Planner]  ●  Idle      │ [Coder]    ●  Working   │ [Tester]  ●  Idle │ │
+│  │ [Reviewer] ●  Working   │ [Merger]   ●  Idle      │                   │ │
+│  └───────────────────────────────────────────────────────────────────────┘ │
+│                                                                             │
+│  ┌─────────────────────────────────┬───────────────────────────────────────┐│
+│  │      ACTIVE AGENTS              │         SELECTED AGENT DETAILS        ││
+│  │                                 │                                       ││
+│  │  ┌───────────────────────────┐  │  Coder Agent                         ││
+│  │  │ 🔵 Coder                  │  │  ─────────────────────────────────── ││
+│  │  │ Task: Auth middleware     │  │                                       ││
+│  │  │ File: src/auth/index.ts   │  │  Model: claude-sonnet-4-5            ││
+│  │  │ Progress: ████████░░ 75%  │  │  Task: Implementing auth middleware  ││
+│  │  │ Iteration: 3/50           │  │  Files modified: 3                   ││
+│  │  └───────────────────────────┘  │  Current iteration: 3 of 50 max      ││
+│  │                                 │                                       ││
+│  │  ┌───────────────────────────┐  │  Live Output:                        ││
+│  │  │ 🟢 Reviewer               │  │  ┌─────────────────────────────────┐ ││
+│  │  │ Task: Database schema     │  │  │ Creating authMiddleware.ts...  │ ││
+│  │  │ Status: Analyzing code    │  │  │ Adding JWT validation...       │ ││
+│  │  │ Model: gemini-2.5-pro     │  │  │ Implementing refresh tokens... │ ││
+│  │  └───────────────────────────┘  │  │ Running type check...          │ ││
+│  │                                 │  │ ✓ No TypeScript errors         │ ││
+│  │  ┌───────────────────────────┐  │  └─────────────────────────────────┘ ││
+│  │  │ ⚫ Planner (idle)         │  │                                       ││
+│  │  │ ⚫ Tester (idle)          │  │  QA Status:                          ││
+│  │  │ ⚫ Merger (idle)          │  │  [Build ✓] [Lint ✓] [Test ◌] [Rev ◌]││
+│  │  └───────────────────────────┘  │                                       ││
+│  └─────────────────────────────────┴───────────────────────────────────────┘│
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Data Sources:**
+- AgentPool for agent status
+- RalphStyleIterator for iteration count
+- EventBus for real-time updates
+- QA runners for build/lint/test/review status
+
+---
+
+## Page: Execution Logs
+
+**Purpose:** Detailed view of build, lint, test, and review outputs.
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ ← Back    Execution: my-saas-app                              [Clear Logs] │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  [Build] [Lint] [Test] [Review]                        Current Task: Auth  │
+│  ───────────────────────────────                                           │
+│                                                                             │
+│  Build Output                                              ✓ Success        │
+│  ┌──────────────────────────────────────────────────────────────────────┐  │
+│  │ $ tsc --noEmit                                                       │  │
+│  │                                                                      │  │
+│  │ Compiling 47 files...                                                │  │
+│  │ ✓ src/auth/middleware.ts                                             │  │
+│  │ ✓ src/auth/jwt.ts                                                    │  │
+│  │ ✓ src/auth/oauth.ts                                                  │  │
+│  │                                                                      │  │
+│  │ Compilation complete. 0 errors.                                      │  │
+│  │ Duration: 2.3s                                                       │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+│                                                                             │
+│  Lint Output                                               ✓ 0 issues      │
+│  ┌──────────────────────────────────────────────────────────────────────┐  │
+│  │ $ eslint src/ --ext .ts,.tsx                                         │  │
+│  │                                                                      │  │
+│  │ ✓ All files passed linting                                           │  │
+│  │ Checked 47 files in 1.1s                                             │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+│                                                                             │
+│  Test Output                                               ✓ 23/23 pass    │
+│  ┌──────────────────────────────────────────────────────────────────────┐  │
+│  │ $ vitest run                                                         │  │
+│  │                                                                      │  │
+│  │  ✓ auth/middleware.test.ts (8 tests)                                 │  │
+│  │  ✓ auth/jwt.test.ts (10 tests)                                       │  │
+│  │  ✓ auth/oauth.test.ts (5 tests)                                      │  │
+│  │                                                                      │  │
+│  │ Test Files  3 passed (3)                                             │  │
+│  │ Tests       23 passed (23)                                           │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Data Sources:**
+- BuildRunner output
+- LintRunner output
+- TestRunner output
+- ReviewRunner output
+
+---
+
+## Page: Settings (Enhanced)
+
+**Purpose:** Complete configuration of all Nexus options.
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ Settings                                                                    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  [LLM Providers] [Agents] [Checkpoints] [UI] [Projects]                     │
+│  ────────────────                                                           │
+│                                                                             │
+│  Claude Configuration                                                       │
+│  ┌──────────────────────────────────────────────────────────────────────┐  │
+│  │                                                                      │  │
+│  │  Backend        [● CLI] [○ API]           ✓ CLI detected            │  │
+│  │                                                                      │  │
+│  │  Model          [claude-sonnet-4-5-20250929        ▼]               │  │
+│  │                 Best balance of speed and intelligence               │  │
+│  │                                                                      │  │
+│  │  API Key        [••••••••••••••••••••••••] (optional for CLI)       │  │
+│  │                                                                      │  │
+│  │  ▼ Advanced                                                          │  │
+│  │    Timeout      [300000] ms                                          │  │
+│  │    Max Retries  [2]                                                  │  │
+│  │                                                                      │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+│                                                                             │
+│  Gemini Configuration                                                       │
+│  ┌──────────────────────────────────────────────────────────────────────┐  │
+│  │                                                                      │  │
+│  │  Backend        [● CLI] [○ API]           ✓ CLI detected            │  │
+│  │                                                                      │  │
+│  │  Model          [gemini-2.5-flash                  ▼]               │  │
+│  │                 Fast and capable - Best for production use           │  │
+│  │                                                                      │  │
+│  │  API Key        [••••••••••••••••••••••••] (optional for CLI)       │  │
+│  │                                                                      │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+│                                                                             │
+│  Embeddings Configuration                                                   │
+│  ┌──────────────────────────────────────────────────────────────────────┐  │
+│  │                                                                      │  │
+│  │  Backend        [● Local] [○ OpenAI API]  ✓ No API key needed       │  │
+│  │                                                                      │  │
+│  │  Model          [Xenova/all-MiniLM-L6-v2           ▼]               │  │
+│  │                 Fast, lightweight - 384 dimensions                   │  │
+│  │                                                                      │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+│                                                                             │
+│                                                      [Reset Defaults] [Save]│
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Settings: Agents Tab
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ Settings                                                                    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  [LLM Providers] [Agents] [Checkpoints] [UI] [Projects]                     │
+│                  ────────                                                   │
+│                                                                             │
+│  Agent Model Assignments                                                    │
+│  ┌──────────────────────────────────────────────────────────────────────┐  │
+│  │                                                                      │  │
+│  │  Each agent can use a different model optimized for its role.        │  │
+│  │                                                                      │  │
+│  │  ┌─────────────────────────────────────────────────────────────────┐│  │
+│  │  │ Agent      │ Provider  │ Model                                  ││  │
+│  │  ├────────────┼───────────┼────────────────────────────────────────┤│  │
+│  │  │ 🧠 Planner │ [Claude▼] │ [claude-opus-4-5-20251101          ▼] ││  │
+│  │  │ 💻 Coder   │ [Claude▼] │ [claude-sonnet-4-5-20250929        ▼] ││  │
+│  │  │ 🧪 Tester  │ [Claude▼] │ [claude-sonnet-4-5-20250929        ▼] ││  │
+│  │  │ 👁️ Reviewer│ [Gemini▼] │ [gemini-2.5-pro                    ▼] ││  │
+│  │  │ 🔀 Merger  │ [Claude▼] │ [claude-sonnet-4-5-20250929        ▼] ││  │
+│  │  └─────────────────────────────────────────────────────────────────┘│  │
+│  │                                                                      │  │
+│  │  [Use Recommended Defaults]                                          │  │
+│  │                                                                      │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+│                                                                             │
+│  Agent Pool Limits                                                          │
+│  ┌──────────────────────────────────────────────────────────────────────┐  │
+│  │                                                                      │  │
+│  │  Max Concurrent Agents    [5]                                        │  │
+│  │  QA Iteration Limit       [50]        (escalate to human after)     │  │
+│  │  Task Time Limit          [30] min    (split if exceeded)           │  │
+│  │                                                                      │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+│                                                                             │
+│                                                      [Reset Defaults] [Save]│
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Page: Memory/Context View (Optional - If Time Permits)
+
+**Purpose:** Show what Nexus "knows" about the project.
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ ← Back    Memory: my-saas-app                                              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  Repository Map                                         [Refresh] [Export] │
+│  ┌──────────────────────────────────────────────────────────────────────┐  │
+│  │ src/                                                                 │  │
+│  │ ├── auth/                                                            │  │
+│  │ │   ├── middleware.ts    [AuthMiddleware, validateJWT, refreshToken] │  │
+│  │ │   ├── jwt.ts           [signToken, verifyToken, TokenPayload]      │  │
+│  │ │   └── oauth.ts         [GoogleOAuth, GitHubOAuth]                  │  │
+│  │ ├── api/                                                             │  │
+│  │ │   ├── routes.ts        [setupRoutes, apiRouter]                    │  │
+│  │ │   └── handlers/        [userHandler, teamHandler, projectHandler]  │  │
+│  │ └── database/                                                        │  │
+│  │     ├── schema.ts        [User, Team, Project, Task]                 │  │
+│  │     └── migrations/      [001_init, 002_add_teams]                   │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+│                                                                             │
+│  Learned Patterns                                                           │
+│  ┌──────────────────────────────────────────────────────────────────────┐  │
+│  │ • Project uses TypeScript with strict mode                           │  │
+│  │ • Database: PostgreSQL with Prisma ORM                               │  │
+│  │ • Auth: JWT with refresh token rotation                              │  │
+│  │ • Testing: Vitest with 85% coverage requirement                      │  │
+│  │ • Style: ESLint + Prettier, 2-space indentation                      │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# PART 4: EXECUTION PLAN
+# ═══════════════════════════════════════════════════════════════════════════════
+
+## Phase 17 Structure
+
+```
+PHASE 17A: RESEARCH & DESIGN SPECS (Tasks 1-7)
+==============================================
+Task 1: Execute all research tasks (R1-R7)
+Task 2: Create complete feature-to-UI mapping
+Task 3: Design component library specifications
+Task 4: Create wireframes for each page
+Task 5: Define all component props and states
+Task 6: Document data flow for each page
+Task 7: Create design spec document
+
+PHASE 17B: FOUNDATION (Tasks 8-12)
+===================================
+Task 8: Set up design system (colors, typography, spacing)
+Task 9: Create base components (Button, Input, Select, Toggle, Card)
+Task 10: Create layout components (Sidebar, Header, Page)
+Task 11: Create feedback components (Toast, Modal, Loading)
+Task 12: Create agent-specific components (AgentBadge, StatusCard)
+
+PHASE 17C: CORE PAGES (Tasks 13-22)
+===================================
+Task 13: Redesign Navigation and App Shell
+Task 14: Redesign Dashboard Page
+Task 15: TEST Dashboard with Playwright MCP (must pass before continuing)
+Task 16: Redesign Interview Page
+Task 17: TEST Interview with Playwright MCP (must pass before continuing)
+Task 18: Redesign Tasks/Kanban Page
+Task 19: TEST Tasks with Playwright MCP (must pass before continuing)
+Task 20: Create Agents Activity Page
+Task 21: TEST Agents with Playwright MCP (must pass before continuing)
+Task 22: Create Execution Logs Page
+Task 23: TEST Execution with Playwright MCP (must pass before continuing)
+
+PHASE 17D: SETTINGS & POLISH (Tasks 24-31)
+==========================================
+Task 24: Redesign Settings - LLM Providers tab
+Task 25: Redesign Settings - Agents tab
+Task 26: Create Settings - Checkpoints tab
+Task 27: Create Settings - UI Preferences tab
+Task 28: TEST Settings (all tabs) with Playwright MCP (must pass before continuing)
+Task 29: Add animations and micro-interactions
+Task 30: Responsive design and final polish
+Task 31: TEST all pages responsive design with Playwright MCP
+
+PHASE 17E: INTEGRATION & FINAL TESTING (Tasks 32-36)
+====================================================
+Task 32: Connect all pages to real data
+Task 33: Test all real-time updates with Playwright MCP
+Task 34: Run FULL Playwright test suite (all pages)
+Task 35: Visual regression testing (screenshots comparison)
+Task 36: Generate final test report and documentation
+
+[PHASE 17 COMPLETE - ALL PLAYWRIGHT TESTS MUST PASS]
+```
+
+### CRITICAL: Testing Gates
+
+```
+╔════════════════════════════════════════════════════════════════════════════════╗
+║  🚫 DO NOT proceed to the next page until Playwright tests PASS               ║
+╠════════════════════════════════════════════════════════════════════════════════╣
+║                                                                                ║
+║  Dashboard  ──[TEST]──►  Interview  ──[TEST]──►  Tasks  ──[TEST]──►           ║
+║                                                                                ║
+║  Agents  ──[TEST]──►  Execution  ──[TEST]──►  Settings  ──[TEST]──►           ║
+║                                                                                ║
+║  Final Polish  ──[FULL TEST SUITE]──►  COMPLETE ✓                             ║
+║                                                                                ║
+╚════════════════════════════════════════════════════════════════════════════════╝
+```
+
+---
+
+## Design Spec Document Template
+
+For Task 7, create `.agent/workspace/PHASE_17_DESIGN/DESIGN_SPEC.md`:
+
+```markdown
+# Nexus UI Design Specification
+
+## 1. Design System
+### Colors
+[Full color palette with hex codes and usage]
+
+### Typography
+[Font families, sizes, weights, line heights]
+
+### Spacing
+[Spacing scale with usage examples]
+
+### Components
+[List of all components with props]
+
+## 2. Page Specifications
+
+### Dashboard
+- Purpose: [description]
+- Data sources: [list]
+- Components used: [list]
+- User interactions: [list]
+- Wireframe: [ASCII or description]
+
+### Interview
+[Same structure]
+
+### Tasks
+[Same structure]
+
+[Continue for all pages]
+
+## 3. Component Specifications
+
+### Button
+- Variants: primary, secondary, ghost, danger
+- Sizes: sm, md, lg
+- States: default, hover, active, disabled, loading
+- Props: [list with types]
+
+[Continue for all components]
+
+## 4. Data Flow
+
+### Real-time Updates
+- EventBus subscriptions per page
+- State management approach
+- Optimistic updates
+
+### API Calls
+- Service methods called per page
+- Loading states
+- Error handling
+
+## 5. Animations
+
+### Micro-interactions
+- Button hover/click
+- Card expansion
+- Status transitions
+
+### Page Transitions
+- Route changes
+- Modal open/close
+```
+
+---
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# PART 5: IMPLEMENTATION GUIDELINES
+# ═══════════════════════════════════════════════════════════════════════════════
+
+## Code Standards
+
+```typescript
+// Component file structure
+src/renderer/src/
+├── components/
+│   ├── ui/              // Base design system components
+│   │   ├── Button.tsx
+│   │   ├── Input.tsx
+│   │   ├── Select.tsx
+│   │   └── ...
+│   ├── layout/          // Layout components
+│   │   ├── Sidebar.tsx
+│   │   ├── Header.tsx
+│   │   └── PageLayout.tsx
+│   ├── agents/          // Agent-specific components
+│   │   ├── AgentBadge.tsx
+│   │   ├── AgentCard.tsx
+│   │   └── AgentActivity.tsx
+│   └── ...
+├── pages/
+│   ├── DashboardPage.tsx
+│   ├── InterviewPage.tsx
+│   ├── TasksPage.tsx
+│   ├── AgentsPage.tsx
+│   ├── ExecutionPage.tsx
+│   └── SettingsPage.tsx
+├── stores/              // Zustand stores
+│   ├── settingsStore.ts
+│   ├── projectStore.ts
+│   └── agentStore.ts
+├── hooks/               // Custom hooks
+│   ├── useEventBus.ts
+│   ├── useAgent.ts
+│   └── useSettings.ts
+└── styles/
+    └── globals.css      // Tailwind + custom styles
+```
+
+## Component Template
+
+```tsx
+// src/renderer/src/components/ui/Button.tsx
+
+import React from 'react';
+import { cn } from '@/lib/utils';
+
+export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
+  size?: 'sm' | 'md' | 'lg';
+  loading?: boolean;
+}
+
+export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ className, variant = 'primary', size = 'md', loading, children, disabled, ...props }, ref) => {
+    return (
+      <button
+        ref={ref}
+        disabled={disabled || loading}
+        className={cn(
+          // Base styles
+          'inline-flex items-center justify-center rounded-md font-medium transition-colors',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary',
+          'disabled:pointer-events-none disabled:opacity-50',
+          
+          // Variants
+          variant === 'primary' && 'bg-accent-primary text-white hover:bg-accent-primary/90',
+          variant === 'secondary' && 'border border-border-default bg-transparent hover:bg-bg-hover',
+          variant === 'ghost' && 'hover:bg-bg-hover',
+          variant === 'danger' && 'bg-accent-error text-white hover:bg-accent-error/90',
+          
+          // Sizes
+          size === 'sm' && 'h-8 px-3 text-sm',
+          size === 'md' && 'h-10 px-4 text-sm',
+          size === 'lg' && 'h-12 px-6 text-base',
+          
+          className
+        )}
+        {...props}
+      >
+        {loading ? (
+          <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+        ) : null}
+        {children}
+      </button>
+    );
+  }
+);
+
+Button.displayName = 'Button';
+```
+
+## Data Fetching Pattern
+
+```tsx
+// Using custom hook for agent data
+export function useAgentStatus() {
+  const [agents, setAgents] = useState<AgentStatus[]>([]);
+  const eventBus = useEventBus();
+  
+  useEffect(() => {
+    // Initial load
+    const loadAgents = async () => {
+      const status = await agentPool.getStatus();
+      setAgents(status);
+    };
+    loadAgents();
+    
+    // Real-time updates
+    const unsubscribe = eventBus.on('agent:status', (event) => {
+      setAgents(prev => prev.map(a => 
+        a.id === event.agentId ? { ...a, ...event } : a
+      ));
+    });
+    
+    return () => unsubscribe();
+  }, []);
+  
+  return agents;
+}
+```
+
+---
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# PART 6: FREEDOM & CREATIVITY
+# ═══════════════════════════════════════════════════════════════════════════════
+
+## Ralph's Creative Freedom
+
+While following the design system and principles above, Ralph has freedom to:
+
+1. **Add new views** that would benefit users, as long as they:
+   - Follow the Nexus design identity
+   - Match the visual language of other pages
+   - Expose useful backend functionality
+   - Don't duplicate existing pages
+
+2. **Enhance interactions** with:
+   - Thoughtful animations
+   - Helpful tooltips
+   - Keyboard shortcuts
+   - Context menus
+   - Drag-and-drop where useful
+
+3. **Improve information display** by:
+   - Creating better visualizations
+   - Adding charts/graphs where data warrants
+   - Designing better status indicators
+   - Creating more intuitive layouts
+
+4. **Add quality-of-life features** like:
+   - Command palette (Cmd+K)
+   - Breadcrumb navigation
+   - Quick actions
+   - Recently visited
+   - Search functionality
 
 ---
 
 ## Success Criteria
 
-1. **Claude CLI** exposed in NexusFactory as first-class option
-2. **GeminiCLIClient** created matching ClaudeCodeCLIClient patterns
-3. **Local Embeddings** option added (like auto-claude's llama implementation)
-4. **Settings UI** allows users to choose API vs CLI for each provider
-5. **Config file** option for technical users
-6. **Smart Fallback** - If CLI unavailable, show helpful error with two options
-7. **All 1,910+ existing tests still pass**
-8. **New tests** for all new functionality
-9. **Zero TypeScript errors**
-10. **Zero ESLint errors**
-
----
-
-## Phase Structure (18 Tasks)
-
 ```
-PHASE A: RESEARCH & ANALYSIS (Tasks 1-3)
-========================================
-Task 1: Research Gemini CLI - flags, output format, authentication
-Task 2: Analyze existing ClaudeCodeCLIClient patterns
-Task 3: Research auto-claude's local embeddings implementation
+PHASE 17 SUCCESS CHECKLIST
+==========================
 
-PHASE B: GEMINI CLI CLIENT (Tasks 4-7)
-======================================
-Task 4: Create GeminiCLIClient interface and types
-Task 5: Implement GeminiCLIClient core functionality
-Task 6: Add GeminiCLIClient error handling and retry logic
-Task 7: Write GeminiCLIClient tests (target: 40+ tests)
+Design System:
+[ ] Color palette implemented consistently
+[ ] Typography scale applied throughout
+[ ] Spacing system used consistently
+[ ] All base components created
+[ ] Dark theme polished
 
-PHASE C: LOCAL EMBEDDINGS (Tasks 8-10)
-======================================
-Task 8: Create LocalEmbeddingsService interface
-Task 9: Implement LocalEmbeddingsService (llama-based)
-Task 10: Write LocalEmbeddingsService tests
+Pages:
+[ ] Dashboard - Complete with live data
+[ ] Interview - Redesigned with requirement extraction
+[ ] Tasks - Kanban with agent assignments
+[ ] Agents - Real-time activity monitoring
+[ ] Execution - Build/Lint/Test/Review logs
+[ ] Settings - All configuration options exposed
 
-PHASE D: NEXUSFACTORY INTEGRATION (Tasks 11-13)
-===============================================
-Task 11: Update NexusFactoryConfig to support CLI backends
-Task 12: Implement backend selection logic in NexusFactory
-Task 13: Add CLI availability detection and smart fallback errors
+Functionality:
+[ ] All backend features exposed in UI
+[ ] Real-time updates working
+[ ] All settings configurable
+[ ] Model dropdowns populated
+[ ] Backend toggles working
+[ ] Per-agent configuration working
 
-PHASE E: SETTINGS & CONFIGURATION (Tasks 14-16)
-===============================================
-Task 14: Update Settings types for LLM backend preferences
-Task 15: Wire Settings to LLMProvider selection
-Task 16: Add config file support for technical users
+Quality:
+[ ] No console errors
+[ ] Responsive design
+[ ] Consistent interactions
+[ ] Smooth animations
+[ ] Professional polish
 
-PHASE F: FINALIZATION (Tasks 17-18)
-===================================
-Task 17: Integration testing - all backends work together
-Task 18: Final lint, typecheck, test verification
-
-[PHASE 16 COMPLETE]
+Testing:
+[ ] All existing tests pass (2,084+)
+[ ] UI components accessible
+[ ] No breaking changes to backend
+[ ] Playwright E2E tests pass for ALL pages
 ```
 
 ---
 
-# ============================================================================
-# PHASE A: RESEARCH & ANALYSIS
-# ============================================================================
+# ═══════════════════════════════════════════════════════════════════════════════
+# PART 7: PLAYWRIGHT MCP TESTING (CRITICAL)
+# ═══════════════════════════════════════════════════════════════════════════════
 
-## Task 1: Research Gemini CLI
+## Why Playwright Testing is MANDATORY
 
-### Objective
-Research the `gemini` CLI tool to understand how to wrap it properly.
-
-### Instructions
-
-**Step 1: Check if Gemini CLI exists and its basic usage**
-
-```bash
-# Check if installed
-which gemini || where gemini
-
-# Get help/usage
-gemini --help
-
-# Check version
-gemini --version
+```
+╔════════════════════════════════════════════════════════════════════════════════╗
+║  ⚠️  CRITICAL: Every page MUST be tested with Playwright MCP                   ║
+╠════════════════════════════════════════════════════════════════════════════════╣
+║                                                                                ║
+║  The ONLY way to guarantee a perfect UI on the first try is to:               ║
+║  1. Implement the page                                                         ║
+║  2. Test it with Playwright MCP                                               ║
+║  3. Fix any issues found                                                       ║
+║  4. Re-test until perfect                                                      ║
+║                                                                                ║
+║  DO NOT move to the next page until Playwright tests PASS for current page.   ║
+║                                                                                ║
+╚════════════════════════════════════════════════════════════════════════════════╝
 ```
 
-**Step 2: Research output formats**
+## Playwright MCP Testing Strategy
 
-Determine:
-- Does it support JSON output? (`--output-format json` or similar)
-- Does it support streaming?
-- What's the authentication method? (API key, gcloud auth, etc.)
-- Can it run non-interactively? (`--no-interactive` or similar)
+### For EACH Page, Test the Following:
 
-**Step 3: Test a simple prompt**
+```
+PAGE TESTING CHECKLIST
+======================
 
-```bash
-# Try running a simple prompt
-echo "Say hello" | gemini
-# or
-gemini "Say hello"
-# or
-gemini --prompt "Say hello"
+1. RENDERING
+   - Page loads without errors
+   - All expected components render
+   - No console errors
+   - No missing images/assets
+
+2. LAYOUT
+   - Correct positioning of elements
+   - Responsive at different viewport sizes
+   - No overlapping elements
+   - Proper spacing between components
+
+3. STYLING
+   - Correct colors applied (use visual comparison)
+   - Typography matches design system
+   - Hover states work correctly
+   - Focus states visible
+
+4. INTERACTIVITY
+   - All buttons clickable
+   - All inputs focusable and typeable
+   - Dropdowns open and close
+   - Modals open and close
+   - Toggles switch states
+   - Forms submit correctly
+
+5. DATA DISPLAY
+   - Real data loads and displays
+   - Loading states shown while fetching
+   - Empty states shown when no data
+   - Error states shown on failure
+
+6. REAL-TIME UPDATES
+   - EventBus events trigger UI updates
+   - Status changes reflect immediately
+   - Progress indicators update
+   - Live feeds scroll/update
+
+7. NAVIGATION
+   - All links work
+   - Breadcrumbs update
+   - Back button works
+   - Route parameters work
 ```
 
-**Step 4: Document findings**
+### Playwright Test Structure
 
-Create `.agent/workspace/GEMINI_CLI_RESEARCH.md` with:
-
-```markdown
-# Gemini CLI Research
-
-## Installation
-- How to install: [command]
-- Version tested: [version]
-
-## Authentication
-- Method: [API key / gcloud auth / other]
-- Environment variable: [if any]
-
-## Command Format
-- Basic: `gemini [flags] [prompt]`
-- With file: [if supported]
-
-## Output Formats
-- Default: [text/json/other]
-- JSON flag: [flag if exists]
-- Streaming: [yes/no, how]
-
-## Useful Flags
-- [list all relevant flags]
-
-## Example Commands
-```
-[working example commands]
-```
-
-## Limitations
-- [any limitations discovered]
-```
-
-### Task 1 Completion Checklist
-- [x] Gemini CLI availability checked
-- [x] Help documentation reviewed
-- [x] Authentication method identified
-- [x] Output format options identified
-- [x] Example commands tested
-- [x] Research document created
-
-**[TASK 1 COMPLETE]** - Completed on 2026-01-19
-
-### Task 1 Summary
-- **Version**: 0.24.0
-- **Auth**: OAuth/gcloud cached credentials
-- **JSON Output**: `-o json` returns `{"session_id":"...","response":"...","stats":{...}}`
-- **Streaming**: `-o stream-json` returns NDJSON format
-- **Non-interactive**: `--yolo` flag
-- **Model selection**: `-m, --model gemini-2.5-pro`
-- **Research document**: `.agent/workspace/GEMINI_CLI_RESEARCH.md`
-
----
-
-## Task 2: Analyze Existing ClaudeCodeCLIClient Patterns
-
-### Objective
-Understand the patterns used in ClaudeCodeCLIClient to replicate for Gemini.
-
-### Instructions
-
-**Step 1: Read ClaudeCodeCLIClient implementation**
-
-Read `src/llm/clients/ClaudeCodeCLIClient.ts` and document:
-
-```markdown
-# ClaudeCodeCLIClient Pattern Analysis
-
-## Class Structure
-- Constructor parameters
-- Private methods
-- Public interface methods
-
-## Key Patterns
-
-### 1. CLI Execution Pattern
-```typescript
-// How does it spawn the process?
-// What flags does it use?
-// How does it handle stdin/stdout?
-```
-
-### 2. Response Parsing Pattern
-```typescript
-// How does it parse JSON output?
-// How does it handle streaming?
-// How does it extract content from response?
-```
-
-### 3. Error Handling Pattern
-```typescript
-// What errors does it catch?
-// How does it retry?
-// What's the backoff strategy?
-```
-
-### 4. Tool Mapping Pattern
-```typescript
-// How does it map LLM tools to CLI tools?
-// What's the tool result format?
-```
-
-### 5. Availability Check Pattern
-```typescript
-// How does isAvailable() work?
-// What does it check?
-```
-
-## Interface Compliance
-- Implements: LLMClient interface
-- Methods required: [list]
-
-## Configuration
-- ClaudeCodeCLIConfig interface
-- Default values
-```
-
-**Step 2: Read the test file**
-
-Read `src/llm/clients/ClaudeCodeCLIClient.test.ts` to understand:
-- What scenarios are tested
-- How mocking is done
-- Test patterns to replicate
-
-**Step 3: Document in workspace**
-
-Create `.agent/workspace/CLAUDE_CLI_PATTERNS.md` with findings.
-
-### Task 2 Completion Checklist
-- [x] ClaudeCodeCLIClient.ts fully analyzed
-- [x] All patterns documented
-- [x] Test patterns documented
-- [x] Pattern document created
-
-**[TASK 2 COMPLETE]** - Completed on 2026-01-19
-
-### Task 2 Summary
-- **File Location**: `src/llm/clients/ClaudeCodeCLIClient.ts` (455 lines)
-- **Test File**: `src/llm/clients/ClaudeCodeCLIClient.test.ts` (849 lines, 46 tests)
-- **Pattern Document**: `.agent/workspace/CLAUDE_CLI_PATTERNS.md`
-
-**Key Patterns Identified:**
-1. **CLI Execution Pattern**: Uses `spawn()` with `shell: true` on Windows
-2. **Retry Logic**: Exponential backoff (1s, 2s, 4s)
-3. **Error Handling**: `CLIError` extends `LLMError`, `CLINotFoundError` for ENOENT
-4. **Response Parsing**: Handles multiple JSON field names, snake_case variants
-5. **Message Conversion**: `Human:` / `Assistant:` format, system prompt separate
-6. **Tool Mapping**: Maps Nexus tools to CLI tools (read_file -> Read)
-7. **Mock Pattern**: EventEmitter-based mock child process for tests
-
-**Key Differences for Gemini:**
-- Non-interactive: `--yolo` (not `--print`)
-- JSON output: `-o json` (not `--output-format json`)
-- Prompt: Positional argument (not `--message`)
-- Response: `response` field with nested `stats.models.<model>.tokens`
-- No `--system-prompt` support (prepend to prompt)
-
----
-
-## Task 3: Research Auto-Claude's Local Embeddings Implementation
-
-### Objective
-Research how auto-claude implements local embeddings to replicate in Nexus.
-
-### Instructions
-
-**Step 1: Search for auto-claude embedding implementation**
-
-Look for:
-- Local embedding service/client
-- Llama or other local model usage
-- Embedding dimension handling
-- Fallback logic
-
-**Step 2: Web search if needed**
-
-```bash
-# Search for auto-claude embeddings implementation
-# Look for patterns like:
-# - LocalEmbeddings
-# - LlamaEmbeddings
-# - OfflineEmbeddings
-```
-
-**Step 3: Document implementation approach**
-
-Create `.agent/workspace/LOCAL_EMBEDDINGS_RESEARCH.md` with:
-
-```markdown
-# Local Embeddings Research
-
-## Auto-Claude Implementation
-- File location: [if found]
-- Model used: [llama/other]
-- Embedding dimensions: [number]
-
-## Implementation Approach for Nexus
-
-### Option A: Transformers.js
-- Runs in Node.js
-- Models: all-MiniLM-L6-v2, etc.
-- Pros/cons
-
-### Option B: Ollama
-- Local LLM server
-- Embedding endpoint
-- Pros/cons
-
-### Option C: LlamaIndex/LlamaCpp
-- Direct model loading
-- Pros/cons
-
-## Recommended Approach
-[Which option and why]
-
-## Dimension Compatibility
-- OpenAI text-embedding-3-small: 1536 dimensions
-- Local model: [dimensions]
-- Migration strategy: [if different]
-
-## Fallback Strategy
-- If local model unavailable: [behavior]
-```
-
-### Task 3 Completion Checklist
-- [x] Auto-claude implementation researched
-- [x] Implementation options documented
-- [x] Recommended approach chosen
-- [x] Dimension compatibility addressed
-- [x] Research document created
-
-**[TASK 3 COMPLETE]** - Completed on 2026-01-19
-
-### Task 3 Summary
-- **Research Document**: `.agent/workspace/LOCAL_EMBEDDINGS_RESEARCH.md`
-- **Recommended Approach**: Transformers.js with `@huggingface/transformers`
-- **Model**: `Xenova/all-MiniLM-L6-v2` (384 dimensions)
-- **Fallback**: OpenAI API if key available
-
-**Key Findings:**
-1. **Transformers.js**: Zero external dependencies, runs in Node.js, ~25MB model
-2. **Ollama**: Higher quality (1024 dims), but requires external server
-3. **Dimension Strategy**: Separate vector stores per backend (not padding/truncating)
-4. **Interface**: Match existing EmbeddingsService for compatibility
-
----
-
-# ============================================================================
-# PHASE B: GEMINI CLI CLIENT
-# ============================================================================
-
-## Task 4: Create GeminiCLIClient Interface and Types
-
-### Objective
-Create the type definitions and interface for GeminiCLIClient.
-
-### Instructions
-
-**Step 1: Create types file**
-
-Create `src/llm/clients/GeminiCLIClient.types.ts`:
+Create tests in `tests/e2e/` for each page:
 
 ```typescript
-// =============================================================================
-// FILE: src/llm/clients/GeminiCLIClient.types.ts
-// PURPOSE: Type definitions for Gemini CLI client
-// =============================================================================
+// tests/e2e/dashboard.spec.ts
+import { test, expect } from '@playwright/test';
 
-export interface GeminiCLIConfig {
-  /** Path to gemini CLI binary (default: 'gemini') */
-  cliPath?: string;
-  
-  /** Working directory for CLI execution */
-  workingDirectory?: string;
-  
-  /** Timeout in milliseconds (default: 300000 = 5 min) */
-  timeout?: number;
-  
-  /** Maximum retry attempts (default: 2) */
-  maxRetries?: number;
-  
-  /** Model to use (default: 'gemini-2.5-pro' or similar) */
-  model?: string;
-  
-  /** Additional CLI flags */
-  additionalFlags?: string[];
-}
+test.describe('Dashboard Page', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/dashboard');
+  });
 
-export interface GeminiCLIResponse {
-  content: string;
-  model: string;
-  usage?: {
-    inputTokens: number;
-    outputTokens: number;
-  };
-  finishReason?: string;
-}
-
-export interface GeminiCLIError {
-  code: string;
-  message: string;
-  retriable: boolean;
-}
-
-export const DEFAULT_GEMINI_CLI_CONFIG: Required<Omit<GeminiCLIConfig, 'additionalFlags'>> = {
-  cliPath: 'gemini',
-  workingDirectory: process.cwd(),
-  timeout: 300000,
-  maxRetries: 2,
-  model: 'gemini-2.5-pro',
-};
-```
-
-**Step 2: Verify interface compatibility**
-
-Check `src/llm/types.ts` or similar for the `LLMClient` interface that GeminiCLIClient must implement.
-
-### Task 4 Completion Checklist
-- [x] Types file created
-- [x] Config interface defined
-- [x] Response interface defined
-- [x] Error interface defined
-- [x] Default config values set
-- [x] Interface compatibility verified
-
-**[TASK 4 COMPLETE]** - Completed on 2026-01-19
-
-### Task 4 Summary
-- **File Created**: `src/llm/clients/GeminiCLIClient.types.ts`
-- **Config Interface**: `GeminiCLIConfig` with cliPath, workingDirectory, timeout, maxRetries, model, additionalFlags, logger
-- **Response Interface**: `GeminiCLIResponse` with content, model, sessionId, usage, latencyMs
-- **Raw Response Interface**: `GeminiCLIRawResponse` matching actual CLI JSON output structure
-- **Streaming Types**: `GeminiStreamChunk` union type with init, message, result, error chunks (for `-o stream-json`)
-- **Error Types**: `GeminiCLIErrorCode` enum and `GeminiCLIErrorInfo` structured error
-- **Error Patterns**: `GEMINI_ERROR_PATTERNS` array for categorizing CLI errors
-- **Default Values**: `DEFAULT_GEMINI_CLI_CONFIG` with CLI-first defaults
-- **Token Stats**: `GeminiTokenStats`, `GeminiModelStats` matching actual `stats.models.<model>.tokens` structure
-- **TypeScript**: Compiles without errors
-
----
-
-## Task 5: Implement GeminiCLIClient Core Functionality
-
-### Objective
-Implement the core GeminiCLIClient matching ClaudeCodeCLIClient patterns.
-
-### Instructions
-
-**Step 1: Create the client file**
-
-Create `src/llm/clients/GeminiCLIClient.ts`:
-
-```typescript
-// =============================================================================
-// FILE: src/llm/clients/GeminiCLIClient.ts
-// PURPOSE: Gemini CLI client wrapping the 'gemini' binary
-// =============================================================================
-
-import { spawn } from 'child_process';
-import { LLMClient, LLMRequest, LLMResponse, LLMError } from '../types';
-import { 
-  GeminiCLIConfig, 
-  GeminiCLIResponse, 
-  DEFAULT_GEMINI_CLI_CONFIG 
-} from './GeminiCLIClient.types';
-
-export class GeminiCLIClient implements LLMClient {
-  private config: Required<GeminiCLIConfig>;
-  
-  constructor(config: GeminiCLIConfig = {}) {
-    this.config = {
-      ...DEFAULT_GEMINI_CLI_CONFIG,
-      ...config,
-      additionalFlags: config.additionalFlags || [],
-    };
-  }
-  
-  /**
-   * Check if Gemini CLI is available on the system
-   */
-  async isAvailable(): Promise<boolean> {
-    try {
-      // Implement: spawn gemini --version and check exit code
-      // Return true if successful, false otherwise
-    } catch {
-      return false;
-    }
-  }
-  
-  /**
-   * Send a chat request to Gemini via CLI
-   */
-  async chat(request: LLMRequest): Promise<LLMResponse> {
-    // Implement following ClaudeCodeCLIClient patterns:
-    // 1. Build command arguments
-    // 2. Spawn process
-    // 3. Write prompt to stdin (if needed)
-    // 4. Capture stdout/stderr
-    // 5. Parse response
-    // 6. Return formatted LLMResponse
-  }
-  
-  /**
-   * Stream a chat response from Gemini via CLI
-   */
-  async *stream(request: LLMRequest): AsyncGenerator<string> {
-    // Implement streaming if Gemini CLI supports it
-    // Otherwise, fall back to non-streaming and yield full response
-  }
-  
-  /**
-   * Build CLI arguments from request
-   */
-  private buildArgs(request: LLMRequest): string[] {
-    const args: string[] = [];
-    
-    // Add model flag
-    args.push('--model', this.config.model);
-    
-    // Add output format flag (based on research)
-    // args.push('--output-format', 'json');
-    
-    // Add any additional flags
-    args.push(...this.config.additionalFlags);
-    
-    return args;
-  }
-  
-  /**
-   * Parse CLI output into LLMResponse
-   */
-  private parseResponse(output: string): LLMResponse {
-    // Parse based on research findings
-    // Handle JSON or text output
-  }
-  
-  /**
-   * Execute CLI command with retry logic
-   */
-  private async executeWithRetry(
-    args: string[], 
-    input: string
-  ): Promise<string> {
-    let lastError: Error | null = null;
-    
-    for (let attempt = 0; attempt <= this.config.maxRetries; attempt++) {
-      try {
-        return await this.execute(args, input);
-      } catch (error) {
-        lastError = error as Error;
-        
-        // Check if retriable
-        if (!this.isRetriableError(error)) {
-          throw error;
-        }
-        
-        // Exponential backoff
-        if (attempt < this.config.maxRetries) {
-          await this.delay(Math.pow(2, attempt) * 1000);
-        }
-      }
-    }
-    
-    throw lastError;
-  }
-  
-  /**
-   * Execute CLI command
-   */
-  private execute(args: string[], input: string): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const process = spawn(this.config.cliPath, args, {
-        cwd: this.config.workingDirectory,
-        timeout: this.config.timeout,
+  test.describe('Rendering', () => {
+    test('should load without errors', async ({ page }) => {
+      // Check no console errors
+      const errors: string[] = [];
+      page.on('console', msg => {
+        if (msg.type() === 'error') errors.push(msg.text());
       });
       
-      let stdout = '';
-      let stderr = '';
-      
-      process.stdout.on('data', (data) => {
-        stdout += data.toString();
+      await page.waitForLoadState('networkidle');
+      expect(errors).toHaveLength(0);
+    });
+
+    test('should display all main sections', async ({ page }) => {
+      await expect(page.locator('[data-testid="stats-cards"]')).toBeVisible();
+      await expect(page.locator('[data-testid="recent-projects"]')).toBeVisible();
+      await expect(page.locator('[data-testid="agent-feed"]')).toBeVisible();
+    });
+  });
+
+  test.describe('Interactivity', () => {
+    test('should navigate to project when clicked', async ({ page }) => {
+      await page.click('[data-testid="project-card"]:first-child');
+      await expect(page).toHaveURL(/\/projects\/.+/);
+    });
+
+    test('should open new project modal', async ({ page }) => {
+      await page.click('[data-testid="new-project-button"]');
+      await expect(page.locator('[data-testid="new-project-modal"]')).toBeVisible();
+    });
+  });
+
+  test.describe('Data Display', () => {
+    test('should show loading state initially', async ({ page }) => {
+      // Intercept and delay API response
+      await page.route('**/api/projects', async route => {
+        await new Promise(r => setTimeout(r, 1000));
+        await route.continue();
       });
       
-      process.stderr.on('data', (data) => {
-        stderr += data.toString();
-      });
-      
-      process.on('close', (code) => {
-        if (code === 0) {
-          resolve(stdout);
-        } else {
-          reject(new Error(`Gemini CLI exited with code ${code}: ${stderr}`));
-        }
-      });
-      
-      process.on('error', (error) => {
-        reject(error);
-      });
-      
-      // Write input if needed
-      if (input) {
-        process.stdin.write(input);
-        process.stdin.end();
-      }
+      await page.goto('/dashboard');
+      await expect(page.locator('[data-testid="loading-skeleton"]')).toBeVisible();
     });
-  }
-  
-  private isRetriableError(error: unknown): boolean {
-    // Implement based on error types
-    return false;
-  }
-  
-  private delay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
-  }
-}
-```
 
-**Step 2: Adjust based on Task 1 research**
-
-Modify the implementation based on actual Gemini CLI behavior discovered in Task 1.
-
-### Task 5 Completion Checklist
-- [x] GeminiCLIClient.ts created
-- [x] Implements LLMClient interface
-- [x] isAvailable() implemented
-- [x] chat() implemented
-- [x] stream() implemented (chatStream with NDJSON support)
-- [x] Retry logic implemented (exponential backoff: 1s, 2s, 4s)
-- [x] Based on actual CLI research
-
-**[TASK 5 COMPLETE]** - Completed on 2026-01-19
-
-### Task 5 Summary
-- **File Created**: `src/llm/clients/GeminiCLIClient.ts` (510 lines)
-- **Exports Added**: `src/llm/index.ts` updated with GeminiCLI exports
-- **Error Classes Created**:
-  - `GeminiCLIError` - Base error with exit code and error code
-  - `GeminiCLINotFoundError` - CLI not found (with helpful install instructions)
-  - `GeminiCLIAuthError` - Authentication failure (with gcloud instructions)
-  - `GeminiCLITimeoutError` - Request timeout
-
-**Key Implementation Details:**
-1. **LLMClient Interface**: Implements `chat()`, `chatStream()`, `countTokens()`
-2. **Non-interactive Mode**: Uses `--yolo` flag (Gemini's equivalent of Claude's `--print`)
-3. **JSON Output**: Uses `-o json` for structured parsing
-4. **Streaming**: Uses `-o stream-json` for NDJSON streaming with fallback
-5. **System Prompt**: Prepended to prompt (Gemini CLI lacks `--system-prompt`)
-6. **Message Conversion**: Human:/Assistant: format matching ClaudeCodeCLIClient
-7. **Retry Logic**: Exponential backoff (1s, 2s, 4s) with retriable error detection
-8. **Windows Support**: `shell: true` on Windows for PATH resolution
-9. **Timeout Handling**: Configurable timeout with SIGTERM on expiry
-10. **TypeScript**: Compiles without errors
-
----
-
-## Task 6: Add GeminiCLIClient Error Handling and Smart Fallback
-
-### Objective
-Implement comprehensive error handling with helpful user messages.
-
-### Instructions
-
-**Step 1: Create error types**
-
-Add to `GeminiCLIClient.types.ts` or create `GeminiCLIClient.errors.ts`:
-
-```typescript
-export class GeminiCLINotFoundError extends Error {
-  constructor() {
-    super(
-      `Gemini CLI not found. You have two options:\n\n` +
-      `1. Install Gemini CLI:\n` +
-      `   npm install -g @google/gemini-cli\n` +
-      `   (or visit: https://ai.google.dev/gemini-api/docs/cli)\n\n` +
-      `2. Use API key instead:\n` +
-      `   Set GOOGLE_AI_API_KEY in your .env file\n` +
-      `   Or configure in Settings > LLM Providers > Gemini > Use API\n`
-    );
-    this.name = 'GeminiCLINotFoundError';
-  }
-}
-
-export class GeminiCLIAuthError extends Error {
-  constructor() {
-    super(
-      `Gemini CLI authentication failed. Options:\n\n` +
-      `1. Authenticate with gcloud:\n` +
-      `   gcloud auth application-default login\n\n` +
-      `2. Use API key instead:\n` +
-      `   Set GOOGLE_AI_API_KEY in your .env file\n`
-    );
-    this.name = 'GeminiCLIAuthError';
-  }
-}
-
-export class GeminiCLITimeoutError extends Error {
-  constructor(timeout: number) {
-    super(
-      `Gemini CLI request timed out after ${timeout / 1000} seconds.\n` +
-      `Try increasing timeout in Settings > LLM Providers > Gemini > Timeout`
-    );
-    this.name = 'GeminiCLITimeoutError';
-  }
-}
-```
-
-**Step 2: Integrate error handling into GeminiCLIClient**
-
-Update the client to throw these specific errors:
-
-```typescript
-async isAvailable(): Promise<boolean> {
-  try {
-    await this.execute(['--version'], '');
-    return true;
-  } catch (error) {
-    if (this.isCLINotFoundError(error)) {
-      return false;
-    }
-    throw error;
-  }
-}
-
-async chat(request: LLMRequest): Promise<LLMResponse> {
-  // Check availability first
-  if (!(await this.isAvailable())) {
-    throw new GeminiCLINotFoundError();
-  }
-  
-  try {
-    // ... existing implementation
-  } catch (error) {
-    if (this.isAuthError(error)) {
-      throw new GeminiCLIAuthError();
-    }
-    if (this.isTimeoutError(error)) {
-      throw new GeminiCLITimeoutError(this.config.timeout);
-    }
-    throw error;
-  }
-}
-```
-
-### Task 6 Completion Checklist
-- [x] Error classes created
-- [x] Helpful messages with two options (install or API key)
-- [x] Integrated into GeminiCLIClient
-- [x] Auth errors handled
-- [x] Timeout errors handled
-- [x] Not found errors handled
-
-**[TASK 6 COMPLETE]** - Completed on 2026-01-19
-
-### Task 6 Summary
-- **Error Classes in GeminiCLIClient.ts**:
-  - `GeminiCLIError` - Base error with exit code and error code
-  - `GeminiCLINotFoundError` - Helpful message with npm install + API key options
-  - `GeminiCLIAuthError` - Helpful message with gcloud auth + API key options
-  - `GeminiCLITimeoutError` - Helpful message with Settings path for timeout
-- **Error Wrapping**: `wrapError()` method (lines 564-598) categorizes errors
-- **Retriable Errors**: Rate limits, timeouts, server errors are retriable
-- **Non-Retriable**: Auth failures, invalid requests, CLI not found
-- **All exports in `src/llm/index.ts` include error classes**
-
----
-
-## Task 7: Write GeminiCLIClient Tests
-
-### Objective
-Write comprehensive tests for GeminiCLIClient (target: 40+ tests).
-
-### Instructions
-
-**Step 1: Create test file**
-
-Create `src/llm/clients/GeminiCLIClient.test.ts` following ClaudeCodeCLIClient.test.ts patterns:
-
-```typescript
-// =============================================================================
-// FILE: src/llm/clients/GeminiCLIClient.test.ts
-// PURPOSE: Tests for Gemini CLI client
-// =============================================================================
-
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { GeminiCLIClient } from './GeminiCLIClient';
-import { GeminiCLINotFoundError, GeminiCLIAuthError } from './GeminiCLIClient.errors';
-import * as childProcess from 'child_process';
-
-// Mock child_process
-vi.mock('child_process');
-
-describe('GeminiCLIClient', () => {
-  let client: GeminiCLIClient;
-  
-  beforeEach(() => {
-    client = new GeminiCLIClient();
-    vi.clearAllMocks();
-  });
-  
-  describe('constructor', () => {
-    it('should use default config when none provided', () => {
-      // Test default values
-    });
-    
-    it('should merge provided config with defaults', () => {
-      // Test custom config
-    });
-    
-    it('should allow custom CLI path', () => {
-      // Test custom path
-    });
-  });
-  
-  describe('isAvailable', () => {
-    it('should return true when CLI is installed', async () => {
-      // Mock successful version check
-    });
-    
-    it('should return false when CLI is not installed', async () => {
-      // Mock ENOENT error
-    });
-    
-    it('should return false on permission error', async () => {
-      // Mock EACCES error
-    });
-  });
-  
-  describe('chat', () => {
-    it('should send request and parse response', async () => {
-      // Test successful chat
-    });
-    
-    it('should throw GeminiCLINotFoundError when CLI not available', async () => {
-      // Test not found error
-    });
-    
-    it('should throw GeminiCLIAuthError on authentication failure', async () => {
-      // Test auth error
-    });
-    
-    it('should retry on transient errors', async () => {
-      // Test retry logic
-    });
-    
-    it('should respect timeout configuration', async () => {
-      // Test timeout
-    });
-    
-    // ... more chat tests
-  });
-  
-  describe('stream', () => {
-    it('should yield content chunks', async () => {
-      // Test streaming
-    });
-    
-    // ... more stream tests
-  });
-  
-  describe('error handling', () => {
-    it('should provide helpful message when CLI not found', async () => {
-      // Verify error message includes install instructions
-    });
-    
-    it('should provide helpful message on auth failure', async () => {
-      // Verify error message includes auth instructions
-    });
-    
-    it('should provide API key alternative in errors', async () => {
-      // Verify error message mentions API key option
-    });
-  });
-  
-  describe('retry logic', () => {
-    it('should retry up to maxRetries times', async () => {
-      // Test retry count
-    });
-    
-    it('should use exponential backoff', async () => {
-      // Test backoff timing
-    });
-    
-    it('should not retry non-retriable errors', async () => {
-      // Test non-retriable
+    test('should display project data', async ({ page }) => {
+      await page.waitForSelector('[data-testid="project-card"]');
+      const projectCards = await page.locator('[data-testid="project-card"]').count();
+      expect(projectCards).toBeGreaterThan(0);
     });
   });
 });
 ```
 
-**Step 2: Ensure all test categories are covered**
+### Page-Specific Test Requirements
 
-- Constructor tests (5+)
-- isAvailable tests (5+)
-- chat tests (10+)
-- stream tests (5+)
-- error handling tests (10+)
-- retry logic tests (5+)
-
-### Task 7 Completion Checklist
-- [x] Test file created
-- [x] 40+ tests written (64 tests total!)
-- [x] All test categories covered
-- [x] Mocking done properly
-- [x] All tests pass
-
-**[TASK 7 COMPLETE]** - Completed on 2026-01-19
-
-### Task 7 Summary
-- **File Created**: `src/llm/clients/GeminiCLIClient.test.ts`
-- **Total Tests**: 64 tests (target was 40+)
-- **Test Duration**: ~8.5s
-
-**Test Categories:**
-- Constructor (6 tests)
-- isAvailable (5 tests)
-- getVersion (3 tests)
-- chat (12 tests)
-- chatStream (6 tests)
-- Error handling (10 tests)
-- Retry logic (6 tests)
-- countTokens (3 tests)
-- Response parsing (6 tests)
-- Windows compatibility (2 tests)
-- Error classes (5 tests)
-
-**Mocking Approach:**
-- Uses `vi.mock('child_process')` to mock spawn
-- `createMockChildProcess()` helper creates EventEmitter-based mock processes
-- `createGeminiResponse()` helper generates valid Gemini CLI JSON responses
-- Supports stream chunks, errors, delays, and exit codes
-
----
-
-# ============================================================================
-# PHASE C: LOCAL EMBEDDINGS
-# ============================================================================
-
-## Task 8: Create LocalEmbeddingsService Interface
-
-### Objective
-Define the interface for local embeddings service.
-
-### Instructions
-
-**Step 1: Create types file**
-
-Create `src/persistence/memory/LocalEmbeddingsService.types.ts`:
-
+#### Dashboard Page Tests
 ```typescript
-// =============================================================================
-// FILE: src/persistence/memory/LocalEmbeddingsService.types.ts
-// PURPOSE: Type definitions for local embeddings service
-// =============================================================================
-
-export interface LocalEmbeddingsConfig {
-  /** Model to use (default: 'all-MiniLM-L6-v2' or similar) */
-  model?: string;
-  
-  /** Path to model files (for offline mode) */
-  modelPath?: string;
-  
-  /** Embedding dimensions (must match model) */
-  dimensions?: number;
-  
-  /** Use GPU if available */
-  useGPU?: boolean;
-  
-  /** Batch size for embedding multiple texts */
-  batchSize?: number;
-  
-  /** Cache embeddings in memory */
-  cacheEnabled?: boolean;
-  
-  /** Maximum cache size */
-  maxCacheSize?: number;
-}
-
-export interface EmbeddingResult {
-  embedding: number[];
-  dimensions: number;
-  model: string;
-  cached: boolean;
-}
-
-export const DEFAULT_LOCAL_EMBEDDINGS_CONFIG: Required<LocalEmbeddingsConfig> = {
-  model: 'all-MiniLM-L6-v2',
-  modelPath: '',
-  dimensions: 384,  // MiniLM default
-  useGPU: false,
-  batchSize: 32,
-  cacheEnabled: true,
-  maxCacheSize: 10000,
-};
-
-// Dimension mapping for different models
-export const MODEL_DIMENSIONS: Record<string, number> = {
-  'all-MiniLM-L6-v2': 384,
-  'all-mpnet-base-v2': 768,
-  'text-embedding-3-small': 1536,  // OpenAI for comparison
-};
+// tests/e2e/dashboard.spec.ts
+- [ ] Stats cards display correct counts
+- [ ] Recent projects list loads
+- [ ] Project cards show correct status
+- [ ] Progress bars animate correctly
+- [ ] "New Project" button opens modal
+- [ ] Click project navigates to project page
+- [ ] Agent feed shows live updates
+- [ ] "View All" link works
 ```
 
-**Step 2: Define the service interface**
-
-Ensure it matches/extends the existing EmbeddingsService interface.
-
-### Task 8 Completion Checklist
-- [x] Types file created
-- [x] Config interface defined
-- [x] Result interface defined
-- [x] Default config values set
-- [x] Dimension mapping created
-- [x] Interface compatible with existing EmbeddingsService
-
-**[TASK 8 COMPLETE]** - Completed on 2026-01-19
-
-### Task 8 Summary
-- **File Created**: `src/persistence/memory/LocalEmbeddingsService.types.ts`
-- **Exports Added**: `src/persistence/memory/index.ts` updated with LocalEmbeddings exports
-
-**Key Types Defined:**
-1. **LocalEmbeddingsConfig**: Configuration with model, cacheEnabled, maxCacheSize, batchSize, mockMode, progressCallback, logger
-2. **LocalEmbeddingResult**: Result with embedding, tokenCount, cached, model, latencyMs (compatible with EmbeddingsService.EmbeddingResult)
-3. **LocalEmbeddingsStats**: Service statistics (initialized, model, dimensions, cacheSize, cacheHitRate, etc.)
-4. **LocalModelInfo**: Metadata for supported models (id, name, dimensions, maxTokens, sizeInMB, description)
-5. **ILocalEmbeddingsService**: Interface matching EmbeddingsService methods (embed, embedBatch, cosineSimilarity, findMostSimilar, getDimension, clearCache, getCacheSize)
-
-**Model Support:**
-- `LOCAL_EMBEDDING_MODELS`: Metadata for 4 recommended models (MiniLM, MPNet, BGE, GTE)
-- `MODEL_DIMENSIONS`: Dimension mapping for 15+ models including OpenAI reference
-- `DEFAULT_LOCAL_MODEL`: 'Xenova/all-MiniLM-L6-v2' (384 dimensions)
-
-**Error Handling:**
-- `LocalEmbeddingsErrorCode`: Enum (INIT_FAILED, MODEL_NOT_FOUND, DOWNLOAD_FAILED, INFERENCE_FAILED, INPUT_TOO_LONG, NOT_INITIALIZED)
-- `LocalEmbeddingsErrorInfo`: Structured error with code, message, suggestion, cause
-
----
-
-## Task 9: Implement LocalEmbeddingsService
-
-### Objective
-Implement local embeddings using transformers.js or similar.
-
-### Instructions
-
-**Step 1: Install dependencies**
-
-```bash
-npm install @xenova/transformers
+#### Interview Page Tests
+```typescript
+// tests/e2e/interview.spec.ts
+- [ ] Chat interface loads
+- [ ] Can type in message input
+- [ ] Send button sends message
+- [ ] AI response appears in chat
+- [ ] Requirement cards extract from conversation
+- [ ] Requirement cards are clickable
+- [ ] Progress indicator updates
+- [ ] "Complete" button enabled when ready
+- [ ] Split pane resizable
+- [ ] Save draft works
 ```
 
-**Step 2: Create the service**
-
-Create `src/persistence/memory/LocalEmbeddingsService.ts`:
-
+#### Tasks/Kanban Page Tests
 ```typescript
-// =============================================================================
-// FILE: src/persistence/memory/LocalEmbeddingsService.ts
-// PURPOSE: Local embeddings service using transformers.js
-// =============================================================================
-
-import { pipeline, Pipeline } from '@xenova/transformers';
-import { 
-  LocalEmbeddingsConfig, 
-  EmbeddingResult,
-  DEFAULT_LOCAL_EMBEDDINGS_CONFIG,
-  MODEL_DIMENSIONS 
-} from './LocalEmbeddingsService.types';
-
-export class LocalEmbeddingsService {
-  private config: Required<LocalEmbeddingsConfig>;
-  private pipeline: Pipeline | null = null;
-  private cache: Map<string, number[]> = new Map();
-  private initialized: boolean = false;
-  
-  constructor(config: LocalEmbeddingsConfig = {}) {
-    this.config = {
-      ...DEFAULT_LOCAL_EMBEDDINGS_CONFIG,
-      ...config,
-    };
-    
-    // Set dimensions based on model if not specified
-    if (!config.dimensions && MODEL_DIMENSIONS[this.config.model]) {
-      this.config.dimensions = MODEL_DIMENSIONS[this.config.model];
-    }
-  }
-  
-  /**
-   * Initialize the embeddings pipeline
-   */
-  async initialize(): Promise<void> {
-    if (this.initialized) return;
-    
-    try {
-      this.pipeline = await pipeline(
-        'feature-extraction',
-        this.config.model,
-        {
-          // Options for model loading
-        }
-      );
-      this.initialized = true;
-    } catch (error) {
-      throw new LocalEmbeddingsInitError(this.config.model, error);
-    }
-  }
-  
-  /**
-   * Check if local embeddings are available
-   */
-  async isAvailable(): Promise<boolean> {
-    try {
-      await this.initialize();
-      return true;
-    } catch {
-      return false;
-    }
-  }
-  
-  /**
-   * Generate embedding for a single text
-   */
-  async embed(text: string): Promise<EmbeddingResult> {
-    // Check cache first
-    if (this.config.cacheEnabled) {
-      const cached = this.cache.get(text);
-      if (cached) {
-        return {
-          embedding: cached,
-          dimensions: this.config.dimensions,
-          model: this.config.model,
-          cached: true,
-        };
-      }
-    }
-    
-    await this.initialize();
-    
-    if (!this.pipeline) {
-      throw new Error('Pipeline not initialized');
-    }
-    
-    // Generate embedding
-    const output = await this.pipeline(text, {
-      pooling: 'mean',
-      normalize: true,
-    });
-    
-    const embedding = Array.from(output.data);
-    
-    // Cache result
-    if (this.config.cacheEnabled) {
-      this.addToCache(text, embedding);
-    }
-    
-    return {
-      embedding,
-      dimensions: embedding.length,
-      model: this.config.model,
-      cached: false,
-    };
-  }
-  
-  /**
-   * Generate embeddings for multiple texts
-   */
-  async embedBatch(texts: string[]): Promise<EmbeddingResult[]> {
-    const results: EmbeddingResult[] = [];
-    
-    // Process in batches
-    for (let i = 0; i < texts.length; i += this.config.batchSize) {
-      const batch = texts.slice(i, i + this.config.batchSize);
-      const batchResults = await Promise.all(
-        batch.map(text => this.embed(text))
-      );
-      results.push(...batchResults);
-    }
-    
-    return results;
-  }
-  
-  /**
-   * Get embedding dimensions for current model
-   */
-  getDimensions(): number {
-    return this.config.dimensions;
-  }
-  
-  /**
-   * Clear the embedding cache
-   */
-  clearCache(): void {
-    this.cache.clear();
-  }
-  
-  private addToCache(text: string, embedding: number[]): void {
-    // Implement LRU cache behavior
-    if (this.cache.size >= this.config.maxCacheSize) {
-      // Remove oldest entry
-      const firstKey = this.cache.keys().next().value;
-      this.cache.delete(firstKey);
-    }
-    this.cache.set(text, embedding);
-  }
-}
-
-export class LocalEmbeddingsInitError extends Error {
-  constructor(model: string, cause: unknown) {
-    super(
-      `Failed to initialize local embeddings model '${model}'.\n\n` +
-      `Options:\n` +
-      `1. Check your internet connection (model downloads on first use)\n` +
-      `2. Use a different model in Settings > Embeddings > Model\n` +
-      `3. Use OpenAI API for embeddings:\n` +
-      `   Set OPENAI_API_KEY in your .env file\n`
-    );
-    this.name = 'LocalEmbeddingsInitError';
-    this.cause = cause;
-  }
-}
+// tests/e2e/tasks.spec.ts
+- [ ] All columns render (Planned, In Progress, Review, Complete)
+- [ ] Task cards display in correct columns
+- [ ] Task cards show agent assignments
+- [ ] Task cards show time estimates
+- [ ] Drag and drop works (if implemented)
+- [ ] Click task opens detail modal
+- [ ] Filter dropdown works
+- [ ] "Add Task" button works
+- [ ] Real-time status updates work
 ```
 
-**Step 3: Create adapter for dimension compatibility**
-
-If local embeddings have different dimensions than OpenAI, create a dimension adapter:
-
+#### Agents Page Tests
 ```typescript
-export class EmbeddingDimensionAdapter {
-  /**
-   * Pad or truncate embedding to target dimensions
-   */
-  static adapt(embedding: number[], targetDimensions: number): number[] {
-    if (embedding.length === targetDimensions) {
-      return embedding;
-    }
-    
-    if (embedding.length < targetDimensions) {
-      // Pad with zeros
-      return [...embedding, ...new Array(targetDimensions - embedding.length).fill(0)];
-    }
-    
-    // Truncate
-    return embedding.slice(0, targetDimensions);
-  }
-}
+// tests/e2e/agents.spec.ts
+- [ ] Agent pool status displays
+- [ ] All 5 agent types shown
+- [ ] Active agents highlighted
+- [ ] Click agent shows details panel
+- [ ] Live output streams in real-time
+- [ ] QA status indicators work
+- [ ] Iteration counter displays
+- [ ] "Pause All" button works
+- [ ] Agent status updates in real-time
 ```
 
-### Task 9 Completion Checklist
-- [x] Dependencies installed (@huggingface/transformers v3.8.1)
-- [x] LocalEmbeddingsService.ts created
-- [x] initialize() implemented
-- [x] isAvailable() implemented
-- [x] embed() implemented
-- [x] embedBatch() implemented
-- [x] Cache implemented (LRU with configurable maxCacheSize)
-- [x] Error handling with helpful messages
-- [x] Dimension adapter not needed (separate vector stores per backend as per research)
+#### Execution Page Tests
+```typescript
+// tests/e2e/execution.spec.ts
+- [ ] Tab navigation works (Build/Lint/Test/Review)
+- [ ] Code blocks render with syntax highlighting
+- [ ] Success/error status icons display
+- [ ] Log output scrolls
+- [ ] "Clear Logs" button works
+- [ ] Real-time log streaming works
+- [ ] Expandable/collapsible sections work
+```
 
-**[TASK 9 COMPLETE]** - Completed on 2026-01-19
+#### Settings Page Tests
+```typescript
+// tests/e2e/settings.spec.ts
 
-### Task 9 Summary
-- **File Created**: `src/persistence/memory/LocalEmbeddingsService.ts` (460 lines)
-- **Dependencies Added**: `@huggingface/transformers` v3.8.1
-- **Exports Updated**: `src/persistence/memory/index.ts` now exports the service and error classes
+// LLM Providers Tab
+- [ ] Tab navigation works
+- [ ] Claude backend toggle switches
+- [ ] Claude model dropdown populated with all models
+- [ ] Claude model dropdown selectable
+- [ ] API key input masks characters
+- [ ] Gemini settings work same as Claude
+- [ ] Embeddings backend toggle works
+- [ ] Local embedding model dropdown works
+- [ ] "Save" button saves settings
+- [ ] "Reset Defaults" button works
+- [ ] Settings persist after page refresh
 
-**Key Implementation Details:**
-1. **ILocalEmbeddingsService Interface**: Implements all methods from the interface
-2. **Local Model Inference**: Uses Transformers.js pipeline('feature-extraction')
-3. **LRU Caching**: Configurable cache with maxCacheSize (default: 10000)
-4. **Mock Mode**: Deterministic embeddings for testing
-5. **Progress Callback**: Optional callback for model download progress
-6. **Statistics**: Tracks totalEmbeddings, cacheHits, averageLatencyMs
+// Agents Tab
+- [ ] Agent model assignment table displays
+- [ ] Provider dropdown works per agent
+- [ ] Model dropdown updates based on provider
+- [ ] "Use Recommended Defaults" button works
+- [ ] Pool limits inputs work
+- [ ] Settings save correctly
 
-**Error Classes:**
-- `LocalEmbeddingsError` - Base error with code, suggestion, cause
-- `LocalEmbeddingsInitError` - Model initialization failure
-- `LocalEmbeddingsNotInitializedError` - Service used before init
-- `LocalEmbeddingsInferenceError` - Inference failure
+// All Tabs
+- [ ] Form validation works
+- [ ] Error messages display
+- [ ] Success toast on save
+```
 
-**Compatible Methods:**
-- `embed(text)` - Single text embedding
-- `embedBatch(texts)` - Batch embedding with caching
-- `cosineSimilarity(a, b)` - Vector similarity
-- `findMostSimilar(query, candidates, topK)` - Similarity search
-- `getDimension()` - Get model dimensions
-- `clearCache()` / `getCacheSize()` / `getStats()` - Cache management
+### Playwright MCP Commands to Use
 
----
-
-## Task 10: Write LocalEmbeddingsService Tests
-
-### Objective
-Write comprehensive tests for LocalEmbeddingsService.
-
-### Instructions
-
-**Step 1: Create test file**
-
-Create `src/persistence/memory/LocalEmbeddingsService.test.ts`:
+When testing with Playwright MCP, use these patterns:
 
 ```typescript
-// Test structure similar to existing embedding tests
-describe('LocalEmbeddingsService', () => {
-  describe('initialization', () => {
-    it('should initialize pipeline on first use');
-    it('should not reinitialize if already initialized');
-    it('should throw LocalEmbeddingsInitError on failure');
-  });
-  
-  describe('isAvailable', () => {
-    it('should return true when model can be loaded');
-    it('should return false when model fails to load');
-  });
-  
-  describe('embed', () => {
-    it('should generate embedding for text');
-    it('should return correct dimensions');
-    it('should use cache when enabled');
-    it('should bypass cache when disabled');
-  });
-  
-  describe('embedBatch', () => {
-    it('should process texts in batches');
-    it('should respect batch size configuration');
-  });
-  
-  describe('cache', () => {
-    it('should cache embeddings');
-    it('should implement LRU eviction');
-    it('should respect max cache size');
-    it('should clear cache when requested');
-  });
-  
-  describe('error handling', () => {
-    it('should provide helpful error messages');
-    it('should suggest API alternative in errors');
-  });
+// Navigate to page
+await mcp.playwright.navigate({ url: 'http://localhost:3000/dashboard' });
+
+// Take screenshot for visual verification
+await mcp.playwright.screenshot({ name: 'dashboard-loaded' });
+
+// Click element
+await mcp.playwright.click({ selector: '[data-testid="new-project-button"]' });
+
+// Fill input
+await mcp.playwright.fill({ 
+  selector: '[data-testid="project-name-input"]', 
+  value: 'My Test Project' 
+});
+
+// Select from dropdown
+await mcp.playwright.selectOption({
+  selector: '[data-testid="model-select"]',
+  value: 'claude-sonnet-4-5-20250929'
+});
+
+// Assert element visible
+await mcp.playwright.assertVisible({ selector: '[data-testid="success-toast"]' });
+
+// Assert text content
+await mcp.playwright.assertText({ 
+  selector: '[data-testid="stats-total"]', 
+  text: '3 Projects' 
+});
+
+// Wait for element
+await mcp.playwright.waitForSelector({ 
+  selector: '[data-testid="agent-card"]',
+  timeout: 5000 
 });
 ```
 
-### Task 10 Completion Checklist
-- [x] Test file created
-- [x] 25+ tests written (47 tests total!)
-- [x] All functionality covered
-- [x] All tests pass
+### Testing Workflow for Each Page
 
-**[TASK 10 COMPLETE]** - Completed on 2026-01-19
+```
+FOR EACH PAGE:
+==============
 
-### Task 10 Summary
-- **File Created**: `src/persistence/memory/LocalEmbeddingsService.test.ts`
-- **Total Tests**: 47 tests (target was 25+)
-- **Test Duration**: ~46ms
+1. IMPLEMENT PAGE
+   └── Write the component code
 
-**Test Categories:**
-- Constructor (5 tests)
-- Initialization (4 tests)
-- isAvailable (3 tests)
-- embed (6 tests)
-- embedBatch (4 tests)
-- cosineSimilarity (4 tests)
-- findMostSimilar (3 tests)
-- Cache (5 tests)
-- Statistics (3 tests)
-- Error handling (5 tests)
-- Additional coverage (5 tests)
+2. ADD TEST IDS
+   └── Add data-testid attributes to all interactive elements
+   └── Example: <Button data-testid="submit-button">Submit</Button>
 
-**Mocking Approach:**
-- Uses `vi.mock('@huggingface/transformers')` to mock the pipeline
-- `mockPipeline` function mocks the pipeline creation
-- `mockPipelineResult` mocks the inference results
-- Supports both real model mocking and mockMode testing
+3. CREATE PLAYWRIGHT TEST FILE
+   └── tests/e2e/[page-name].spec.ts
+   └── Cover all checklist items
 
----
+4. RUN TESTS WITH PLAYWRIGHT MCP
+   └── Execute each test
+   └── Take screenshots at key points
+   └── Verify visual appearance
 
-# ============================================================================
-# PHASE D: NEXUSFACTORY INTEGRATION
-# ============================================================================
+5. FIX ISSUES
+   └── Address any failing tests
+   └── Fix visual inconsistencies
+   └── Handle edge cases
 
-## Task 11: Update NexusFactoryConfig for CLI Backends
+6. RE-TEST
+   └── Run full test suite for page
+   └── Ensure 100% pass rate
 
-### Objective
-Update NexusFactory config to support CLI backends as first-class options.
-
-### Instructions
-
-**Step 1: Update NexusFactoryConfig interface**
-
-In `src/NexusFactory.ts` or related types file:
-
-```typescript
-export interface NexusFactoryConfig {
-  // Claude configuration
-  claudeApiKey?: string;  // Make OPTIONAL (was required)
-  claudeBackend?: 'api' | 'cli';  // NEW: default 'cli'
-  claudeCliConfig?: ClaudeCodeCLIConfig;  // NEW
-  
-  // Gemini configuration
-  geminiApiKey?: string;  // Make OPTIONAL (was required)
-  geminiBackend?: 'api' | 'cli';  // NEW: default 'cli'
-  geminiCliConfig?: GeminiCLIConfig;  // NEW
-  
-  // Embeddings configuration
-  openaiApiKey?: string;  // Make OPTIONAL
-  embeddingsBackend?: 'api' | 'local';  // NEW: default 'local'
-  localEmbeddingsConfig?: LocalEmbeddingsConfig;  // NEW
-  
-  // Existing config...
-  projectRoot?: string;
-  agentLimits?: AgentLimits;
-  qaConfig?: QAConfig;
-}
-
-// Default: CLI over API
-export const DEFAULT_NEXUS_CONFIG: Partial<NexusFactoryConfig> = {
-  claudeBackend: 'cli',
-  geminiBackend: 'cli',
-  embeddingsBackend: 'local',
-};
+7. MOVE TO NEXT PAGE
+   └── Only after current page tests pass
 ```
 
-### Task 11 Completion Checklist
-- [x] Config interface updated
-- [x] API keys made optional
-- [x] Backend selection fields added
-- [x] CLI configs added
-- [x] Defaults set to CLI-first
+### Visual Regression Testing
 
-**[TASK 11 COMPLETE]** - Completed on 2026-01-19
-
-### Task 11 Summary
-- **File Modified**: `src/NexusFactory.ts`
-- **Exports Updated**: `src/index.ts` now exports `DEFAULT_NEXUS_CONFIG`, `LLMBackend`, `EmbeddingsBackend`
-
-**Key Changes:**
-1. **New Types**: `LLMBackend` ('cli' | 'api'), `EmbeddingsBackend` ('local' | 'api')
-2. **NexusFactoryConfig Updated**:
-   - `claudeApiKey` → now optional (required only when `claudeBackend='api'`)
-   - `geminiApiKey` → now optional (required only when `geminiBackend='api'`)
-   - `claudeBackend` → new field, default 'cli'
-   - `geminiBackend` → new field, default 'cli'
-   - `claudeCliConfig` → new field for CLI-specific config
-   - `geminiCliConfig` → new field for CLI-specific config
-   - `openaiApiKey` → new optional field for embeddings API
-   - `embeddingsBackend` → new field, default 'local'
-   - `localEmbeddingsConfig` → new field for local embeddings config
-3. **DEFAULT_NEXUS_CONFIG**: CLI-first defaults (`claudeBackend: 'cli'`, `geminiBackend: 'cli'`, `embeddingsBackend: 'local'`)
-4. **NexusInstance Updated**:
-   - `llm.claude` → now `ClaudeClient | ClaudeCodeCLIClient`
-   - `llm.gemini` → now `GeminiClient | GeminiCLIClient`
-   - `embeddings` → new optional field for `LocalEmbeddingsService`
-   - `backends` → new field tracking active backends (claude, gemini, embeddings)
-5. **Imports Added**: CLI clients and LocalEmbeddingsService imports
-6. **TypeScript**: Compiles without new errors (2 pre-existing unrelated errors remain)
-
----
-
-## Task 12: Implement Backend Selection Logic in NexusFactory
-
-### Objective
-Update NexusFactory.create() to select correct backend based on config.
-
-### Instructions
-
-**Step 1: Update create() method**
+For each page, capture and verify screenshots:
 
 ```typescript
-export class NexusFactory {
-  static async create(config: NexusFactoryConfig): Promise<NexusInstance> {
-    const mergedConfig = { ...DEFAULT_NEXUS_CONFIG, ...config };
-    
-    // Create Claude client based on backend preference
-    const claudeClient = await this.createClaudeClient(mergedConfig);
-    
-    // Create Gemini client based on backend preference
-    const geminiClient = await this.createGeminiClient(mergedConfig);
-    
-    // Create embeddings service based on backend preference
-    const embeddingsService = await this.createEmbeddingsService(mergedConfig);
-    
-    // ... rest of factory logic
-  }
+test('visual regression - dashboard', async ({ page }) => {
+  await page.goto('/dashboard');
+  await page.waitForLoadState('networkidle');
   
-  private static async createClaudeClient(
-    config: NexusFactoryConfig
-  ): Promise<LLMClient> {
-    if (config.claudeBackend === 'cli') {
-      const cliClient = new ClaudeCodeCLIClient(config.claudeCliConfig);
-      
-      // Check availability
-      if (await cliClient.isAvailable()) {
-        return cliClient;
-      }
-      
-      // CLI not available - check if API key exists as fallback
-      if (config.claudeApiKey) {
-        console.warn('Claude CLI not available, falling back to API');
-        return new ClaudeClient({ apiKey: config.claudeApiKey });
-      }
-      
-      // Neither available - throw helpful error
-      throw new ClaudeCLINotFoundError();
-    }
-    
-    // API backend requested
-    if (!config.claudeApiKey) {
-      throw new Error(
-        'Claude API key required when using API backend.\n' +
-        'Set ANTHROPIC_API_KEY in .env or switch to CLI backend in Settings.'
-      );
-    }
-    
-    return new ClaudeClient({ apiKey: config.claudeApiKey });
-  }
+  // Full page screenshot
+  await expect(page).toHaveScreenshot('dashboard-full.png');
   
-  private static async createGeminiClient(
-    config: NexusFactoryConfig
-  ): Promise<LLMClient> {
-    // Same pattern as Claude...
-  }
+  // Component screenshots
+  await expect(page.locator('[data-testid="stats-cards"]'))
+    .toHaveScreenshot('dashboard-stats.png');
   
-  private static async createEmbeddingsService(
-    config: NexusFactoryConfig
-  ): Promise<EmbeddingsService | LocalEmbeddingsService> {
-    if (config.embeddingsBackend === 'local') {
-      const localService = new LocalEmbeddingsService(config.localEmbeddingsConfig);
-      
-      if (await localService.isAvailable()) {
-        return localService;
-      }
-      
-      // Fallback to API if key exists
-      if (config.openaiApiKey) {
-        console.warn('Local embeddings not available, falling back to OpenAI API');
-        return new EmbeddingsService({ apiKey: config.openaiApiKey });
-      }
-      
-      throw new LocalEmbeddingsInitError(
-        config.localEmbeddingsConfig?.model || 'default',
-        new Error('No fallback available')
-      );
-    }
-    
-    // API backend
-    if (!config.openaiApiKey) {
-      throw new Error(
-        'OpenAI API key required for API embeddings.\n' +
-        'Set OPENAI_API_KEY in .env or switch to local embeddings in Settings.'
-      );
-    }
-    
-    return new EmbeddingsService({ apiKey: config.openaiApiKey });
-  }
-}
-```
-
-### Task 12 Completion Checklist
-- [x] create() updated with backend selection
-- [x] createClaudeClient() implemented
-- [x] createGeminiClient() implemented
-- [x] createEmbeddingsService() implemented
-- [x] Fallback logic implemented
-- [x] Helpful errors thrown when neither option available
-
-### Task 12 Summary
-**COMPLETED** - Implemented backend selection logic in NexusFactory:
-- Made `create()` and `createForTesting()` async methods returning `Promise<NexusInstance>`
-- Added `createClaudeClient()` - CLI-first with API fallback
-- Added `createGeminiClient()` - CLI-first with API fallback
-- Added `createEmbeddingsService()` - Local-first with API fallback
-- Updated convenience functions `createNexus()` and `createTestingNexus()` to be async
-- Refactored dependent classes to use `LLMClient` interface:
-  - `TaskDecomposer` - accepts `LLMClient` instead of `ClaudeClient`
-  - `AgentPool` - accepts `LLMClient` for both client types
-  - `BaseAgentRunner` and all agent subclasses (CoderAgent, TesterAgent, ReviewerAgent, MergerAgent)
-  - `QARunnerFactory` and `ReviewRunner`
-- All 20 NexusFactory tests pass
-
-**[TASK 12 COMPLETE]**
-
----
-
-## Task 13: Add CLI Availability Detection and Smart Fallback Errors
-
-### Objective
-Ensure errors provide clear two-option messages (install CLI or use API).
-
-### Instructions
-
-**Step 1: Create unified error classes**
-
-Create `src/errors/LLMBackendErrors.ts`:
-
-```typescript
-export class CLINotFoundError extends Error {
-  public readonly provider: 'claude' | 'gemini';
-  public readonly installCommand: string;
-  public readonly envVariable: string;
-  
-  constructor(provider: 'claude' | 'gemini') {
-    const details = provider === 'claude' 
-      ? {
-          installCommand: 'npm install -g @anthropic-ai/claude-code',
-          installUrl: 'https://docs.anthropic.com/claude-code',
-          envVariable: 'ANTHROPIC_API_KEY',
-        }
-      : {
-          installCommand: 'npm install -g @google/gemini-cli',
-          installUrl: 'https://ai.google.dev/gemini-api/docs/cli',
-          envVariable: 'GOOGLE_AI_API_KEY',
-        };
-    
-    super(
-      `${provider.charAt(0).toUpperCase() + provider.slice(1)} CLI not found.\n\n` +
-      `You have two options:\n\n` +
-      `━━━ OPTION 1: Install the CLI ━━━\n` +
-      `  ${details.installCommand}\n` +
-      `  More info: ${details.installUrl}\n\n` +
-      `━━━ OPTION 2: Use API Key ━━━\n` +
-      `  Set ${details.envVariable} in your .env file\n` +
-      `  Or: Settings → LLM Providers → ${provider.charAt(0).toUpperCase() + provider.slice(1)} → Use API\n`
-    );
-    
-    this.name = 'CLINotFoundError';
-    this.provider = provider;
-    this.installCommand = details.installCommand;
-    this.envVariable = details.envVariable;
-  }
-}
-```
-
-**Step 2: Use these errors throughout**
-
-Ensure all error paths use these standardized error classes.
-
-### Task 13 Completion Checklist
-- [x] Unified error classes created
-- [x] Errors include install instructions
-- [x] Errors include API key alternative
-- [x] Errors include Settings UI path
-- [x] All error paths use standardized errors
-
-**[TASK 13 COMPLETE]** - Completed on 2026-01-19
-
-### Task 13 Summary
-- **File Created**: `src/errors/LLMBackendErrors.ts` (~280 lines)
-- **File Created**: `src/errors/index.ts` (exports all error classes)
-- **Files Modified**:
-  - `src/llm/clients/ClaudeCodeCLIClient.ts` - Updated `CLINotFoundError` with helpful two-option message
-  - `src/NexusFactory.ts` - Now uses `APIKeyMissingError` for missing API key errors
-  - `src/NexusFactory.test.ts` - Added `LLMError` to ClaudeClient mock
-  - `src/index.ts` - Added error exports section
-
-**Unified Error Classes Created:**
-1. **LLMBackendError** - Base error class for all backend failures
-2. **CLINotFoundError** - When CLI tool not found (with install instructions + API alternative)
-3. **CLIAuthError** - When CLI authentication fails (with auth instructions + API alternative)
-4. **CLITimeoutError** - When CLI request times out (with timeout increase instructions)
-5. **APIKeyMissingError** - When API key required but not provided (with get-key URL + CLI alternative)
-6. **LocalEmbeddingsError** - When local embeddings fail (with fix instructions + API alternative)
-7. **RateLimitError** - When rate limit exceeded (with retry info)
-8. **BackendUnavailableError** - When all backend options exhausted (non-recoverable)
-
-**Error Message Pattern:**
-All errors include:
-- Clear explanation of what failed
-- Two-option solutions (install/authenticate CLI OR use API key)
-- Environment variable names
-- Settings UI paths for non-technical users
-- URLs for documentation/getting API keys
-
----
-
-# ============================================================================
-# PHASE E: SETTINGS & CONFIGURATION
-# ============================================================================
-
-## Task 14: Update Settings Types for LLM Backend Preferences
-
-### Objective
-Update the settings type system to include LLM backend preferences.
-
-### Instructions
-
-**Step 1: Update settings types**
-
-Find and update `src/shared/types/settings.ts` or similar:
-
-```typescript
-export interface LLMProviderSettings {
-  claude: {
-    backend: 'cli' | 'api';
-    apiKey?: string;  // Encrypted
-    cliPath?: string;
-    timeout?: number;
-    maxRetries?: number;
-  };
-  
-  gemini: {
-    backend: 'cli' | 'api';
-    apiKey?: string;  // Encrypted
-    cliPath?: string;
-    model?: string;
-    timeout?: number;
-  };
-  
-  embeddings: {
-    backend: 'local' | 'api';
-    apiKey?: string;  // Encrypted (OpenAI)
-    localModel?: string;
-    dimensions?: number;
-    cacheEnabled?: boolean;
-  };
-}
-
-export interface NexusSettings {
-  // Existing settings...
-  
-  // NEW: LLM provider settings
-  llmProviders: LLMProviderSettings;
-}
-
-// Defaults - CLI first!
-export const DEFAULT_LLM_SETTINGS: LLMProviderSettings = {
-  claude: {
-    backend: 'cli',
-    timeout: 300000,
-    maxRetries: 2,
-  },
-  gemini: {
-    backend: 'cli',
-    model: 'gemini-2.5-pro',
-    timeout: 300000,
-  },
-  embeddings: {
-    backend: 'local',
-    localModel: 'all-MiniLM-L6-v2',
-    dimensions: 384,
-    cacheEnabled: true,
-  },
-};
-```
-
-### Task 14 Completion Checklist
-- [x] LLMProviderSettings interface created (ClaudeProviderSettings, GeminiProviderSettings, EmbeddingsProviderSettings)
-- [x] NexusSettings updated (LLMSettings now includes claude, gemini, embeddings provider objects)
-- [x] Default values set (CLI-first: DEFAULT_CLAUDE_SETTINGS, DEFAULT_GEMINI_SETTINGS, DEFAULT_EMBEDDINGS_SETTINGS, etc.)
-- [x] API key fields marked for encryption (apiKeyEncrypted in each provider)
-- [x] Public settings view updated (LLMSettingsPublic, ClaudeProviderSettingsPublic, etc.)
-- [x] Backend type exports added (LLMBackendType, EmbeddingsBackendType)
-
-**[TASK 14 COMPLETE]** - Completed on 2026-01-19
-
-### Task 14 Summary
-- **File Modified**: `src/shared/types/settings.ts`
-- **New Types Created**:
-  - `LLMBackendType` ('cli' | 'api')
-  - `EmbeddingsBackendType` ('local' | 'api')
-  - `ClaudeProviderSettings` - Backend, API key, CLI path, timeout, maxRetries, model
-  - `GeminiProviderSettings` - Backend, API key, CLI path, timeout, model
-  - `EmbeddingsProviderSettings` - Backend, API key, localModel, dimensions, cache settings
-  - `ClaudeProviderSettingsPublic`, `GeminiProviderSettingsPublic`, `EmbeddingsProviderSettingsPublic` - Public views
-  - `LLMSettingsPublic` - Updated public LLM settings
-- **Default Values Created**:
-  - `DEFAULT_CLAUDE_SETTINGS` (backend: 'cli')
-  - `DEFAULT_GEMINI_SETTINGS` (backend: 'cli')
-  - `DEFAULT_EMBEDDINGS_SETTINGS` (backend: 'local')
-  - `DEFAULT_LLM_SETTINGS` - Complete LLM settings
-  - `DEFAULT_NEXUS_SETTINGS` - Complete Nexus settings
-- **Note**: settingsService.ts needs updating in Task 15 to use new structure
-
----
-
-## Task 15: Wire Settings to LLMProvider Selection
-
-### Objective
-Connect the settings system to NexusFactory's LLM selection.
-
-### Instructions
-
-**Step 1: Create settings loader**
-
-Create or update `src/settings/SettingsLoader.ts`:
-
-```typescript
-export class SettingsLoader {
-  /**
-   * Load settings and convert to NexusFactoryConfig
-   */
-  static async loadAsFactoryConfig(): Promise<Partial<NexusFactoryConfig>> {
-    const settings = await this.loadSettings();
-    
-    return {
-      // Claude
-      claudeBackend: settings.llmProviders.claude.backend,
-      claudeApiKey: settings.llmProviders.claude.apiKey 
-        ? await this.decryptKey(settings.llmProviders.claude.apiKey)
-        : process.env.ANTHROPIC_API_KEY,
-      claudeCliConfig: {
-        cliPath: settings.llmProviders.claude.cliPath,
-        timeout: settings.llmProviders.claude.timeout,
-        maxRetries: settings.llmProviders.claude.maxRetries,
-      },
-      
-      // Gemini
-      geminiBackend: settings.llmProviders.gemini.backend,
-      geminiApiKey: settings.llmProviders.gemini.apiKey
-        ? await this.decryptKey(settings.llmProviders.gemini.apiKey)
-        : process.env.GOOGLE_AI_API_KEY,
-      geminiCliConfig: {
-        cliPath: settings.llmProviders.gemini.cliPath,
-        model: settings.llmProviders.gemini.model,
-        timeout: settings.llmProviders.gemini.timeout,
-      },
-      
-      // Embeddings
-      embeddingsBackend: settings.llmProviders.embeddings.backend,
-      openaiApiKey: settings.llmProviders.embeddings.apiKey
-        ? await this.decryptKey(settings.llmProviders.embeddings.apiKey)
-        : process.env.OPENAI_API_KEY,
-      localEmbeddingsConfig: {
-        model: settings.llmProviders.embeddings.localModel,
-        dimensions: settings.llmProviders.embeddings.dimensions,
-        cacheEnabled: settings.llmProviders.embeddings.cacheEnabled,
-      },
-    };
-  }
-}
-```
-
-**Step 2: Update NexusFactory entry point**
-
-```typescript
-// In main entry or NexusFactory
-export async function createNexusFromSettings(): Promise<NexusInstance> {
-  const config = await SettingsLoader.loadAsFactoryConfig();
-  return NexusFactory.create(config);
-}
-```
-
-### Task 15 Completion Checklist
-- [x] SettingsLoader created/updated
-- [x] loadAsFactoryConfig() implemented
-- [x] Environment variable fallbacks
-- [x] API key decryption integrated
-- [x] createNexusFromSettings() exported
-
-**[TASK 15 COMPLETE]** - Completed on 2026-01-19
-
-### Task 15 Summary
-- **File Created**: `src/main/services/SettingsLoader.ts` (~280 lines)
-- **File Created**: `src/main/services/index.ts` (exports for main services)
-- **File Modified**: `src/main/services/settingsService.ts` (Phase 16 schema + getAll updates)
-
-**Key Implementation Details:**
-1. **SettingsLoader class**: Static methods for loading settings as NexusFactoryConfig
-2. **loadAsFactoryConfig(workingDir)**: Main method that builds complete config from settings
-3. **API Key Resolution Priority**:
-   - Settings store (decrypted via safeStorage)
-   - Environment variables (ANTHROPIC_API_KEY, GOOGLE_AI_API_KEY, OPENAI_API_KEY)
-4. **Backend Mapping**: Maps settings types to NexusFactory types
-5. **Helper Methods**:
-   - `isCLIBackendConfigured(provider)` - Check if CLI backend is selected
-   - `hasApiKey(provider)` - Check if API key is available (store or env)
-   - `getBackendStatus()` - Get summary of all backend configurations
-
-**Convenience Functions Exported:**
-- `createNexusFromSettings(workingDir)` - Create Nexus from settings store
-- `createTestingNexusFromSettings(workingDir, options)` - Create testing Nexus from settings
-
-**settingsService.ts Updates:**
-- Schema updated with Phase 16 provider-specific settings (claude, gemini, embeddings)
-- getAll() returns Phase 16 public view format with provider settings
-- Default values set to CLI-first/local-first
-- Backwards compatible with legacy API key storage
-
----
-
-## Task 16: Add Config File Support for Technical Users
-
-### Objective
-Allow technical users to configure via file instead of UI.
-
-### Instructions
-
-**Step 1: Define config file format**
-
-Create `src/config/nexus.config.schema.ts`:
-
-```typescript
-/**
- * Config file: nexus.config.ts or nexus.config.json
- * Located in project root
- */
-export interface NexusConfigFile {
-  llm?: {
-    claude?: {
-      backend?: 'cli' | 'api';
-      cliPath?: string;
-      timeout?: number;
-    };
-    gemini?: {
-      backend?: 'cli' | 'api';
-      cliPath?: string;
-      model?: string;
-    };
-    embeddings?: {
-      backend?: 'local' | 'api';
-      model?: string;
-    };
-  };
-  
-  // Other config sections...
-}
-```
-
-**Step 2: Create config file loader**
-
-Create `src/config/ConfigFileLoader.ts`:
-
-```typescript
-import { existsSync } from 'fs';
-import { join } from 'path';
-
-export class ConfigFileLoader {
-  static CONFIG_FILES = [
-    'nexus.config.ts',
-    'nexus.config.js',
-    'nexus.config.json',
-    '.nexusrc',
-    '.nexusrc.json',
-  ];
-  
-  /**
-   * Load config file from project root
-   */
-  static async load(projectRoot: string): Promise<NexusConfigFile | null> {
-    for (const filename of this.CONFIG_FILES) {
-      const filepath = join(projectRoot, filename);
-      
-      if (existsSync(filepath)) {
-        if (filename.endsWith('.json') || filename === '.nexusrc') {
-          return JSON.parse(await fs.readFile(filepath, 'utf-8'));
-        }
-        
-        if (filename.endsWith('.ts') || filename.endsWith('.js')) {
-          // Dynamic import
-          const module = await import(filepath);
-          return module.default || module;
-        }
-      }
-    }
-    
-    return null;
-  }
-  
-  /**
-   * Merge config file with settings (config file takes precedence)
-   */
-  static merge(
-    settings: Partial<NexusFactoryConfig>,
-    configFile: NexusConfigFile | null
-  ): Partial<NexusFactoryConfig> {
-    if (!configFile) return settings;
-    
-    return {
-      ...settings,
-      claudeBackend: configFile.llm?.claude?.backend ?? settings.claudeBackend,
-      geminiBackend: configFile.llm?.gemini?.backend ?? settings.geminiBackend,
-      // ... merge all fields
-    };
-  }
-}
-```
-
-**Step 3: Update SettingsLoader to include config file**
-
-```typescript
-static async loadAsFactoryConfig(): Promise<Partial<NexusFactoryConfig>> {
-  const settings = await this.loadSettings();
-  const configFile = await ConfigFileLoader.load(process.cwd());
-  
-  const baseConfig = { /* ... existing logic ... */ };
-  
-  // Config file overrides settings
-  return ConfigFileLoader.merge(baseConfig, configFile);
-}
-```
-
-**Step 4: Document config file in README or docs**
-
-Create example config file:
-
-```typescript
-// nexus.config.ts
-export default {
-  llm: {
-    claude: {
-      backend: 'cli',  // Use Claude CLI (default)
-      // backend: 'api',  // Or use API with ANTHROPIC_API_KEY
-    },
-    gemini: {
-      backend: 'cli',
-      model: 'gemini-2.5-pro',
-    },
-    embeddings: {
-      backend: 'local',  // Use local embeddings (default)
-      model: 'all-MiniLM-L6-v2',
-    },
-  },
-};
-```
-
-### Task 16 Completion Checklist
-- [x] Config file schema defined
-- [x] ConfigFileLoader created
-- [x] Multiple file formats supported
-- [x] Config file merges with settings
-- [x] Config file takes precedence over settings
-- [x] Example config file created
-- [x] Documentation updated
-
-**[TASK 16 COMPLETE]** - Completed on 2026-01-19
-
-### Task 16 Summary
-- **Files Created**:
-  - `src/config/nexus.config.schema.ts` (~350 lines) - Type definitions and validation
-  - `src/config/ConfigFileLoader.ts` (~280 lines) - Config file loading and merging
-  - `src/config/index.ts` - Module exports
-  - `nexus.config.example.ts` - TypeScript example config
-  - `nexus.config.example.json` - JSON example config
-
-- **Files Modified**:
-  - `src/main/services/SettingsLoader.ts` - Added config file merging to `loadAsFactoryConfig()`
-  - `src/index.ts` - Added config module exports
-
-**Supported Config Files (in priority order):**
-1. `nexus.config.ts` - TypeScript (recommended)
-2. `nexus.config.js` - JavaScript
-3. `nexus.config.mjs` - ES Module
-4. `nexus.config.cjs` - CommonJS
-5. `nexus.config.json` - JSON
-6. `.nexusrc` - JSON dotfile
-7. `.nexusrc.json` - JSON dotfile (explicit)
-
-**Configuration Priority:**
-1. Config file (highest) - project-level overrides
-2. Settings store - user preferences from UI
-3. Environment variables - CI/CD and automation
-4. Default values (lowest)
-
-**Security:**
-- API keys are NEVER read from config files
-- API keys must come from env vars or Settings UI
-
-**Key Classes/Functions:**
-- `ConfigFileLoader.load(projectRoot)` - Load and validate config file
-- `ConfigFileLoader.mergeWithFactoryConfig(settings, configFile)` - Merge with settings
-- `validateConfigFile(config)` - Validate config object
-- `hasConfigFile(projectRoot)` - Quick check for config file existence
-
----
-
-# ============================================================================
-# PHASE F: FINALIZATION
-# ============================================================================
-
-## Task 17: Integration Testing - All Backends Work Together
-
-### Objective
-Verify all backend combinations work correctly.
-
-### Instructions
-
-**Step 1: Create integration test file**
-
-Create `tests/integration/llm-backends.test.ts`:
-
-```typescript
-describe('LLM Backend Integration', () => {
-  describe('Claude Backends', () => {
-    it('should work with CLI backend', async () => {
-      const config = { claudeBackend: 'cli' as const };
-      const nexus = await NexusFactory.create(config);
-      // Verify Claude CLI is being used
-    });
-    
-    it('should work with API backend', async () => {
-      const config = { 
-        claudeBackend: 'api' as const,
-        claudeApiKey: process.env.ANTHROPIC_API_KEY,
-      };
-      const nexus = await NexusFactory.create(config);
-      // Verify Claude API is being used
-    });
-    
-    it('should fall back to API when CLI unavailable', async () => {
-      // Mock CLI as unavailable
-      // Verify fallback behavior
-    });
-    
-    it('should throw helpful error when neither available', async () => {
-      // Mock both unavailable
-      // Verify error message
-    });
-  });
-  
-  describe('Gemini Backends', () => {
-    // Same pattern as Claude
-  });
-  
-  describe('Embeddings Backends', () => {
-    it('should work with local backend', async () => {
-      // Test local embeddings
-    });
-    
-    it('should work with API backend', async () => {
-      // Test OpenAI embeddings
-    });
-    
-    it('should produce compatible embeddings', async () => {
-      // Verify dimension handling
-    });
-  });
-  
-  describe('Settings Integration', () => {
-    it('should read backend preference from settings', async () => {
-      // Test settings -> factory config
-    });
-    
-    it('should override settings with config file', async () => {
-      // Test config file precedence
-    });
-  });
-  
-  describe('Mixed Backends', () => {
-    it('should support Claude CLI + Gemini API', async () => {
-      // Mix and match
-    });
-    
-    it('should support all CLI backends', async () => {
-      // All CLI
-    });
-    
-    it('should support all API backends', async () => {
-      // All API
-    });
-  });
+  await expect(page.locator('[data-testid="agent-feed"]'))
+    .toHaveScreenshot('dashboard-agent-feed.png');
 });
 ```
 
-**Step 2: Run all existing tests**
+### Test Data Setup
 
-```bash
-npm test
+Create test fixtures for consistent testing:
+
+```typescript
+// tests/e2e/fixtures/test-data.ts
+export const testProject = {
+  id: 'test-project-1',
+  name: 'Test Project',
+  mode: 'genesis',
+  status: 'in_progress',
+  tasks: [
+    { id: 't1', name: 'Setup', status: 'complete' },
+    { id: 't2', name: 'Auth', status: 'in_progress' },
+    { id: 't3', name: 'Database', status: 'planned' },
+  ],
+};
+
+export const testAgents = [
+  { id: 'a1', type: 'planner', status: 'idle' },
+  { id: 'a2', type: 'coder', status: 'working', task: 't2' },
+  { id: 'a3', type: 'tester', status: 'idle' },
+  { id: 'a4', type: 'reviewer', status: 'idle' },
+  { id: 'a5', type: 'merger', status: 'idle' },
+];
 ```
 
-Verify all 1,910+ tests still pass.
+### Final Test Summary
 
-### Task 17 Completion Checklist
-- [x] Integration test file created (tests/integration/llm-backends.test.ts)
-- [x] All backend combinations tested (API and CLI fallback)
-- [x] Fallback behavior tested (Claude, Gemini, Embeddings)
-- [x] Error messages tested (APIKeyMissingError, CLINotFoundError, GeminiCLINotFoundError)
-- [x] Settings integration tested (via configuration options)
-- [x] Config file integration tested (via NexusFactoryConfig)
-- [x] All existing tests still pass (1971 passed)
-
-### Task 17 Summary
-Created comprehensive integration test file `tests/integration/llm-backends.test.ts` with 27 tests covering:
-- NexusFactory.create functionality and component wiring
-- API backend selection (Claude, Gemini, OpenAI embeddings)
-- CLI fallback behavior (when CLI unavailable, falls back to API)
-- Error handling (missing API keys, unavailable CLI)
-- createForTesting functionality
-- Configuration options (custom timeouts, retries, agent limits, QA config)
-
-**[TASK 17 COMPLETE]**
-
----
-
-## Task 18: Final Lint, Typecheck, Test Verification
-
-### Objective
-Ensure zero errors and all tests pass.
-
-### Instructions
-
-**Step 1: Run TypeScript compilation**
-
-```bash
-npm run typecheck
-```
-
-**MUST show 0 errors.**
-
-**Step 2: Run ESLint**
-
-```bash
-npm run lint
-```
-
-**MUST show 0 errors.** Fix any issues:
-
-```bash
-npm run lint -- --fix
-```
-
-**Step 3: Run full test suite**
-
-```bash
-npm test
-```
-
-**All tests MUST pass.** Expected: 1,910+ existing + new tests.
-
-**Step 4: Create summary**
-
-Create `.agent/workspace/PHASE_16_SUMMARY.md`:
+After ALL pages are tested, create a test report:
 
 ```markdown
-# Phase 16: Full CLI Support - Summary
+# Phase 17 Playwright Test Report
 
-## Completed Tasks
-- [x] Task 1: Gemini CLI Research
-- [x] Task 2: ClaudeCodeCLIClient Pattern Analysis
-- [x] Task 3: Local Embeddings Research
-- [x] Task 4: GeminiCLIClient Types
-- [x] Task 5: GeminiCLIClient Implementation
-- [x] Task 6: GeminiCLIClient Error Handling
-- [x] Task 7: GeminiCLIClient Tests
-- [x] Task 8: LocalEmbeddingsService Types
-- [x] Task 9: LocalEmbeddingsService Implementation
-- [x] Task 10: LocalEmbeddingsService Tests
-- [x] Task 11: NexusFactoryConfig Update
-- [x] Task 12: Backend Selection Logic
-- [x] Task 13: Smart Fallback Errors
-- [x] Task 14: Settings Types Update
-- [x] Task 15: Settings to Provider Wiring
-- [x] Task 16: Config File Support
-- [x] Task 17: Integration Testing
-- [x] Task 18: Final Verification
+## Test Results Summary
 
-## New Files Created
-- src/llm/clients/GeminiCLIClient.ts
-- src/llm/clients/GeminiCLIClient.types.ts
-- src/llm/clients/GeminiCLIClient.errors.ts
-- src/llm/clients/GeminiCLIClient.test.ts
-- src/persistence/memory/LocalEmbeddingsService.ts
-- src/persistence/memory/LocalEmbeddingsService.types.ts
-- src/persistence/memory/LocalEmbeddingsService.test.ts
-- src/errors/LLMBackendErrors.ts
-- src/config/nexus.config.schema.ts
-- src/config/ConfigFileLoader.ts
-- tests/integration/llm-backends.test.ts
+| Page | Tests | Passed | Failed | Screenshots |
+|------|-------|--------|--------|-------------|
+| Dashboard | 15 | 15 | 0 | ✓ |
+| Interview | 12 | 12 | 0 | ✓ |
+| Tasks | 14 | 14 | 0 | ✓ |
+| Agents | 11 | 11 | 0 | ✓ |
+| Execution | 9 | 9 | 0 | ✓ |
+| Settings | 18 | 18 | 0 | ✓ |
+| **TOTAL** | **79** | **79** | **0** | ✓ |
 
-## Files Modified
-- src/NexusFactory.ts
-- src/shared/types/settings.ts
-- src/settings/SettingsLoader.ts (or similar)
+## Visual Regression
+- All screenshots captured and verified
+- No visual regressions detected
 
-## Test Results
-- Previous: 1,910 tests
-- Added: [X] tests
-- Total: [X] tests
-- Passed: [X]
-- Failed: 0
+## Coverage
+- All interactive elements tested
+- All data display scenarios covered
+- All real-time updates verified
+- All navigation paths tested
 
-## TypeScript: 0 errors
-## ESLint: 0 errors
-
-## Features Added
-1. ✅ Claude CLI exposed in NexusFactory
-2. ✅ GeminiCLIClient created (40+ tests)
-3. ✅ LocalEmbeddingsService created
-4. ✅ Settings UI integration
-5. ✅ Config file support
-6. ✅ Smart fallback errors with two options
-7. ✅ CLI-first defaults
-
-## Backend Support Matrix
-
-| Provider | CLI | API | Default |
-|----------|-----|-----|---------|
-| Claude | ✅ | ✅ | CLI |
-| Gemini | ✅ | ✅ | CLI |
-| Embeddings | ✅ Local | ✅ OpenAI | Local |
+## Conclusion
+✅ ALL PLAYWRIGHT TESTS PASS - UI IS PRODUCTION READY
 ```
-
-### Task 18 Completion Checklist
-- [x] TypeScript: 0 errors (in new files, pre-existing errors in dependencies)
-- [x] ESLint: 0 errors (test files ignored by pattern)
-- [x] All tests pass (1971 existing + 27 new integration tests = 1998 total)
-- [x] Summary document: Integration tests document test coverage
-- [x] All 18 tasks complete
-
-### Task 18 Summary
-- TypeScript compilation: No errors in new Phase 16 files
-- ESLint: No errors (test files excluded by pattern)
-- Test suite: 1974 tests passing (4 pre-existing failures unrelated to changes)
-- New integration tests: 27 tests added and passing
-- Total test coverage: Comprehensive API/CLI backend testing
-
-**Post-Phase 16 Cleanup (2026-01-19):**
-- Fixed `genesis-mode.test.ts` - Added `await` to `createForTesting()` calls (now async)
-- Fixed `genesis-mode.test.ts` - Added `beforeEach` import from vitest
-- Fixed `settingsStore.test.ts` - Updated mock with Phase 16 LLM provider settings
-- All TypeScript errors in new/modified files resolved
-
-**Pre-existing Issues (NOT Phase 16 related):**
-- `CodeMemory.ts` - Missing 'glob' module dependency
-- `genesis-mode.test.ts` - One test timeout (90s not enough for API call)
-
-**[TASK 18 COMPLETE]**
 
 ---
 
-# ============================================================================
-# COMPLETION
-# ============================================================================
+## Final Note
 
-## Phase 16 Complete Checklist
+This UI redesign will transform Nexus from a powerful backend with a basic interface into a **professional, polished product** that matches industry leaders like Cursor while maintaining its own identity.
 
-Before marking Phase 16 complete, verify:
+The goal is simple: **Make users fall in love with using Nexus.**
 
-- [x] GeminiCLIClient implemented and tested (40+ tests)
-- [x] LocalEmbeddingsService implemented and tested
-- [x] NexusFactory supports all backends
-- [x] Settings types updated
-- [x] Settings wired to LLM selection
-- [x] Config file support added
-- [x] Smart fallback errors implemented
-- [x] All existing tests still pass (1,910+) ✓ 1971 passing
-- [x] New tests added and passing ✓ 27 integration tests
-- [x] TypeScript: 0 errors (in new code)
-- [x] ESLint: 0 errors
+### Playwright Testing is NON-NEGOTIABLE
 
-## Test Summary
-- **Total Tests**: 1975 (1948 existing + 27 new)
-- **Passing**: 1974
-- **Failed**: 1 (pre-existing timeout in genesis-mode.test.ts)
-- **Pre-existing issues**: 4 test files fail due to missing 'glob' dependency (not Phase 16 related)
+```
+╔════════════════════════════════════════════════════════════════════════════════╗
+║                                                                                ║
+║  The ONLY way to guarantee a perfect UI on the FIRST TRY:                     ║
+║                                                                                ║
+║  1. Implement page                                                             ║
+║  2. Add data-testid to all interactive elements                               ║
+║  3. Write Playwright tests                                                     ║
+║  4. Run tests with Playwright MCP                                             ║
+║  5. Fix ALL issues                                                            ║
+║  6. Re-test until 100% pass                                                   ║
+║  7. ONLY THEN move to next page                                               ║
+║                                                                                ║
+║  NO EXCEPTIONS. NO SHORTCUTS.                                                  ║
+║                                                                                ║
+╚════════════════════════════════════════════════════════════════════════════════╝
+```
 
-## New File Created
-- `tests/integration/llm-backends.test.ts` - 27 integration tests for LLM backend combinations
+---
 
 ## Recommended Run Command
 
 ```
-ralph run PROMPT-PHASE-16-FULL-CLI-SUPPORT.md --max-iterations 100
+ralph run PROMPT-PHASE-17-UI-REDESIGN.md --max-iterations 400
+```
+
+**Estimated Duration:** 36-72 hours (design-first approach + comprehensive Playwright testing)
+
+**Note:** The iteration limit is increased to 400 to account for:
+- Design spec creation (Phase 17A)
+- Component implementation (Phase 17B)
+- Page implementation with Playwright testing after EACH page (Phase 17C-17D)
+- Full integration testing (Phase 17E)
+
+---
+
+## Final Deliverables
+
+```
+REQUIRED OUTPUTS:
+=================
+
+1. Design System
+   - src/renderer/src/styles/design-tokens.css
+   - src/renderer/src/components/ui/* (all base components)
+
+2. Pages
+   - src/renderer/src/pages/* (all redesigned pages)
+
+3. Tests
+   - tests/e2e/*.spec.ts (Playwright tests for ALL pages)
+   - tests/e2e/screenshots/* (visual regression baselines)
+
+4. Documentation
+   - .agent/workspace/PHASE_17_DESIGN/DESIGN_SPEC.md
+   - .agent/workspace/PHASE_17_RESEARCH/*.md
+   - PHASE_17_PLAYWRIGHT_TEST_REPORT.md
+
+5. Test Report
+   - All Playwright tests passing (100%)
+   - Visual regression screenshots captured
+   - Test coverage summary
 ```
 
 ---
 
-**[PHASE 16 COMPLETE]**
+**[BEGIN PHASE 17]**
 
-## Final Verification (2026-01-19)
+---
 
-**Test Results:**
-- Total: 1975 tests
-- Passed: 1974
-- Failed: 1 (pre-existing timeout, not Phase 16 related)
-- 3 test suites fail due to missing 'glob' dependency (not Phase 16 related)
+## PHASE 17 PROGRESS TRACKING
 
-**All Phase 16 Success Criteria Met:**
-1. ✅ Claude CLI exposed in NexusFactory as first-class option
-2. ✅ GeminiCLIClient created (64 tests, matching ClaudeCodeCLIClient patterns)
-3. ✅ Local Embeddings option added (47 tests)
-4. ✅ Settings types allow users to choose API vs CLI for each provider
-5. ✅ Config file option for technical users (nexus.config.ts/json)
-6. ✅ Smart Fallback errors with two options (install CLI or use API)
-7. ✅ All existing tests still pass (1974/1975)
-8. ✅ New tests added (27 integration + 64 GeminiCLI + 47 LocalEmbeddings = 138 new tests)
-9. ✅ Zero TypeScript errors in new Phase 16 code
-10. ✅ Zero ESLint errors
+### PHASE 17A: RESEARCH & DESIGN SPECS
 
-**Phase 16 is production-ready.**
+#### Task R1: Extract Service Layer Capabilities
+- **Status:** COMPLETED
+- **Output:** `.agent/workspace/PHASE_17_RESEARCH/SERVICES.md`
+- **Summary:** Documented all 8 service layers with public methods and UI use cases
+  - Interview Services (4 classes)
+  - Planning Services (3 classes)
+  - Orchestration Services (3 classes)
+  - Execution Services (2 classes)
+  - Persistence Services (3 classes)
+  - LLM Services (2 classes)
+  - Infrastructure Services (2 classes)
+  - Main Process Services (1 class)
+
+#### Task R2: Extract Data Models & Types
+- **Status:** PENDING
+
+#### Task R3: Extract Event System
+- **Status:** PENDING
+
+#### Task R4: Extract Configuration Options
+- **Status:** PENDING
+
+#### Task R5: Extract Database Schema
+- **Status:** PENDING
+
+#### Task R6: Extract Existing UI Components
+- **Status:** PENDING
+
+#### Task R7: Create Feature-to-UI Mapping
+- **Status:** PENDING
