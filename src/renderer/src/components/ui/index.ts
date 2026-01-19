@@ -44,9 +44,13 @@ export * from './Tooltip'
 export * from './Skeleton'
 export * from './Spinner'
 export * from './EmptyState'
+export * from './TypingIndicator'
 
 // Layout Components
 export * from './scroll-area'
+
+// Animation Components
+export * from './AnimatedList'
 
 // Re-export layout components for convenience
 export * from '../layout'

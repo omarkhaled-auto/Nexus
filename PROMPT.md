@@ -2786,4 +2786,92 @@ All core pages and Settings tabs have been tested with Playwright MCP:
 
 ---
 
-**NEXT TASK:** Task 27 - Add animations and micro-interactions (Phase 17D polish)
+### Task 27: Add animations and micro-interactions (Phase 17D polish)
+- **Status:** COMPLETED
+- **Commit:** 720df34
+- **Test Date:** 2026-01-19
+
+**Features Implemented:**
+
+1. **Animation Utilities Library (`src/renderer/src/lib/animations.ts`):**
+   - Animation constants: DURATIONS (fast, normal, slow, slower), EASINGS (default, in, out, inOut, bounce)
+   - Framer-motion variants:
+     - `pageVariants` / `pageTransition` - Page route transitions
+     - `modalVariants` / `modalTransition` - Modal enter/exit
+     - `overlayVariants` / `overlayTransition` - Backdrop fade
+     - `toastVariants` / `toastTransition` - Toast notifications with bounce
+     - `dropdownVariants` / `dropdownTransition` - Dropdown/popover
+     - `slideInVariants(direction)` - Configurable slide animations
+     - `scaleVariants` - Hover/tap scale effects
+     - `cardHoverVariants` - Card hover lift effect
+     - `listContainerVariants` / `listItemVariants` - Staggered list animations
+     - `fadeVariants` - Simple fade in/out
+     - `expandVariants` - Accordion expand/collapse
+     - `progressVariants` - Animated progress bars
+     - `pulseVariants` - Status indicator pulse
+   - Spring configurations: snappy, bouncy, smooth, gentle, quick
+   - Helper functions: withDelay, withStagger, createSpring, mergeVariants
+   - CSS class utilities: animationClasses, getDelayClass, getDurationClass
+
+2. **Reduced Motion Hook (`src/renderer/src/hooks/useReducedMotion.ts`):**
+   - `useReducedMotion()` - Full hook with utilities:
+     - `prefersReducedMotion` - Boolean preference state
+     - `getTransition()` - Returns instant transition when reduced motion
+     - `getAnimationProps()` - Conditional animation props for motion components
+     - `getDuration()` - Returns 0 when reduced motion
+     - `shouldAnimate` - Boolean for conditional rendering
+   - `usePrefersReducedMotion()` - Simplified boolean-only hook
+   - Listens to `prefers-reduced-motion` media query changes
+
+3. **Enhanced CSS Animations (`src/renderer/src/index.css`):**
+   - **Hover Lift Effect:** `hover-lift` - Cards lift on hover with shadow
+   - **Glow Pulse:** `animate-glow-pulse` - Purple glow pulse animation
+   - **Success Glow:** `animate-success-glow` - Green success glow
+   - **Error Shake:** `animate-shake` - Horizontal shake for errors
+   - **Typing Dots:** `typing-dot` - Bouncing dots with stagger
+   - **Ripple Effect:** `ripple-container` + `ripple` - Material-style ripple
+   - **Checkmark:** `animate-checkmark` - SVG checkmark draw animation
+   - **Count Up:** `animate-count-up` - Number counter entrance
+   - **Card Entrance:** `animate-card-entrance` - Scale + slide entrance
+   - **Stagger Delays:** `stagger-delay-1` through `stagger-delay-8`
+   - **Highlight Flash:** `animate-highlight` - Purple flash highlight
+   - **New Item Glow:** `animate-new-item` - Ring expansion glow
+   - **Slide + Fade:** `animate-slide-up-fade`, `animate-slide-down-fade`
+   - **Rotate In:** `animate-rotate-in` - Subtle rotation entrance
+   - **Press Feedback:** `press-feedback` - Active scale effect
+   - **Focus Glow:** `focus-glow` - Purple focus ring
+   - **Interactive Hover:** `interactive-hover` - Background change on hover
+   - **Expand Arrow:** `expand-arrow` - Chevron rotation for accordions
+
+4. **TypingIndicator Component (`src/renderer/src/components/ui/TypingIndicator.tsx`):**
+   - Animated bouncing dots for chat typing states
+   - 3 sizes: sm, md, lg
+   - 3 variants: default, primary, muted
+   - Optional label text
+   - Accessible with ARIA attributes
+   - Uses new `typing-dot` CSS animation
+
+5. **AnimatedList Components (`src/renderer/src/components/ui/AnimatedList.tsx`):**
+   - `AnimatedList` - Container with staggered children animations
+   - `AnimatedListItem` - Individual item with direction-based entrance
+   - `AnimatedPresenceList` - For dynamic lists with enter/exit
+   - `AnimatedPresenceItem` - For items that can be added/removed
+   - Respects reduced motion preference
+   - Customizable stagger delay and animation direction
+
+6. **Exports Updated:**
+   - `src/renderer/src/hooks/index.ts` - Added useReducedMotion exports
+   - `src/renderer/src/components/ui/index.ts` - Added TypingIndicator and AnimatedList exports
+
+**Files Created/Modified:**
+- Created: `src/renderer/src/lib/animations.ts`
+- Created: `src/renderer/src/hooks/useReducedMotion.ts`
+- Created: `src/renderer/src/components/ui/TypingIndicator.tsx`
+- Created: `src/renderer/src/components/ui/AnimatedList.tsx`
+- Modified: `src/renderer/src/index.css` - Added 20+ new animation classes
+- Modified: `src/renderer/src/hooks/index.ts` - Added exports
+- Modified: `src/renderer/src/components/ui/index.ts` - Added exports
+
+---
+
+**NEXT TASK:** Task 28 - Responsive design and final polish (Phase 17D)

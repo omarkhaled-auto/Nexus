@@ -641,6 +641,300 @@ input, textarea, select, button {
 }
 
 /* =============================================================================
+   ENHANCED MICRO-INTERACTIONS
+   ============================================================================= */
+
+/* Hover Lift Effect */
+@keyframes hoverLift {
+  0% {
+    transform: translateY(0);
+    box-shadow: var(--shadow-sm);
+  }
+  100% {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+  }
+}
+
+.hover-lift {
+  transition: all var(--duration-normal) var(--ease-default);
+}
+
+.hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+/* Glow Pulse Animation */
+@keyframes glowPulse {
+  0%, 100% {
+    box-shadow: 0 0 5px rgba(124, 58, 237, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(124, 58, 237, 0.4);
+  }
+}
+
+.animate-glow-pulse {
+  animation: glowPulse 2s var(--ease-in-out) infinite;
+}
+
+/* Success Glow */
+@keyframes successGlow {
+  0%, 100% {
+    box-shadow: 0 0 5px rgba(16, 185, 129, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
+  }
+}
+
+.animate-success-glow {
+  animation: successGlow 2s var(--ease-in-out) infinite;
+}
+
+/* Error Shake Animation */
+@keyframes shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  10%, 30%, 50%, 70%, 90% {
+    transform: translateX(-4px);
+  }
+  20%, 40%, 60%, 80% {
+    transform: translateX(4px);
+  }
+}
+
+.animate-shake {
+  animation: shake 0.5s var(--ease-default);
+}
+
+/* Typing Dots Animation */
+@keyframes typingDot {
+  0%, 60%, 100% {
+    transform: translateY(0);
+    opacity: 0.6;
+  }
+  30% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
+}
+
+.typing-dot {
+  animation: typingDot 1.4s var(--ease-in-out) infinite;
+}
+
+.typing-dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.typing-dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+/* Ripple Effect */
+@keyframes ripple {
+  0% {
+    transform: scale(0);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(4);
+    opacity: 0;
+  }
+}
+
+.ripple-container {
+  position: relative;
+  overflow: hidden;
+}
+
+.ripple {
+  position: absolute;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.3);
+  animation: ripple 0.6s linear;
+}
+
+/* Success Check Animation */
+@keyframes checkmark {
+  0% {
+    stroke-dashoffset: 100;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+.animate-checkmark {
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  animation: checkmark 0.5s var(--ease-out) forwards;
+}
+
+/* Number Counter Animation */
+@keyframes countUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-count-up {
+  animation: countUp 0.4s var(--ease-out);
+}
+
+/* Card Entrance Animation */
+@keyframes cardEntrance {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.animate-card-entrance {
+  animation: cardEntrance var(--duration-slow) var(--ease-out);
+}
+
+/* Stagger delay utilities for lists */
+.stagger-delay-1 { animation-delay: 50ms; }
+.stagger-delay-2 { animation-delay: 100ms; }
+.stagger-delay-3 { animation-delay: 150ms; }
+.stagger-delay-4 { animation-delay: 200ms; }
+.stagger-delay-5 { animation-delay: 250ms; }
+.stagger-delay-6 { animation-delay: 300ms; }
+.stagger-delay-7 { animation-delay: 350ms; }
+.stagger-delay-8 { animation-delay: 400ms; }
+
+/* Highlight Flash Animation */
+@keyframes highlight {
+  0% {
+    background-color: rgba(124, 58, 237, 0);
+  }
+  50% {
+    background-color: rgba(124, 58, 237, 0.2);
+  }
+  100% {
+    background-color: rgba(124, 58, 237, 0);
+  }
+}
+
+.animate-highlight {
+  animation: highlight 1s var(--ease-in-out);
+}
+
+/* New Requirement Glow Animation */
+@keyframes newItemGlow {
+  0% {
+    box-shadow: 0 0 0 0 rgba(124, 58, 237, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(124, 58, 237, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(124, 58, 237, 0);
+  }
+}
+
+.animate-new-item {
+  animation: newItemGlow 1.5s var(--ease-out);
+}
+
+/* Slide and Fade Combinations */
+@keyframes slideUpFade {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideDownFade {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up-fade {
+  animation: slideUpFade var(--duration-slow) var(--ease-out);
+}
+
+.animate-slide-down-fade {
+  animation: slideDownFade var(--duration-slow) var(--ease-out);
+}
+
+/* Rotate animations */
+@keyframes rotateIn {
+  from {
+    opacity: 0;
+    transform: rotate(-10deg) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: rotate(0) scale(1);
+  }
+}
+
+.animate-rotate-in {
+  animation: rotateIn var(--duration-normal) var(--ease-out);
+}
+
+/* Press feedback */
+.press-feedback {
+  transition: transform var(--duration-fast) var(--ease-default);
+}
+
+.press-feedback:active {
+  transform: scale(0.98);
+}
+
+/* Focus glow */
+.focus-glow:focus-visible {
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.3);
+  outline: none;
+}
+
+/* Interactive hover states */
+.interactive-hover {
+  transition: all var(--duration-fast) var(--ease-default);
+}
+
+.interactive-hover:hover {
+  background-color: var(--color-bg-hover);
+}
+
+.interactive-hover:active {
+  background-color: var(--color-bg-muted);
+}
+
+/* Expand arrow rotation */
+.expand-arrow {
+  transition: transform var(--duration-normal) var(--ease-default);
+}
+
+.expand-arrow[data-state="open"] {
+  transform: rotate(180deg);
+}
+
+/* =============================================================================
    COMPONENT BASE STYLES
    ============================================================================= */
 
