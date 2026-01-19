@@ -1889,7 +1889,37 @@ REQUIRED OUTPUTS:
   - UI integration points for each page
 
 #### Task R6: Extract Existing UI Components
-- **Status:** PENDING
+- **Status:** COMPLETED
+- **Output:** `.agent/workspace/PHASE_17_RESEARCH/EXISTING_UI.md`
+- **Summary:** Complete inventory of the existing Nexus UI structure:
+  - **Technology Stack:** React 18, React Router v7, Zustand, Tailwind CSS, Radix UI, Lucide icons
+  - **Pages (5):**
+    1. ModeSelectorPage (`/`) - Landing with Genesis/Evolution cards
+    2. InterviewPage (`/genesis`) - Split-screen chat + requirements
+    3. KanbanPage (`/evolution`) - 6-column feature board
+    4. DashboardPage (`/dashboard`) - Real-time metrics + timeline
+    5. SettingsPage (`/settings`) - 5-tab configuration interface
+  - **Component Categories:**
+    - Layout: RootLayout, AnimatedPage
+    - UI Base: Button, Card, Dialog, ScrollArea, Skeleton, Spinner, EmptyState
+    - Dashboard: CostTracker, OverviewCards, ProgressChart, AgentActivity, TaskTimeline
+    - Interview: InterviewLayout, ChatPanel, RequirementsSidebar, CategorySection, RequirementCard
+    - Kanban: KanbanBoard, KanbanColumn, KanbanHeader, FeatureCard, FeatureDetailModal
+    - Checkpoints: CheckpointList, ReviewModal
+  - **Stores (8):**
+    - settingsStore - Settings with IPC sync
+    - projectStore - Project/mode state
+    - agentStore - Agent status tracking
+    - interviewStore - Interview messages/requirements
+    - featureStore - Kanban features (WIP limit: 3)
+    - metricsStore - Dashboard metrics/timeline
+    - taskStore - Task management
+    - uiStore - UI state
+  - **Gaps Identified:**
+    - Missing Pages: Agents, Execution, Memory
+    - Missing in Settings: Model dropdowns, backend toggles, per-agent config
+    - Missing Components: AgentBadge, StatusCard, CodeBlock, Toggle, CommandPalette
+    - Missing Functionality: Real-time EventBus connection, notifications
 
 #### Task R7: Create Feature-to-UI Mapping
 - **Status:** PENDING
