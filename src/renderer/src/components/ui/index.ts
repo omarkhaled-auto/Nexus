@@ -12,9 +12,13 @@
  * - Card - Container component with header, content, footer
  *
  * Feedback Components:
+ * - Toast / Toaster - Toast notifications using Sonner
+ * - Alert - Inline alert banners with variants
  * - Dialog - Modal dialog component
- * - Skeleton - Loading placeholder component
- * - Spinner - Loading spinner animation
+ * - Progress / CircularProgress - Progress indicators
+ * - Tooltip - Hover/focus tooltips
+ * - Skeleton - Loading placeholder patterns
+ * - Spinner - Loading spinner animations
  * - EmptyState - Empty content placeholder
  *
  * Layout Components:
@@ -32,7 +36,11 @@ export * from './Toggle'
 export * from './card'
 
 // Feedback Components
+export * from './Toast'
+export * from './Alert'
 export * from './dialog'
+export * from './Progress'
+export * from './Tooltip'
 export * from './Skeleton'
 export * from './Spinner'
 export * from './EmptyState'

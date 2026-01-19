@@ -626,6 +626,20 @@ input, textarea, select, button {
   animation: blink 1s step-end infinite;
 }
 
+/* Progress Indeterminate Animation */
+@keyframes progressIndeterminate {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(200%);
+  }
+}
+
+.animate-progress-indeterminate {
+  animation: progressIndeterminate 1.5s var(--ease-in-out) infinite;
+}
+
 /* =============================================================================
    COMPONENT BASE STYLES
    ============================================================================= */
