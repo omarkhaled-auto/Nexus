@@ -246,10 +246,8 @@ const nexusAPI = {
   },
 
   // ========================================
-  // Execution Control
   // ========================================
-  // ========================================
-  // Execution Control
+  // Execution Control & Logs (Phase 17 - Task 30.5)
   // ========================================
 
   /**
@@ -260,7 +258,75 @@ const nexusAPI = {
   pauseExecution: (reason?: string): Promise<{ success: boolean }> =>
     ipcRenderer.invoke('execution:pause', reason),
 
-  // ========================================
+  /**
+   * Get execution logs for a specific QA step
+   * @param stepType - The step type: 'build', 'lint', 'test', or 'review'
+   * @returns Promise with array of log entries
+   */
+  getExecutionLogs: (stepType: string): Promise<unknown[]> =>
+    ipcRenderer.invoke('execution:getLogs', stepType),
+
+  /**
+   * Get execution status for all QA steps
+   * @returns Promise with execution status object
+   */
+  getExecutionStatus: (): Promise<{
+    steps: Array<{
+      type: 'build' | 'lint' | 'test' | 'review'
+      status: 'pending' | 'running' | 'success' | 'error'
+      count?: number
+      duration?: number
+      logs: unknown[]
+    }>
+    currentTaskId: string | null
+    currentTaskName: string | null
+    totalDuration: number
+  }> => ipcRenderer.invoke('execution:getStatus'),
+
+  /**
+   * Clear all execution logs
+   * @returns Promise with success status
+   */
+  clearExecutionLogs: (): Promise<{ success: boolean }> =>
+    ipcRenderer.invoke('execution:clearLogs'),
+
+  /**
+   * Export execution logs to a formatted string
+   * @returns Promise with formatted log string
+   */
+  exportExecutionLogs: (): Promise<string> =>
+    ipcRenderer.invoke('execution:exportLogs'),
+
+  /**
+   * Subscribe to execution log update events (real-time streaming)
+   * @param callback - Called when new log entries arrive
+   * @returns Unsubscribe function
+   */
+  onExecutionLogUpdate: (callback: (data: { stepType: string; log: unknown }) => void): Unsubscribe => {
+    const handler = (_event: IpcRendererEvent, data: { stepType: string; log: unknown }): void => {
+      callback(data)
+    }
+    ipcRenderer.on('execution:log', handler)
+    return () => {
+      ipcRenderer.removeListener('execution:log', handler)
+    }
+  },
+
+  /**
+   * Subscribe to execution status change events
+   * @param callback - Called when status changes for any step
+   * @returns Unsubscribe function
+   */
+  onExecutionStatusChange: (callback: (data: { stepType: string; status: string }) => void): Unsubscribe => {
+    const handler = (_event: IpcRendererEvent, data: { stepType: string; status: string }): void => {
+      callback(data)
+    }
+    ipcRenderer.on('execution:status', handler)
+    return () => {
+      ipcRenderer.removeListener('execution:status', handler)
+    }
+  },
+
   // Interview Events (BUILD-014)
   // ========================================
 

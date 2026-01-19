@@ -590,8 +590,189 @@ export function registerIpcHandlers(): void {
   })
 
   // ========================================
-  // Feature Operations (Phase 17 - Kanban)
   // ========================================
+  // Execution Logs Operations (Phase 17 - Task 30.5)
+  // ========================================
+
+  /**
+   * Execution log entry interface for the Execution page
+   */
+  interface ExecutionLogEntry {
+    id: string
+    timestamp: Date
+    type: 'build' | 'lint' | 'test' | 'review' | 'info' | 'error' | 'warning'
+    message: string
+    details?: string
+    duration?: number
+  }
+
+  /**
+   * Execution step status interface
+   */
+  interface ExecutionStepStatus {
+    type: 'build' | 'lint' | 'test' | 'review'
+    status: 'pending' | 'running' | 'success' | 'error'
+    count?: number
+    duration?: number
+    logs: ExecutionLogEntry[]
+  }
+
+  // In-memory execution logs storage (will be populated by QA events)
+  const executionLogs: Map<string, ExecutionLogEntry[]> = new Map([
+    ['build', []],
+    ['lint', []],
+    ['test', []],
+    ['review', []]
+  ])
+
+  // Execution step statuses
+  const executionStatuses: Map<string, 'pending' | 'running' | 'success' | 'error'> = new Map([
+    ['build', 'pending'],
+    ['lint', 'pending'],
+    ['test', 'pending'],
+    ['review', 'pending']
+  ])
+
+  // Execution step durations
+  const executionDurations: Map<string, number> = new Map()
+
+  // Execution step counts (for lint warnings/test counts)
+  const executionCounts: Map<string, number> = new Map()
+
+  // Current task being executed
+  let currentExecutionTaskId: string | null = null
+  let currentExecutionTaskName: string | null = null
+
+  /**
+   * Get execution logs for a specific step (build/lint/test/review)
+   * @param stepType - The QA step type
+   * @returns Array of log entries
+   */
+  ipcMain.handle('execution:getLogs', (event, stepType: string) => {
+    if (!validateSender(event)) {
+      throw new Error('Unauthorized IPC sender')
+    }
+    if (!['build', 'lint', 'test', 'review'].includes(stepType)) {
+      throw new Error('Invalid step type')
+    }
+
+    return executionLogs.get(stepType) || []
+  })
+
+  /**
+   * Get execution status for all steps
+   * @returns Array of step statuses with logs
+   */
+  ipcMain.handle('execution:getStatus', (event) => {
+    if (!validateSender(event)) {
+      throw new Error('Unauthorized IPC sender')
+    }
+
+    const steps: ExecutionStepStatus[] = ['build', 'lint', 'test', 'review'].map(type => ({
+      type: type as 'build' | 'lint' | 'test' | 'review',
+      status: executionStatuses.get(type) || 'pending',
+      count: executionCounts.get(type),
+      duration: executionDurations.get(type),
+      logs: executionLogs.get(type) || []
+    }))
+
+    return {
+      steps,
+      currentTaskId: currentExecutionTaskId,
+      currentTaskName: currentExecutionTaskName,
+      totalDuration: Array.from(executionDurations.values()).reduce((a, b) => a + b, 0)
+    }
+  })
+
+  /**
+   * Clear execution logs for all steps
+   * @returns Success status
+   */
+  ipcMain.handle('execution:clearLogs', (event) => {
+    if (!validateSender(event)) {
+      throw new Error('Unauthorized IPC sender')
+    }
+
+    // Clear all logs
+    for (const type of ['build', 'lint', 'test', 'review']) {
+      executionLogs.set(type, [])
+      executionStatuses.set(type, 'pending')
+      executionDurations.delete(type)
+      executionCounts.delete(type)
+    }
+    currentExecutionTaskId = null
+    currentExecutionTaskName = null
+
+    return { success: true }
+  })
+
+  /**
+   * Export execution logs to a string format
+   * @returns Formatted log string
+   */
+  ipcMain.handle('execution:exportLogs', (event) => {
+    if (!validateSender(event)) {
+      throw new Error('Unauthorized IPC sender')
+    }
+
+    let output = `Nexus Execution Logs\n`
+    output += `Generated: ${new Date().toISOString()}\n`
+    output += `Task: ${currentExecutionTaskName || 'N/A'}\n`
+    output += `${'='.repeat(60)}\n\n`
+
+    for (const type of ['build', 'lint', 'test', 'review']) {
+      const logs = executionLogs.get(type) || []
+      const status = executionStatuses.get(type) || 'pending'
+      const duration = executionDurations.get(type)
+
+      output += `## ${type.toUpperCase()} [${status.toUpperCase()}]`
+      if (duration) output += ` (${(duration / 1000).toFixed(2)}s)`
+      output += `\n${'-'.repeat(40)}\n`
+
+      if (logs.length === 0) {
+        output += `No logs\n`
+      } else {
+        for (const log of logs) {
+          output += `[${new Date(log.timestamp).toISOString()}] ${log.message}\n`
+          if (log.details) output += `  ${log.details}\n`
+        }
+      }
+      output += `\n`
+    }
+
+    return output
+  })
+
+  /**
+   * Helper function to add a log entry (used by event handlers)
+   */
+  function addExecutionLog(
+    type: 'build' | 'lint' | 'test' | 'review',
+    message: string,
+    details?: string,
+    logType: 'info' | 'error' | 'warning' = 'info'
+  ): void {
+    const logs = executionLogs.get(type) || []
+    logs.push({
+      id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+      timestamp: new Date(),
+      type: logType,
+      message,
+      details
+    })
+    executionLogs.set(type, logs)
+  }
+
+  // Export for use in event forwarding setup
+  ;(global as unknown as { addExecutionLog: typeof addExecutionLog }).addExecutionLog = addExecutionLog
+  ;(global as unknown as { executionStatuses: typeof executionStatuses }).executionStatuses = executionStatuses
+  ;(global as unknown as { executionDurations: typeof executionDurations }).executionDurations = executionDurations
+  ;(global as unknown as { executionCounts: typeof executionCounts }).executionCounts = executionCounts
+  ;(global as unknown as { setCurrentExecutionTask: (id: string | null, name: string | null) => void }).setCurrentExecutionTask = (id, name) => {
+    currentExecutionTaskId = id
+    currentExecutionTaskName = name
+  }
+
   // ========================================
   // Feature Operations (Phase 17 - Kanban)
   // ========================================
