@@ -18,7 +18,7 @@
 | 6 | Evolution Workflow | COMPLETE | 80 |
 | 7 | Phase 13 Features | COMPLETE | 70 |
 | 8 | Phase 14B Bindings | COMPLETE | 85 |
-| 9 | Silent Failures | PENDING | 0 |
+| 9 | Silent Failures | COMPLETE | 35 |
 | 10 | Edge Cases | PENDING | 0 |
 | 11 | Synthesis | PENDING | 0 |
 | 12 | Assembly | PENDING | 0 |
@@ -3606,3 +3606,868 @@ Each component includes:
 - INTEGRATION_CHECK: Integration points
 - SILENT_FAILURE_CHECK: Potential silent failure modes
 - STUB_CHECK: Verification that no stubs remain
+
+---
+
+## SECTION 9: SILENT FAILURE DETECTION TESTS
+
+> **What is a Silent Failure?**
+> A silent failure is when something goes wrong but:
+> - No error is thrown
+> - No warning is logged
+> - The system appears to work
+> - But the result is incorrect or incomplete
+
+### Category 1: Empty Results Instead of Errors
+
+#### SF-EMPTY-001: Claude API Returns Empty
+```
+TEST: Detect when Claude API returns empty instead of error
+COMPONENTS: ClaudeClient
+LOCATION: src/llm/ClaudeClient.ts
+
+SCENARIO: API key invalid or rate limited
+EXPECTED: Error thrown with clear message
+SILENT_FAILURE: Empty response returned, downstream code continues with null/undefined
+
+DETECTION_STRATEGY:
+- VERIFY: Response is not empty before using
+- VERIFY: Response matches expected schema (has .content, .role, etc.)
+- VERIFY: Log warning if response suspiciously small (<10 chars)
+- VERIFY: Throw explicit error on empty response
+
+TEST_CASE:
+1. Mock Claude API to return empty string
+2. Call ClaudeClient.chat()
+3. ASSERT: Error thrown with message "Empty response from Claude"
+4. ASSERT: Error logged with request context
+```
+
+#### SF-EMPTY-002: Gemini API Returns Empty
+```
+TEST: Detect when Gemini API returns empty instead of error
+COMPONENTS: GeminiClient
+LOCATION: src/llm/GeminiClient.ts
+
+SCENARIO: API key invalid, quota exceeded, or model unavailable
+EXPECTED: Error thrown with clear message
+SILENT_FAILURE: Empty or malformed response returned
+
+DETECTION_STRATEGY:
+- VERIFY: Response has expected structure
+- VERIFY: Review results have approval status
+- VERIFY: Issues array exists (even if empty)
+- VERIFY: Throw on malformed response
+
+TEST_CASE:
+1. Mock Gemini API to return {}
+2. Call GeminiClient.review()
+3. ASSERT: Error thrown with message "Invalid response from Gemini"
+4. ASSERT: Fallback NOT to approved=true
+```
+
+#### SF-EMPTY-003: Database Query Returns Empty Unexpectedly
+```
+TEST: Detect when query returns empty when data should exist
+COMPONENTS: DatabaseService, StateManager, RequirementsDB
+LOCATION: src/persistence/database/DatabaseService.ts
+
+SCENARIO: Record exists but query has wrong conditions
+EXPECTED: Record returned
+SILENT_FAILURE: Empty array returned, code assumes no data
+
+DETECTION_STRATEGY:
+- VERIFY: Distinguish "no results" from "query error"
+- VERIFY: Log queries that return empty when expecting data
+- VERIFY: Use getOrThrow() for required records
+- VERIFY: RequirementsDB.getByFeatureId() throws if feature not found
+
+TEST_CASE:
+1. Insert requirement with featureId='F-001'
+2. Query with typo: featureId='F-001 ' (trailing space)
+3. ASSERT: Empty result triggers warning
+4. ASSERT: getOrThrow() throws "Requirement not found"
+```
+
+#### SF-EMPTY-004: File Read Returns Empty String
+```
+TEST: Detect when file read returns empty but file has content
+COMPONENTS: FileSystemService, CheckpointManager
+LOCATION: src/infrastructure/file-system/FileSystemService.ts
+
+SCENARIO: File exists but encoding wrong, or file descriptor issue
+EXPECTED: File contents
+SILENT_FAILURE: Empty string returned, no error
+
+DETECTION_STRATEGY:
+- VERIFY: Check file size before reading if expecting content
+- VERIFY: Warn if file size > 0 but content empty
+- VERIFY: Handle encoding explicitly (UTF-8)
+
+TEST_CASE:
+1. Create file with 100 bytes of content
+2. Mock read to return empty string
+3. ASSERT: Warning logged "Expected content but got empty"
+4. ASSERT: Retry mechanism triggered
+```
+
+#### SF-EMPTY-005: Git Diff Returns Empty When Changes Exist
+```
+TEST: Detect empty diff when worktree has changes
+COMPONENTS: GitService, RalphStyleIterator
+LOCATION: src/infrastructure/git/GitService.ts
+
+SCENARIO: Changes exist but diff against wrong ref
+EXPECTED: Diff with changes
+SILENT_FAILURE: Empty diff, agent has no context of changes
+
+DETECTION_STRATEGY:
+- VERIFY: Check git status before diff
+- VERIFY: If status shows changes but diff empty, warn
+- VERIFY: Log refs being compared
+
+TEST_CASE:
+1. Create worktree with modified files
+2. Call getDiff() with wrong base ref
+3. ASSERT: Warning logged "Status shows changes but diff empty"
+4. ASSERT: Fallback to full file content
+```
+
+### Category 2: State Drift
+
+#### SF-DRIFT-001: Memory vs Database Mismatch
+```
+TEST: Detect state drift between in-memory and persisted state
+COMPONENTS: StateManager, DatabaseService
+LOCATION: src/persistence/state/StateManager.ts
+
+SCENARIO: Update in memory succeeds, persist fails silently
+EXPECTED: Memory and disk always in sync
+SILENT_FAILURE: Memory updated, disk has old data, restart loses progress
+
+DETECTION_STRATEGY:
+- VERIFY: Use transactions for atomic updates
+- VERIFY: Periodically verify memory matches disk (every 5 min)
+- VERIFY: Log all persistence operations with success/fail
+- VERIFY: On restore, compare checksums
+
+TEST_CASE:
+1. Update state in memory
+2. Mock persist() to fail silently
+3. Call reconcile()
+4. ASSERT: Mismatch detected
+5. ASSERT: Event emitted: 'state.drift.detected'
+```
+
+#### SF-DRIFT-002: Task Status Mismatch
+```
+TEST: Detect task status drift between TaskQueue and database
+COMPONENTS: TaskQueue, NexusCoordinator, DatabaseService
+LOCATION: src/orchestration/queue/TaskQueue.ts
+
+SCENARIO: Task completes but status update fails
+EXPECTED: Status = 'completed' in queue AND database
+SILENT_FAILURE: Queue shows completed, database shows in_progress
+
+DETECTION_STRATEGY:
+- VERIFY: Status update is transactional
+- VERIFY: Queue and database reconciled after each operation
+- VERIFY: Alert on stale status (in_progress > 2 hours)
+
+TEST_CASE:
+1. Complete task in queue
+2. Mock database update to fail
+3. Run reconciliation
+4. ASSERT: Mismatch detected
+5. ASSERT: Corrective action logged
+```
+
+#### SF-DRIFT-003: Agent State Mismatch
+```
+TEST: Detect agent state drift in AgentPool
+COMPONENTS: AgentPool, BaseAgentRunner
+LOCATION: src/orchestration/agents/AgentPool.ts
+
+SCENARIO: Agent finishes task but pool still shows it as 'working'
+EXPECTED: Agent released to pool, status = 'idle'
+SILENT_FAILURE: Agent stuck in 'working' state, pool appears full
+
+DETECTION_STRATEGY:
+- VERIFY: Agent state updated after task completion
+- VERIFY: Implement heartbeat (agent pings every 30s)
+- VERIFY: Clean up stale agents (no heartbeat for 5 min)
+- VERIFY: Watchdog process monitors agent states
+
+TEST_CASE:
+1. Spawn agent
+2. Assign task
+3. Complete task but don't call release()
+4. Wait 5 minutes
+5. ASSERT: Watchdog detects stale agent
+6. ASSERT: Agent auto-released with warning
+```
+
+#### SF-DRIFT-004: Iteration Count Mismatch
+```
+TEST: Detect iteration count drift in RalphStyleIterator
+COMPONENTS: RalphStyleIterator
+LOCATION: src/orchestration/iteration/RalphStyleIterator.ts
+
+SCENARIO: Iteration counter in memory differs from persisted count
+EXPECTED: Iteration count accurate after restart
+SILENT_FAILURE: Counter resets on restart, runs 100+ iterations
+
+DETECTION_STRATEGY:
+- VERIFY: Iteration count persisted after each iteration
+- VERIFY: On resume, load persisted count
+- VERIFY: Log count at each iteration
+- VERIFY: Hard limit: kill after 60 iterations even if counter wrong
+
+TEST_CASE:
+1. Run 25 iterations
+2. Simulate restart
+3. Resume execution
+4. ASSERT: Counter resumes at 25, not 0
+```
+
+### Category 3: Event Delivery Failures
+
+#### SF-EVENT-001: Event Emitted But Not Received
+```
+TEST: Detect lost events in EventBus
+COMPONENTS: EventBus
+LOCATION: src/orchestration/events/EventBus.ts
+
+SCENARIO: Subscriber throws error, remaining subscribers not called
+EXPECTED: All subscribers notified, errors isolated
+SILENT_FAILURE: Some subscribers never receive event
+
+DETECTION_STRATEGY:
+- VERIFY: Each subscriber wrapped in try-catch
+- VERIFY: Error in one subscriber doesn't stop others
+- VERIFY: Failed deliveries logged
+- VERIFY: Event delivery confirmation/receipt
+
+TEST_CASE:
+1. Register 3 subscribers
+2. Subscriber 2 throws error
+3. Emit event
+4. ASSERT: Subscriber 1 called
+5. ASSERT: Subscriber 2 error logged
+6. ASSERT: Subscriber 3 called
+```
+
+#### SF-EVENT-002: Event Emitted With Wrong Payload Type
+```
+TEST: Detect type mismatches in event payloads
+COMPONENTS: EventBus, Type system
+LOCATION: src/orchestration/events/EventBus.ts
+
+SCENARIO: Event emitted with payload that doesn't match expected schema
+EXPECTED: Type error or runtime validation failure
+SILENT_FAILURE: Wrong data passed, downstream code fails mysteriously
+
+DETECTION_STRATEGY:
+- VERIFY: Runtime type checking with Zod for event payloads
+- VERIFY: Log payload structure on emit
+- VERIFY: Subscriber can reject malformed payload
+
+TEST_CASE:
+1. Define event 'task.completed' with schema { taskId: string }
+2. Emit with payload { taskId: 123 } (number instead of string)
+3. ASSERT: Validation error thrown
+4. ASSERT: Event NOT delivered to subscribers
+```
+
+#### SF-EVENT-003: Event Lost During High-Frequency Emission
+```
+TEST: Detect event loss under load
+COMPONENTS: EventBus
+LOCATION: src/orchestration/events/EventBus.ts
+
+SCENARIO: Rapid event emission overwhelms event queue
+EXPECTED: All events eventually delivered
+SILENT_FAILURE: Events dropped without notice
+
+DETECTION_STRATEGY:
+- VERIFY: Event sequence numbers to detect gaps
+- VERIFY: Backpressure mechanism if queue full
+- VERIFY: Warning when queue depth > threshold
+
+TEST_CASE:
+1. Register subscriber with slow processing (100ms)
+2. Emit 1000 events rapidly
+3. Wait for processing
+4. ASSERT: All 1000 events received
+5. ASSERT: No sequence gaps
+```
+
+### Category 4: Fallback Masking Errors
+
+#### SF-FALLBACK-001: LLM Fallback Hides Real Error
+```
+TEST: Detect when fallback masks primary provider failure
+COMPONENTS: ClaudeClient, GeminiClient, LLMProvider
+LOCATION: src/llm/
+
+SCENARIO: Claude fails with important error, Gemini used without logging why
+EXPECTED: Error logged, explicit fallback notification
+SILENT_FAILURE: Primary failure hidden, issues not investigated
+
+DETECTION_STRATEGY:
+- VERIFY: Always log fallback activation with reason
+- VERIFY: Track fallback frequency (alert if > 10% of calls)
+- VERIFY: Include original error in fallback context
+- VERIFY: Emit event 'llm.fallback.activated'
+
+TEST_CASE:
+1. Mock Claude to fail with "Rate limit exceeded"
+2. Call LLMProvider.chat()
+3. ASSERT: Gemini fallback used
+4. ASSERT: Log entry: "Falling back to Gemini. Claude error: Rate limit exceeded"
+5. ASSERT: Metric tracked: claude_fallbacks_total++
+```
+
+#### SF-FALLBACK-002: Default TimeEstimate Hides Calculation Error
+```
+TEST: Detect when default value masks estimation failure
+COMPONENTS: TimeEstimator
+LOCATION: src/planning/estimation/TimeEstimator.ts
+
+SCENARIO: Estimation fails, default 30 minutes used without warning
+EXPECTED: Error or warning when using default
+SILENT_FAILURE: Always estimates 30min, planning seems to work but is inaccurate
+
+DETECTION_STRATEGY:
+- VERIFY: Log when default value used
+- VERIFY: Track default usage frequency
+- VERIFY: Emit event 'estimation.defaulted'
+- VERIFY: Flag task as 'estimated_with_default'
+
+TEST_CASE:
+1. Provide task with no estimable attributes
+2. Call estimate()
+3. ASSERT: Default 30 returned
+4. ASSERT: Warning logged "Using default estimate, could not calculate"
+5. ASSERT: Task flagged with estimationMethod='default'
+```
+
+#### SF-FALLBACK-003: QA Step Fallback to Pass
+```
+TEST: Detect when QA step defaults to pass on error
+COMPONENTS: BuildRunner, LintRunner, TestRunner, ReviewRunner
+LOCATION: src/execution/qa/
+
+SCENARIO: QA step throws exception, returns pass by default
+EXPECTED: Error propagated, step marked as failed
+SILENT_FAILURE: Bad code passes QA, merged to main
+
+DETECTION_STRATEGY:
+- VERIFY: No catch blocks that return success
+- VERIFY: All QA errors propagate
+- VERIFY: Explicit failure state, not default success
+
+TEST_CASE:
+1. Mock BuildRunner.run() to throw exception
+2. Run QA loop
+3. ASSERT: Build step marked as FAILED
+4. ASSERT: Exception details in BuildResult.error
+5. ASSERT: QA loop does NOT continue to lint
+```
+
+### Category 5: Resource Leaks
+
+#### SF-LEAK-001: Orphaned Worktrees
+```
+TEST: Detect orphaned worktrees accumulating
+COMPONENTS: WorktreeManager, AgentPool
+LOCATION: src/infrastructure/git/WorktreeManager.ts
+
+SCENARIO: Task fails, worktree not cleaned up
+EXPECTED: Worktree removed on task completion (success or failure)
+SILENT_FAILURE: Worktrees accumulate, disk fills up
+
+DETECTION_STRATEGY:
+- VERIFY: Track worktree creation/deletion count
+- VERIFY: Periodic cleanup job (every 10 min)
+- VERIFY: Alert when worktree count > 10
+- VERIFY: Each worktree tagged with taskId for tracking
+
+TEST_CASE:
+1. Create worktree for task
+2. Task throws exception
+3. Wait for cleanup interval
+4. ASSERT: Worktree removed
+5. ASSERT: Log entry "Cleaned orphan worktree for task X"
+```
+
+#### SF-LEAK-002: Database Connection Leak
+```
+TEST: Detect database connection leaks
+COMPONENTS: DatabaseService
+LOCATION: src/persistence/database/DatabaseService.ts
+
+SCENARIO: Query errors, connection not returned to pool
+EXPECTED: Connection released on success AND error
+SILENT_FAILURE: Pool exhausted over time, queries start failing
+
+DETECTION_STRATEGY:
+- VERIFY: Connection checkout/return tracked
+- VERIFY: Connection timeout (idle > 60s returns to pool)
+- VERIFY: Alert on pool exhaustion approaching
+- VERIFY: Use connection wrapper with finally{} release
+
+TEST_CASE:
+1. Run query that throws error
+2. Check pool state
+3. ASSERT: Connection returned to pool
+4. ASSERT: Pool size unchanged
+```
+
+#### SF-LEAK-003: Agent Memory Leak
+```
+TEST: Detect memory leaks in long-running agents
+COMPONENTS: BaseAgentRunner, AgentPool
+LOCATION: src/execution/agents/
+
+SCENARIO: Agent retains references to old messages, memory grows
+EXPECTED: Agent memory stable over many iterations
+SILENT_FAILURE: Memory grows indefinitely, eventual OOM
+
+DETECTION_STRATEGY:
+- VERIFY: Monitor agent heap usage
+- VERIFY: Clear conversation history after task
+- VERIFY: Force GC between tasks
+- VERIFY: Alert if agent memory > 500MB
+
+TEST_CASE:
+1. Run agent for 50 iterations
+2. Measure memory after each iteration
+3. ASSERT: Memory growth < 10MB total
+4. ASSERT: No unbounded arrays in agent state
+```
+
+#### SF-LEAK-004: Event Listener Leak
+```
+TEST: Detect event listener leaks
+COMPONENTS: EventBus
+LOCATION: src/orchestration/events/EventBus.ts
+
+SCENARIO: Listeners registered but never unregistered
+EXPECTED: Listeners cleaned up when component disposed
+SILENT_FAILURE: Listener count grows, memory leak, duplicate handlers
+
+DETECTION_STRATEGY:
+- VERIFY: Track listener count per event type
+- VERIFY: Warn if listener count > 100 for any event
+- VERIFY: Components call off() in dispose()
+- VERIFY: Weak references for component-bound listeners
+
+TEST_CASE:
+1. Create 50 components, each registers listener
+2. Dispose 49 components
+3. ASSERT: Only 1 listener remains
+4. ASSERT: Disposed component listeners removed
+```
+
+### Category 6: QA Bypasses
+
+#### SF-QA-001: QA Step Skipped Without Notice
+```
+TEST: Detect when QA step is skipped
+COMPONENTS: RalphStyleIterator, QALoopEngine
+LOCATION: src/orchestration/iteration/RalphStyleIterator.ts
+
+SCENARIO: Build step throws, iteration continues to lint
+EXPECTED: Build failure stops iteration for that step
+SILENT_FAILURE: Bad code passes because build was skipped
+
+DETECTION_STRATEGY:
+- VERIFY: Each step has explicit ran/skipped status
+- VERIFY: Cannot proceed without explicit step result
+- VERIFY: Log step execution timestamps
+- VERIFY: Alert if step timestamp missing
+
+TEST_CASE:
+1. Mock BuildRunner to throw "tsc not found"
+2. Run iteration
+3. ASSERT: Iteration marked as FAILED at build step
+4. ASSERT: Lint NOT executed
+5. ASSERT: Log shows "Build step failed, iteration incomplete"
+```
+
+#### SF-QA-002: Iteration Counter Not Incrementing
+```
+TEST: Detect iteration count manipulation
+COMPONENTS: RalphStyleIterator
+LOCATION: src/orchestration/iteration/RalphStyleIterator.ts
+
+SCENARIO: Counter not incremented on certain error paths
+EXPECTED: Counter ALWAYS increments, regardless of outcome
+SILENT_FAILURE: Infinite loop, never reaches escalation threshold
+
+DETECTION_STRATEGY:
+- VERIFY: Counter incremented FIRST, before any step
+- VERIFY: Hard timeout as backup (30 min per task)
+- VERIFY: Log iteration start/end with count
+- VERIFY: Kill process if iteration 0 appears after iteration 1
+
+TEST_CASE:
+1. Mock step to fail repeatedly
+2. Run 55 iterations
+3. ASSERT: Counter shows 55
+4. ASSERT: Escalation triggered at 50
+```
+
+#### SF-QA-003: Escalation Handler Not Called
+```
+TEST: Detect escalation bypass
+COMPONENTS: EscalationHandler, RalphStyleIterator
+LOCATION: src/orchestration/escalation/EscalationHandler.ts
+
+SCENARIO: 50 iterations reached but escalation fails silently
+EXPECTED: Human notified, task paused
+SILENT_FAILURE: System continues beyond 50, no notification
+
+DETECTION_STRATEGY:
+- VERIFY: Escalation returns success/failure
+- VERIFY: Retry escalation 3 times if fails
+- VERIFY: Hard kill after 60 iterations regardless
+- VERIFY: Emit event 'escalation.required' for monitoring
+
+TEST_CASE:
+1. Mock EscalationHandler.notify() to fail
+2. Run 50 iterations
+3. ASSERT: 3 retry attempts logged
+4. ASSERT: After retries exhausted, task marked 'escalation_failed'
+5. ASSERT: Execution STOPS, does not continue to 51
+```
+
+#### SF-QA-004: Review Always Approves
+```
+TEST: Detect when review rubber-stamps everything
+COMPONENTS: ReviewRunner, ReviewerAgent
+LOCATION: src/execution/qa/ReviewRunner.ts
+
+SCENARIO: Review always returns approved=true regardless of code quality
+EXPECTED: Actual code review with meaningful feedback
+SILENT_FAILURE: Bad code approved, technical debt accumulates
+
+DETECTION_STRATEGY:
+- VERIFY: Review includes specific feedback, not generic
+- VERIFY: Track approval rate (alert if > 95%)
+- VERIFY: Review response includes line-specific comments
+- VERIFY: Audit random sample of reviews for quality
+
+TEST_CASE:
+1. Submit obviously bad code (syntax errors, no types, etc.)
+2. Run review
+3. ASSERT: approved=false
+4. ASSERT: Issues array has specific, actionable items
+```
+
+### Category 7: Context Issues
+
+#### SF-CTX-001: Context Truncated Without Warning
+```
+TEST: Detect silent context truncation
+COMPONENTS: FreshContextManager, DynamicContextProvider
+LOCATION: src/orchestration/context/FreshContextManager.ts
+
+SCENARIO: Context exceeds token limit, truncated from end
+EXPECTED: Warning logged, truncation strategy clear (prioritize recent)
+SILENT_FAILURE: Important context lost, agent makes wrong decisions
+
+DETECTION_STRATEGY:
+- VERIFY: Log when truncation occurs with amount truncated
+- VERIFY: Mark what was truncated (files, history, etc.)
+- VERIFY: Emit event 'context.truncated'
+- VERIFY: Agent can request specific context back
+
+TEST_CASE:
+1. Create context with 200k tokens
+2. Limit is 100k
+3. Initialize context
+4. ASSERT: Warning "Truncated 100k tokens from context"
+5. ASSERT: Event emitted with truncation details
+```
+
+#### SF-CTX-002: Stale Context Between Tasks
+```
+TEST: Detect stale context not refreshed
+COMPONENTS: FreshContextManager, MemorySystem
+LOCATION: src/orchestration/context/FreshContextManager.ts
+
+SCENARIO: Task 2 uses context from Task 1, not updated
+EXPECTED: Fresh context for each task
+SILENT_FAILURE: Task uses outdated information, makes incorrect changes
+
+DETECTION_STRATEGY:
+- VERIFY: Context reset called before each task
+- VERIFY: Timestamp on context data
+- VERIFY: Invalidate context when files change
+- VERIFY: Log context age at task start
+
+TEST_CASE:
+1. Run Task 1, modify file A
+2. Start Task 2
+3. Check context for Task 2
+4. ASSERT: Context includes Task 1's changes to file A
+5. ASSERT: Context timestamp is recent
+```
+
+#### SF-CTX-003: Context Budget Exceeded Without Limit
+```
+TEST: Detect context budget not enforced
+COMPONENTS: DynamicContextProvider
+LOCATION: src/orchestration/context/DynamicContextProvider.ts
+
+SCENARIO: Agent keeps requesting more context, no limit
+EXPECTED: Budget enforced, agent warned
+SILENT_FAILURE: Context grows unbounded, API calls fail
+
+DETECTION_STRATEGY:
+- VERIFY: Budget tracked per task (e.g., 50k tokens)
+- VERIFY: Warn at 80% of budget
+- VERIFY: Reject requests beyond budget
+- VERIFY: Log all context requests with sizes
+
+TEST_CASE:
+1. Set budget to 50k tokens
+2. Request 60k tokens of context
+3. ASSERT: First 50k provided
+4. ASSERT: Warning "Context budget exceeded"
+5. ASSERT: Subsequent requests rejected
+```
+
+### Category 8: Type Mismatches
+
+#### SF-TYPE-001: Runtime Type Mismatch from API
+```
+TEST: Detect runtime type mismatches from external APIs
+COMPONENTS: ClaudeClient, GeminiClient, All external integrations
+LOCATION: src/llm/
+
+SCENARIO: API returns unexpected structure
+EXPECTED: Validation error, clear message
+SILENT_FAILURE: Wrong field accessed, undefined cascades through code
+
+DETECTION_STRATEGY:
+- VERIFY: All external responses validated with Zod
+- VERIFY: Strict null checks enabled
+- VERIFY: Log validation failures with payload
+
+TEST_CASE:
+1. Mock Claude response: { choices: [] } instead of { content: "" }
+2. Call ClaudeClient.chat()
+3. ASSERT: Zod validation error thrown
+4. ASSERT: Error message includes expected vs received structure
+```
+
+#### SF-TYPE-002: Interface Implementation Mismatch
+```
+TEST: Detect interface implementation mismatches
+COMPONENTS: All Phase 14B bindings
+LOCATION: src/
+
+SCENARIO: Implementation doesn't match interface contract
+EXPECTED: Compile error
+SILENT_FAILURE: Runtime error or incorrect behavior
+
+DETECTION_STRATEGY:
+- VERIFY: TypeScript strict mode enabled
+- VERIFY: Integration tests verify interface contracts
+- VERIFY: No 'any' types on interface boundaries
+
+TEST_CASE:
+1. Review ITaskDecomposer interface
+2. Review TaskDecomposer implementation
+3. ASSERT: All interface methods implemented
+4. ASSERT: Return types match exactly
+5. ASSERT: No additional methods that should be in interface
+```
+
+#### SF-TYPE-003: JSON Parse Without Validation
+```
+TEST: Detect JSON parsing without schema validation
+COMPONENTS: StateManager, CheckpointManager, All persistence
+LOCATION: src/persistence/
+
+SCENARIO: JSON parsed but structure not validated
+EXPECTED: Validated JSON or clear error
+SILENT_FAILURE: Malformed data loaded, causes errors later
+
+DETECTION_STRATEGY:
+- VERIFY: All JSON.parse() followed by Zod validation
+- VERIFY: No raw JSON.parse() in codebase
+- VERIFY: Use typed parse functions (parseState(), parseCheckpoint())
+
+TEST_CASE:
+1. Save checkpoint with extra field
+2. Modify saved file to remove required field
+3. Load checkpoint
+4. ASSERT: Validation error on load
+5. ASSERT: Error message shows missing field
+```
+
+#### SF-TYPE-004: Event Payload Schema Mismatch
+```
+TEST: Detect event payload schema violations
+COMPONENTS: EventBus, All event emitters
+LOCATION: src/orchestration/events/
+
+SCENARIO: Event emitted with wrong payload shape
+EXPECTED: Runtime validation error
+SILENT_FAILURE: Subscriber receives wrong data, undefined behavior
+
+DETECTION_STRATEGY:
+- VERIFY: Event schemas defined centrally
+- VERIFY: emit() validates payload against schema
+- VERIFY: Log schema violations
+
+TEST_CASE:
+1. Define TaskCompletedEvent = { taskId: string, duration: number }
+2. Emit with { taskId: 123, duration: "5min" }
+3. ASSERT: Schema validation error
+4. ASSERT: Event NOT emitted
+```
+
+### Category 9: Concurrency Issues
+
+#### SF-CONC-001: Race Condition in Task Assignment
+```
+TEST: Detect race conditions in agent assignment
+COMPONENTS: AgentPool, NexusCoordinator
+LOCATION: src/orchestration/agents/AgentPool.ts
+
+SCENARIO: Two tasks try to claim same agent simultaneously
+EXPECTED: One succeeds, one waits
+SILENT_FAILURE: Both think they have the agent, conflicts ensue
+
+DETECTION_STRATEGY:
+- VERIFY: Agent assignment uses mutex/lock
+- VERIFY: Double-check agent status before assignment
+- VERIFY: Assignment returns success/failure explicitly
+
+TEST_CASE:
+1. Create pool with 1 agent
+2. Simultaneously submit 2 tasks
+3. ASSERT: Exactly 1 task assigned immediately
+4. ASSERT: Other task queued/waiting
+5. ASSERT: No "agent already assigned" errors later
+```
+
+#### SF-CONC-002: Concurrent File Writes
+```
+TEST: Detect file write conflicts
+COMPONENTS: FileSystemService, AgentRunner
+LOCATION: src/infrastructure/file-system/FileSystemService.ts
+
+SCENARIO: Two agents write same file simultaneously
+EXPECTED: Writes serialized or merged
+SILENT_FAILURE: One write lost, code inconsistent
+
+DETECTION_STRATEGY:
+- VERIFY: File locks for write operations
+- VERIFY: Conflict detection before write
+- VERIFY: Atomic write operations (write to temp, rename)
+
+TEST_CASE:
+1. Start two agents writing to same file
+2. Both complete
+3. ASSERT: File contains expected merged content OR
+4. ASSERT: Conflict detected and reported
+```
+
+#### SF-CONC-003: Database Transaction Conflicts
+```
+TEST: Detect database transaction isolation issues
+COMPONENTS: DatabaseService
+LOCATION: src/persistence/database/DatabaseService.ts
+
+SCENARIO: Concurrent transactions conflict
+EXPECTED: Proper isolation, retry on conflict
+SILENT_FAILURE: Data corruption from partial commits
+
+DETECTION_STRATEGY:
+- VERIFY: Transactions use SERIALIZABLE isolation
+- VERIFY: Retry logic for conflict errors
+- VERIFY: Log all transaction conflicts
+
+TEST_CASE:
+1. Start transaction A: read task status
+2. Start transaction B: update same task status
+3. A tries to update based on old read
+4. ASSERT: Conflict detected
+5. ASSERT: Transaction A retries with fresh data
+```
+
+### Category 10: Configuration Issues
+
+#### SF-CONFIG-001: Missing Environment Variable
+```
+TEST: Detect missing required environment variables
+COMPONENTS: NexusFactory, Configuration
+LOCATION: src/NexusFactory.ts
+
+SCENARIO: CLAUDE_API_KEY not set
+EXPECTED: Clear error at startup
+SILENT_FAILURE: Undefined used, cryptic API errors later
+
+DETECTION_STRATEGY:
+- VERIFY: All required env vars validated at startup
+- VERIFY: Clear error message for each missing var
+- VERIFY: Startup blocked until resolved
+
+TEST_CASE:
+1. Unset CLAUDE_API_KEY
+2. Call NexusFactory.create()
+3. ASSERT: Error "Missing required env var: CLAUDE_API_KEY"
+4. ASSERT: Error thrown BEFORE any LLM calls
+```
+
+#### SF-CONFIG-002: Invalid Configuration Value
+```
+TEST: Detect invalid configuration values
+COMPONENTS: Configuration
+LOCATION: src/config/
+
+SCENARIO: MAX_ITERATIONS set to "fifty" instead of 50
+EXPECTED: Validation error
+SILENT_FAILURE: NaN used, infinite loop or crash
+
+DETECTION_STRATEGY:
+- VERIFY: All config values validated with types
+- VERIFY: Range checks for numeric values
+- VERIFY: Enum checks for string values
+
+TEST_CASE:
+1. Set MAX_ITERATIONS="fifty"
+2. Load configuration
+3. ASSERT: Validation error "MAX_ITERATIONS must be number"
+```
+
+---
+
+**[TASK 9 COMPLETE]**
+
+Task 9 generated Silent Failure Detection Tests across 10 categories:
+- Category 1: Empty Results Instead of Errors (5 tests)
+- Category 2: State Drift (4 tests)
+- Category 3: Event Delivery Failures (3 tests)
+- Category 4: Fallback Masking Errors (3 tests)
+- Category 5: Resource Leaks (4 tests)
+- Category 6: QA Bypasses (4 tests)
+- Category 7: Context Issues (3 tests)
+- Category 8: Type Mismatches (4 tests)
+- Category 9: Concurrency Issues (3 tests)
+- Category 10: Configuration Issues (2 tests)
+
+Total: 35 Silent Failure Detection Tests
+
+Each test includes:
+- SCENARIO: What goes wrong
+- EXPECTED: Correct behavior
+- SILENT_FAILURE: How it fails silently
+- DETECTION_STRATEGY: How to catch it
+- TEST_CASE: Specific test steps and assertions
