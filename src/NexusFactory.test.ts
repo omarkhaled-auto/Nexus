@@ -11,13 +11,25 @@ import { NexusFactory, createNexus, createTestingNexus } from './NexusFactory';
 import type { NexusFactoryConfig, NexusTestingConfig } from './NexusFactory';
 
 // Mock the LLM clients to avoid actual API calls
-vi.mock('./llm/clients/ClaudeClient', () => ({
-  ClaudeClient: vi.fn().mockImplementation(() => ({
-    chat: vi.fn().mockResolvedValue({ content: 'mocked response' }),
-    chatStream: vi.fn(),
-    countTokens: vi.fn().mockReturnValue(0),
-  })),
-}));
+vi.mock('./llm/clients/ClaudeClient', () => {
+  // Base LLMError class that other errors extend
+  class LLMError extends Error {
+    constructor(message: string) {
+      super(message);
+      this.name = 'LLMError';
+      Object.setPrototypeOf(this, LLMError.prototype);
+    }
+  }
+
+  return {
+    ClaudeClient: vi.fn().mockImplementation(() => ({
+      chat: vi.fn().mockResolvedValue({ content: 'mocked response' }),
+      chatStream: vi.fn(),
+      countTokens: vi.fn().mockReturnValue(0),
+    })),
+    LLMError,
+  };
+});
 
 vi.mock('./llm/clients/GeminiClient', () => ({
   GeminiClient: vi.fn().mockImplementation(() => ({

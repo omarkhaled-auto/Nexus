@@ -43,10 +43,37 @@ export class CLIError extends LLMError {
 }
 
 /**
- * Error when Claude CLI is not available
+ * Error when Claude CLI is not available.
+ *
+ * Provides a helpful two-option message:
+ * 1. How to install the CLI
+ * 2. How to use API key instead
+ *
+ * Phase 16: Task 13 - Unified error messages
  */
 export class CLINotFoundError extends CLIError {
-  constructor(message: string = 'Claude CLI not found. Ensure claude is installed and in PATH.') {
+  /** Command to install the CLI */
+  readonly installCommand = 'npm install -g @anthropic-ai/claude-code';
+
+  /** URL for more installation information */
+  readonly installUrl = 'https://docs.anthropic.com/claude/docs/claude-code-cli';
+
+  /** Environment variable for API key fallback */
+  readonly envVariable = 'ANTHROPIC_API_KEY';
+
+  /** Path in Settings UI to configure API backend */
+  readonly settingsPath = 'Settings → LLM Providers → Claude → Use API';
+
+  constructor(
+    message: string = `Claude CLI not found.\n\n` +
+      `You have two options:\n\n` +
+      `━━━ OPTION 1: Install the CLI ━━━\n` +
+      `  npm install -g @anthropic-ai/claude-code\n` +
+      `  More info: https://docs.anthropic.com/claude/docs/claude-code-cli\n\n` +
+      `━━━ OPTION 2: Use API Key ━━━\n` +
+      `  Set ANTHROPIC_API_KEY in your .env file\n` +
+      `  Or: Settings → LLM Providers → Claude → Use API\n`
+  ) {
     super(message, null);
     this.name = 'CLINotFoundError';
     Object.setPrototypeOf(this, CLINotFoundError.prototype);

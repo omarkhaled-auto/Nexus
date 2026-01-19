@@ -261,6 +261,30 @@ export {
 } from './llm';
 
 // ============================================================================
+// Errors (Phase 16)
+// ============================================================================
+
+/**
+ * Unified error classes for LLM backend failures.
+ * These provide standardized, helpful error messages.
+ */
+export {
+  // Base error
+  LLMBackendError,
+  // CLI errors
+  CLINotFoundError as UnifiedCLINotFoundError,
+  CLIAuthError,
+  CLITimeoutError,
+  // API errors
+  APIKeyMissingError,
+  // Embeddings errors
+  LocalEmbeddingsError,
+  // Common errors
+  RateLimitError as UnifiedRateLimitError,
+  BackendUnavailableError,
+} from './errors/LLMBackendErrors';
+
+// ============================================================================
 // Types
 // ============================================================================
 

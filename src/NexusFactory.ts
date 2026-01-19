@@ -20,6 +20,7 @@ import type { GeminiCLIConfig } from './llm/clients/GeminiCLIClient.types';
 import { LocalEmbeddingsService, LocalEmbeddingsInitError } from './persistence/memory/LocalEmbeddingsService';
 import type { LocalEmbeddingsConfig } from './persistence/memory/LocalEmbeddingsService.types';
 import { EmbeddingsService, type EmbeddingsServiceOptions } from './persistence/memory/EmbeddingsService';
+import { APIKeyMissingError } from './errors/LLMBackendErrors';
 import { TaskDecomposer } from './planning/decomposition/TaskDecomposer';
 import { DependencyResolver } from './planning/dependencies/DependencyResolver';
 import { TimeEstimator } from './planning/estimation/TimeEstimator';
@@ -641,13 +642,7 @@ export class NexusFactory {
 
     // API backend explicitly requested
     if (!config.claudeApiKey) {
-      throw new Error(
-        'Claude API key required when using API backend.\n\n' +
-          'Options:\n' +
-          '1. Set ANTHROPIC_API_KEY in your .env file\n' +
-          '2. Switch to CLI backend in Settings → LLM Providers → Claude → Use CLI\n' +
-          '   (Requires Claude Code CLI to be installed)'
-      );
+      throw new APIKeyMissingError('claude');
     }
 
     return {
@@ -703,13 +698,7 @@ export class NexusFactory {
 
     // API backend explicitly requested
     if (!config.geminiApiKey) {
-      throw new Error(
-        'Gemini API key required when using API backend.\n\n' +
-          'Options:\n' +
-          '1. Set GOOGLE_API_KEY in your .env file\n' +
-          '2. Switch to CLI backend in Settings → LLM Providers → Gemini → Use CLI\n' +
-          '   (Requires Gemini CLI to be installed)'
-      );
+      throw new APIKeyMissingError('gemini');
     }
 
     return {
@@ -765,13 +754,7 @@ export class NexusFactory {
 
     // API backend explicitly requested
     if (!config.openaiApiKey) {
-      throw new Error(
-        'OpenAI API key required when using API embeddings backend.\n\n' +
-          'Options:\n' +
-          '1. Set OPENAI_API_KEY in your .env file\n' +
-          '2. Switch to local embeddings in Settings → Embeddings → Use Local\n' +
-          '   (Uses Transformers.js with no API key required)'
-      );
+      throw new APIKeyMissingError('embeddings');
     }
 
     return {

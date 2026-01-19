@@ -1668,13 +1668,40 @@ export class CLINotFoundError extends Error {
 Ensure all error paths use these standardized error classes.
 
 ### Task 13 Completion Checklist
-- [ ] Unified error classes created
-- [ ] Errors include install instructions
-- [ ] Errors include API key alternative
-- [ ] Errors include Settings UI path
-- [ ] All error paths use standardized errors
+- [x] Unified error classes created
+- [x] Errors include install instructions
+- [x] Errors include API key alternative
+- [x] Errors include Settings UI path
+- [x] All error paths use standardized errors
 
-**[TASK 13 COMPLETE]** <- Mark when done
+**[TASK 13 COMPLETE]** - Completed on 2026-01-19
+
+### Task 13 Summary
+- **File Created**: `src/errors/LLMBackendErrors.ts` (~280 lines)
+- **File Created**: `src/errors/index.ts` (exports all error classes)
+- **Files Modified**:
+  - `src/llm/clients/ClaudeCodeCLIClient.ts` - Updated `CLINotFoundError` with helpful two-option message
+  - `src/NexusFactory.ts` - Now uses `APIKeyMissingError` for missing API key errors
+  - `src/NexusFactory.test.ts` - Added `LLMError` to ClaudeClient mock
+  - `src/index.ts` - Added error exports section
+
+**Unified Error Classes Created:**
+1. **LLMBackendError** - Base error class for all backend failures
+2. **CLINotFoundError** - When CLI tool not found (with install instructions + API alternative)
+3. **CLIAuthError** - When CLI authentication fails (with auth instructions + API alternative)
+4. **CLITimeoutError** - When CLI request times out (with timeout increase instructions)
+5. **APIKeyMissingError** - When API key required but not provided (with get-key URL + CLI alternative)
+6. **LocalEmbeddingsError** - When local embeddings fail (with fix instructions + API alternative)
+7. **RateLimitError** - When rate limit exceeded (with retry info)
+8. **BackendUnavailableError** - When all backend options exhausted (non-recoverable)
+
+**Error Message Pattern:**
+All errors include:
+- Clear explanation of what failed
+- Two-option solutions (install/authenticate CLI OR use API key)
+- Environment variable names
+- Settings UI paths for non-technical users
+- URLs for documentation/getting API keys
 
 ---
 
