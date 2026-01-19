@@ -21,7 +21,7 @@
 | 9 | Silent Failures | COMPLETE | 35 |
 | 10 | Edge Cases | COMPLETE | 34 |
 | 11 | Synthesis | COMPLETE | 717 (summary) |
-| 12 | Assembly | PENDING | 0 |
+| 12 | Assembly | COMPLETE | 717 (final) |
 
 ---
 
