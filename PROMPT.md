@@ -1922,4 +1922,41 @@ REQUIRED OUTPUTS:
     - Missing Functionality: Real-time EventBus connection, notifications
 
 #### Task R7: Create Feature-to-UI Mapping
-- **Status:** PENDING
+- **Status:** COMPLETED
+- **Output:** `.agent/workspace/PHASE_17_RESEARCH/FEATURE_UI_MAP.md`
+- **Summary:** Master mapping of ALL 110 backend features to UI elements:
+  - Coverage Statistics: Only 34 features (31%) currently exposed in UI
+  - Critical Gaps Identified:
+    1. No Agents Page - Cannot monitor agent activity or live output
+    2. No Execution Page - Cannot view build/lint/test/review results
+    3. Settings Incomplete - Missing model dropdowns, backend toggles, per-agent config
+    4. No Real-time Updates - UI doesn't subscribe to EventBus
+    5. No QA Status Display - Cannot see QA pipeline status
+  - Module-by-Module Feature Mapping:
+    - Interview & Requirements: 15 features, 8 exposed (53%)
+    - Planning & Decomposition: 12 features, 3 exposed (25%)
+    - Orchestration: 10 features, 2 exposed (20%)
+    - Agent Pool: 8 features, 4 exposed (50%)
+    - Execution/QA: 14 features, 0 exposed (0%) - CRITICAL GAP
+    - Persistence: 12 features, 3 exposed (25%)
+    - LLM Provider: 8 features, 2 exposed (25%)
+    - Settings: 25 features, 12 exposed (48%)
+    - Infrastructure: 6 features, 0 exposed (0%)
+  - Priority Matrix: 20 HIGH, 13 MEDIUM, 10 LOW priority features
+  - Implementation Roadmap aligned with Phase 17 tasks
+
+---
+
+### PHASE 17A RESEARCH COMPLETE
+
+All 7 research tasks have been completed. Documentation created:
+- `.agent/workspace/PHASE_17_RESEARCH/SERVICES.md` - Service layer capabilities
+- `.agent/workspace/PHASE_17_RESEARCH/DATA_MODELS.md` - All 50+ interfaces and types
+- `.agent/workspace/PHASE_17_RESEARCH/EVENTS.md` - 52 event types across 8 categories
+- `.agent/workspace/PHASE_17_RESEARCH/CONFIG_OPTIONS.md` - 100+ configurable options
+- `.agent/workspace/PHASE_17_RESEARCH/DATABASE.md` - 12 database tables with full schema
+- `.agent/workspace/PHASE_17_RESEARCH/EXISTING_UI.md` - Current UI inventory and gaps
+- `.agent/workspace/PHASE_17_RESEARCH/FEATURE_UI_MAP.md` - Master feature-to-UI mapping
+
+**NEXT:** Proceed to Task 2 - Create complete feature-to-UI mapping (already done as R7)
+**ACTUAL NEXT:** Task 3 - Design component library specifications
