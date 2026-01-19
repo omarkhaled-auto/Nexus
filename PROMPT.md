@@ -450,14 +450,26 @@ export const DEFAULT_GEMINI_CLI_CONFIG: Required<Omit<GeminiCLIConfig, 'addition
 Check `src/llm/types.ts` or similar for the `LLMClient` interface that GeminiCLIClient must implement.
 
 ### Task 4 Completion Checklist
-- [ ] Types file created
-- [ ] Config interface defined
-- [ ] Response interface defined
-- [ ] Error interface defined
-- [ ] Default config values set
-- [ ] Interface compatibility verified
+- [x] Types file created
+- [x] Config interface defined
+- [x] Response interface defined
+- [x] Error interface defined
+- [x] Default config values set
+- [x] Interface compatibility verified
 
-**[TASK 4 COMPLETE]** <- Mark when done
+**[TASK 4 COMPLETE]** - Completed on 2026-01-19
+
+### Task 4 Summary
+- **File Created**: `src/llm/clients/GeminiCLIClient.types.ts`
+- **Config Interface**: `GeminiCLIConfig` with cliPath, workingDirectory, timeout, maxRetries, model, additionalFlags, logger
+- **Response Interface**: `GeminiCLIResponse` with content, model, sessionId, usage, latencyMs
+- **Raw Response Interface**: `GeminiCLIRawResponse` matching actual CLI JSON output structure
+- **Streaming Types**: `GeminiStreamChunk` union type with init, message, result, error chunks (for `-o stream-json`)
+- **Error Types**: `GeminiCLIErrorCode` enum and `GeminiCLIErrorInfo` structured error
+- **Error Patterns**: `GEMINI_ERROR_PATTERNS` array for categorizing CLI errors
+- **Default Values**: `DEFAULT_GEMINI_CLI_CONFIG` with CLI-first defaults
+- **Token Stats**: `GeminiTokenStats`, `GeminiModelStats` matching actual `stats.models.<model>.tokens` structure
+- **TypeScript**: Compiles without errors
 
 ---
 
