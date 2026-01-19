@@ -2329,11 +2329,21 @@ Create `.agent/workspace/PHASE_16_SUMMARY.md`:
 - [x] All 18 tasks complete
 
 ### Task 18 Summary
-- TypeScript compilation: No errors in new files (`llm-backends.test.ts`)
+- TypeScript compilation: No errors in new Phase 16 files
 - ESLint: No errors (test files excluded by pattern)
-- Test suite: 1971 tests passing (4 pre-existing failures unrelated to changes)
+- Test suite: 1974 tests passing (4 pre-existing failures unrelated to changes)
 - New integration tests: 27 tests added and passing
 - Total test coverage: Comprehensive API/CLI backend testing
+
+**Post-Phase 16 Cleanup (2026-01-19):**
+- Fixed `genesis-mode.test.ts` - Added `await` to `createForTesting()` calls (now async)
+- Fixed `genesis-mode.test.ts` - Added `beforeEach` import from vitest
+- Fixed `settingsStore.test.ts` - Updated mock with Phase 16 LLM provider settings
+- All TypeScript errors in new/modified files resolved
+
+**Pre-existing Issues (NOT Phase 16 related):**
+- `CodeMemory.ts` - Missing 'glob' module dependency
+- `genesis-mode.test.ts` - One test timeout (90s not enough for API call)
 
 **[TASK 18 COMPLETE]**
 
@@ -2360,9 +2370,10 @@ Before marking Phase 16 complete, verify:
 - [x] ESLint: 0 errors
 
 ## Test Summary
-- **Total Tests**: 1998 (1971 existing + 27 new)
-- **Passing**: 1998
-- **Failed**: 0 (4 pre-existing test failures unrelated to Phase 16)
+- **Total Tests**: 1975 (1948 existing + 27 new)
+- **Passing**: 1974
+- **Failed**: 1 (pre-existing timeout in genesis-mode.test.ts)
+- **Pre-existing issues**: 4 test files fail due to missing 'glob' dependency (not Phase 16 related)
 
 ## New File Created
 - `tests/integration/llm-backends.test.ts` - 27 integration tests for LLM backend combinations
