@@ -3099,7 +3099,21 @@ On mobile viewports (< 768px), the sidebar remains visible and takes up screen s
 - Backwards compatibility with demo mode maintained
 
 ### Task 30.4: Connect Agents Page to Real Agent Pool Data
-- **Status:** PENDING
+- **Status:** COMPLETED
+
+**Implementation:**
+- Added IPC handlers: `agents:list`, `agents:get`, `agents:getPoolStatus`, `agents:getOutput`, `agents:getQAStatus`
+- Added preload API methods: `getAgents`, `getAgent`, `getAgentPoolStatus`, `getAgentOutput`, `getQAStatus`
+- Added real-time event subscriptions: `onAgentOutput`, `onQAStatusUpdate`
+- Updated AgentsPage with:
+  - Helper functions `isElectronEnvironment()`, `mapBackendAgent()`, `mapQAStatus()`
+  - State management for agents, QA steps, iteration, output, loading, and errors
+  - `loadRealData()` callback for fetching from backend
+  - `subscribeToEvents()` callback for real-time updates
+  - Error banner and loading state UI
+  - Graceful fallback to mock data when not in Electron or on API errors
+
+**Commit:** `ce24f98` - feat(agents): connect Agents Page to real backend agent pool data (Task 30.4)
 
 ### Task 30.5: Connect Execution Page to Real Log Data
 - **Status:** PENDING
@@ -3109,4 +3123,4 @@ On mobile viewports (< 768px), the sidebar remains visible and takes up screen s
 
 ---
 
-**NEXT TASK:** Task 30.4 - Connect Agents Page to Real Agent Pool Data
+**NEXT TASK:** Task 30.5 - Connect Execution Page to Real Log Data
