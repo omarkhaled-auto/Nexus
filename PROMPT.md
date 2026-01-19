@@ -2010,4 +2010,24 @@ All 7 research tasks have been completed. Documentation created:
   - **Custom Hooks (7):** useEventBus, useAgent, useSettings, useRealTimeUpdates, useLocalStorage, useMediaQuery, useDebounce
   - All interfaces include JSDoc documentation, internal state definitions, ref forwarding patterns, and default values
 
-**NEXT:** Task 6 - Document data flow for each page
+
+#### Task 6: Document Data Flow for Each Page
+- **Status:** COMPLETED
+- **Output:** `.agent/workspace/PHASE_17_DESIGN/DATA_FLOW.md`
+- **Summary:** Comprehensive data flow documentation covering all UI pages:
+  - **Architecture Overview:** Data layer architecture diagram, communication channels (IPC), update patterns
+  - **Data Flow Patterns:** 3 core patterns (Initial Load + Subscription, Form Submission with Optimistic Update, Streaming Data)
+  - **Dashboard Page:** Stats queries, recent projects, live agent feed, event subscriptions (project/task/agent events)
+  - **Interview Page:** Session management, message flow sequence, requirement extraction pipeline, progress tracking
+  - **Tasks/Kanban Page:** Column organization, drag-and-drop flow, real-time task status updates, filter state
+  - **Agents Page:** Pool status, agent selection, output streaming strategy with batching, QA status tracking
+  - **Execution Page:** Tab-based log viewing, QA event integration, test result parsing
+  - **Settings Page:** Form state management, validation rules, secure key handling, tab navigation
+  - **Memory Page (Optional):** Repo map, episodes, semantic search
+  - **Global Data Flow:** App-wide event subscriptions, navigation-based data loading, cross-page state sync
+  - **IPC Channels:** All `window.nexus.invoke()` and `window.nexus.on()` calls documented per page
+  - **State Management Strategy:** Zustand stores, local state, event subscriptions, optimistic updates
+  - **Performance Considerations:** Batching, virtualization, lazy loading, memoization, debouncing
+
+**NEXT:** Task 7 - Create design spec document (consolidating all research into final spec)
+
