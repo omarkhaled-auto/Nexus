@@ -777,14 +777,25 @@ async chat(request: LLMRequest): Promise<LLMResponse> {
 ```
 
 ### Task 6 Completion Checklist
-- [ ] Error classes created
-- [ ] Helpful messages with two options (install or API key)
-- [ ] Integrated into GeminiCLIClient
-- [ ] Auth errors handled
-- [ ] Timeout errors handled
-- [ ] Not found errors handled
+- [x] Error classes created
+- [x] Helpful messages with two options (install or API key)
+- [x] Integrated into GeminiCLIClient
+- [x] Auth errors handled
+- [x] Timeout errors handled
+- [x] Not found errors handled
 
-**[TASK 6 COMPLETE]** <- Mark when done
+**[TASK 6 COMPLETE]** - Completed on 2026-01-19
+
+### Task 6 Summary
+- **Error Classes in GeminiCLIClient.ts**:
+  - `GeminiCLIError` - Base error with exit code and error code
+  - `GeminiCLINotFoundError` - Helpful message with npm install + API key options
+  - `GeminiCLIAuthError` - Helpful message with gcloud auth + API key options
+  - `GeminiCLITimeoutError` - Helpful message with Settings path for timeout
+- **Error Wrapping**: `wrapError()` method (lines 564-598) categorizes errors
+- **Retriable Errors**: Rate limits, timeouts, server errors are retriable
+- **Non-Retriable**: Auth failures, invalid requests, CLI not found
+- **All exports in `src/llm/index.ts` include error classes**
 
 ---
 
@@ -921,13 +932,37 @@ describe('GeminiCLIClient', () => {
 - retry logic tests (5+)
 
 ### Task 7 Completion Checklist
-- [ ] Test file created
-- [ ] 40+ tests written
-- [ ] All test categories covered
-- [ ] Mocking done properly
-- [ ] All tests pass
+- [x] Test file created
+- [x] 40+ tests written (64 tests total!)
+- [x] All test categories covered
+- [x] Mocking done properly
+- [x] All tests pass
 
-**[TASK 7 COMPLETE]** <- Mark when done
+**[TASK 7 COMPLETE]** - Completed on 2026-01-19
+
+### Task 7 Summary
+- **File Created**: `src/llm/clients/GeminiCLIClient.test.ts`
+- **Total Tests**: 64 tests (target was 40+)
+- **Test Duration**: ~8.5s
+
+**Test Categories:**
+- Constructor (6 tests)
+- isAvailable (5 tests)
+- getVersion (3 tests)
+- chat (12 tests)
+- chatStream (6 tests)
+- Error handling (10 tests)
+- Retry logic (6 tests)
+- countTokens (3 tests)
+- Response parsing (6 tests)
+- Windows compatibility (2 tests)
+- Error classes (5 tests)
+
+**Mocking Approach:**
+- Uses `vi.mock('child_process')` to mock spawn
+- `createMockChildProcess()` helper creates EventEmitter-based mock processes
+- `createGeminiResponse()` helper generates valid Gemini CLI JSON responses
+- Supports stream chunks, errors, delays, and exit codes
 
 ---
 
