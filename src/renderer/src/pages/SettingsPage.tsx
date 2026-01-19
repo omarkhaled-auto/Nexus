@@ -1,21 +1,44 @@
 /**
- * SettingsPage - User settings configuration interface
- * Phase 12-02: Settings UI with tabbed layout
+ * SettingsPage - Complete user settings configuration interface
+ * Phase 17: Complete UI Redesign - Enhanced Settings with backend toggles,
+ * model dropdowns, and advanced configuration options.
  *
  * Provides tabbed sections for:
- * - LLM: API keys, default provider, fallback settings
- * - Agents: Parallelism, timeouts, retry behavior
+ * - LLM Providers: Backend selection, model dropdowns, API keys, advanced settings
+ * - Agents: Per-agent model assignments, pool limits
  * - Checkpoints: Auto-checkpoint settings
  * - UI: Theme, sidebar, notifications
  * - Projects: Default values for new projects
  */
 
 import { useState, useEffect, type ReactElement } from 'react'
-import { Eye, EyeOff, Key, Bot, Save, RotateCcw, Sun, Moon, Monitor, Settings2, FolderCog } from 'lucide-react'
+import {
+  Eye,
+  EyeOff,
+  Key,
+  Bot,
+  Save,
+  RotateCcw,
+  Sun,
+  Moon,
+  Monitor,
+  Settings2,
+  FolderCog,
+  CheckCircle,
+  AlertCircle,
+  ChevronDown,
+  ChevronUp,
+  Terminal,
+  Cloud,
+  Cpu,
+  Sparkles,
+  Info
+} from 'lucide-react'
 import { cn } from '@renderer/lib/utils'
 import { Button } from '@renderer/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@renderer/components/ui/card'
 import { AnimatedPage } from '@renderer/components/AnimatedPage'
+import { Header } from '@renderer/components/layout/Header'
 import {
   useSettingsStore,
   useSettings,
@@ -23,7 +46,90 @@ import {
   useSettingsDirty,
   useHasApiKey
 } from '@renderer/stores'
-import type { NexusSettingsPublic, LLMProvider } from '../../../shared/types/settings'
+import type { NexusSettingsPublic, LLMProvider, LLMBackendType, EmbeddingsBackendType } from '../../../shared/types/settings'
+import {
+  CLAUDE_MODELS,
+  GEMINI_MODELS,
+  LOCAL_EMBEDDING_MODELS,
+  DEFAULT_CLAUDE_MODEL,
+  DEFAULT_GEMINI_MODEL,
+  DEFAULT_LOCAL_EMBEDDING_MODEL,
+  getClaudeModelList,
+  getGeminiModelList,
+  getLocalEmbeddingModelList,
+  type ModelInfo,
+  type EmbeddingModelInfo
+} from '../../../llm/models'
+
+// ============================================
+// Demo Mode Detection & Data
+// ============================================
+
+/**
+ * Check if we're in demo mode (no Electron backend)
+ */
+const isDemoMode = (): boolean => {
+  return typeof window.nexusAPI === 'undefined'
+}
+
+/**
+ * Demo settings for visual testing without Electron backend
+ */
+const DEMO_SETTINGS: NexusSettingsPublic = {
+  llm: {
+    claude: {
+      backend: 'cli',
+      hasApiKey: false,
+      timeout: 300000,
+      maxRetries: 2,
+      model: DEFAULT_CLAUDE_MODEL,
+    },
+    gemini: {
+      backend: 'cli',
+      hasApiKey: false,
+      timeout: 300000,
+      model: DEFAULT_GEMINI_MODEL,
+    },
+    embeddings: {
+      backend: 'local',
+      hasApiKey: false,
+      localModel: DEFAULT_LOCAL_EMBEDDING_MODEL,
+      dimensions: 384,
+      cacheEnabled: true,
+      maxCacheSize: 10000,
+    },
+    defaultProvider: 'claude',
+    defaultModel: DEFAULT_CLAUDE_MODEL,
+    fallbackEnabled: true,
+    fallbackOrder: ['claude', 'gemini'],
+    hasClaudeKey: false,
+    hasGeminiKey: false,
+    hasOpenaiKey: false,
+  },
+  agents: {
+    maxParallelAgents: 4,
+    taskTimeoutMinutes: 30,
+    maxRetries: 3,
+    autoRetryEnabled: true,
+  },
+  checkpoints: {
+    autoCheckpointEnabled: true,
+    autoCheckpointIntervalMinutes: 5,
+    maxCheckpointsToKeep: 10,
+    checkpointOnFeatureComplete: true,
+  },
+  ui: {
+    theme: 'dark',
+    sidebarWidth: 280,
+    showNotifications: true,
+    notificationDuration: 5000,
+  },
+  project: {
+    defaultLanguage: 'typescript',
+    defaultTestFramework: 'vitest',
+    outputDirectory: '.nexus',
+  },
+}
 
 // ============================================
 // Tab Configuration
@@ -39,15 +145,15 @@ interface TabConfig {
 }
 
 const tabs: TabConfig[] = [
-  { id: 'llm', label: 'LLM', icon: <Key className="w-4 h-4" />, description: 'API keys and provider settings' },
-  { id: 'agents', label: 'Agents', icon: <Bot className="w-4 h-4" />, description: 'Agent execution behavior' },
+  { id: 'llm', label: 'LLM Providers', icon: <Sparkles className="w-4 h-4" />, description: 'Backend selection, models, and API keys' },
+  { id: 'agents', label: 'Agents', icon: <Bot className="w-4 h-4" />, description: 'Agent model assignments and limits' },
   { id: 'checkpoints', label: 'Checkpoints', icon: <Save className="w-4 h-4" />, description: 'Auto-checkpoint settings' },
   { id: 'ui', label: 'UI', icon: <Settings2 className="w-4 h-4" />, description: 'Interface preferences' },
   { id: 'project', label: 'Projects', icon: <FolderCog className="w-4 h-4" />, description: 'Default project settings' }
 ]
 
 // ============================================
-// Input Components (inline since no shadcn input)
+// Reusable Input Components
 // ============================================
 
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
@@ -59,20 +165,21 @@ function Input({ className, label, description, id, ...props }: InputProps): Rea
   return (
     <div className="space-y-2">
       {label && (
-        <label htmlFor={id} className="text-sm font-medium leading-none">
+        <label htmlFor={id} className="text-sm font-medium text-text-primary leading-none">
           {label}
         </label>
       )}
       {description && (
-        <p className="text-xs text-muted-foreground">{description}</p>
+        <p className="text-xs text-text-secondary">{description}</p>
       )}
       <input
         id={id}
         className={cn(
-          'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm',
-          'ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium',
-          'placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2',
-          'focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
+          'flex h-10 w-full rounded-md border border-border-default bg-bg-dark px-3 py-2 text-sm text-text-primary',
+          'placeholder:text-text-tertiary',
+          'focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-accent-primary',
+          'disabled:cursor-not-allowed disabled:opacity-50',
+          'transition-colors',
           className
         )}
         {...props}
@@ -84,26 +191,27 @@ function Input({ className, label, description, id, ...props }: InputProps): Rea
 interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
   label?: string
   description?: string
-  options: { value: string; label: string }[]
+  options: { value: string; label: string; description?: string }[]
 }
 
 function Select({ className, label, description, id, options, ...props }: SelectProps): ReactElement {
   return (
     <div className="space-y-2">
       {label && (
-        <label htmlFor={id} className="text-sm font-medium leading-none">
+        <label htmlFor={id} className="text-sm font-medium text-text-primary leading-none">
           {label}
         </label>
       )}
       {description && (
-        <p className="text-xs text-muted-foreground">{description}</p>
+        <p className="text-xs text-text-secondary">{description}</p>
       )}
       <select
         id={id}
         className={cn(
-          'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm',
-          'ring-offset-background focus-visible:outline-none focus-visible:ring-2',
-          'focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
+          'flex h-10 w-full rounded-md border border-border-default bg-bg-dark px-3 py-2 text-sm text-text-primary',
+          'focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-accent-primary',
+          'disabled:cursor-not-allowed disabled:opacity-50',
+          'transition-colors',
           className
         )}
         {...props}
@@ -130,21 +238,120 @@ function Checkbox({ className, label, description, id, ...props }: CheckboxProps
         type="checkbox"
         id={id}
         className={cn(
-          'h-4 w-4 rounded border border-input bg-background',
-          'focus:ring-2 focus:ring-ring focus:ring-offset-2',
+          'h-4 w-4 rounded border border-border-default bg-bg-dark mt-0.5',
+          'text-accent-primary',
+          'focus:ring-2 focus:ring-accent-primary focus:ring-offset-2 focus:ring-offset-bg-dark',
           'disabled:cursor-not-allowed disabled:opacity-50',
           className
         )}
         {...props}
       />
       <div className="space-y-1">
-        <label htmlFor={id} className="text-sm font-medium leading-none cursor-pointer">
+        <label htmlFor={id} className="text-sm font-medium text-text-primary leading-none cursor-pointer">
           {label}
         </label>
         {description && (
-          <p className="text-xs text-muted-foreground">{description}</p>
+          <p className="text-xs text-text-secondary">{description}</p>
         )}
       </div>
+    </div>
+  )
+}
+
+// ============================================
+// Backend Toggle Component
+// ============================================
+
+interface BackendToggleProps {
+  label: string
+  value: LLMBackendType | EmbeddingsBackendType
+  options: { value: string; label: string; icon: ReactElement }[]
+  onChange: (value: string) => void
+  status?: { detected: boolean; message: string }
+}
+
+function BackendToggle({ label, value, options, onChange, status }: BackendToggleProps): ReactElement {
+  return (
+    <div className="space-y-2">
+      <label className="text-sm font-medium text-text-primary">{label}</label>
+      <div className="flex items-center gap-4">
+        <div className="inline-flex rounded-md border border-border-default p-1 bg-bg-dark">
+          {options.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => onChange(option.value)}
+              className={cn(
+                'flex items-center gap-2 px-3 py-1.5 rounded text-sm font-medium transition-all',
+                value === option.value
+                  ? 'bg-accent-primary text-white shadow-sm'
+                  : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
+              )}
+              data-testid={`backend-toggle-${option.value}`}
+            >
+              {option.icon}
+              {option.label}
+            </button>
+          ))}
+        </div>
+        {status && (
+          <div className={cn(
+            'flex items-center gap-1.5 text-xs',
+            status.detected ? 'text-accent-success' : 'text-text-tertiary'
+          )}>
+            {status.detected ? (
+              <CheckCircle className="w-3.5 h-3.5" />
+            ) : (
+              <AlertCircle className="w-3.5 h-3.5" />
+            )}
+            {status.message}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ============================================
+// Model Dropdown Component
+// ============================================
+
+interface ModelDropdownProps {
+  label: string
+  value: string
+  models: (ModelInfo | EmbeddingModelInfo)[]
+  onChange: (value: string) => void
+  description?: string
+}
+
+function ModelDropdown({ label, value, models, onChange, description }: ModelDropdownProps): ReactElement {
+  const selectedModel = models.find(m => m.id === value)
+
+  return (
+    <div className="space-y-2">
+      <label className="text-sm font-medium text-text-primary">{label}</label>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className={cn(
+          'flex h-10 w-full rounded-md border border-border-default bg-bg-dark px-3 py-2 text-sm text-text-primary',
+          'focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-accent-primary',
+          'transition-colors cursor-pointer'
+        )}
+        data-testid="model-dropdown"
+      >
+        {models.map((model) => (
+          <option key={model.id} value={model.id}>
+            {model.name} {model.isDefault ? '(Recommended)' : ''}
+          </option>
+        ))}
+      </select>
+      {selectedModel?.description && (
+        <p className="text-xs text-text-secondary flex items-center gap-1.5">
+          <Info className="w-3 h-3" />
+          {selectedModel.description}
+        </p>
+      )}
     </div>
   )
 }
@@ -156,9 +363,10 @@ function Checkbox({ className, label, description, id, ...props }: CheckboxProps
 interface ApiKeyInputProps {
   provider: LLMProvider
   label: string
+  optional?: boolean
 }
 
-function ApiKeyInput({ provider, label }: ApiKeyInputProps): ReactElement {
+function ApiKeyInput({ provider, label, optional = false }: ApiKeyInputProps): ReactElement {
   const [value, setValue] = useState('')
   const [show, setShow] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -190,48 +398,116 @@ function ApiKeyInput({ provider, label }: ApiKeyInputProps): ReactElement {
 
   return (
     <div className="space-y-2">
-      <label className="text-sm font-medium">{label}</label>
+      <div className="flex items-center justify-between">
+        <label className="text-sm font-medium text-text-primary">{label}</label>
+        {optional && (
+          <span className="text-xs text-text-tertiary">(optional for CLI)</span>
+        )}
+      </div>
       <div className="flex items-center gap-2">
         <div className="relative flex-1">
           <input
             type={show ? 'text' : 'password'}
             value={value}
             onChange={(e): void => { setValue(e.target.value) }}
-            placeholder={hasKey ? 'API key is set' : 'Enter API key'}
+            placeholder={hasKey ? '••••••••••••••••••••••••' : 'Enter API key'}
             disabled={saving}
             className={cn(
-              'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 pr-10 text-sm',
-              'ring-offset-background placeholder:text-muted-foreground',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+              'flex h-10 w-full rounded-md border border-border-default bg-bg-dark px-3 py-2 pr-10 text-sm text-text-primary',
+              'placeholder:text-text-tertiary',
+              'focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-accent-primary',
               'disabled:cursor-not-allowed disabled:opacity-50',
-              hasKey && !value && 'placeholder:text-green-500'
+              'transition-colors',
+              hasKey && !value && 'border-accent-success/50'
             )}
+            data-testid={`api-key-input-${provider}`}
           />
           <button
             type="button"
             onClick={(): void => { setShow(!show) }}
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-primary transition-colors"
+            data-testid={`toggle-visibility-${provider}`}
           >
             {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
           </button>
         </div>
         {value && (
-          <Button onClick={(): void => { void handleSave() }} disabled={saving} size="sm">
+          <Button onClick={(): void => { void handleSave() }} disabled={saving} size="sm" data-testid={`save-key-${provider}`}>
             {saving ? 'Saving...' : 'Save'}
           </Button>
         )}
         {hasKey && !value && (
-          <Button onClick={(): void => { void handleClear() }} disabled={saving} variant="destructive" size="sm">
+          <Button onClick={(): void => { void handleClear() }} disabled={saving} variant="destructive" size="sm" data-testid={`clear-key-${provider}`}>
             Clear
           </Button>
         )}
       </div>
       {hasKey && (
-        <p className="text-xs text-green-600 dark:text-green-400">
+        <p className="text-xs text-accent-success flex items-center gap-1.5">
+          <CheckCircle className="w-3 h-3" />
           API key is securely stored
         </p>
       )}
     </div>
+  )
+}
+
+// ============================================
+// Collapsible Advanced Section
+// ============================================
+
+interface AdvancedSectionProps {
+  title: string
+  children: ReactElement
+  defaultOpen?: boolean
+}
+
+function AdvancedSection({ title, children, defaultOpen = false }: AdvancedSectionProps): ReactElement {
+  const [isOpen, setIsOpen] = useState(defaultOpen)
+
+  return (
+    <div className="border-t border-border-default pt-4 mt-4">
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex items-center gap-2 text-sm font-medium text-text-secondary hover:text-text-primary transition-colors w-full"
+        data-testid="advanced-toggle"
+      >
+        {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+        {title}
+      </button>
+      {isOpen && (
+        <div className="mt-4 space-y-4 pl-6 animate-in fade-in slide-in-from-top-2 duration-200">
+          {children}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ============================================
+// Provider Configuration Card
+// ============================================
+
+interface ProviderCardProps {
+  title: string
+  icon: ReactElement
+  children: ReactElement
+}
+
+function ProviderCard({ title, icon, children }: ProviderCardProps): ReactElement {
+  return (
+    <Card className="bg-bg-card border-border-default">
+      <CardHeader className="pb-4">
+        <CardTitle className="flex items-center gap-2 text-base">
+          {icon}
+          {title}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {children}
+      </CardContent>
+    </Card>
   )
 }
 
@@ -246,29 +522,156 @@ interface SettingsTabProps {
 
 type SettingsState = ReturnType<typeof useSettingsStore.getState>
 
-function LLMSettings({ settings, updateSetting }: SettingsTabProps): ReactElement {
-  return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>API Keys</CardTitle>
-          <CardDescription>
-            Configure API keys for LLM providers. Keys are encrypted and stored securely.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <ApiKeyInput provider="claude" label="Claude API Key (Anthropic)" />
-          <ApiKeyInput provider="gemini" label="Gemini API Key (Google)" />
-          <ApiKeyInput provider="openai" label="OpenAI API Key" />
-        </CardContent>
-      </Card>
+/**
+ * LLM Providers Tab - Enhanced with backend toggles and model dropdowns
+ */
+function LLMProvidersSettings({ settings, updateSetting }: SettingsTabProps): ReactElement {
+  const claudeModels = getClaudeModelList()
+  const geminiModels = getGeminiModelList()
+  const localEmbeddingModels = getLocalEmbeddingModelList()
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Provider Settings</CardTitle>
-          <CardDescription>
-            Configure default provider and fallback behavior.
-          </CardDescription>
+  return (
+    <div className="space-y-6" data-testid="llm-providers-tab">
+      {/* Claude Configuration */}
+      <ProviderCard
+        title="Claude Configuration"
+        icon={<Sparkles className="w-5 h-5 text-accent-primary" />}
+      >
+        <>
+          <BackendToggle
+            label="Backend"
+            value={settings.llm.claude.backend}
+            options={[
+              { value: 'cli', label: 'CLI', icon: <Terminal className="w-4 h-4" /> },
+              { value: 'api', label: 'API', icon: <Cloud className="w-4 h-4" /> }
+            ]}
+            onChange={(value) => updateSetting('llm', 'claude' as any, { ...settings.llm.claude, backend: value as LLMBackendType })}
+            status={{ detected: true, message: 'CLI detected' }}
+          />
+
+          <ModelDropdown
+            label="Model"
+            value={settings.llm.claude.model || DEFAULT_CLAUDE_MODEL}
+            models={claudeModels}
+            onChange={(value) => updateSetting('llm', 'claude' as any, { ...settings.llm.claude, model: value })}
+          />
+
+          <ApiKeyInput
+            provider="claude"
+            label="API Key"
+            optional={settings.llm.claude.backend === 'cli'}
+          />
+
+          <AdvancedSection title="Advanced">
+            <>
+              <Input
+                id="claude-timeout"
+                type="number"
+                min={30000}
+                max={600000}
+                step={10000}
+                label="Timeout (ms)"
+                description="Request timeout in milliseconds"
+                value={settings.llm.claude.timeout || 300000}
+                onChange={(e): void => {
+                  updateSetting('llm', 'claude' as any, {
+                    ...settings.llm.claude,
+                    timeout: parseInt(e.target.value) || 300000
+                  })
+                }}
+              />
+              <Input
+                id="claude-retries"
+                type="number"
+                min={0}
+                max={5}
+                label="Max Retries"
+                description="Maximum number of retry attempts"
+                value={settings.llm.claude.maxRetries || 2}
+                onChange={(e): void => {
+                  updateSetting('llm', 'claude' as any, {
+                    ...settings.llm.claude,
+                    maxRetries: parseInt(e.target.value) || 2
+                  })
+                }}
+              />
+            </>
+          </AdvancedSection>
+        </>
+      </ProviderCard>
+
+      {/* Gemini Configuration */}
+      <ProviderCard
+        title="Gemini Configuration"
+        icon={<Sparkles className="w-5 h-5 text-accent-secondary" />}
+      >
+        <>
+          <BackendToggle
+            label="Backend"
+            value={settings.llm.gemini.backend}
+            options={[
+              { value: 'cli', label: 'CLI', icon: <Terminal className="w-4 h-4" /> },
+              { value: 'api', label: 'API', icon: <Cloud className="w-4 h-4" /> }
+            ]}
+            onChange={(value) => updateSetting('llm', 'gemini' as any, { ...settings.llm.gemini, backend: value as LLMBackendType })}
+            status={{ detected: true, message: 'CLI detected' }}
+          />
+
+          <ModelDropdown
+            label="Model"
+            value={settings.llm.gemini.model || DEFAULT_GEMINI_MODEL}
+            models={geminiModels}
+            onChange={(value) => updateSetting('llm', 'gemini' as any, { ...settings.llm.gemini, model: value })}
+          />
+
+          <ApiKeyInput
+            provider="gemini"
+            label="API Key"
+            optional={settings.llm.gemini.backend === 'cli'}
+          />
+        </>
+      </ProviderCard>
+
+      {/* Embeddings Configuration */}
+      <ProviderCard
+        title="Embeddings Configuration"
+        icon={<Cpu className="w-5 h-5 text-accent-success" />}
+      >
+        <>
+          <BackendToggle
+            label="Backend"
+            value={settings.llm.embeddings.backend}
+            options={[
+              { value: 'local', label: 'Local', icon: <Cpu className="w-4 h-4" /> },
+              { value: 'api', label: 'OpenAI API', icon: <Cloud className="w-4 h-4" /> }
+            ]}
+            onChange={(value) => updateSetting('llm', 'embeddings' as any, { ...settings.llm.embeddings, backend: value as EmbeddingsBackendType })}
+            status={settings.llm.embeddings.backend === 'local' ? { detected: true, message: 'No API key needed' } : undefined}
+          />
+
+          {settings.llm.embeddings.backend === 'local' && (
+            <ModelDropdown
+              label="Local Model"
+              value={settings.llm.embeddings.localModel || DEFAULT_LOCAL_EMBEDDING_MODEL}
+              models={localEmbeddingModels}
+              onChange={(value) => updateSetting('llm', 'embeddings' as any, { ...settings.llm.embeddings, localModel: value })}
+            />
+          )}
+
+          {settings.llm.embeddings.backend === 'api' && (
+            <ApiKeyInput
+              provider="openai"
+              label="OpenAI API Key"
+            />
+          )}
+        </>
+      </ProviderCard>
+
+      {/* Default Provider Selection */}
+      <Card className="bg-bg-card border-border-default">
+        <CardHeader className="pb-4">
+          <CardTitle className="text-base">Provider Settings</CardTitle>
+          <CardDescription>Configure default provider and fallback behavior</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <Select
@@ -276,20 +679,11 @@ function LLMSettings({ settings, updateSetting }: SettingsTabProps): ReactElemen
             label="Default Provider"
             description="Primary LLM provider to use"
             value={settings.llm.defaultProvider}
-            onChange={(e): void => { updateSetting('llm', 'defaultProvider', e.target.value as LLMProvider) }}
+            onChange={(e): void => { updateSetting('llm', 'defaultProvider', e.target.value as 'claude' | 'gemini') }}
             options={[
               { value: 'claude', label: 'Claude (Anthropic)' },
-              { value: 'gemini', label: 'Gemini (Google)' },
-              { value: 'openai', label: 'OpenAI' }
+              { value: 'gemini', label: 'Gemini (Google)' }
             ]}
-          />
-
-          <Input
-            id="default-model"
-            label="Default Model"
-            description="Model identifier to use (e.g., claude-sonnet-4-5-20250929)"
-            value={settings.llm.defaultModel}
-            onChange={(e): void => { updateSetting('llm', 'defaultModel', e.target.value) }}
           />
 
           <Checkbox
@@ -307,8 +701,8 @@ function LLMSettings({ settings, updateSetting }: SettingsTabProps): ReactElemen
 
 function AgentSettings({ settings, updateSetting }: SettingsTabProps): ReactElement {
   return (
-    <div className="space-y-6">
-      <Card>
+    <div className="space-y-6" data-testid="agents-tab">
+      <Card className="bg-bg-card border-border-default">
         <CardHeader>
           <CardTitle>Parallelism</CardTitle>
           <CardDescription>
@@ -329,7 +723,7 @@ function AgentSettings({ settings, updateSetting }: SettingsTabProps): ReactElem
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="bg-bg-card border-border-default">
         <CardHeader>
           <CardTitle>Timeouts & Retries</CardTitle>
           <CardDescription>
@@ -374,8 +768,8 @@ function AgentSettings({ settings, updateSetting }: SettingsTabProps): ReactElem
 
 function CheckpointSettings({ settings, updateSetting }: SettingsTabProps): ReactElement {
   return (
-    <div className="space-y-6">
-      <Card>
+    <div className="space-y-6" data-testid="checkpoints-tab">
+      <Card className="bg-bg-card border-border-default">
         <CardHeader>
           <CardTitle>Automatic Checkpoints</CardTitle>
           <CardDescription>
@@ -429,8 +823,8 @@ function CheckpointSettings({ settings, updateSetting }: SettingsTabProps): Reac
 
 function UISettings({ settings, updateSetting }: SettingsTabProps): ReactElement {
   return (
-    <div className="space-y-6">
-      <Card>
+    <div className="space-y-6" data-testid="ui-tab">
+      <Card className="bg-bg-card border-border-default">
         <CardHeader>
           <CardTitle>Theme</CardTitle>
           <CardDescription>
@@ -449,10 +843,10 @@ function UISettings({ settings, updateSetting }: SettingsTabProps): ReactElement
                 type="button"
                 onClick={(): void => { updateSetting('ui', 'theme', theme.value) }}
                 className={cn(
-                  'flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-colors',
+                  'flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all',
                   settings.ui.theme === theme.value
-                    ? 'border-primary bg-primary/10'
-                    : 'border-border hover:border-primary/50'
+                    ? 'border-accent-primary bg-accent-primary/10'
+                    : 'border-border-default hover:border-accent-primary/50 bg-bg-dark'
                 )}
               >
                 {theme.icon}
@@ -463,7 +857,7 @@ function UISettings({ settings, updateSetting }: SettingsTabProps): ReactElement
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="bg-bg-card border-border-default">
         <CardHeader>
           <CardTitle>Layout</CardTitle>
           <CardDescription>
@@ -485,7 +879,7 @@ function UISettings({ settings, updateSetting }: SettingsTabProps): ReactElement
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="bg-bg-card border-border-default">
         <CardHeader>
           <CardTitle>Notifications</CardTitle>
           <CardDescription>
@@ -521,8 +915,8 @@ function UISettings({ settings, updateSetting }: SettingsTabProps): ReactElement
 
 function ProjectSettings({ settings, updateSetting }: SettingsTabProps): ReactElement {
   return (
-    <div className="space-y-6">
-      <Card>
+    <div className="space-y-6" data-testid="project-tab">
+      <Card className="bg-bg-card border-border-default">
         <CardHeader>
           <CardTitle>Project Defaults</CardTitle>
           <CardDescription>
@@ -568,87 +962,135 @@ function ProjectSettings({ settings, updateSetting }: SettingsTabProps): ReactEl
 
 export default function SettingsPage(): ReactElement {
   const [activeTab, setActiveTab] = useState<TabId>('llm')
-  const settings = useSettings()
+  const [demoSettings, setDemoSettings] = useState<NexusSettingsPublic>(DEMO_SETTINGS)
+  const storeSettings = useSettings()
   const isLoading = useSettingsLoading()
   const isDirty = useSettingsDirty()
-  const { loadSettings, updateSetting, saveSettings, discardChanges, resetToDefaults } = useSettingsStore()
+  const { loadSettings, updateSetting: storeUpdateSetting, saveSettings, discardChanges, resetToDefaults } = useSettingsStore()
 
-  // Load settings on mount
+  // Use demo settings in demo mode, store settings otherwise
+  const inDemoMode = isDemoMode()
+  const settings = inDemoMode ? demoSettings : storeSettings
+
+  // Demo mode update handler
+  const demoUpdateSetting = <K extends keyof NexusSettingsPublic>(
+    category: K,
+    key: keyof NexusSettingsPublic[K],
+    value: NexusSettingsPublic[K][keyof NexusSettingsPublic[K]]
+  ): void => {
+    setDemoSettings(prev => ({
+      ...prev,
+      [category]: {
+        ...prev[category],
+        [key]: value
+      }
+    }))
+  }
+
+  const updateSetting = inDemoMode ? demoUpdateSetting : storeUpdateSetting
+
+  // Load settings on mount (only when not in demo mode)
   useEffect(() => {
-    void loadSettings()
-  }, [loadSettings])
+    if (!inDemoMode) {
+      void loadSettings()
+    }
+  }, [loadSettings, inDemoMode])
 
   const handleSave = async (): Promise<void> => {
+    if (inDemoMode) {
+      console.log('Demo mode: Settings would be saved:', demoSettings)
+      return
+    }
     await saveSettings()
   }
 
   const handleReset = async (): Promise<void> => {
     if (window.confirm('Are you sure you want to reset all settings to defaults? This cannot be undone.')) {
+      if (inDemoMode) {
+        setDemoSettings(DEMO_SETTINGS)
+        return
+      }
       await resetToDefaults()
     }
   }
 
-  // Loading state
-  if (isLoading || !settings) {
+  // Loading state (skip in demo mode)
+  if (!inDemoMode && (isLoading || !settings)) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="flex flex-col items-center gap-2">
-          <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-          <span className="text-sm text-muted-foreground">Loading settings...</span>
+      <div className="flex flex-col h-screen bg-bg-dark" data-testid="settings-page-loading">
+        <Header title="Settings" icon={Settings2} showBack />
+        <div className="flex items-center justify-center flex-1">
+          <div className="flex flex-col items-center gap-2">
+            <div className="h-8 w-8 border-2 border-accent-primary border-t-transparent rounded-full animate-spin" />
+            <span className="text-sm text-text-secondary">Loading settings...</span>
+          </div>
         </div>
       </div>
     )
   }
 
+  // Ensure settings is defined for TypeScript
+  if (!settings) {
+    return <div className="flex flex-col h-screen bg-bg-dark" data-testid="settings-page-empty" />
+  }
+
   return (
-    <AnimatedPage className="flex flex-col h-full">
+    <div className="flex flex-col h-screen bg-bg-dark" data-testid="settings-page">
+      {/* Header */}
+      <Header
+        title="Settings"
+        icon={Settings2}
+        showBack
+        actions={
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(): void => { void handleReset() }}
+              className="text-accent-error hover:text-accent-error hover:bg-accent-error/10"
+              data-testid="reset-defaults-button"
+            >
+              <RotateCcw className="w-4 h-4 mr-2" />
+              Reset Defaults
+            </Button>
+          </div>
+        }
+      />
+
       {/* Main content area */}
       <div className="flex flex-1 overflow-hidden">
         {/* Left: Vertical tabs */}
-        <nav className="w-56 border-r border-border p-4 space-y-1 flex-shrink-0">
-          <h2 className="text-lg font-semibold mb-4 px-2">Settings</h2>
+        <nav className="w-56 border-r border-border-default p-4 space-y-1 flex-shrink-0 bg-bg-card">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={(): void => { setActiveTab(tab.id) }}
               className={cn(
-                'w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors',
+                'w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm transition-all',
                 activeTab === tab.id
-                  ? 'bg-primary text-primary-foreground'
-                  : 'hover:bg-accent hover:text-accent-foreground'
+                  ? 'bg-accent-primary text-white font-medium'
+                  : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'
               )}
+              data-testid={`tab-${tab.id}`}
             >
               {tab.icon}
               <span>{tab.label}</span>
             </button>
           ))}
-
-          {/* Reset button at bottom */}
-          <div className="pt-4 mt-4 border-t border-border">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10"
-              onClick={(): void => { void handleReset() }}
-            >
-              <RotateCcw className="w-4 h-4 mr-2" />
-              Reset to Defaults
-            </Button>
-          </div>
         </nav>
 
         {/* Right: Content panel */}
         <main className="flex-1 p-6 overflow-y-auto">
           {/* Tab header */}
           <div className="mb-6">
-            <h3 className="text-xl font-semibold">{tabs.find((t) => t.id === activeTab)?.label}</h3>
-            <p className="text-sm text-muted-foreground">
+            <h2 className="text-xl font-semibold text-text-primary">{tabs.find((t) => t.id === activeTab)?.label}</h2>
+            <p className="text-sm text-text-secondary mt-1">
               {tabs.find((t) => t.id === activeTab)?.description}
             </p>
           </div>
 
           {/* Tab content */}
-          {activeTab === 'llm' && <LLMSettings settings={settings} updateSetting={updateSetting} />}
+          {activeTab === 'llm' && <LLMProvidersSettings settings={settings} updateSetting={updateSetting} />}
           {activeTab === 'agents' && <AgentSettings settings={settings} updateSetting={updateSetting} />}
           {activeTab === 'checkpoints' && <CheckpointSettings settings={settings} updateSetting={updateSetting} />}
           {activeTab === 'ui' && <UISettings settings={settings} updateSetting={updateSetting} />}
@@ -657,14 +1099,24 @@ export default function SettingsPage(): ReactElement {
       </div>
 
       {/* Footer with Save/Cancel */}
-      <footer className="flex justify-end gap-2 p-4 border-t border-border bg-background">
-        <Button variant="outline" onClick={(): void => { discardChanges() }} disabled={!isDirty}>
+      <footer className="flex justify-end gap-3 p-4 border-t border-border-default bg-bg-card">
+        <Button
+          variant="outline"
+          onClick={(): void => { discardChanges() }}
+          disabled={!isDirty}
+          data-testid="cancel-button"
+        >
           Cancel
         </Button>
-        <Button onClick={(): void => { void handleSave() }} disabled={!isDirty}>
+        <Button
+          onClick={(): void => { void handleSave() }}
+          disabled={!isDirty}
+          data-testid="save-button"
+        >
+          <Save className="w-4 h-4 mr-2" />
           Save Changes
         </Button>
       </footer>
-    </AnimatedPage>
+    </div>
   )
 }
