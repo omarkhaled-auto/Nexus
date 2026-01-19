@@ -1454,13 +1454,38 @@ export const DEFAULT_NEXUS_CONFIG: Partial<NexusFactoryConfig> = {
 ```
 
 ### Task 11 Completion Checklist
-- [ ] Config interface updated
-- [ ] API keys made optional
-- [ ] Backend selection fields added
-- [ ] CLI configs added
-- [ ] Defaults set to CLI-first
+- [x] Config interface updated
+- [x] API keys made optional
+- [x] Backend selection fields added
+- [x] CLI configs added
+- [x] Defaults set to CLI-first
 
-**[TASK 11 COMPLETE]** <- Mark when done
+**[TASK 11 COMPLETE]** - Completed on 2026-01-19
+
+### Task 11 Summary
+- **File Modified**: `src/NexusFactory.ts`
+- **Exports Updated**: `src/index.ts` now exports `DEFAULT_NEXUS_CONFIG`, `LLMBackend`, `EmbeddingsBackend`
+
+**Key Changes:**
+1. **New Types**: `LLMBackend` ('cli' | 'api'), `EmbeddingsBackend` ('local' | 'api')
+2. **NexusFactoryConfig Updated**:
+   - `claudeApiKey` → now optional (required only when `claudeBackend='api'`)
+   - `geminiApiKey` → now optional (required only when `geminiBackend='api'`)
+   - `claudeBackend` → new field, default 'cli'
+   - `geminiBackend` → new field, default 'cli'
+   - `claudeCliConfig` → new field for CLI-specific config
+   - `geminiCliConfig` → new field for CLI-specific config
+   - `openaiApiKey` → new optional field for embeddings API
+   - `embeddingsBackend` → new field, default 'local'
+   - `localEmbeddingsConfig` → new field for local embeddings config
+3. **DEFAULT_NEXUS_CONFIG**: CLI-first defaults (`claudeBackend: 'cli'`, `geminiBackend: 'cli'`, `embeddingsBackend: 'local'`)
+4. **NexusInstance Updated**:
+   - `llm.claude` → now `ClaudeClient | ClaudeCodeCLIClient`
+   - `llm.gemini` → now `GeminiClient | GeminiCLIClient`
+   - `embeddings` → new optional field for `LocalEmbeddingsService`
+   - `backends` → new field tracking active backends (claude, gemini, embeddings)
+5. **Imports Added**: CLI clients and LocalEmbeddingsService imports
+6. **TypeScript**: Compiles without new errors (2 pre-existing unrelated errors remain)
 
 ---
 

@@ -53,9 +53,12 @@ export {
   NexusFactory,
   createNexus,
   createTestingNexus,
+  DEFAULT_NEXUS_CONFIG,
   type NexusFactoryConfig,
   type NexusTestingConfig,
   type NexusInstance,
+  type LLMBackend,
+  type EmbeddingsBackend,
 } from './NexusFactory';
 
 // ============================================================================

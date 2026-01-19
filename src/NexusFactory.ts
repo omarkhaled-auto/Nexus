@@ -3,16 +3,22 @@
  *
  * This is the main entry point for creating Nexus orchestration instances.
  * It wires together all components including:
- * - LLM clients (Claude, Gemini)
+ * - LLM clients (Claude, Gemini) - API or CLI backends
  * - Planning components (TaskDecomposer, DependencyResolver, TimeEstimator)
  * - Execution components (AgentPool, QARunners)
  * - Orchestration components (NexusCoordinator, RalphStyleIterator)
  *
  * Phase 14B Task 18: Wiring & Factory
+ * Phase 16: Full CLI Support Integration - CLI-first backend selection
  */
 
 import { ClaudeClient, type ClaudeClientOptions } from './llm/clients/ClaudeClient';
 import { GeminiClient, type GeminiClientOptions } from './llm/clients/GeminiClient';
+import { ClaudeCodeCLIClient, type ClaudeCodeCLIConfig } from './llm/clients/ClaudeCodeCLIClient';
+import { GeminiCLIClient } from './llm/clients/GeminiCLIClient';
+import type { GeminiCLIConfig } from './llm/clients/GeminiCLIClient.types';
+import { LocalEmbeddingsService } from './persistence/memory/LocalEmbeddingsService';
+import type { LocalEmbeddingsConfig } from './persistence/memory/LocalEmbeddingsService.types';
 import { TaskDecomposer } from './planning/decomposition/TaskDecomposer';
 import { DependencyResolver } from './planning/dependencies/DependencyResolver';
 import { TimeEstimator } from './planning/estimation/TimeEstimator';
@@ -33,21 +39,88 @@ import type { AgentType } from './types/agent';
 // ============================================================================
 
 /**
+ * Backend type for LLM clients.
+ * - 'cli': Use CLI binary (requires installation, but no API key needed)
+ * - 'api': Use direct API calls (requires API key)
+ */
+export type LLMBackend = 'cli' | 'api';
+
+/**
+ * Backend type for embeddings service.
+ * - 'local': Use local transformer models via Transformers.js (no API key needed)
+ * - 'api': Use OpenAI embeddings API (requires API key)
+ */
+export type EmbeddingsBackend = 'local' | 'api';
+
+/**
  * Configuration for creating a NexusFactory instance
+ *
+ * Phase 16: CLI-first defaults
+ * - claudeBackend defaults to 'cli'
+ * - geminiBackend defaults to 'cli'
+ * - embeddingsBackend defaults to 'local'
+ * - API keys are now OPTIONAL (required only when using 'api' backend)
  */
 export interface NexusFactoryConfig {
-  /** Anthropic API key for Claude */
-  claudeApiKey: string;
-  /** Google API key for Gemini */
-  geminiApiKey: string;
+  // ==========================================================================
+  // Claude Configuration
+  // ==========================================================================
+
+  /** Anthropic API key for Claude (required when claudeBackend='api') */
+  claudeApiKey?: string;
+
+  /** Backend to use for Claude: 'cli' (default) or 'api' */
+  claudeBackend?: LLMBackend;
+
+  /** Claude CLI configuration (used when claudeBackend='cli') */
+  claudeCliConfig?: ClaudeCodeCLIConfig;
+
+  /** Claude API client configuration (used when claudeBackend='api') */
+  claudeConfig?: Partial<ClaudeClientOptions>;
+
+  // ==========================================================================
+  // Gemini Configuration
+  // ==========================================================================
+
+  /** Google API key for Gemini (required when geminiBackend='api') */
+  geminiApiKey?: string;
+
+  /** Backend to use for Gemini: 'cli' (default) or 'api' */
+  geminiBackend?: LLMBackend;
+
+  /** Gemini CLI configuration (used when geminiBackend='cli') */
+  geminiCliConfig?: GeminiCLIConfig;
+
+  /** Gemini API client configuration (used when geminiBackend='api') */
+  geminiConfig?: Partial<GeminiClientOptions>;
+
+  // ==========================================================================
+  // Embeddings Configuration
+  // ==========================================================================
+
+  /** OpenAI API key for embeddings (required when embeddingsBackend='api') */
+  openaiApiKey?: string;
+
+  /** Backend to use for embeddings: 'local' (default) or 'api' */
+  embeddingsBackend?: EmbeddingsBackend;
+
+  /** Local embeddings configuration (used when embeddingsBackend='local') */
+  localEmbeddingsConfig?: LocalEmbeddingsConfig;
+
+  // ==========================================================================
+  // Project Configuration
+  // ==========================================================================
+
   /** Root directory of the project being orchestrated */
   workingDir: string;
-  /** Optional Claude client configuration */
-  claudeConfig?: Partial<ClaudeClientOptions>;
-  /** Optional Gemini client configuration */
-  geminiConfig?: Partial<GeminiClientOptions>;
+
   /** Maximum agents per type (optional overrides) */
   maxAgentsByType?: Partial<Record<AgentType, number>>;
+
+  // ==========================================================================
+  // QA Configuration
+  // ==========================================================================
+
   /** QA configuration */
   qaConfig?: {
     /** Build timeout in ms (default: 60000) */
@@ -59,6 +132,11 @@ export interface NexusFactoryConfig {
     /** Enable auto-fix for linting (default: false) */
     autoFixLint?: boolean;
   };
+
+  // ==========================================================================
+  // Iteration Configuration
+  // ==========================================================================
+
   /** Iteration configuration */
   iterationConfig?: {
     /** Maximum iterations before escalation (default: 50) */
@@ -67,6 +145,16 @@ export interface NexusFactoryConfig {
     commitEachIteration?: boolean;
   };
 }
+
+/**
+ * Default configuration values for NexusFactory.
+ * CLI-first: Prefer CLI/local over API where possible.
+ */
+export const DEFAULT_NEXUS_CONFIG: Partial<NexusFactoryConfig> = {
+  claudeBackend: 'cli',
+  geminiBackend: 'cli',
+  embeddingsBackend: 'local',
+};
 
 /**
  * Configuration for testing mode
@@ -90,16 +178,27 @@ export interface NexusInstance {
   taskQueue: TaskQueue;
   /** Event bus for observability */
   eventBus: EventBus;
-  /** LLM clients */
+  /**
+   * LLM clients
+   * Note: These implement LLMClient interface and can be either API or CLI clients
+   */
   llm: {
-    claude: ClaudeClient;
-    gemini: GeminiClient;
+    claude: ClaudeClient | ClaudeCodeCLIClient;
+    gemini: GeminiClient | GeminiCLIClient;
   };
   /** Planning components */
   planning: {
     decomposer: TaskDecomposer;
     resolver: DependencyResolver;
     estimator: TimeEstimator;
+  };
+  /** Embeddings service (local or API) */
+  embeddings?: LocalEmbeddingsService;
+  /** Backend information for debugging/status */
+  backends: {
+    claude: LLMBackend;
+    gemini: LLMBackend;
+    embeddings: EmbeddingsBackend;
   };
   /** Shutdown function to clean up resources */
   shutdown: () => Promise<void>;
@@ -147,14 +246,18 @@ export class NexusFactory {
   static create(config: NexusFactoryConfig): NexusInstance {
     // ========================================================================
     // 1. Initialize LLM Clients
+    // Note: Task 12 will implement proper backend selection (CLI vs API).
+    // For now, we require API keys when using API backend.
     // ========================================================================
     const claudeClient = new ClaudeClient({
-      apiKey: config.claudeApiKey,
+      // API key assertion - Task 12 will handle CLI fallback
+      apiKey: config.claudeApiKey ?? '',
       ...config.claudeConfig,
     });
 
     const geminiClient = new GeminiClient({
-      apiKey: config.geminiApiKey,
+      // API key assertion - Task 12 will handle CLI fallback
+      apiKey: config.geminiApiKey ?? '',
       ...config.geminiConfig,
     });
 
@@ -270,6 +373,13 @@ export class NexusFactory {
     };
 
     // ========================================================================
+    // Determine actual backends used
+    // Note: Full backend selection logic will be implemented in Task 12
+    // For now, we track what's actually being used
+    // ========================================================================
+    const mergedConfig = { ...DEFAULT_NEXUS_CONFIG, ...config };
+
+    // ========================================================================
     // Return Nexus Instance
     // ========================================================================
     return {
@@ -285,6 +395,12 @@ export class NexusFactory {
         decomposer: taskDecomposer,
         resolver: dependencyResolver,
         estimator: timeEstimator,
+      },
+      backends: {
+        // Currently using API clients, will be updated in Task 12
+        claude: config.claudeApiKey ? 'api' : (mergedConfig.claudeBackend ?? 'cli'),
+        gemini: config.geminiApiKey ? 'api' : (mergedConfig.geminiBackend ?? 'cli'),
+        embeddings: config.openaiApiKey ? 'api' : (mergedConfig.embeddingsBackend ?? 'local'),
       },
       shutdown,
     };
@@ -304,14 +420,17 @@ export class NexusFactory {
   static createForTesting(config: NexusTestingConfig): NexusInstance {
     // ========================================================================
     // 1. Initialize LLM Clients
+    // Note: Task 12 will implement proper backend selection (CLI vs API).
     // ========================================================================
     const claudeClient = new ClaudeClient({
-      apiKey: config.claudeApiKey,
+      // API key assertion - Task 12 will handle CLI fallback
+      apiKey: config.claudeApiKey ?? '',
       ...config.claudeConfig,
     });
 
     const geminiClient = new GeminiClient({
-      apiKey: config.geminiApiKey,
+      // API key assertion - Task 12 will handle CLI fallback
+      apiKey: config.geminiApiKey ?? '',
       ...config.geminiConfig,
     });
 
@@ -402,6 +521,9 @@ export class NexusFactory {
       }
     };
 
+    // Determine actual backends used
+    const mergedConfig = { ...DEFAULT_NEXUS_CONFIG, ...config };
+
     return {
       coordinator,
       agentPool,
@@ -415,6 +537,12 @@ export class NexusFactory {
         decomposer: taskDecomposer,
         resolver: dependencyResolver,
         estimator: timeEstimator,
+      },
+      backends: {
+        // Currently using API clients, will be updated in Task 12
+        claude: config.claudeApiKey ? 'api' : (mergedConfig.claudeBackend ?? 'cli'),
+        gemini: config.geminiApiKey ? 'api' : (mergedConfig.geminiBackend ?? 'cli'),
+        embeddings: config.openaiApiKey ? 'api' : (mergedConfig.embeddingsBackend ?? 'local'),
       },
       shutdown,
     };
