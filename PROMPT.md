@@ -1977,4 +1977,21 @@ All 7 research tasks have been completed. Documentation created:
   - **Utility Components (5):** VisuallyHidden, ErrorBoundary, ThemeProvider, VirtualizedList, Portal
   - All components include TypeScript interfaces, accessibility requirements, and data-testid specs for Playwright testing
 
-**NEXT:** Task 4 - Create wireframes for each page
+#### Task 4: Create Wireframes for Each Page
+- **Status:** COMPLETED
+- **Output:** `.agent/workspace/PHASE_17_DESIGN/WIREFRAMES.md`
+- **Summary:** Comprehensive wireframe document covering all 7+ pages:
+  - App Shell & Navigation: Header structure, navigation items, dropdown menus
+  - Dashboard Page: Stats row, recent projects, agent feed, activity timeline
+  - Interview Page: Split-pane chat + requirements panel, progress bar
+  - Tasks/Kanban Page: 4-column board, task cards, task detail modal
+  - Agents Page: Agent pool status, active agents list, agent details panel with live output
+  - Execution Page: Tab navigation (Build/Lint/Test/Review), code blocks, accordion sections
+  - Settings Page: LLM Providers tab, Agents tab with model assignments table
+  - Memory Page (Optional): Repository map, learned patterns, semantic context
+  - Responsive Breakpoints: Desktop, tablet, mobile layouts for each page
+  - Animation Specifications: Page transitions, component animations, loading states
+  - Interaction States: Focus, loading, error, and empty states
+  - Complete data-testid mapping for Playwright testing
+
+**NEXT:** Task 5 - Define all component props and states
