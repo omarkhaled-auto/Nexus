@@ -2066,7 +2066,40 @@ All 7 research tasks have been completed. Documentation created:
 
 ---
 
-### NEXT PHASE: PHASE 17B - FOUNDATION (Tasks 8-12)
+### PHASE 17B: FOUNDATION (Tasks 8-12)
 
-**NEXT TASK:** Task 8 - Set up design system (colors, typography, spacing in Tailwind config)
+#### Task 8: Set up design system (colors, typography, spacing)
+- **Status:** COMPLETED
+- **Output:**
+  - `src/renderer/src/index.css` - Complete Tailwind v4 CSS-first design system configuration
+  - `src/renderer/src/styles/tokens.ts` - TypeScript design tokens for component usage
+- **Summary:** Implemented the complete Nexus design system using Tailwind CSS v4's `@theme` directive:
+  - **Colors (35+ tokens):**
+    - Background: dark, card, hover, muted, elevated
+    - Accent: primary (purple), secondary (cyan), success, warning, error, info with hover variants
+    - Text: primary, secondary, tertiary, inverse, muted
+    - Border: default, focus, error, success, subtle
+    - Agent types: planner, coder, tester, reviewer, merger, architect, debugger, documenter
+    - Status: idle, working, success, error, warning, pending
+    - Priority: must, should, could, wont (MoSCoW)
+  - **Typography:**
+    - Font families: Inter (sans), JetBrains Mono (mono)
+    - Font sizes: xs through 5xl (12px - 40px)
+    - Line heights: none through loose
+    - Letter spacing: tighter through wider
+  - **Spacing:** Complete scale from 0 to 32 (base: 4px)
+  - **Border Radius:** none, sm, md, lg, xl, 2xl, full
+  - **Shadows:** sm through 2xl + inner + glow variants for each accent color
+  - **Animation:**
+    - Durations: fast (150ms), normal (200ms), slow (300ms), slower (500ms)
+    - Easings: default, in, out, inOut, bounce
+    - Keyframes: fadeIn, fadeOut, slideIn (4 directions), scaleIn/Out, pulse, spin, shimmer, bounce, statusPulse, blink
+  - **Z-Index Scale:** dropdown (1000) through toast (1080)
+  - **Layout:** Container widths, header height (56px), sidebar widths
+  - **Base Styles:** Global resets, typography defaults, scrollbar styling, focus styles
+  - **Utility Classes:** sr-only, truncate, line-clamp, responsive visibility
+  - **Accessibility:** Reduced motion support, print styles
+  - **TypeScript Tokens File:** Exports all tokens with types and helper functions
+
+**NEXT TASK:** Task 9 - Create base components (Button, Input, Select, Toggle, Card)
 
