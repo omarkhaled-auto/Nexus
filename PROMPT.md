@@ -1838,7 +1838,31 @@ REQUIRED OUTPUTS:
   - UI Integration Patterns with React hooks examples
 
 #### Task R4: Extract Configuration Options
-- **Status:** PENDING
+- **Status:** COMPLETED
+- **Output:** `.agent/workspace/PHASE_17_RESEARCH/CONFIG_OPTIONS.md`
+- **Summary:** Comprehensive documentation of all 100+ configurable options across:
+  - LLM Configuration (3 providers: Claude, Gemini, Embeddings)
+    - Backend selection (CLI vs API, Local vs API)
+    - Model selection with 5 Claude and 5 Gemini models
+    - Timeout, retries, and advanced options
+  - Agent Configuration
+    - Pool limits, timeouts, retry settings
+    - Per-agent type model assignments (coder, tester, reviewer, merger, architect, debugger, documenter)
+  - Checkpoint Configuration
+    - Auto-checkpoint settings with intervals
+    - Max checkpoints, feature completion triggers
+  - UI Settings
+    - Theme (light/dark/system), notifications, sidebar width
+  - Project Settings
+    - Default language, test framework, output directory
+  - QA Configuration (config file only)
+    - Build/lint/test timeouts, auto-fix lint
+  - Iteration Configuration (config file only)
+    - Max iterations, commit behavior
+  - Model Constants
+    - All Claude models (5), Gemini models (5), embedding models (7)
+    - Pricing info, agent role assignments
+  - Configuration Priority System (config file > settings UI > env vars > defaults)
 
 #### Task R5: Extract Database Schema
 - **Status:** PENDING
