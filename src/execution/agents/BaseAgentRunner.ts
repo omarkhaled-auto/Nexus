@@ -7,8 +7,7 @@
  * @module execution/agents
  */
 
-import type { ClaudeClient } from '../../llm/clients/ClaudeClient';
-import type { GeminiClient } from '../../llm/clients/GeminiClient';
+import type { LLMClient } from '../../llm/types';
 import { EventBus } from '../../orchestration/events/EventBus';
 import type { AgentType } from '../../types/agent';
 import type { Task, TaskResult } from '../../types/task';
@@ -91,8 +90,8 @@ export interface AgentTaskResult extends TaskResult {
  * ```
  */
 export abstract class BaseAgentRunner {
-  /** LLM client (Claude or Gemini) */
-  protected llmClient: ClaudeClient | GeminiClient;
+  /** LLM client (API or CLI) */
+  protected llmClient: LLMClient;
 
   /** Event bus for emitting agent events */
   protected eventBus: EventBus;
@@ -103,11 +102,11 @@ export abstract class BaseAgentRunner {
   /**
    * Create a new agent runner
    *
-   * @param llmClient - The LLM client to use for chat
+   * @param llmClient - The LLM client to use for chat (API or CLI)
    * @param config - Optional configuration overrides
    */
   constructor(
-    llmClient: ClaudeClient | GeminiClient,
+    llmClient: LLMClient,
     config?: AgentConfig
   ) {
     this.llmClient = llmClient;

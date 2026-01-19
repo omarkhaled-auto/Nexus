@@ -12,7 +12,7 @@ import { LintRunner, LintRunnerConfig } from './LintRunner';
 import { TestRunner, TestRunnerConfig } from './TestRunner';
 import { ReviewRunner, ReviewRunnerConfig, ReviewContext } from './ReviewRunner';
 import type { QARunner, BuildResult, LintResult, TestResult, ReviewResult } from '../iteration/types';
-import type { GeminiClient } from '../../llm/clients/GeminiClient';
+import type { LLMClient } from '../../llm/types';
 import { GitService } from '../../infrastructure/git/GitService';
 
 // ============================================================================
@@ -25,8 +25,8 @@ import { GitService } from '../../infrastructure/git/GitService';
 export interface QARunnerFactoryConfig {
   /** Working directory for all QA operations */
   workingDir: string;
-  /** Gemini client for code review (required for review step) */
-  geminiClient?: GeminiClient;
+  /** LLM client for code review (API or CLI - required for review step) */
+  geminiClient?: LLMClient;
   /** Git service for review diffs (optional, ReviewRunner creates default) */
   gitService?: GitService;
   /** Context for code reviews */

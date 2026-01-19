@@ -8,7 +8,7 @@
  * @module execution/agents
  */
 
-import type { ClaudeClient } from '../../llm/clients/ClaudeClient';
+import type { LLMClient } from '../../llm/types';
 import type { AgentType } from '../../types/agent';
 import type { Task } from '../../types/task';
 import {
@@ -185,11 +185,11 @@ export class MergerAgent extends BaseAgentRunner {
   /**
    * Create a new MergerAgent
    *
-   * @param claudeClient - Claude client for LLM interactions
+   * @param llmClient - LLM client for interactions (API or CLI)
    * @param config - Optional agent configuration
    */
-  constructor(claudeClient: ClaudeClient, config?: AgentConfig) {
-    super(claudeClient, config);
+  constructor(llmClient: LLMClient, config?: AgentConfig) {
+    super(llmClient, config);
   }
 
   /**

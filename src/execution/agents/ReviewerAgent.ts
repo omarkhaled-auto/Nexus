@@ -8,7 +8,7 @@
  * @module execution/agents
  */
 
-import type { GeminiClient } from '../../llm/clients/GeminiClient';
+import type { LLMClient } from '../../llm/types';
 import type { AgentType } from '../../types/agent';
 import type { Task } from '../../types/task';
 import {
@@ -151,11 +151,11 @@ export class ReviewerAgent extends BaseAgentRunner {
   /**
    * Create a new ReviewerAgent
    *
-   * @param geminiClient - Gemini client for LLM interactions
+   * @param llmClient - LLM client for interactions (API or CLI)
    * @param config - Optional agent configuration
    */
-  constructor(geminiClient: GeminiClient, config?: AgentConfig) {
-    super(geminiClient, config);
+  constructor(llmClient: LLMClient, config?: AgentConfig) {
+    super(llmClient, config);
   }
 
   /**

@@ -14,12 +14,79 @@ import type { NexusFactoryConfig, NexusTestingConfig } from './NexusFactory';
 vi.mock('./llm/clients/ClaudeClient', () => ({
   ClaudeClient: vi.fn().mockImplementation(() => ({
     chat: vi.fn().mockResolvedValue({ content: 'mocked response' }),
+    chatStream: vi.fn(),
+    countTokens: vi.fn().mockReturnValue(0),
   })),
 }));
 
 vi.mock('./llm/clients/GeminiClient', () => ({
   GeminiClient: vi.fn().mockImplementation(() => ({
     chat: vi.fn().mockResolvedValue({ content: 'mocked response' }),
+    chatStream: vi.fn(),
+    countTokens: vi.fn().mockReturnValue(0),
+  })),
+}));
+
+// Mock CLI clients - return isAvailable=false to force API fallback
+vi.mock('./llm/clients/ClaudeCodeCLIClient', () => {
+  const MockClaudeCodeCLIClient = vi.fn().mockImplementation(() => ({
+    isAvailable: vi.fn().mockResolvedValue(false),
+    chat: vi.fn().mockResolvedValue({ content: 'mocked CLI response' }),
+    chatStream: vi.fn(),
+    countTokens: vi.fn().mockReturnValue(0),
+  }));
+
+  class CLINotFoundError extends Error {
+    constructor() {
+      super('Claude CLI not found');
+      this.name = 'CLINotFoundError';
+    }
+  }
+
+  return {
+    ClaudeCodeCLIClient: MockClaudeCodeCLIClient,
+    CLINotFoundError,
+  };
+});
+
+vi.mock('./llm/clients/GeminiCLIClient', () => {
+  const MockGeminiCLIClient = vi.fn().mockImplementation(() => ({
+    isAvailable: vi.fn().mockResolvedValue(false),
+    chat: vi.fn().mockResolvedValue({ content: 'mocked CLI response' }),
+    chatStream: vi.fn(),
+    countTokens: vi.fn().mockReturnValue(0),
+  }));
+
+  class GeminiCLINotFoundError extends Error {
+    constructor() {
+      super('Gemini CLI not found');
+      this.name = 'GeminiCLINotFoundError';
+    }
+  }
+
+  return {
+    GeminiCLIClient: MockGeminiCLIClient,
+    GeminiCLINotFoundError,
+  };
+});
+
+// Mock LocalEmbeddingsService - return isAvailable=false to skip embeddings
+vi.mock('./persistence/memory/LocalEmbeddingsService', () => ({
+  LocalEmbeddingsService: vi.fn().mockImplementation(() => ({
+    isAvailable: vi.fn().mockResolvedValue(false),
+  })),
+  LocalEmbeddingsInitError: class LocalEmbeddingsInitError extends Error {
+    constructor(model: string, cause: Error) {
+      super(`Local embeddings init error for ${model}: ${cause.message}`);
+      this.name = 'LocalEmbeddingsInitError';
+    }
+  },
+}));
+
+// Mock EmbeddingsService
+vi.mock('./persistence/memory/EmbeddingsService', () => ({
+  EmbeddingsService: vi.fn().mockImplementation(() => ({
+    embed: vi.fn().mockResolvedValue({ embedding: [] }),
   })),
 }));
 
@@ -53,10 +120,15 @@ vi.mock('./orchestration/events/EventBus', () => ({
 }));
 
 describe('NexusFactory', () => {
+  // Use API backend explicitly to avoid CLI availability checks in tests
   const validConfig: NexusFactoryConfig = {
     claudeApiKey: 'test-claude-key',
     geminiApiKey: 'test-gemini-key',
     workingDir: '/test/project',
+    claudeBackend: 'api',  // Use API directly to bypass CLI checks
+    geminiBackend: 'api',  // Use API directly to bypass CLI checks
+    embeddingsBackend: 'api',  // Use API directly to bypass local checks
+    openaiApiKey: 'test-openai-key',  // Required for API embeddings
   };
 
   beforeEach(() => {
@@ -68,8 +140,8 @@ describe('NexusFactory', () => {
   });
 
   describe('create', () => {
-    it('should create a NexusInstance with all required components', () => {
-      const nexus = NexusFactory.create(validConfig);
+    it('should create a NexusInstance with all required components', async () => {
+      const nexus = await NexusFactory.create(validConfig);
 
       // Verify all components are present
       expect(nexus).toBeDefined();
@@ -88,20 +160,20 @@ describe('NexusFactory', () => {
       expect(typeof nexus.shutdown).toBe('function');
     });
 
-    it('should create coordinator with all dependencies wired', () => {
-      const nexus = NexusFactory.create(validConfig);
+    it('should create coordinator with all dependencies wired', async () => {
+      const nexus = await NexusFactory.create(validConfig);
 
       // Coordinator should be properly initialized
       expect(nexus.coordinator).toBeDefined();
     });
 
-    it('should create agent pool with both Claude and Gemini clients', () => {
-      const nexus = NexusFactory.create(validConfig);
+    it('should create agent pool with both Claude and Gemini clients', async () => {
+      const nexus = await NexusFactory.create(validConfig);
 
       expect(nexus.agentPool).toBeDefined();
     });
 
-    it('should apply custom agent limits when provided', () => {
+    it('should apply custom agent limits when provided', async () => {
       const configWithLimits: NexusFactoryConfig = {
         ...validConfig,
         maxAgentsByType: {
@@ -110,11 +182,11 @@ describe('NexusFactory', () => {
         },
       };
 
-      const nexus = NexusFactory.create(configWithLimits);
+      const nexus = await NexusFactory.create(configWithLimits);
       expect(nexus.agentPool).toBeDefined();
     });
 
-    it('should apply QA configuration when provided', () => {
+    it('should apply QA configuration when provided', async () => {
       const configWithQA: NexusFactoryConfig = {
         ...validConfig,
         qaConfig: {
@@ -125,12 +197,12 @@ describe('NexusFactory', () => {
         },
       };
 
-      const nexus = NexusFactory.create(configWithQA);
+      const nexus = await NexusFactory.create(configWithQA);
       expect(nexus).toBeDefined();
     });
 
     it('should provide a working shutdown function', async () => {
-      const nexus = NexusFactory.create(validConfig);
+      const nexus = await NexusFactory.create(validConfig);
 
       // Shutdown should not throw
       await expect(nexus.shutdown()).resolves.not.toThrow();
@@ -138,27 +210,27 @@ describe('NexusFactory', () => {
   });
 
   describe('createForTesting', () => {
-    it('should create a testing instance with mocked QA', () => {
+    it('should create a testing instance with mocked QA', async () => {
       const testConfig: NexusTestingConfig = {
         ...validConfig,
         mockQA: true,
         maxIterations: 5,
       };
 
-      const nexus = NexusFactory.createForTesting(testConfig);
+      const nexus = await NexusFactory.createForTesting(testConfig);
 
       expect(nexus).toBeDefined();
       expect(nexus.coordinator).toBeDefined();
       expect(nexus.agentPool).toBeDefined();
     });
 
-    it('should create a testing instance with real QA when mockQA is false', () => {
+    it('should create a testing instance with real QA when mockQA is false', async () => {
       const testConfig: NexusTestingConfig = {
         ...validConfig,
         mockQA: false,
       };
 
-      const nexus = NexusFactory.createForTesting(testConfig);
+      const nexus = await NexusFactory.createForTesting(testConfig);
       expect(nexus).toBeDefined();
     });
 
@@ -168,7 +240,7 @@ describe('NexusFactory', () => {
         mockQA: true,
       };
 
-      const nexus = NexusFactory.createForTesting(testConfig);
+      const nexus = await NexusFactory.createForTesting(testConfig);
       await expect(nexus.shutdown()).resolves.not.toThrow();
     });
   });
@@ -194,8 +266,8 @@ describe('NexusFactory', () => {
 
   describe('convenience functions', () => {
     describe('createNexus', () => {
-      it('should be equivalent to NexusFactory.create', () => {
-        const nexus = createNexus(validConfig);
+      it('should be equivalent to NexusFactory.create', async () => {
+        const nexus = await createNexus(validConfig);
 
         expect(nexus).toBeDefined();
         expect(nexus.coordinator).toBeDefined();
@@ -204,13 +276,13 @@ describe('NexusFactory', () => {
     });
 
     describe('createTestingNexus', () => {
-      it('should be equivalent to NexusFactory.createForTesting', () => {
+      it('should be equivalent to NexusFactory.createForTesting', async () => {
         const testConfig: NexusTestingConfig = {
           ...validConfig,
           mockQA: true,
         };
 
-        const nexus = createTestingNexus(testConfig);
+        const nexus = await createTestingNexus(testConfig);
 
         expect(nexus).toBeDefined();
         expect(nexus.coordinator).toBeDefined();
@@ -220,29 +292,29 @@ describe('NexusFactory', () => {
   });
 
   describe('component wiring', () => {
-    it('should wire TaskDecomposer with Claude client', () => {
-      const nexus = NexusFactory.create(validConfig);
+    it('should wire TaskDecomposer with Claude client', async () => {
+      const nexus = await NexusFactory.create(validConfig);
 
       // TaskDecomposer should exist and be ready to use
       expect(nexus.planning.decomposer).toBeDefined();
     });
 
-    it('should wire DependencyResolver independently', () => {
-      const nexus = NexusFactory.create(validConfig);
+    it('should wire DependencyResolver independently', async () => {
+      const nexus = await NexusFactory.create(validConfig);
 
       // DependencyResolver is stateless and doesn't need external deps
       expect(nexus.planning.resolver).toBeDefined();
     });
 
-    it('should wire TimeEstimator independently', () => {
-      const nexus = NexusFactory.create(validConfig);
+    it('should wire TimeEstimator independently', async () => {
+      const nexus = await NexusFactory.create(validConfig);
 
       // TimeEstimator is stateless and doesn't need external deps
       expect(nexus.planning.estimator).toBeDefined();
     });
 
-    it('should share EventBus instance across components', () => {
-      const nexus = NexusFactory.create(validConfig);
+    it('should share EventBus instance across components', async () => {
+      const nexus = await NexusFactory.create(validConfig);
 
       // EventBus should be included in result (may be mocked singleton)
       // In mocked environment, EventBus.getInstance() returns the mocked value
@@ -252,18 +324,20 @@ describe('NexusFactory', () => {
   });
 
   describe('configuration validation', () => {
-    it('should create instance with minimal required config', () => {
+    it('should create instance with minimal required config', async () => {
       const minimalConfig: NexusFactoryConfig = {
         claudeApiKey: 'key',
         geminiApiKey: 'key',
         workingDir: '/path',
+        claudeBackend: 'api',  // Use API to bypass CLI checks in tests
+        geminiBackend: 'api',
       };
 
-      const nexus = NexusFactory.create(minimalConfig);
+      const nexus = await NexusFactory.create(minimalConfig);
       expect(nexus).toBeDefined();
     });
 
-    it('should accept custom Claude client options', () => {
+    it('should accept custom Claude client options', async () => {
       const configWithClaudeOptions: NexusFactoryConfig = {
         ...validConfig,
         claudeConfig: {
@@ -272,11 +346,11 @@ describe('NexusFactory', () => {
         },
       };
 
-      const nexus = NexusFactory.create(configWithClaudeOptions);
+      const nexus = await NexusFactory.create(configWithClaudeOptions);
       expect(nexus).toBeDefined();
     });
 
-    it('should accept custom Gemini client options', () => {
+    it('should accept custom Gemini client options', async () => {
       const configWithGeminiOptions: NexusFactoryConfig = {
         ...validConfig,
         geminiConfig: {
@@ -284,7 +358,7 @@ describe('NexusFactory', () => {
         },
       };
 
-      const nexus = NexusFactory.create(configWithGeminiOptions);
+      const nexus = await NexusFactory.create(configWithGeminiOptions);
       expect(nexus).toBeDefined();
     });
   });

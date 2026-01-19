@@ -11,8 +11,7 @@
  */
 
 import { nanoid } from 'nanoid';
-import type { ClaudeClient } from '../../llm/clients/ClaudeClient';
-import type { GeminiClient } from '../../llm/clients/GeminiClient';
+import type { LLMClient } from '../../llm/types';
 import { CoderAgent } from '../../execution/agents/CoderAgent';
 import { TesterAgent } from '../../execution/agents/TesterAgent';
 import { ReviewerAgent } from '../../execution/agents/ReviewerAgent';
@@ -73,10 +72,10 @@ export class NoRunnerError extends Error {
  * Configuration options for AgentPool
  */
 export interface AgentPoolConfig {
-  /** Claude client for coder, tester, and merger agents */
-  claudeClient: ClaudeClient;
-  /** Gemini client for reviewer agent */
-  geminiClient: GeminiClient;
+  /** Claude client for coder, tester, and merger agents (API or CLI) */
+  claudeClient: LLMClient;
+  /** Gemini client for reviewer agent (API or CLI) */
+  geminiClient: LLMClient;
   /** Maximum agents per type (optional overrides) */
   maxAgentsByType?: Partial<Record<AgentType, number>>;
   /** Default model configuration for agents */
@@ -168,9 +167,9 @@ export class AgentPool implements IAgentPool {
   /** Event bus for observability */
   private eventBus: EventBus;
 
-  /** LLM clients */
-  private claudeClient: ClaudeClient;
-  private geminiClient: GeminiClient;
+  /** LLM clients (API or CLI) */
+  private claudeClient: LLMClient;
+  private geminiClient: LLMClient;
 
   /**
    * Create a new AgentPool

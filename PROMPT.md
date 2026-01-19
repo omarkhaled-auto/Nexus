@@ -1589,14 +1589,28 @@ export class NexusFactory {
 ```
 
 ### Task 12 Completion Checklist
-- [ ] create() updated with backend selection
-- [ ] createClaudeClient() implemented
-- [ ] createGeminiClient() implemented
-- [ ] createEmbeddingsService() implemented
-- [ ] Fallback logic implemented
-- [ ] Helpful errors thrown when neither option available
+- [x] create() updated with backend selection
+- [x] createClaudeClient() implemented
+- [x] createGeminiClient() implemented
+- [x] createEmbeddingsService() implemented
+- [x] Fallback logic implemented
+- [x] Helpful errors thrown when neither option available
 
-**[TASK 12 COMPLETE]** <- Mark when done
+### Task 12 Summary
+**COMPLETED** - Implemented backend selection logic in NexusFactory:
+- Made `create()` and `createForTesting()` async methods returning `Promise<NexusInstance>`
+- Added `createClaudeClient()` - CLI-first with API fallback
+- Added `createGeminiClient()` - CLI-first with API fallback
+- Added `createEmbeddingsService()` - Local-first with API fallback
+- Updated convenience functions `createNexus()` and `createTestingNexus()` to be async
+- Refactored dependent classes to use `LLMClient` interface:
+  - `TaskDecomposer` - accepts `LLMClient` instead of `ClaudeClient`
+  - `AgentPool` - accepts `LLMClient` for both client types
+  - `BaseAgentRunner` and all agent subclasses (CoderAgent, TesterAgent, ReviewerAgent, MergerAgent)
+  - `QARunnerFactory` and `ReviewRunner`
+- All 20 NexusFactory tests pass
+
+**[TASK 12 COMPLETE]**
 
 ---
 

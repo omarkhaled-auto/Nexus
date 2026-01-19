@@ -14,11 +14,12 @@
 
 import { ClaudeClient, type ClaudeClientOptions } from './llm/clients/ClaudeClient';
 import { GeminiClient, type GeminiClientOptions } from './llm/clients/GeminiClient';
-import { ClaudeCodeCLIClient, type ClaudeCodeCLIConfig } from './llm/clients/ClaudeCodeCLIClient';
-import { GeminiCLIClient } from './llm/clients/GeminiCLIClient';
+import { ClaudeCodeCLIClient, CLINotFoundError, type ClaudeCodeCLIConfig } from './llm/clients/ClaudeCodeCLIClient';
+import { GeminiCLIClient, GeminiCLINotFoundError } from './llm/clients/GeminiCLIClient';
 import type { GeminiCLIConfig } from './llm/clients/GeminiCLIClient.types';
-import { LocalEmbeddingsService } from './persistence/memory/LocalEmbeddingsService';
+import { LocalEmbeddingsService, LocalEmbeddingsInitError } from './persistence/memory/LocalEmbeddingsService';
 import type { LocalEmbeddingsConfig } from './persistence/memory/LocalEmbeddingsService.types';
+import { EmbeddingsService, type EmbeddingsServiceOptions } from './persistence/memory/EmbeddingsService';
 import { TaskDecomposer } from './planning/decomposition/TaskDecomposer';
 import { DependencyResolver } from './planning/dependencies/DependencyResolver';
 import { TimeEstimator } from './planning/estimation/TimeEstimator';
@@ -240,36 +241,52 @@ export class NexusFactory {
    *
    * This is the primary factory method for production use.
    *
+   * Backend selection (Phase 16 - Task 12):
+   * - CLI-first: Prefers CLI clients over API when available
+   * - Smart fallback: Falls back to API if CLI unavailable and API key exists
+   * - Helpful errors: Throws descriptive errors with install instructions
+   *
    * @param config - Factory configuration
-   * @returns Fully-wired Nexus instance
+   * @returns Promise resolving to fully-wired Nexus instance
    */
-  static create(config: NexusFactoryConfig): NexusInstance {
+  static async create(config: NexusFactoryConfig): Promise<NexusInstance> {
     // ========================================================================
-    // 1. Initialize LLM Clients
-    // Note: Task 12 will implement proper backend selection (CLI vs API).
-    // For now, we require API keys when using API backend.
+    // 1. Initialize LLM Clients (Task 12 - Backend Selection)
     // ========================================================================
-    const claudeClient = new ClaudeClient({
-      // API key assertion - Task 12 will handle CLI fallback
-      apiKey: config.claudeApiKey ?? '',
-      ...config.claudeConfig,
-    });
+    const [claudeResult, geminiResult] = await Promise.all([
+      this.createClaudeClient(config),
+      this.createGeminiClient(config),
+    ]);
 
-    const geminiClient = new GeminiClient({
-      // API key assertion - Task 12 will handle CLI fallback
-      apiKey: config.geminiApiKey ?? '',
-      ...config.geminiConfig,
-    });
+    const claudeClient = claudeResult.client;
+    const geminiClient = geminiResult.client;
+    const claudeBackend = claudeResult.backend;
+    const geminiBackend = geminiResult.backend;
 
     // ========================================================================
-    // 2. Initialize Planning Components
+    // 2. Initialize Embeddings Service (Task 12 - Backend Selection)
+    // Note: Embeddings initialization can be slow, do it in parallel
+    // ========================================================================
+    let embeddingsResult: { service: LocalEmbeddingsService | EmbeddingsService; backend: EmbeddingsBackend } | undefined;
+    let embeddingsBackend: EmbeddingsBackend = config.embeddingsBackend ?? 'local';
+
+    try {
+      embeddingsResult = await this.createEmbeddingsService(config);
+      embeddingsBackend = embeddingsResult.backend;
+    } catch (error) {
+      // Embeddings are optional - log warning but don't fail
+      console.warn('[NexusFactory] Embeddings service unavailable:', error instanceof Error ? error.message : error);
+    }
+
+    // ========================================================================
+    // 3. Initialize Planning Components
     // ========================================================================
     const taskDecomposer = new TaskDecomposer(claudeClient);
     const dependencyResolver = new DependencyResolver();
     const timeEstimator = new TimeEstimator();
 
     // ========================================================================
-    // 3. Initialize Agent Pool with Real Agents
+    // 4. Initialize Agent Pool with Real Agents
     // ========================================================================
     const agentPool = new AgentPool({
       claudeClient,
@@ -278,7 +295,7 @@ export class NexusFactory {
     });
 
     // ========================================================================
-    // 4. Initialize QA Runners
+    // 5. Initialize QA Runners
     // ========================================================================
     const gitService = new GitService({ baseDir: config.workingDir });
 
@@ -299,28 +316,24 @@ export class NexusFactory {
     });
 
     // ========================================================================
-    // 5. Initialize Task Queue and Event Bus
+    // 6. Initialize Task Queue and Event Bus
     // ========================================================================
     const taskQueue = new TaskQueue();
     const eventBus = EventBus.getInstance();
 
     // ========================================================================
-    // 6. Initialize Infrastructure Components (Worktree, Checkpoint)
+    // 7. Initialize Infrastructure Components (Worktree, Checkpoint)
     // ========================================================================
-    // Note: WorktreeManager requires GitService, CheckpointManager requires DB
-    // These are created lazily or passed externally in full production setup
     const worktreeManager = new WorktreeManager({
       baseDir: config.workingDir,
       gitService,
       worktreeDir: `${config.workingDir}/.nexus/worktrees`,
     });
 
-    // CheckpointManager requires database - create a placeholder that can be replaced
-    // In production, this would be injected with a real database connection
     const checkpointManager = null; // Placeholder - inject via coordinator config if needed
 
     // ========================================================================
-    // 7. Initialize Coordinator with All Dependencies
+    // 8. Initialize Coordinator with All Dependencies
     // ========================================================================
     const coordinatorOptions: NexusCoordinatorOptions = {
       taskQueue,
@@ -328,7 +341,7 @@ export class NexusFactory {
       decomposer: taskDecomposer,
       resolver: dependencyResolver,
       estimator: timeEstimator,
-      qaEngine: qaRunner, // QARunner serves as the QA engine
+      qaEngine: qaRunner,
       worktreeManager,
       checkpointManager,
     };
@@ -336,24 +349,21 @@ export class NexusFactory {
     const coordinator = new NexusCoordinator(coordinatorOptions);
 
     // ========================================================================
-    // 8. Create Shutdown Function
+    // 9. Create Shutdown Function
     // ========================================================================
     const shutdown = async (): Promise<void> => {
-      // Stop coordinator if running
       try {
         await coordinator.stop();
       } catch {
         // Coordinator may already be stopped
       }
 
-      // Terminate all agents
       try {
         await agentPool.terminateAll();
       } catch {
         // Pool may be empty or already cleaned up
       }
 
-      // Clean up worktrees
       try {
         if (worktreeManager && typeof worktreeManager.cleanup === 'function') {
           await worktreeManager.cleanup();
@@ -362,7 +372,6 @@ export class NexusFactory {
         // Worktree cleanup is best-effort
       }
 
-      // Clear event bus listeners
       try {
         if (eventBus && typeof eventBus.removeAllListeners === 'function') {
           eventBus.removeAllListeners();
@@ -371,13 +380,6 @@ export class NexusFactory {
         // EventBus cleanup is best-effort
       }
     };
-
-    // ========================================================================
-    // Determine actual backends used
-    // Note: Full backend selection logic will be implemented in Task 12
-    // For now, we track what's actually being used
-    // ========================================================================
-    const mergedConfig = { ...DEFAULT_NEXUS_CONFIG, ...config };
 
     // ========================================================================
     // Return Nexus Instance
@@ -396,11 +398,11 @@ export class NexusFactory {
         resolver: dependencyResolver,
         estimator: timeEstimator,
       },
+      embeddings: embeddingsResult?.service as LocalEmbeddingsService | undefined,
       backends: {
-        // Currently using API clients, will be updated in Task 12
-        claude: config.claudeApiKey ? 'api' : (mergedConfig.claudeBackend ?? 'cli'),
-        gemini: config.geminiApiKey ? 'api' : (mergedConfig.geminiBackend ?? 'cli'),
-        embeddings: config.openaiApiKey ? 'api' : (mergedConfig.embeddingsBackend ?? 'local'),
+        claude: claudeBackend,
+        gemini: geminiBackend,
+        embeddings: embeddingsBackend,
       },
       shutdown,
     };
@@ -413,36 +415,47 @@ export class NexusFactory {
    * - Uses mocked QA runners for faster execution
    * - Reduces iteration limits
    * - Maintains full functionality for integration testing
+   * - Supports backend selection with fallback (Phase 16 - Task 12)
    *
    * @param config - Testing configuration
-   * @returns Nexus instance optimized for testing
+   * @returns Promise resolving to Nexus instance optimized for testing
    */
-  static createForTesting(config: NexusTestingConfig): NexusInstance {
+  static async createForTesting(config: NexusTestingConfig): Promise<NexusInstance> {
     // ========================================================================
-    // 1. Initialize LLM Clients
-    // Note: Task 12 will implement proper backend selection (CLI vs API).
+    // 1. Initialize LLM Clients (Task 12 - Backend Selection)
     // ========================================================================
-    const claudeClient = new ClaudeClient({
-      // API key assertion - Task 12 will handle CLI fallback
-      apiKey: config.claudeApiKey ?? '',
-      ...config.claudeConfig,
-    });
+    const [claudeResult, geminiResult] = await Promise.all([
+      this.createClaudeClient(config),
+      this.createGeminiClient(config),
+    ]);
 
-    const geminiClient = new GeminiClient({
-      // API key assertion - Task 12 will handle CLI fallback
-      apiKey: config.geminiApiKey ?? '',
-      ...config.geminiConfig,
-    });
+    const claudeClient = claudeResult.client;
+    const geminiClient = geminiResult.client;
+    const claudeBackend = claudeResult.backend;
+    const geminiBackend = geminiResult.backend;
 
     // ========================================================================
-    // 2. Initialize Planning Components
+    // 2. Initialize Embeddings Service (optional for testing)
+    // ========================================================================
+    let embeddingsResult: { service: LocalEmbeddingsService | EmbeddingsService; backend: EmbeddingsBackend } | undefined;
+    let embeddingsBackend: EmbeddingsBackend = config.embeddingsBackend ?? 'local';
+
+    try {
+      embeddingsResult = await this.createEmbeddingsService(config);
+      embeddingsBackend = embeddingsResult.backend;
+    } catch {
+      // Embeddings are optional for testing
+    }
+
+    // ========================================================================
+    // 3. Initialize Planning Components
     // ========================================================================
     const taskDecomposer = new TaskDecomposer(claudeClient);
     const dependencyResolver = new DependencyResolver();
     const timeEstimator = new TimeEstimator();
 
     // ========================================================================
-    // 3. Initialize Agent Pool
+    // 4. Initialize Agent Pool
     // ========================================================================
     const agentPool = new AgentPool({
       claudeClient,
@@ -451,7 +464,7 @@ export class NexusFactory {
     });
 
     // ========================================================================
-    // 4. Initialize QA Runners (Mocked or Real based on config)
+    // 5. Initialize QA Runners (Mocked or Real based on config)
     // ========================================================================
     const qaRunner = config.mockQA
       ? QARunnerFactory.createMock()
@@ -461,13 +474,13 @@ export class NexusFactory {
         });
 
     // ========================================================================
-    // 5. Initialize Task Queue and Event Bus
+    // 6. Initialize Task Queue and Event Bus
     // ========================================================================
     const taskQueue = new TaskQueue();
     const eventBus = EventBus.getInstance();
 
     // ========================================================================
-    // 6. Initialize Infrastructure (minimal for testing)
+    // 7. Initialize Infrastructure (minimal for testing)
     // ========================================================================
     const gitService = new GitService({ baseDir: config.workingDir });
     const worktreeManager = new WorktreeManager({
@@ -478,7 +491,7 @@ export class NexusFactory {
     const checkpointManager = null;
 
     // ========================================================================
-    // 7. Initialize Coordinator
+    // 8. Initialize Coordinator
     // ========================================================================
     const coordinator = new NexusCoordinator({
       taskQueue,
@@ -492,7 +505,7 @@ export class NexusFactory {
     });
 
     // ========================================================================
-    // 8. Shutdown Function
+    // 9. Shutdown Function
     // ========================================================================
     const shutdown = async (): Promise<void> => {
       try {
@@ -521,9 +534,6 @@ export class NexusFactory {
       }
     };
 
-    // Determine actual backends used
-    const mergedConfig = { ...DEFAULT_NEXUS_CONFIG, ...config };
-
     return {
       coordinator,
       agentPool,
@@ -538,11 +548,11 @@ export class NexusFactory {
         resolver: dependencyResolver,
         estimator: timeEstimator,
       },
+      embeddings: embeddingsResult?.service as LocalEmbeddingsService | undefined,
       backends: {
-        // Currently using API clients, will be updated in Task 12
-        claude: config.claudeApiKey ? 'api' : (mergedConfig.claudeBackend ?? 'cli'),
-        gemini: config.geminiApiKey ? 'api' : (mergedConfig.geminiBackend ?? 'cli'),
-        embeddings: config.openaiApiKey ? 'api' : (mergedConfig.embeddingsBackend ?? 'local'),
+        claude: claudeBackend,
+        gemini: geminiBackend,
+        embeddings: embeddingsBackend,
       },
       shutdown,
     };
@@ -582,6 +592,193 @@ export class NexusFactory {
       },
     };
   }
+
+  // ==========================================================================
+  // Private Backend Selection Methods (Task 12)
+  // ==========================================================================
+
+  /**
+   * Create a Claude client based on backend preference.
+   *
+   * Order of precedence:
+   * 1. If backend='cli' → try CLI, fallback to API if available
+   * 2. If backend='api' → require API key, throw if not available
+   *
+   * @param config - Factory configuration
+   * @returns Claude client (CLI or API)
+   * @throws CLINotFoundError when CLI unavailable and no API fallback
+   */
+  private static async createClaudeClient(
+    config: NexusFactoryConfig
+  ): Promise<{ client: ClaudeClient | ClaudeCodeCLIClient; backend: LLMBackend }> {
+    const backend = config.claudeBackend ?? DEFAULT_NEXUS_CONFIG.claudeBackend ?? 'cli';
+
+    if (backend === 'cli') {
+      const cliClient = new ClaudeCodeCLIClient(config.claudeCliConfig);
+
+      // Check if CLI is available
+      if (await cliClient.isAvailable()) {
+        return { client: cliClient, backend: 'cli' };
+      }
+
+      // CLI not available - check if API key exists as fallback
+      if (config.claudeApiKey) {
+        console.warn(
+          '[NexusFactory] Claude CLI not available, falling back to API backend'
+        );
+        return {
+          client: new ClaudeClient({
+            apiKey: config.claudeApiKey,
+            ...config.claudeConfig,
+          }),
+          backend: 'api',
+        };
+      }
+
+      // Neither available - throw helpful error
+      throw new CLINotFoundError();
+    }
+
+    // API backend explicitly requested
+    if (!config.claudeApiKey) {
+      throw new Error(
+        'Claude API key required when using API backend.\n\n' +
+          'Options:\n' +
+          '1. Set ANTHROPIC_API_KEY in your .env file\n' +
+          '2. Switch to CLI backend in Settings → LLM Providers → Claude → Use CLI\n' +
+          '   (Requires Claude Code CLI to be installed)'
+      );
+    }
+
+    return {
+      client: new ClaudeClient({
+        apiKey: config.claudeApiKey,
+        ...config.claudeConfig,
+      }),
+      backend: 'api',
+    };
+  }
+
+  /**
+   * Create a Gemini client based on backend preference.
+   *
+   * Order of precedence:
+   * 1. If backend='cli' → try CLI, fallback to API if available
+   * 2. If backend='api' → require API key, throw if not available
+   *
+   * @param config - Factory configuration
+   * @returns Gemini client (CLI or API)
+   * @throws GeminiCLINotFoundError when CLI unavailable and no API fallback
+   */
+  private static async createGeminiClient(
+    config: NexusFactoryConfig
+  ): Promise<{ client: GeminiClient | GeminiCLIClient; backend: LLMBackend }> {
+    const backend = config.geminiBackend ?? DEFAULT_NEXUS_CONFIG.geminiBackend ?? 'cli';
+
+    if (backend === 'cli') {
+      const cliClient = new GeminiCLIClient(config.geminiCliConfig);
+
+      // Check if CLI is available
+      if (await cliClient.isAvailable()) {
+        return { client: cliClient, backend: 'cli' };
+      }
+
+      // CLI not available - check if API key exists as fallback
+      if (config.geminiApiKey) {
+        console.warn(
+          '[NexusFactory] Gemini CLI not available, falling back to API backend'
+        );
+        return {
+          client: new GeminiClient({
+            apiKey: config.geminiApiKey,
+            ...config.geminiConfig,
+          }),
+          backend: 'api',
+        };
+      }
+
+      // Neither available - throw helpful error
+      throw new GeminiCLINotFoundError();
+    }
+
+    // API backend explicitly requested
+    if (!config.geminiApiKey) {
+      throw new Error(
+        'Gemini API key required when using API backend.\n\n' +
+          'Options:\n' +
+          '1. Set GOOGLE_API_KEY in your .env file\n' +
+          '2. Switch to CLI backend in Settings → LLM Providers → Gemini → Use CLI\n' +
+          '   (Requires Gemini CLI to be installed)'
+      );
+    }
+
+    return {
+      client: new GeminiClient({
+        apiKey: config.geminiApiKey,
+        ...config.geminiConfig,
+      }),
+      backend: 'api',
+    };
+  }
+
+  /**
+   * Create an embeddings service based on backend preference.
+   *
+   * Order of precedence:
+   * 1. If backend='local' → try local, fallback to API if available
+   * 2. If backend='api' → require OpenAI API key, throw if not available
+   *
+   * @param config - Factory configuration
+   * @returns Embeddings service (local or API)
+   * @throws LocalEmbeddingsInitError when local unavailable and no API fallback
+   */
+  private static async createEmbeddingsService(
+    config: NexusFactoryConfig
+  ): Promise<{ service: LocalEmbeddingsService | EmbeddingsService; backend: EmbeddingsBackend }> {
+    const backend = config.embeddingsBackend ?? DEFAULT_NEXUS_CONFIG.embeddingsBackend ?? 'local';
+
+    if (backend === 'local') {
+      const localService = new LocalEmbeddingsService(config.localEmbeddingsConfig);
+
+      // Check if local embeddings are available
+      if (await localService.isAvailable()) {
+        return { service: localService, backend: 'local' };
+      }
+
+      // Local not available - check if API key exists as fallback
+      if (config.openaiApiKey) {
+        console.warn(
+          '[NexusFactory] Local embeddings not available, falling back to OpenAI API'
+        );
+        return {
+          service: new EmbeddingsService({ apiKey: config.openaiApiKey }),
+          backend: 'api',
+        };
+      }
+
+      // Neither available - throw helpful error
+      throw new LocalEmbeddingsInitError(
+        config.localEmbeddingsConfig?.model ?? 'default',
+        new Error('Local embeddings initialization failed and no API key fallback available')
+      );
+    }
+
+    // API backend explicitly requested
+    if (!config.openaiApiKey) {
+      throw new Error(
+        'OpenAI API key required when using API embeddings backend.\n\n' +
+          'Options:\n' +
+          '1. Set OPENAI_API_KEY in your .env file\n' +
+          '2. Switch to local embeddings in Settings → Embeddings → Use Local\n' +
+          '   (Uses Transformers.js with no API key required)'
+      );
+    }
+
+    return {
+      service: new EmbeddingsService({ apiKey: config.openaiApiKey }),
+      backend: 'api',
+    };
+  }
 }
 
 // ============================================================================
@@ -593,9 +790,9 @@ export class NexusFactory {
  * Equivalent to NexusFactory.create(config).
  *
  * @param config - Factory configuration
- * @returns Fully-wired Nexus instance
+ * @returns Promise resolving to fully-wired Nexus instance
  */
-export function createNexus(config: NexusFactoryConfig): NexusInstance {
+export async function createNexus(config: NexusFactoryConfig): Promise<NexusInstance> {
   return NexusFactory.create(config);
 }
 
@@ -604,8 +801,8 @@ export function createNexus(config: NexusFactoryConfig): NexusInstance {
  * Equivalent to NexusFactory.createForTesting(config).
  *
  * @param config - Testing configuration
- * @returns Nexus instance optimized for testing
+ * @returns Promise resolving to Nexus instance optimized for testing
  */
-export function createTestingNexus(config: NexusTestingConfig): NexusInstance {
+export async function createTestingNexus(config: NexusTestingConfig): Promise<NexusInstance> {
   return NexusFactory.createForTesting(config);
 }

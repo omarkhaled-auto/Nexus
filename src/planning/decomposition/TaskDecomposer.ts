@@ -8,7 +8,7 @@
  */
 
 import { v4 as uuidv4 } from 'uuid';
-import type { ClaudeClient } from '../../llm/clients/ClaudeClient';
+import type { LLMClient } from '../../llm/types';
 import type {
   ITaskDecomposer,
   PlanningTask,
@@ -106,20 +106,20 @@ interface RawTask {
 }
 
 /**
- * TaskDecomposer - Decomposes features into atomic tasks using Claude
+ * TaskDecomposer - Decomposes features into atomic tasks using an LLM
  *
  * This implementation:
- * - Actually calls ClaudeClient to decompose features
+ * - Actually calls an LLMClient (Claude or CLI) to decompose features
  * - Enforces the 30-minute rule
  * - Validates task size and can split oversized tasks
  * - Resolves internal dependencies (task names to IDs)
  */
 export class TaskDecomposer implements ITaskDecomposer {
-  private claudeClient: ClaudeClient;
+  private llmClient: LLMClient;
   private config: Required<TaskDecomposerConfig>;
 
-  constructor(claudeClient: ClaudeClient, config?: TaskDecomposerConfig) {
-    this.claudeClient = claudeClient;
+  constructor(llmClient: LLMClient, config?: TaskDecomposerConfig) {
+    this.llmClient = llmClient;
     this.config = {
       maxTaskMinutes: config?.maxTaskMinutes ?? 30,
       maxFilesPerTask: config?.maxFilesPerTask ?? 5,
@@ -139,7 +139,7 @@ export class TaskDecomposer implements ITaskDecomposer {
 
     // Call Claude for decomposition
     // System prompt is passed as a message with role 'system'
-    const response = await this.claudeClient.chat(
+    const response = await this.llmClient.chat(
       [
         { role: 'system', content: DECOMPOSITION_SYSTEM_PROMPT },
         { role: 'user', content: prompt },
@@ -218,7 +218,7 @@ export class TaskDecomposer implements ITaskDecomposer {
     const prompt = this.buildSplitPrompt(task);
 
     // System prompt is passed as a message with role 'system'
-    const response = await this.claudeClient.chat(
+    const response = await this.llmClient.chat(
       [
         { role: 'system', content: SPLIT_SYSTEM_PROMPT },
         { role: 'user', content: prompt },
@@ -512,8 +512,8 @@ Return a JSON array of smaller tasks, each under 30 minutes.`;
  * Create a TaskDecomposer instance
  */
 export function createTaskDecomposer(
-  claudeClient: ClaudeClient,
+  llmClient: LLMClient,
   config?: TaskDecomposerConfig
 ): TaskDecomposer {
-  return new TaskDecomposer(claudeClient, config);
+  return new TaskDecomposer(llmClient, config);
 }

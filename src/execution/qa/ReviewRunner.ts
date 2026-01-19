@@ -13,7 +13,7 @@ import type {
   ErrorEntry,
   QARunner,
 } from '../iteration/types';
-import type { GeminiClient } from '../../llm/clients/GeminiClient';
+import type { LLMClient } from '../../llm/types';
 import type { GitService } from '../../infrastructure/git/GitService';
 
 // ============================================================================
@@ -116,17 +116,17 @@ Rules:
  * ```
  */
 export class ReviewRunner {
-  private geminiClient: GeminiClient;
+  private llmClient: LLMClient;
   private gitService: GitService;
   private config: Required<Omit<ReviewRunnerConfig, 'additionalCriteria'>> & { additionalCriteria: string[] };
   private currentIteration: number = 0;
 
   constructor(
-    geminiClient: GeminiClient,
+    llmClient: LLMClient,
     gitService: GitService,
     config: ReviewRunnerConfig = {}
   ) {
-    this.geminiClient = geminiClient;
+    this.llmClient = llmClient;
     this.gitService = gitService;
     this.config = {
       ...DEFAULT_REVIEW_CONFIG,
@@ -181,7 +181,7 @@ export class ReviewRunner {
 
       // Call Gemini for review
       // System prompt is passed as a message with role 'system'
-      const response = await this.geminiClient.chat([
+      const response = await this.llmClient.chat([
         { role: 'system', content: this.buildSystemPrompt() },
         { role: 'user', content: prompt },
       ]);
@@ -246,7 +246,7 @@ export class ReviewRunner {
 
       // Call Gemini for review
       // System prompt is passed as a message with role 'system'
-      const response = await this.geminiClient.chat([
+      const response = await this.llmClient.chat([
         { role: 'system', content: this.buildSystemPrompt() },
         { role: 'user', content: prompt },
       ]);
@@ -441,23 +441,23 @@ export class ReviewRunner {
  * Create a ReviewRunner instance with default configuration
  */
 export function createReviewRunner(
-  geminiClient: GeminiClient,
+  llmClient: LLMClient,
   gitService: GitService,
   config?: ReviewRunnerConfig
 ): ReviewRunner {
-  return new ReviewRunner(geminiClient, gitService, config);
+  return new ReviewRunner(llmClient, gitService, config);
 }
 
 /**
  * Create a QARunner-compatible review callback for RalphStyleIterator
  */
 export function createReviewCallback(
-  geminiClient: GeminiClient,
+  llmClient: LLMClient,
   gitService: GitService,
   workingDir: string,
   config?: ReviewRunnerConfig,
   context?: ReviewContext
 ): QARunner['review'] {
-  const runner = new ReviewRunner(geminiClient, gitService, config);
+  const runner = new ReviewRunner(llmClient, gitService, config);
   return runner.createCallback(workingDir, context);
 }
