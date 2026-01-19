@@ -41,7 +41,7 @@ function getClaudeApiKey(): string | undefined {
 }
 
 function getGeminiApiKey(): string | undefined {
-  return process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
+  return process.env.GOOGLE_API_KEY || process.env.GOOGLE_AI_API_KEY || process.env.GEMINI_API_KEY;
 }
 
 const hasClaudeKey = !!getClaudeApiKey();
@@ -404,7 +404,23 @@ describe('Genesis Mode - Unit Tests (No API)', () => {
 // Genesis Mode Integration Tests (API Required)
 // ============================================================================
 
+// Import MSW for bypass configuration
+import { server } from '../mocks/node';
+import { passthrough } from 'msw';
+
 describe('Genesis Mode - Integration Tests (API Required)', () => {
+  // Bypass MSW for real API calls in this describe block
+  // Use beforeEach because afterEach in vitest.setup.ts resets handlers
+  beforeEach(() => {
+    // Add passthrough handlers for Anthropic and Google APIs
+    // This allows real API calls to pass through MSW
+    const { http } = require('msw');
+    server.use(
+      http.all('https://api.anthropic.com/*', () => passthrough()),
+      http.all('https://generativelanguage.googleapis.com/*', () => passthrough())
+    );
+  });
+
   describe('TaskDecomposer with Claude', () => {
     const conditionalIt = hasClaudeKey ? it : it.skip;
     let claudeClient: ClaudeClient;

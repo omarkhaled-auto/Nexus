@@ -12,6 +12,8 @@
 
 ## Instructions for Test Runner (Ralph)
 
+## Execution: EXECUTE THIS LONG PROMPT TASK BY TASK, ITERATION BY ITERATION WHILE KEEPING CONTEXT FRESH ALWAYS.
+
 ### Setup
 
 1. Navigate to Nexus project: `C:\Users\Omar Khaled\OneDrive\Desktop\Nexus`

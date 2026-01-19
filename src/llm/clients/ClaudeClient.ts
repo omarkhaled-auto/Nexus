@@ -296,6 +296,14 @@ export class ClaudeClient implements LLMClient {
     let thinking = '';
     const toolCalls: Array<{ id: string; name: string; arguments: Record<string, unknown> }> = [];
 
+    // Defensive check: ensure response.content is iterable
+    if (!response.content || !Array.isArray(response.content)) {
+      throw new LLMError(
+        `Invalid API response: expected content array, got ${typeof response.content}. ` +
+        `Response: ${JSON.stringify(response).substring(0, 200)}`
+      );
+    }
+
     for (const block of response.content) {
       if (block.type === 'text') {
         content += block.text;

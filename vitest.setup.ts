@@ -6,6 +6,12 @@
  *
  * @module vitest.setup
  */
+import * as dotenv from 'dotenv';
+import { resolve } from 'path';
+
+// Load environment variables from .env file for API integration tests
+dotenv.config({ path: resolve(__dirname, '.env') });
+
 import { beforeAll, afterEach, afterAll } from 'vitest';
 import { server, resetServer } from './tests/mocks/node';
 
