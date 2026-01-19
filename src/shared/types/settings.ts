@@ -2,10 +2,18 @@
  * Settings Types - Shared between main and renderer
  * Phase 12-01: Settings backend infrastructure
  * Phase 16: Full CLI Support Integration - CLI-first backend selection
+ * Phase 16 Finalization: Model constants centralization
  *
  * Defines the structure for all Nexus settings, including
  * secure API key storage and user preferences.
  */
+
+import {
+  DEFAULT_CLAUDE_MODEL,
+  DEFAULT_GEMINI_MODEL,
+  DEFAULT_LOCAL_EMBEDDING_MODEL,
+  LOCAL_EMBEDDING_MODELS,
+} from '../../llm/models';
 
 // ============================================================================
 // Backend Type Definitions (Phase 16)
@@ -48,7 +56,7 @@ export interface ClaudeProviderSettings {
   timeout?: number;
   /** Maximum retry attempts (default: 2) */
   maxRetries?: number;
-  /** Model to use (default: 'claude-sonnet-4-20250514') */
+  /** Model to use - see src/llm/models.ts for available models */
   model?: string;
 }
 
@@ -65,7 +73,7 @@ export interface GeminiProviderSettings {
   cliPath?: string;
   /** Request timeout in milliseconds (default: 300000 = 5 minutes) */
   timeout?: number;
-  /** Model to use (default: 'gemini-2.5-pro') */
+  /** Model to use - see src/llm/models.ts for available models */
   model?: string;
 }
 
@@ -271,7 +279,7 @@ export const DEFAULT_CLAUDE_SETTINGS: ClaudeProviderSettings = {
   backend: 'cli',
   timeout: 300000, // 5 minutes
   maxRetries: 2,
-  model: 'claude-sonnet-4-20250514',
+  model: DEFAULT_CLAUDE_MODEL, // claude-sonnet-4-5-20250929
 };
 
 /**
@@ -281,7 +289,7 @@ export const DEFAULT_CLAUDE_SETTINGS: ClaudeProviderSettings = {
 export const DEFAULT_GEMINI_SETTINGS: GeminiProviderSettings = {
   backend: 'cli',
   timeout: 300000, // 5 minutes
-  model: 'gemini-2.5-pro',
+  model: DEFAULT_GEMINI_MODEL, // gemini-2.5-flash
 };
 
 /**
@@ -290,8 +298,8 @@ export const DEFAULT_GEMINI_SETTINGS: GeminiProviderSettings = {
  */
 export const DEFAULT_EMBEDDINGS_SETTINGS: EmbeddingsProviderSettings = {
   backend: 'local',
-  localModel: 'Xenova/all-MiniLM-L6-v2',
-  dimensions: 384,
+  localModel: DEFAULT_LOCAL_EMBEDDING_MODEL, // Xenova/all-MiniLM-L6-v2
+  dimensions: LOCAL_EMBEDDING_MODELS[DEFAULT_LOCAL_EMBEDDING_MODEL].dimensions,
   cacheEnabled: true,
   maxCacheSize: 10000,
 };
@@ -305,7 +313,7 @@ export const DEFAULT_LLM_SETTINGS: LLMSettings = {
   gemini: DEFAULT_GEMINI_SETTINGS,
   embeddings: DEFAULT_EMBEDDINGS_SETTINGS,
   defaultProvider: 'claude',
-  defaultModel: 'claude-sonnet-4-20250514',
+  defaultModel: DEFAULT_CLAUDE_MODEL, // claude-sonnet-4-5-20250929
   fallbackEnabled: true,
   fallbackOrder: ['claude', 'gemini'],
 };

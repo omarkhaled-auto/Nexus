@@ -26,6 +26,7 @@ import type {
 } from '../../types/agent';
 import type { Task, TaskResult } from '../../types/task';
 import type { IAgentPool, PoolAgent } from '../types';
+import { DEFAULT_CLAUDE_MODEL } from '../../llm/models';
 
 // ============================================================================
 // Error Classes
@@ -118,7 +119,7 @@ const DEFAULT_MAX_AGENTS: Record<AgentType, number> = {
 
 const DEFAULT_MODEL_CONFIG: AgentModelConfig = {
   provider: 'anthropic',
-  model: 'claude-sonnet-4-20250514',
+  model: DEFAULT_CLAUDE_MODEL, // claude-sonnet-4-5-20250929
   maxTokens: 8192,
   temperature: 0.3,
 };

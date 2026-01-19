@@ -1,7 +1,14 @@
 /**
  * LLM Types - Core type definitions for LLM integration
  * Phase 03-01: LLM Provider with Extended Thinking
+ * Phase 16 Finalization: Model constants centralization
  */
+
+import {
+  DEFAULT_CLAUDE_MODEL,
+  DEFAULT_GEMINI_MODEL,
+  MODEL_PRICING_INFO,
+} from './models';
 
 // ============================================================================
 // Message Types
@@ -189,10 +196,11 @@ export interface ModelPricing {
 /**
  * Default model configurations per agent type
  * Per ADR-002: Agent role specialization
+ * Updated Phase 16 Finalization: Uses centralized model constants
  */
 export const DEFAULT_MODEL_CONFIGS: Record<AgentType, ModelConfig> = {
   planner: {
-    model: 'claude-sonnet-4-20250514',
+    model: DEFAULT_CLAUDE_MODEL, // claude-sonnet-4-5-20250929
     maxTokens: 16000,
     temperature: 0.7,
     thinking: {
@@ -201,7 +209,7 @@ export const DEFAULT_MODEL_CONFIGS: Record<AgentType, ModelConfig> = {
     },
   },
   coder: {
-    model: 'claude-sonnet-4-20250514',
+    model: DEFAULT_CLAUDE_MODEL, // claude-sonnet-4-5-20250929
     maxTokens: 16000,
     temperature: 0.3,
     thinking: {
@@ -210,7 +218,7 @@ export const DEFAULT_MODEL_CONFIGS: Record<AgentType, ModelConfig> = {
     },
   },
   tester: {
-    model: 'claude-sonnet-4-20250514',
+    model: DEFAULT_CLAUDE_MODEL, // claude-sonnet-4-5-20250929
     maxTokens: 8000,
     temperature: 0.2,
     thinking: {
@@ -219,12 +227,12 @@ export const DEFAULT_MODEL_CONFIGS: Record<AgentType, ModelConfig> = {
     },
   },
   reviewer: {
-    model: 'gemini-2.0-flash',
+    model: DEFAULT_GEMINI_MODEL, // gemini-2.5-flash
     maxTokens: 8000,
     temperature: 0.3,
   },
   merger: {
-    model: 'claude-sonnet-4-20250514',
+    model: DEFAULT_CLAUDE_MODEL, // claude-sonnet-4-5-20250929
     maxTokens: 4000,
     temperature: 0.1,
     thinking: {
@@ -236,29 +244,12 @@ export const DEFAULT_MODEL_CONFIGS: Record<AgentType, ModelConfig> = {
 
 /**
  * Model pricing per million tokens
+ * Note: Centralized pricing is available in MODEL_PRICING_INFO from './models'
+ * This export is kept for backwards compatibility
  */
-export const MODEL_PRICING: Partial<Record<string, ModelPricing>> = {
-  'claude-sonnet-4-20250514': {
-    inputPerMillion: 3.0,
-    outputPerMillion: 15.0,
-  },
-  'claude-3-5-sonnet-20241022': {
-    inputPerMillion: 3.0,
-    outputPerMillion: 15.0,
-  },
-  'claude-3-opus-20240229': {
-    inputPerMillion: 15.0,
-    outputPerMillion: 75.0,
-  },
-  'gemini-2.0-flash': {
-    inputPerMillion: 0.075,
-    outputPerMillion: 0.30,
-  },
-  'gemini-1.5-pro': {
-    inputPerMillion: 1.25,
-    outputPerMillion: 5.0,
-  },
-};
+export const MODEL_PRICING: Partial<Record<string, ModelPricing>> = Object.fromEntries(
+  Object.entries(MODEL_PRICING_INFO).map(([key, value]) => [key, value as ModelPricing])
+);
 
 // ============================================================================
 // Logger Interface

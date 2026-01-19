@@ -534,6 +534,18 @@ export class GeminiCLIClient implements LLMClient {
       }
     } finally {
       clearTimeout(timeoutId);
+
+      // FIX: Always ensure process is killed on early termination
+      if (!processEnded && child.exitCode === null) {
+        child.kill('SIGTERM');
+
+        // Give it a moment, then force kill if needed
+        setTimeout(() => {
+          if (child.exitCode === null) {
+            child.kill('SIGKILL');
+          }
+        }, 1000);
+      }
     }
   }
 

@@ -272,10 +272,9 @@ export class LocalEmbeddingsService implements ILocalEmbeddingsService {
   async embed(text: string): Promise<LocalEmbeddingResult> {
     const startTime = Date.now();
 
-    // Check cache first
+    // Check cache first (with LRU refresh)
     if (this.cacheEnabled) {
-      const cacheKey = this.getCacheKey(text);
-      const cached = this.cache.get(cacheKey);
+      const cached = this.getFromCache(text);
       if (cached) {
         this.cacheHits++;
         this.totalEmbeddings++;
@@ -359,8 +358,8 @@ export class LocalEmbeddingsService implements ILocalEmbeddingsService {
       const text = texts[i];
 
       if (this.cacheEnabled) {
-        const cacheKey = this.getCacheKey(text);
-        const cached = this.cache.get(cacheKey);
+        // Use getFromCache for LRU refresh
+        const cached = this.getFromCache(text);
 
         if (cached) {
           this.cacheHits++;
@@ -568,9 +567,15 @@ export class LocalEmbeddingsService implements ILocalEmbeddingsService {
 
   /**
    * Add embedding to cache with LRU eviction
+   * FIX: Implement true LRU - delete and re-add on existing entry to maintain order
    */
   private addToCache(text: string, embedding: number[]): void {
     const cacheKey = this.getCacheKey(text);
+
+    // FIX: Delete first if exists to update position (move to end = most recently used)
+    if (this.cache.has(cacheKey)) {
+      this.cache.delete(cacheKey);
+    }
 
     // LRU eviction: remove oldest entry if at capacity
     if (this.cache.size >= this.maxCacheSize) {
@@ -581,6 +586,23 @@ export class LocalEmbeddingsService implements ILocalEmbeddingsService {
     }
 
     this.cache.set(cacheKey, embedding);
+  }
+
+  /**
+   * Get embedding from cache with LRU refresh
+   * FIX: Move to end (most recently used) on access
+   */
+  private getFromCache(text: string): number[] | undefined {
+    const cacheKey = this.getCacheKey(text);
+    const embedding = this.cache.get(cacheKey);
+
+    if (embedding) {
+      // FIX: Move to end (most recently used) - delete and re-add
+      this.cache.delete(cacheKey);
+      this.cache.set(cacheKey, embedding);
+    }
+
+    return embedding;
   }
 
   /**

@@ -25,6 +25,12 @@
  */
 
 import type { LLMBackend, EmbeddingsBackend } from '../NexusFactory';
+import {
+  DEFAULT_CLAUDE_MODEL,
+  DEFAULT_GEMINI_MODEL,
+  DEFAULT_LOCAL_EMBEDDING_MODEL,
+  LOCAL_EMBEDDING_MODELS,
+} from '../llm/models';
 
 // ============================================================================
 // LLM Provider Configuration
@@ -62,7 +68,7 @@ export interface ClaudeConfigFile {
 
   /**
    * Model to use for Claude API.
-   * Default: 'claude-sonnet-4-20250514'
+   * See src/llm/models.ts for available models.
    * Note: CLI uses its own default model
    */
   model?: string;
@@ -93,7 +99,7 @@ export interface GeminiConfigFile {
 
   /**
    * Model to use.
-   * Default: 'gemini-2.5-pro'
+   * See src/llm/models.ts for available models.
    */
   model?: string;
 }
@@ -346,18 +352,18 @@ export const DEFAULT_CONFIG_FILE: Required<NexusConfigFile> = {
       cliPath: 'claude',
       timeout: 300000,
       maxRetries: 2,
-      model: 'claude-sonnet-4-20250514',
+      model: DEFAULT_CLAUDE_MODEL, // claude-sonnet-4-5-20250929
     },
     gemini: {
       backend: 'cli',
       cliPath: 'gemini',
       timeout: 300000,
-      model: 'gemini-2.5-pro',
+      model: DEFAULT_GEMINI_MODEL, // gemini-2.5-flash
     },
     embeddings: {
       backend: 'local',
-      localModel: 'Xenova/all-MiniLM-L6-v2',
-      dimensions: 384,
+      localModel: DEFAULT_LOCAL_EMBEDDING_MODEL, // Xenova/all-MiniLM-L6-v2
+      dimensions: LOCAL_EMBEDDING_MODELS[DEFAULT_LOCAL_EMBEDDING_MODEL].dimensions,
       cacheEnabled: true,
       maxCacheSize: 10000,
     },

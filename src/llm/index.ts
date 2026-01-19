@@ -1,6 +1,9 @@
 // LLM Module - Phase 03-01
 // Provides LLM clients with extended thinking, streaming, and tool support
 
+// Model Configuration (Centralized) - Phase 16 Finalization
+export * from './models';
+
 // Types
 export type {
   Message,

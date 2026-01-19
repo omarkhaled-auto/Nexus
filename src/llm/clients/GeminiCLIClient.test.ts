@@ -135,7 +135,7 @@ describe('GeminiCLIClient', () => {
 
       expect(client).toBeDefined();
       expect(config.cliPath).toBe('gemini');
-      expect(config.model).toBe('gemini-2.5-pro');
+      expect(config.model).toBe('gemini-2.5-flash'); // DEFAULT_GEMINI_MODEL
       expect(config.timeout).toBe(300000);
       expect(config.maxRetries).toBe(2);
     });

@@ -29,6 +29,12 @@ import type {
   GeminiProviderSettings,
   EmbeddingsProviderSettings,
 } from '../../shared/types/settings'
+import {
+  DEFAULT_CLAUDE_MODEL,
+  DEFAULT_GEMINI_MODEL,
+  DEFAULT_LOCAL_EMBEDDING_MODEL,
+  LOCAL_EMBEDDING_MODELS,
+} from '../../llm/models'
 
 /**
  * Default settings values
@@ -41,23 +47,23 @@ const defaults: NexusSettings = {
       backend: 'cli',
       timeout: 300000, // 5 minutes
       maxRetries: 2,
-      model: 'claude-sonnet-4-20250514',
+      model: DEFAULT_CLAUDE_MODEL, // claude-sonnet-4-5-20250929
     },
     gemini: {
       backend: 'cli',
       timeout: 300000, // 5 minutes
-      model: 'gemini-2.5-pro',
+      model: DEFAULT_GEMINI_MODEL, // gemini-2.5-flash
     },
     embeddings: {
       backend: 'local',
-      localModel: 'Xenova/all-MiniLM-L6-v2',
-      dimensions: 384,
+      localModel: DEFAULT_LOCAL_EMBEDDING_MODEL, // Xenova/all-MiniLM-L6-v2
+      dimensions: LOCAL_EMBEDDING_MODELS[DEFAULT_LOCAL_EMBEDDING_MODEL].dimensions,
       cacheEnabled: true,
       maxCacheSize: 10000,
     },
     // Orchestration settings
     defaultProvider: 'claude',
-    defaultModel: 'claude-sonnet-4-20250514',
+    defaultModel: DEFAULT_CLAUDE_MODEL, // claude-sonnet-4-5-20250929
     fallbackEnabled: true,
     fallbackOrder: ['claude', 'gemini'],
   },
@@ -246,7 +252,7 @@ class SettingsService {
         },
         // Orchestration settings
         defaultProvider: llm.defaultProvider ?? 'claude',
-        defaultModel: llm.defaultModel ?? 'claude-sonnet-4-20250514',
+        defaultModel: llm.defaultModel ?? DEFAULT_CLAUDE_MODEL,
         fallbackEnabled: llm.fallbackEnabled ?? true,
         fallbackOrder: llm.fallbackOrder ?? ['claude', 'gemini'],
         // Legacy compatibility

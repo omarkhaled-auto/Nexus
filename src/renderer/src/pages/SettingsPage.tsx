@@ -287,7 +287,7 @@ function LLMSettings({ settings, updateSetting }: SettingsTabProps): ReactElemen
           <Input
             id="default-model"
             label="Default Model"
-            description="Model identifier to use (e.g., claude-sonnet-4-20250514)"
+            description="Model identifier to use (e.g., claude-sonnet-4-5-20250929)"
             value={settings.llm.defaultModel}
             onChange={(e): void => { updateSetting('llm', 'defaultModel', e.target.value) }}
           />

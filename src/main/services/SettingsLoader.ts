@@ -41,6 +41,7 @@ import type {
   EmbeddingsBackendType,
 } from '../../shared/types/settings';
 import { ConfigFileLoader, hasConfigFile } from '../../config';
+import { DEFAULT_CLAUDE_MODEL } from '../../llm/models';
 
 // ============================================================================
 // SettingsLoader Class
@@ -156,7 +157,7 @@ export class SettingsLoader {
         gemini: { backend: 'cli' },
         embeddings: { backend: 'local' },
         defaultProvider: 'claude',
-        defaultModel: 'claude-sonnet-4-20250514',
+        defaultModel: DEFAULT_CLAUDE_MODEL,
         fallbackEnabled: true,
         fallbackOrder: ['claude', 'gemini'],
       };

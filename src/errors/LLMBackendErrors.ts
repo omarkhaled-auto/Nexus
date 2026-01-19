@@ -282,8 +282,8 @@ export class LocalEmbeddingsError extends LLMBackendError {
   /** The model that failed to initialize */
   readonly model: string;
 
-  /** The original error cause */
-  readonly cause: unknown;
+  /** The original error cause (ES2022 Error.cause) */
+  override readonly cause: unknown;
 
   constructor(model: string, cause?: unknown) {
     const message =

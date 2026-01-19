@@ -24,6 +24,7 @@ import type {
   FinishReason,
   ToolDefinition,
 } from '../types';
+import { DEFAULT_GEMINI_MODEL } from '../models';
 
 // ============================================================================
 // Error Classes
@@ -83,7 +84,7 @@ export interface GeminiClientOptions {
 }
 
 // Default configuration values
-const DEFAULT_MODEL = 'gemini-2.0-flash';
+// Note: DEFAULT_GEMINI_MODEL is imported from '../models'
 const DEFAULT_TIMEOUT = 120000; // 2 minutes
 
 // ============================================================================
@@ -102,7 +103,7 @@ export class GeminiClient implements LLMClient {
 
   constructor(options: GeminiClientOptions) {
     this.client = new GoogleGenAI({ apiKey: options.apiKey });
-    this.modelName = options.model ?? DEFAULT_MODEL;
+    this.modelName = options.model ?? DEFAULT_GEMINI_MODEL;
     this.logger = options.logger;
     this.timeout = options.timeout ?? DEFAULT_TIMEOUT;
   }

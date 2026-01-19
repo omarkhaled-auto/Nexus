@@ -10,6 +10,7 @@
  */
 
 import type { Logger } from '../types';
+import { DEFAULT_GEMINI_MODEL, GEMINI_MODELS } from '../models';
 
 // ============================================================================
 // Configuration Types
@@ -31,7 +32,7 @@ export interface GeminiCLIConfig {
   /** Maximum retry attempts (default: 2) */
   maxRetries?: number;
 
-  /** Model to use (default: 'gemini-2.5-pro') */
+  /** Model to use - see src/llm/models.ts for available models */
   model?: string;
 
   /** Additional CLI flags */
@@ -51,7 +52,7 @@ export const DEFAULT_GEMINI_CLI_CONFIG: Required<
   workingDirectory: process.cwd(),
   timeout: 300000, // 5 minutes
   maxRetries: 2,
-  model: 'gemini-2.5-pro',
+  model: DEFAULT_GEMINI_MODEL, // gemini-2.5-flash
 };
 
 // ============================================================================
@@ -241,15 +242,9 @@ export const GEMINI_ERROR_PATTERNS: Array<{
 // ============================================================================
 
 /**
- * Available Gemini models
+ * Available Gemini models (typed from models.ts)
  */
-export type GeminiModel =
-  | 'gemini-2.5-pro'
-  | 'gemini-2.5-flash'
-  | 'gemini-2.5-flash-lite'
-  | 'gemini-3-flash-preview'
-  | 'auto-gemini-3'
-  | string; // Allow custom models
+export type GeminiModel = keyof typeof GEMINI_MODELS | string; // Allow custom models
 
 /**
  * Output format options for Gemini CLI

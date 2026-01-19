@@ -16,6 +16,7 @@ import type {
   FinishReason,
   ToolDefinition,
 } from '../types';
+import { DEFAULT_CLAUDE_MODEL } from '../models';
 
 // ============================================================================
 // Error Classes
@@ -100,7 +101,7 @@ export interface ClaudeClientOptions {
 // Default configuration values
 const DEFAULT_TIMEOUT = 120000; // 2 minutes
 const DEFAULT_MAX_RETRIES = 3;
-const DEFAULT_MODEL = 'claude-sonnet-4-20250514';
+// Note: DEFAULT_CLAUDE_MODEL is imported from '../models'
 
 // ============================================================================
 // Claude Client Implementation
@@ -143,7 +144,7 @@ export class ClaudeClient implements LLMClient {
       });
 
       const response = await this.client.messages.create({
-        model: DEFAULT_MODEL,
+        model: DEFAULT_CLAUDE_MODEL,
         max_tokens: options?.maxTokens ?? 4096,
         temperature: options?.temperature,
         system: systemPrompt,
@@ -180,7 +181,7 @@ export class ClaudeClient implements LLMClient {
       this.logger?.debug('Starting streaming chat with Claude');
 
       const stream = this.client.messages.stream({
-        model: DEFAULT_MODEL,
+        model: DEFAULT_CLAUDE_MODEL,
         max_tokens: options?.maxTokens ?? 4096,
         temperature: options?.temperature,
         system: systemPrompt,
