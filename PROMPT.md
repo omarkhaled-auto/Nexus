@@ -3006,4 +3006,45 @@ On mobile viewports (< 768px), the sidebar remains visible and takes up screen s
 
 ---
 
-**NEXT TASK:** Task 30 - Connect all pages to real data (Phase 17E Integration)
+## Task 30: Connect All Pages to Real Data (Phase 17E Integration)
+
+### Task 30.1: Connect Interview ChatPanel to Backend API
+- **Status:** COMPLETED
+- **Date:** 2025-01-19
+- **Changes Made:**
+  - Updated `src/renderer/src/components/interview/ChatPanel.tsx`:
+    - Added session initialization with the InterviewEngine backend
+    - Implemented `initializeSession()` to start/resume interview sessions via `window.nexusAPI.interview`
+    - Implemented `sendMessageToBackend()` to call `window.nexusAPI.interview.sendMessage()`
+    - Added extracted requirements to the interviewStore when received from backend
+    - Added streaming message indicator while waiting for AI response
+    - Added error handling with visual error display
+    - Added type-safe category/priority mapping functions
+    - Maintains backwards compatibility with demo mode (non-Electron environment)
+- **API Calls Integrated:**
+  - `window.nexusAPI.interview.start(projectId)` - Start new interview session
+  - `window.nexusAPI.interview.resumeByProject(projectId)` - Resume existing session
+  - `window.nexusAPI.interview.sendMessage(sessionId, message)` - Send user message and get AI response
+  - `window.nexusAPI.interview.getGreeting()` - Get initial greeting
+- **Verification:**
+  - TypeScript compilation passes (no new errors)
+  - InterviewEngine backend tests pass (23/23)
+
+### Task 30.2: Connect Dashboard to Real Metrics Data
+- **Status:** PENDING
+
+### Task 30.3: Connect Kanban/Tasks Page to Real Task Data
+- **Status:** PENDING
+
+### Task 30.4: Connect Agents Page to Real Agent Pool Data
+- **Status:** PENDING
+
+### Task 30.5: Connect Execution Page to Real Log Data
+- **Status:** PENDING
+
+### Task 30.6: Connect Settings Page to Real Settings API
+- **Status:** PENDING
+
+---
+
+**NEXT TASK:** Task 30.2 - Connect Dashboard to Real Metrics Data

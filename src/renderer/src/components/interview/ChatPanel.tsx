@@ -2,14 +2,16 @@ import {
   useState,
   useRef,
   useEffect,
+  useCallback,
   type ReactElement,
   type KeyboardEvent,
   type FormEvent,
 } from 'react';
-import { Send, Loader2, Bot, User, Sparkles } from 'lucide-react';
+import { Send, Loader2, Bot, User, Sparkles, AlertCircle } from 'lucide-react';
 import { cn } from '@renderer/lib/utils';
 import { useMessages, useIsInterviewing, useInterviewStore } from '@renderer/stores/interviewStore';
-import type { InterviewMessage } from '@renderer/types/interview';
+import { useProjectStore } from '@renderer/stores/projectStore';
+import type { InterviewMessage, RequirementCategory, RequirementPriority } from '@renderer/types/interview';
 import { nanoid } from 'nanoid';
 
 export interface ChatPanelProps {
@@ -127,18 +129,105 @@ function WelcomeMessage(): ReactElement {
 }
 
 /**
+ * Map backend category to renderer category type
+ */
+function mapCategory(backendCategory: string): RequirementCategory {
+  const mapping: Record<string, RequirementCategory> = {
+    'functional': 'functional',
+    'non-functional': 'non_functional',
+    'technical': 'technical',
+    'constraint': 'constraint',
+    'assumption': 'functional', // Map assumptions to functional
+  };
+  return mapping[backendCategory] || 'functional';
+}
+
+/**
+ * Map backend priority to renderer priority type
+ */
+function mapPriority(backendPriority: string): RequirementPriority {
+  const mapping: Record<string, RequirementPriority> = {
+    'must': 'must',
+    'should': 'should',
+    'could': 'could',
+    'wont': 'wont',
+  };
+  return mapping[backendPriority] || 'should';
+}
+
+/**
  * ChatPanel - Interactive chat interface for the interview.
  * Handles message display, input, and real-time streaming.
+ * Connected to the InterviewEngine backend for AI-powered conversations.
  */
 export function ChatPanel({ className }: ChatPanelProps): ReactElement {
   const messages = useMessages();
   const isInterviewing = useIsInterviewing();
   const addMessage = useInterviewStore((s) => s.addMessage);
+  const addRequirement = useInterviewStore((s) => s.addRequirement);
+  const currentProject = useProjectStore((s) => s.currentProject);
 
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const isInitializing = useRef(false);
+
+  /**
+   * Initialize the interview session with the backend
+   * Called when isInterviewing becomes true
+   */
+  const initializeSession = useCallback(async () => {
+    // Skip if no nexusAPI (non-Electron environment) or already initialized
+    if (!window.nexusAPI || sessionId || isInitializing.current) {
+      return;
+    }
+
+    isInitializing.current = true;
+    setError(null);
+
+    try {
+      // Use current project ID or generate a temp one
+      const projectId = currentProject?.id || `temp-${nanoid(8)}`;
+
+      // Try to resume existing session first
+      let session = await window.nexusAPI.interview.resumeByProject(projectId);
+
+      if (!session) {
+        // Start a new session
+        session = await window.nexusAPI.interview.start(projectId);
+      }
+
+      if (session) {
+        setSessionId(session.id);
+
+        // If this is a new session, add the initial greeting
+        if (session.messages.length === 0) {
+          const greeting = await window.nexusAPI.interview.getGreeting();
+          addMessage({
+            id: nanoid(),
+            role: 'assistant',
+            content: greeting,
+            timestamp: Date.now(),
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Failed to initialize interview session:', err);
+      setError('Failed to start interview session. Please try again.');
+    } finally {
+      isInitializing.current = false;
+    }
+  }, [sessionId, currentProject?.id, addMessage]);
+
+  // Initialize session when interviewing starts
+  useEffect(() => {
+    if (isInterviewing && !sessionId && !isInitializing.current) {
+      void initializeSession();
+    }
+  }, [isInterviewing, sessionId, initializeSession]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -155,10 +244,67 @@ export function ChatPanel({ className }: ChatPanelProps): ReactElement {
   // Auto-resize textarea
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value);
+    setError(null); // Clear error when user starts typing
     // Auto-resize
     e.target.style.height = 'auto';
     e.target.style.height = `${Math.min(e.target.scrollHeight, 150)}px`;
   };
+
+  /**
+   * Send a message to the backend interview engine
+   */
+  const sendMessageToBackend = useCallback(async (message: string, userMessageId: string) => {
+    if (!sessionId || !window.nexusAPI) {
+      // Fallback to demo mode without backend
+      return;
+    }
+
+    try {
+      // Add a streaming assistant message placeholder
+      const assistantMessageId = nanoid();
+      addMessage({
+        id: assistantMessageId,
+        role: 'assistant',
+        content: '',
+        timestamp: Date.now(),
+        isStreaming: true,
+      });
+
+      // Call the backend to process the message
+      const result = await window.nexusAPI.interview.sendMessage(sessionId, message);
+
+      // Update the assistant message with the actual response
+      useInterviewStore.getState().updateMessage(assistantMessageId, {
+        content: result.response,
+        isStreaming: false,
+      });
+
+      // Add extracted requirements to the store
+      if (result.extractedRequirements && result.extractedRequirements.length > 0) {
+        const now = Date.now();
+        for (const req of result.extractedRequirements) {
+          addRequirement({
+            id: req.id,
+            category: mapCategory(req.category),
+            text: req.text,
+            priority: mapPriority(req.priority),
+            source: 'interview',
+            createdAt: now,
+            updatedAt: now,
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Failed to send message to backend:', err);
+      setError('Failed to send message. Please try again.');
+
+      // Remove the streaming message on error
+      useInterviewStore.getState().updateMessage(
+        messages[messages.length - 1]?.id || '',
+        { isStreaming: false }
+      );
+    }
+  }, [sessionId, addMessage, addRequirement, messages]);
 
   const handleSubmit = (e: FormEvent): void => {
     e.preventDefault();
@@ -166,6 +312,7 @@ export function ChatPanel({ className }: ChatPanelProps): ReactElement {
 
     const message = input.trim();
     setInput('');
+    setError(null);
 
     // Reset textarea height
     if (inputRef.current) {
@@ -174,19 +321,20 @@ export function ChatPanel({ className }: ChatPanelProps): ReactElement {
 
     setIsLoading(true);
 
-    // Add user message to store
+    // Add user message to store immediately
+    const userMessageId = nanoid();
     addMessage({
-      id: nanoid(),
+      id: userMessageId,
       role: 'user',
       content: message,
       timestamp: Date.now(),
     });
 
-    // In a real app, this would call the backend to get AI response
-    // For now, just reset loading state
-    setTimeout(() => {
-      setIsLoading(false);
-    }, 100);
+    // Send to backend and handle response
+    sendMessageToBackend(message, userMessageId)
+      .finally(() => {
+        setIsLoading(false);
+      });
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>): void => {
@@ -264,11 +412,21 @@ export function ChatPanel({ className }: ChatPanelProps): ReactElement {
           </button>
         </form>
 
+        {/* Error message */}
+        {error && (
+          <div className="flex items-center gap-2 mt-2 text-xs text-accent-error" role="alert">
+            <AlertCircle className="h-4 w-4 flex-shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
+
         {/* Keyboard shortcut hint */}
-        <p className="text-xs text-text-tertiary mt-2 text-center">
-          Press <kbd className="px-1.5 py-0.5 bg-bg-dark rounded border border-border-default">Enter</kbd> to send,{' '}
-          <kbd className="px-1.5 py-0.5 bg-bg-dark rounded border border-border-default">Shift+Enter</kbd> for new line
-        </p>
+        {!error && (
+          <p className="text-xs text-text-tertiary mt-2 text-center">
+            Press <kbd className="px-1.5 py-0.5 bg-bg-dark rounded border border-border-default">Enter</kbd> to send,{' '}
+            <kbd className="px-1.5 py-0.5 bg-bg-dark rounded border border-border-default">Shift+Enter</kbd> for new line
+          </p>
+        )}
       </div>
     </div>
   );
