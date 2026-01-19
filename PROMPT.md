@@ -1374,12 +1374,36 @@ describe('LocalEmbeddingsService', () => {
 ```
 
 ### Task 10 Completion Checklist
-- [ ] Test file created
-- [ ] 25+ tests written
-- [ ] All functionality covered
-- [ ] All tests pass
+- [x] Test file created
+- [x] 25+ tests written (47 tests total!)
+- [x] All functionality covered
+- [x] All tests pass
 
-**[TASK 10 COMPLETE]** <- Mark when done
+**[TASK 10 COMPLETE]** - Completed on 2026-01-19
+
+### Task 10 Summary
+- **File Created**: `src/persistence/memory/LocalEmbeddingsService.test.ts`
+- **Total Tests**: 47 tests (target was 25+)
+- **Test Duration**: ~46ms
+
+**Test Categories:**
+- Constructor (5 tests)
+- Initialization (4 tests)
+- isAvailable (3 tests)
+- embed (6 tests)
+- embedBatch (4 tests)
+- cosineSimilarity (4 tests)
+- findMostSimilar (3 tests)
+- Cache (5 tests)
+- Statistics (3 tests)
+- Error handling (5 tests)
+- Additional coverage (5 tests)
+
+**Mocking Approach:**
+- Uses `vi.mock('@huggingface/transformers')` to mock the pipeline
+- `mockPipeline` function mocks the pipeline creation
+- `mockPipelineResult` mocks the inference results
+- Supports both real model mocking and mockMode testing
 
 ---
 
