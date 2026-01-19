@@ -19,6 +19,9 @@
  *
  * Layout Components:
  * - ScrollArea - Custom scrollable container
+ *
+ * See also: ../layout/index.ts for page layout components
+ * - PageLayout, Sidebar, Header, Breadcrumbs
  */
 
 // Base Components
@@ -36,3 +39,6 @@ export * from './EmptyState'
 
 // Layout Components
 export * from './scroll-area'
+
+// Re-export layout components for convenience
+export * from '../layout'
