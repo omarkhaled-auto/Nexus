@@ -1,34 +1,11 @@
-import { c as createLucideIcon, r as reactExports, E, e as reactDomExports, j as jsxRuntimeExports, C as Card, a as cn, f as CardHeader, g as CardTitle, b as CardContent, D as Dialog, h as DialogContent, i as DialogHeader, k as DialogTitle, l as DialogDescription, B as Button } from "./index--90KcRKo.js";
-import { u as useFeatureStore, a as useFeatureCount } from "./featureStore-B4p7CAdQ.js";
-import { C as Circle, a as CircleX, b as CircleCheck } from "./circle-DAVdfnK2.js";
-import { L as LoaderCircle, a as Layers } from "./loader-circle-BUJwH4Gy.js";
-import { A as AnimatedPage } from "./AnimatedPage-udv7kvKF.js";
-/**
- * @license lucide-react v0.562.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode$3 = [
-  ["path", { d: "M12 6v6l4 2", key: "mmk7yg" }],
-  ["circle", { cx: "12", cy: "12", r: "10", key: "1mglay" }]
-];
-const Clock = createLucideIcon("clock", __iconNode$3);
-/**
- * @license lucide-react v0.562.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode$2 = [
-  ["circle", { cx: "9", cy: "12", r: "1", key: "1vctgf" }],
-  ["circle", { cx: "9", cy: "5", r: "1", key: "hp0tcf" }],
-  ["circle", { cx: "9", cy: "19", r: "1", key: "fkjjf6" }],
-  ["circle", { cx: "15", cy: "12", r: "1", key: "1tmaij" }],
-  ["circle", { cx: "15", cy: "5", r: "1", key: "19l28e" }],
-  ["circle", { cx: "15", cy: "19", r: "1", key: "f4zoj3" }]
-];
-const GripVertical = createLucideIcon("grip-vertical", __iconNode$2);
+import { c as createLucideIcon, r as reactExports, R as React, d as reactDomExports, j as jsxRuntimeExports, e as Card, a as cn, f as CardHeader, g as CardTitle, h as CardContent, D as Dialog, i as DialogContent, k as DialogHeader, l as DialogTitle, m as DialogDescription, L as LoaderCircle, n as Button } from "./index-xnK5wLuD.js";
+import { u as useFeatureStore, a as useFeatureCount } from "./featureStore-BEKfnQRM.js";
+import { C as Circle, A as AnimatedPage } from "./AnimatedPage-DLggbSB3.js";
+import { C as Clock } from "./clock-zSUTFGik.js";
+import { C as CircleX } from "./circle-x-BDPGfBfa.js";
+import { C as CircleCheck } from "./circle-check-DcrdITtO.js";
+import { L as Layers } from "./layers-By3mZB1o.js";
+import { P as Plus } from "./plus-DRS8OUHN.js";
 /**
  * @license lucide-react v0.562.0 - ISC
  *
@@ -36,10 +13,14 @@ const GripVertical = createLucideIcon("grip-vertical", __iconNode$2);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$1 = [
-  ["path", { d: "M5 12h14", key: "1ays0h" }],
-  ["path", { d: "M12 5v14", key: "s699le" }]
+  ["circle", { cx: "9", cy: "12", r: "1", key: "1vctgf" }],
+  ["circle", { cx: "9", cy: "5", r: "1", key: "hp0tcf" }],
+  ["circle", { cx: "9", cy: "19", r: "1", key: "fkjjf6" }],
+  ["circle", { cx: "15", cy: "12", r: "1", key: "1tmaij" }],
+  ["circle", { cx: "15", cy: "5", r: "1", key: "19l28e" }],
+  ["circle", { cx: "15", cy: "19", r: "1", key: "f4zoj3" }]
 ];
-const Plus = createLucideIcon("plus", __iconNode$1);
+const GripVertical = createLucideIcon("grip-vertical", __iconNode$1);
 /**
  * @license lucide-react v0.562.0 - ISC
  *
@@ -332,7 +313,7 @@ function HiddenText(_ref) {
     id,
     value
   } = _ref;
-  return E.createElement("div", {
+  return React.createElement("div", {
     id,
     style: hiddenStyles
   }, value);
@@ -357,7 +338,7 @@ function LiveRegion(_ref) {
     clipPath: "inset(100%)",
     whiteSpace: "nowrap"
   };
-  return E.createElement("div", {
+  return React.createElement("div", {
     id,
     style: visuallyHidden,
     role: "status",
@@ -514,10 +495,10 @@ function Accessibility(_ref) {
   if (!mounted) {
     return null;
   }
-  const markup = E.createElement(E.Fragment, null, E.createElement(HiddenText, {
+  const markup = React.createElement(React.Fragment, null, React.createElement(HiddenText, {
     id: hiddenTextDescribedById,
     value: screenReaderInstructions.draggable
-  }), E.createElement(LiveRegion, {
+  }), React.createElement(LiveRegion, {
     id: liveRegionId,
     announcement
   }));
@@ -3226,17 +3207,17 @@ const DndContext = /* @__PURE__ */ reactExports.memo(function DndContext2(_ref) 
     };
     return context;
   }, [activatorEvent, activators, active, activeNodeRect, dispatch, draggableDescribedById, draggableNodes, over, measureDroppableContainers]);
-  return E.createElement(DndMonitorContext.Provider, {
+  return React.createElement(DndMonitorContext.Provider, {
     value: registerMonitorListener
-  }, E.createElement(InternalContext.Provider, {
+  }, React.createElement(InternalContext.Provider, {
     value: internalContext
-  }, E.createElement(PublicContext.Provider, {
+  }, React.createElement(PublicContext.Provider, {
     value: publicContext
-  }, E.createElement(ActiveDraggableContext.Provider, {
+  }, React.createElement(ActiveDraggableContext.Provider, {
     value: transform
-  }, children)), E.createElement(RestoreFocus, {
+  }, children)), React.createElement(RestoreFocus, {
     disabled: (accessibility == null ? void 0 : accessibility.restoreFocus) === false
-  })), E.createElement(Accessibility, {
+  })), React.createElement(Accessibility, {
     ...accessibility,
     hiddenTextDescribedById: draggableDescribedById
   }));
@@ -3473,7 +3454,7 @@ function AnimationManager(_ref) {
       setClonedChildren(null);
     });
   }, [animation, clonedChildren, element]);
-  return E.createElement(E.Fragment, null, children, clonedChildren ? reactExports.cloneElement(clonedChildren, {
+  return React.createElement(React.Fragment, null, children, clonedChildren ? reactExports.cloneElement(clonedChildren, {
     ref: setElement
   }) : null);
 }
@@ -3487,9 +3468,9 @@ function NullifiedContextProvider(_ref) {
   let {
     children
   } = _ref;
-  return E.createElement(InternalContext.Provider, {
+  return React.createElement(InternalContext.Provider, {
     value: defaultInternalContext
-  }, E.createElement(ActiveDraggableContext.Provider, {
+  }, React.createElement(ActiveDraggableContext.Provider, {
     value: defaultTransform
   }, children));
 }
@@ -3532,7 +3513,7 @@ const PositionedOverlay = /* @__PURE__ */ reactExports.forwardRef((_ref, ref) =>
     transition: typeof transition === "function" ? transition(activatorEvent) : transition,
     ...style
   };
-  return E.createElement(as, {
+  return React.createElement(as, {
     className,
     style: styles,
     ref
@@ -3730,7 +3711,7 @@ function useKey(id) {
     return key;
   }, [id]);
 }
-const DragOverlay = /* @__PURE__ */ E.memo((_ref) => {
+const DragOverlay = /* @__PURE__ */ React.memo((_ref) => {
   let {
     adjustScale: adjustScale2 = false,
     children,
@@ -3779,9 +3760,9 @@ const DragOverlay = /* @__PURE__ */ E.memo((_ref) => {
     measuringConfiguration
   });
   const ref = initialRect ? dragOverlay.setRef : void 0;
-  return E.createElement(NullifiedContextProvider, null, E.createElement(AnimationManager, {
+  return React.createElement(NullifiedContextProvider, null, React.createElement(AnimationManager, {
     animation: dropAnimation
-  }, active && key2 ? E.createElement(PositionedOverlay, {
+  }, active && key2 ? React.createElement(PositionedOverlay, {
     key: key2,
     id: active.id,
     ref,
@@ -3920,7 +3901,7 @@ function getItemGap$1(clientRects, index, activeIndex) {
   return nextRect ? nextRect.top - (currentRect.top + currentRect.height) : previousRect ? currentRect.top - (previousRect.top + previousRect.height) : 0;
 }
 const ID_PREFIX = "Sortable";
-const Context = /* @__PURE__ */ E.createContext({
+const Context = /* @__PURE__ */ React.createContext({
   activeIndex: -1,
   containerId: ID_PREFIX,
   disableTransforms: false,
@@ -3982,7 +3963,7 @@ function SortableContext(_ref) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [activeIndex, containerId, disabled.draggable, disabled.droppable, disableTransforms, items, overIndex, droppableRects, useDragOverlay, strategy]
   );
-  return E.createElement(Context.Provider, {
+  return React.createElement(Context.Provider, {
     value: contextValue
   }, children);
 }
@@ -4833,7 +4814,7 @@ const DEMO_FEATURES = [
     status: "backlog",
     complexity: "complex",
     progress: 0,
-    assignedAgent: null,
+    assignedAgent: void 0,
     tasks: [],
     priority: "high",
     createdAt: (/* @__PURE__ */ new Date()).toISOString(),
@@ -4898,24 +4879,135 @@ const DEMO_FEATURES = [
     status: "done",
     complexity: "moderate",
     progress: 100,
-    assignedAgent: null,
+    assignedAgent: void 0,
     tasks: [],
     priority: "medium",
     createdAt: (/* @__PURE__ */ new Date()).toISOString(),
     updatedAt: (/* @__PURE__ */ new Date()).toISOString()
   }
 ];
+function isElectronEnvironment() {
+  return typeof window !== "undefined" && typeof window.nexusAPI !== "undefined" && typeof window.nexusAPI.getFeatures === "function";
+}
+function mapBackendFeature(backendFeature) {
+  const statusMap = {
+    backlog: "backlog",
+    planning: "planning",
+    in_progress: "in_progress",
+    "in-progress": "in_progress",
+    ai_review: "ai_review",
+    "ai-review": "ai_review",
+    human_review: "human_review",
+    "human-review": "human_review",
+    done: "done"
+  };
+  const priorityMap = {
+    critical: "critical",
+    must: "critical",
+    high: "high",
+    should: "high",
+    medium: "medium",
+    could: "medium",
+    low: "low",
+    wont: "low"
+  };
+  const complexityMap = {
+    simple: "simple",
+    moderate: "moderate",
+    complex: "complex"
+  };
+  const rawStatus = String(backendFeature.status || "backlog");
+  const rawPriority = String(backendFeature.priority || "medium");
+  const rawComplexity = String(backendFeature.complexity || "moderate");
+  return {
+    id: String(backendFeature.id || `feature-${Date.now()}`),
+    title: String(backendFeature.title || backendFeature.name || "Untitled Feature"),
+    description: String(backendFeature.description || ""),
+    status: statusMap[rawStatus] || "backlog",
+    priority: priorityMap[rawPriority] || "medium",
+    complexity: complexityMap[rawComplexity] || "moderate",
+    progress: typeof backendFeature.progress === "number" ? backendFeature.progress : 0,
+    assignedAgent: backendFeature.assignedAgent ? String(backendFeature.assignedAgent) : void 0,
+    tasks: Array.isArray(backendFeature.tasks) ? backendFeature.tasks.map((t) => ({
+      id: String(t.id || ""),
+      title: String(t.title || t.name || ""),
+      status: String(t.status || "pending")
+    })) : [],
+    createdAt: String(backendFeature.createdAt || (/* @__PURE__ */ new Date()).toISOString()),
+    updatedAt: String(backendFeature.updatedAt || (/* @__PURE__ */ new Date()).toISOString())
+  };
+}
 function KanbanPage() {
   const setFeatures = useFeatureStore((s) => s.setFeatures);
+  const updateFeature = useFeatureStore((s) => s.updateFeature);
   const features = useFeatureStore((s) => s.features);
-  reactExports.useEffect(() => {
-    if (features.length === 0) {
-      setFeatures(DEMO_FEATURES);
+  const [isLoading, setIsLoading] = reactExports.useState(true);
+  const [error, setError] = reactExports.useState(null);
+  const loadRealData = reactExports.useCallback(async () => {
+    if (!isElectronEnvironment()) {
+      if (features.length === 0) {
+        setFeatures(DEMO_FEATURES);
+      }
+      setIsLoading(false);
+      return;
+    }
+    try {
+      setIsLoading(true);
+      setError(null);
+      const backendFeatures = await window.nexusAPI.getFeatures();
+      if (Array.isArray(backendFeatures) && backendFeatures.length > 0) {
+        const mappedFeatures = backendFeatures.map(
+          (f) => mapBackendFeature(f)
+        );
+        setFeatures(mappedFeatures);
+      } else {
+        if (features.length === 0) {
+          setFeatures(DEMO_FEATURES);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to load features:", err);
+      setError("Failed to load features. Using demo data.");
+      if (features.length === 0) {
+        setFeatures(DEMO_FEATURES);
+      }
+    } finally {
+      setIsLoading(false);
     }
   }, [features.length, setFeatures]);
+  const subscribeToEvents = reactExports.useCallback(() => {
+    if (!isElectronEnvironment()) {
+      return () => {
+      };
+    }
+    const unsubscribeFeatureUpdate = window.nexusAPI.onFeatureUpdate((featureData) => {
+      const feature = mapBackendFeature(featureData);
+      updateFeature(feature.id, feature);
+    });
+    const unsubscribeTaskUpdate = window.nexusAPI.onTaskUpdate((taskData) => {
+      const task = taskData;
+      const featureId = task.featureId;
+      if (featureId) {
+        void loadRealData();
+      }
+    });
+    return () => {
+      unsubscribeFeatureUpdate();
+      unsubscribeTaskUpdate();
+    };
+  }, [updateFeature, loadRealData]);
+  reactExports.useEffect(() => {
+    void loadRealData();
+    const unsubscribe = subscribeToEvents();
+    return unsubscribe;
+  }, [loadRealData, subscribeToEvents]);
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(AnimatedPage, { className: "flex h-full flex-col", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx(KanbanHeader, { projectName: "Nexus" }),
-    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex-1 overflow-auto", children: /* @__PURE__ */ jsxRuntimeExports.jsx(KanbanBoard, {}) })
+    error && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "mx-4 mt-2 rounded-md bg-status-warning/10 border border-status-warning/20 px-4 py-2 text-sm text-status-warning", children: error }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex-1 overflow-auto", children: isLoading ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex h-full items-center justify-center", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col items-center gap-3", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "h-8 w-8 animate-spin rounded-full border-2 border-accent-primary border-t-transparent" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-sm text-text-secondary", children: "Loading features..." })
+    ] }) }) : /* @__PURE__ */ jsxRuntimeExports.jsx(KanbanBoard, {}) })
   ] });
 }
 export {

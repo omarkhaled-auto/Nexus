@@ -152,11 +152,29 @@ const nexusAPI = {
    */
   getProject: (id) => ipcRenderer.invoke("project:get", id),
   /**
+   * List all projects
+   * @returns Promise with array of all projects
+   */
+  getProjects: () => ipcRenderer.invoke("projects:list"),
+  /**
    * Create a new project
    * @param input - Project name and mode
    * @returns Promise with new project ID
    */
   createProject: (input) => ipcRenderer.invoke("project:create", input),
+  // ========================================
+  // Dashboard Data API (Phase 17)
+  // ========================================
+  /**
+   * Get dashboard metrics overview
+   * @returns Promise with aggregated metrics for dashboard
+   */
+  getDashboardMetrics: () => ipcRenderer.invoke("dashboard:getMetrics"),
+  /**
+   * Get cost metrics
+   * @returns Promise with token usage and cost breakdown
+   */
+  getDashboardCosts: () => ipcRenderer.invoke("dashboard:getCosts"),
   // ========================================
   // Task Operations
   // ========================================
@@ -173,15 +191,118 @@ const nexusAPI = {
    */
   updateTask: (id, update) => ipcRenderer.invoke("task:update", id, update),
   // ========================================
-  // Agent Operations
+  // Feature Operations (Phase 17 - Kanban)
   // ========================================
   /**
-   * Get status of all agents
+   * Get all features for Kanban board
+   * @returns Promise with array of features
+   */
+  getFeatures: () => ipcRenderer.invoke("features:list"),
+  /**
+   * Get a single feature by ID
+   * @param id - Feature ID
+   * @returns Promise with feature data or null
+   */
+  getFeature: (id) => ipcRenderer.invoke("feature:get", id),
+  /**
+   * Create a new feature
+   * @param input - Feature creation data
+   * @returns Promise with created feature
+   */
+  createFeature: (input) => ipcRenderer.invoke("feature:create", input),
+  /**
+   * Update a feature
+   * @param id - Feature ID
+   * @param update - Partial feature update
+   * @returns Promise with updated feature
+   */
+  updateFeature: (id, update) => ipcRenderer.invoke("feature:update", id, update),
+  /**
+   * Delete a feature
+   * @param id - Feature ID
+   * @returns Promise that resolves on success
+   */
+  deleteFeature: (id) => ipcRenderer.invoke("feature:delete", id),
+  /**
+   * Subscribe to feature update events
+   * @param callback - Called when a feature is updated
+   * @returns Unsubscribe function
+   */
+  onFeatureUpdate: (callback) => {
+    const handler = (_event, feature) => {
+      callback(feature);
+    };
+    ipcRenderer.on("feature:updated", handler);
+    return () => {
+      ipcRenderer.removeListener("feature:updated", handler);
+    };
+  },
+  // ========================================
+  // Agent Operations (Phase 17 - Agents Page)
+  // ========================================
+  /**
+   * Get status of all agents (legacy)
    * @returns Promise with array of agent statuses
    */
   getAgentStatus: () => ipcRenderer.invoke("agents:status"),
+  /**
+   * List all agents with detailed data
+   * @returns Promise with array of agent data
+   */
+  getAgents: () => ipcRenderer.invoke("agents:list"),
+  /**
+   * Get a single agent by ID
+   * @param id - Agent ID
+   * @returns Promise with agent data or null
+   */
+  getAgent: (id) => ipcRenderer.invoke("agents:get", id),
+  /**
+   * Get agent pool status overview
+   * @returns Promise with pool status
+   */
+  getAgentPoolStatus: () => ipcRenderer.invoke("agents:getPoolStatus"),
+  /**
+   * Get agent output/logs
+   * @param id - Agent ID
+   * @returns Promise with array of log lines
+   */
+  getAgentOutput: (id) => ipcRenderer.invoke("agents:getOutput", id),
+  /**
+   * Get QA status for current execution
+   * @returns Promise with QA pipeline status
+   */
+  getQAStatus: () => ipcRenderer.invoke("agents:getQAStatus"),
+  /**
+   * Subscribe to agent output events (streaming logs)
+   * @param callback - Called when new log line arrives
+   * @returns Unsubscribe function
+   */
+  onAgentOutput: (callback) => {
+    const handler = (_event, data) => {
+      callback(data);
+    };
+    ipcRenderer.on("agent:output", handler);
+    return () => {
+      ipcRenderer.removeListener("agent:output", handler);
+    };
+  },
+  /**
+   * Subscribe to QA status update events
+   * @param callback - Called when QA status changes
+   * @returns Unsubscribe function
+   */
+  onQAStatusUpdate: (callback) => {
+    const handler = (_event, status) => {
+      callback(status);
+    };
+    ipcRenderer.on("qa:status", handler);
+    return () => {
+      ipcRenderer.removeListener("qa:status", handler);
+    };
+  },
   // ========================================
-  // Execution Control
+  // ========================================
+  // Execution Control & Logs (Phase 17 - Task 30.5)
   // ========================================
   /**
    * Pause execution gracefully
@@ -189,7 +310,55 @@ const nexusAPI = {
    * @returns Promise with success status
    */
   pauseExecution: (reason) => ipcRenderer.invoke("execution:pause", reason),
-  // ========================================
+  /**
+   * Get execution logs for a specific QA step
+   * @param stepType - The step type: 'build', 'lint', 'test', or 'review'
+   * @returns Promise with array of log entries
+   */
+  getExecutionLogs: (stepType) => ipcRenderer.invoke("execution:getLogs", stepType),
+  /**
+   * Get execution status for all QA steps
+   * @returns Promise with execution status object
+   */
+  getExecutionStatus: () => ipcRenderer.invoke("execution:getStatus"),
+  /**
+   * Clear all execution logs
+   * @returns Promise with success status
+   */
+  clearExecutionLogs: () => ipcRenderer.invoke("execution:clearLogs"),
+  /**
+   * Export execution logs to a formatted string
+   * @returns Promise with formatted log string
+   */
+  exportExecutionLogs: () => ipcRenderer.invoke("execution:exportLogs"),
+  /**
+   * Subscribe to execution log update events (real-time streaming)
+   * @param callback - Called when new log entries arrive
+   * @returns Unsubscribe function
+   */
+  onExecutionLogUpdate: (callback) => {
+    const handler = (_event, data) => {
+      callback(data);
+    };
+    ipcRenderer.on("execution:log", handler);
+    return () => {
+      ipcRenderer.removeListener("execution:log", handler);
+    };
+  },
+  /**
+   * Subscribe to execution status change events
+   * @param callback - Called when status changes for any step
+   * @returns Unsubscribe function
+   */
+  onExecutionStatusChange: (callback) => {
+    const handler = (_event, data) => {
+      callback(data);
+    };
+    ipcRenderer.on("execution:status", handler);
+    return () => {
+      ipcRenderer.removeListener("execution:status", handler);
+    };
+  },
   // Interview Events (BUILD-014)
   // ========================================
   /**

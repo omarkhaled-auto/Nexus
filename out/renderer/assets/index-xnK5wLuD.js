@@ -1,4 +1,4 @@
-const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["./InterviewPage-DOkPN8-L.js","./interviewStore-67G8_etE.js","./loader-circle-BUJwH4Gy.js","./AnimatedPage-udv7kvKF.js","./rotate-ccw-Dx5QWuD4.js","./KanbanPage-m5rjJwck.js","./featureStore-B4p7CAdQ.js","./circle-DAVdfnK2.js","./DashboardPage-cZLwOR6B.js","./bot-BnhLaWw6.js","./SettingsPage-Dxb9-iuB.js"])))=>i.map(i=>d[i]);
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["./InterviewPage-BpcNc9ja.js","./interviewStore-CPGRq6SR.js","./circle-alert-CpZnaSJZ.js","./zap-CBlQZ7d7.js","./save-B1SVSeo_.js","./layers-By3mZB1o.js","./circle-check-DcrdITtO.js","./AnimatedPage-DLggbSB3.js","./trash-2-DG-6S5M4.js","./download-3kURp0-F.js","./arrow-left-CgFeZlyf.js","./KanbanPage-CxdU7IjI.js","./featureStore-BEKfnQRM.js","./clock-zSUTFGik.js","./circle-x-BDPGfBfa.js","./plus-DRS8OUHN.js","./DashboardPage-ZoW09plv.js","./test-tube-diagonal-6cNDtFPB.js","./eye-CrQvWFi5.js","./SettingsPage-BptkqiYf.js","./Header-B6Pu_07z.js","./circle-check-big-BGG7AhUM.js","./AgentsPage-D72cBo_Z.js","./ExecutionPage-f3f2C11Z.js"])))=>i.map(i=>d[i]);
 function _mergeNamespaces(n, m) {
   for (var i = 0; i < m.length; i++) {
     const e = m[i];
@@ -491,10 +491,10 @@ react_production.version = "19.2.3";
   react.exports = react_production;
 }
 var reactExports = react.exports;
-const E = /* @__PURE__ */ getDefaultExportFromCjs(reactExports);
-const React$2 = /* @__PURE__ */ _mergeNamespaces({
+const React$2 = /* @__PURE__ */ getDefaultExportFromCjs(reactExports);
+const React$3 = /* @__PURE__ */ _mergeNamespaces({
   __proto__: null,
-  default: E
+  default: React$2
 }, [reactExports]);
 var client = { exports: {} };
 var reactDomClient_production = {};
@@ -17644,7 +17644,7 @@ function warnOnce(condition, message) {
   }
 }
 var USE_OPTIMISTIC = "useOptimistic";
-var useOptimisticImpl = React$2[USE_OPTIMISTIC];
+var useOptimisticImpl = React$3[USE_OPTIMISTIC];
 var stableUseOptimisticSetter = () => void 0;
 function useOptimisticSafe(val) {
   if (useOptimisticImpl) {
@@ -18979,12 +18979,12 @@ const createStoreImpl = (createState) => {
 const createStore = (createState) => createState ? createStoreImpl(createState) : createStoreImpl;
 const identity = (arg) => arg;
 function useStore(api, selector = identity) {
-  const slice = E.useSyncExternalStore(
+  const slice = React$2.useSyncExternalStore(
     api.subscribe,
-    E.useCallback(() => selector(api.getState()), [api, selector]),
-    E.useCallback(() => selector(api.getInitialState()), [api, selector])
+    React$2.useCallback(() => selector(api.getState()), [api, selector]),
+    React$2.useCallback(() => selector(api.getInitialState()), [api, selector])
   );
-  E.useDebugValue(slice);
+  React$2.useDebugValue(slice);
   return slice;
 }
 const createImpl = (createState) => {
@@ -19616,8 +19616,8 @@ function de(e, n, r2, i) {
       s.code !== void 0 && (_(K(s.code)), (t?.keydown === void 0 && t?.keyup !== true || t?.keydown) && p(s));
     }, q = (s) => {
       s.code !== void 0 && (I(K(s.code)), f.current = false, t?.keyup && p(s, true));
-    }, E2 = u.current || o?.document || document;
-    return E2.addEventListener("keyup", q, o?.eventListenerOptions), E2.addEventListener("keydown", O, o?.eventListenerOptions), l && H(y, t?.delimiter).forEach((s) => {
+    }, E = u.current || o?.document || document;
+    return E.addEventListener("keyup", q, o?.eventListenerOptions), E.addEventListener("keydown", O, o?.eventListenerOptions), l && H(y, t?.delimiter).forEach((s) => {
       l.addHotkey(
         P(
           s,
@@ -19629,7 +19629,7 @@ function de(e, n, r2, i) {
         )
       );
     }), () => {
-      E2.removeEventListener("keyup", q, o?.eventListenerOptions), E2.removeEventListener("keydown", O, o?.eventListenerOptions), l && H(y, t?.delimiter).forEach((s) => {
+      E.removeEventListener("keyup", q, o?.eventListenerOptions), E.removeEventListener("keydown", O, o?.eventListenerOptions), l && H(y, t?.delimiter).forEach((s) => {
         l.removeHotkey(
           P(
             s,
@@ -19668,64 +19668,64 @@ const getAsset = (type) => {
 };
 const bars = Array(12).fill(0);
 const Loader = ({ visible, className }) => {
-  return /* @__PURE__ */ E.createElement("div", {
+  return /* @__PURE__ */ React$2.createElement("div", {
     className: [
       "sonner-loading-wrapper",
       className
     ].filter(Boolean).join(" "),
     "data-visible": visible
-  }, /* @__PURE__ */ E.createElement("div", {
+  }, /* @__PURE__ */ React$2.createElement("div", {
     className: "sonner-spinner"
-  }, bars.map((_2, i) => /* @__PURE__ */ E.createElement("div", {
+  }, bars.map((_2, i) => /* @__PURE__ */ React$2.createElement("div", {
     className: "sonner-loading-bar",
     key: `spinner-bar-${i}`
   }))));
 };
-const SuccessIcon = /* @__PURE__ */ E.createElement("svg", {
+const SuccessIcon = /* @__PURE__ */ React$2.createElement("svg", {
   xmlns: "http://www.w3.org/2000/svg",
   viewBox: "0 0 20 20",
   fill: "currentColor",
   height: "20",
   width: "20"
-}, /* @__PURE__ */ E.createElement("path", {
+}, /* @__PURE__ */ React$2.createElement("path", {
   fillRule: "evenodd",
   d: "M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z",
   clipRule: "evenodd"
 }));
-const WarningIcon = /* @__PURE__ */ E.createElement("svg", {
+const WarningIcon = /* @__PURE__ */ React$2.createElement("svg", {
   xmlns: "http://www.w3.org/2000/svg",
   viewBox: "0 0 24 24",
   fill: "currentColor",
   height: "20",
   width: "20"
-}, /* @__PURE__ */ E.createElement("path", {
+}, /* @__PURE__ */ React$2.createElement("path", {
   fillRule: "evenodd",
   d: "M9.401 3.003c1.155-2 4.043-2 5.197 0l7.355 12.748c1.154 2-.29 4.5-2.599 4.5H4.645c-2.309 0-3.752-2.5-2.598-4.5L9.4 3.003zM12 8.25a.75.75 0 01.75.75v3.75a.75.75 0 01-1.5 0V9a.75.75 0 01.75-.75zm0 8.25a.75.75 0 100-1.5.75.75 0 000 1.5z",
   clipRule: "evenodd"
 }));
-const InfoIcon = /* @__PURE__ */ E.createElement("svg", {
+const InfoIcon = /* @__PURE__ */ React$2.createElement("svg", {
   xmlns: "http://www.w3.org/2000/svg",
   viewBox: "0 0 20 20",
   fill: "currentColor",
   height: "20",
   width: "20"
-}, /* @__PURE__ */ E.createElement("path", {
+}, /* @__PURE__ */ React$2.createElement("path", {
   fillRule: "evenodd",
   d: "M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z",
   clipRule: "evenodd"
 }));
-const ErrorIcon = /* @__PURE__ */ E.createElement("svg", {
+const ErrorIcon = /* @__PURE__ */ React$2.createElement("svg", {
   xmlns: "http://www.w3.org/2000/svg",
   viewBox: "0 0 20 20",
   fill: "currentColor",
   height: "20",
   width: "20"
-}, /* @__PURE__ */ E.createElement("path", {
+}, /* @__PURE__ */ React$2.createElement("path", {
   fillRule: "evenodd",
   d: "M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-5a.75.75 0 01.75.75v4.5a.75.75 0 01-1.5 0v-4.5A.75.75 0 0110 5zm0 10a1 1 0 100-2 1 1 0 000 2z",
   clipRule: "evenodd"
 }));
-const CloseIcon = /* @__PURE__ */ E.createElement("svg", {
+const CloseIcon = /* @__PURE__ */ React$2.createElement("svg", {
   xmlns: "http://www.w3.org/2000/svg",
   width: "12",
   height: "12",
@@ -19735,20 +19735,20 @@ const CloseIcon = /* @__PURE__ */ E.createElement("svg", {
   strokeWidth: "1.5",
   strokeLinecap: "round",
   strokeLinejoin: "round"
-}, /* @__PURE__ */ E.createElement("line", {
+}, /* @__PURE__ */ React$2.createElement("line", {
   x1: "18",
   y1: "6",
   x2: "6",
   y2: "18"
-}), /* @__PURE__ */ E.createElement("line", {
+}), /* @__PURE__ */ React$2.createElement("line", {
   x1: "6",
   y1: "6",
   x2: "18",
   y2: "18"
 }));
 const useIsDocumentHidden = () => {
-  const [isDocumentHidden, setIsDocumentHidden] = E.useState(document.hidden);
-  E.useEffect(() => {
+  const [isDocumentHidden, setIsDocumentHidden] = React$2.useState(document.hidden);
+  React$2.useEffect(() => {
     const callback = () => {
       setIsDocumentHidden(document.hidden);
     };
@@ -19897,7 +19897,7 @@ class Observer {
           "resolve",
           response
         ];
-        const isReactElementResponse = E.isValidElement(response);
+        const isReactElementResponse = React$2.isValidElement(response);
         if (isReactElementResponse) {
           shouldDismiss = false;
           this.create({
@@ -19909,7 +19909,7 @@ class Observer {
           shouldDismiss = false;
           const promiseData = typeof data.error === "function" ? await data.error(`HTTP error! status: ${response.status}`) : data.error;
           const description = typeof data.description === "function" ? await data.description(`HTTP error! status: ${response.status}`) : data.description;
-          const isExtendedResult = typeof promiseData === "object" && !E.isValidElement(promiseData);
+          const isExtendedResult = typeof promiseData === "object" && !React$2.isValidElement(promiseData);
           const toastSettings = isExtendedResult ? promiseData : {
             message: promiseData
           };
@@ -19923,7 +19923,7 @@ class Observer {
           shouldDismiss = false;
           const promiseData = typeof data.error === "function" ? await data.error(response) : data.error;
           const description = typeof data.description === "function" ? await data.description(response) : data.description;
-          const isExtendedResult = typeof promiseData === "object" && !E.isValidElement(promiseData);
+          const isExtendedResult = typeof promiseData === "object" && !React$2.isValidElement(promiseData);
           const toastSettings = isExtendedResult ? promiseData : {
             message: promiseData
           };
@@ -19937,7 +19937,7 @@ class Observer {
           shouldDismiss = false;
           const promiseData = typeof data.success === "function" ? await data.success(response) : data.success;
           const description = typeof data.description === "function" ? await data.description(response) : data.description;
-          const isExtendedResult = typeof promiseData === "object" && !E.isValidElement(promiseData);
+          const isExtendedResult = typeof promiseData === "object" && !React$2.isValidElement(promiseData);
           const toastSettings = isExtendedResult ? promiseData : {
             message: promiseData
           };
@@ -19957,7 +19957,7 @@ class Observer {
           shouldDismiss = false;
           const promiseData = typeof data.error === "function" ? await data.error(error) : data.error;
           const description = typeof data.description === "function" ? await data.description(error) : data.description;
-          const isExtendedResult = typeof promiseData === "object" && !E.isValidElement(promiseData);
+          const isExtendedResult = typeof promiseData === "object" && !React$2.isValidElement(promiseData);
           const toastSettings = isExtendedResult ? promiseData : {
             message: promiseData
           };
@@ -20062,45 +20062,45 @@ function getDefaultSwipeDirections(position) {
 const Toast = (props) => {
   var _toast_classNames, _toast_classNames1, _toast_classNames2, _toast_classNames3, _toast_classNames4, _toast_classNames5, _toast_classNames6, _toast_classNames7, _toast_classNames8;
   const { invert: ToasterInvert, toast: toast2, unstyled, interacting, setHeights, visibleToasts, heights, index: index2, toasts, expanded, removeToast, defaultRichColors, closeButton: closeButtonFromToaster, style: style2, cancelButtonStyle, actionButtonStyle, className = "", descriptionClassName = "", duration: durationFromToaster, position, gap, expandByDefault, classNames, icons, closeButtonAriaLabel = "Close toast" } = props;
-  const [swipeDirection, setSwipeDirection] = E.useState(null);
-  const [swipeOutDirection, setSwipeOutDirection] = E.useState(null);
-  const [mounted, setMounted] = E.useState(false);
-  const [removed, setRemoved] = E.useState(false);
-  const [swiping, setSwiping] = E.useState(false);
-  const [swipeOut, setSwipeOut] = E.useState(false);
-  const [isSwiped, setIsSwiped] = E.useState(false);
-  const [offsetBeforeRemove, setOffsetBeforeRemove] = E.useState(0);
-  const [initialHeight, setInitialHeight] = E.useState(0);
-  const remainingTime = E.useRef(toast2.duration || durationFromToaster || TOAST_LIFETIME);
-  const dragStartTime = E.useRef(null);
-  const toastRef = E.useRef(null);
+  const [swipeDirection, setSwipeDirection] = React$2.useState(null);
+  const [swipeOutDirection, setSwipeOutDirection] = React$2.useState(null);
+  const [mounted, setMounted] = React$2.useState(false);
+  const [removed, setRemoved] = React$2.useState(false);
+  const [swiping, setSwiping] = React$2.useState(false);
+  const [swipeOut, setSwipeOut] = React$2.useState(false);
+  const [isSwiped, setIsSwiped] = React$2.useState(false);
+  const [offsetBeforeRemove, setOffsetBeforeRemove] = React$2.useState(0);
+  const [initialHeight, setInitialHeight] = React$2.useState(0);
+  const remainingTime = React$2.useRef(toast2.duration || durationFromToaster || TOAST_LIFETIME);
+  const dragStartTime = React$2.useRef(null);
+  const toastRef = React$2.useRef(null);
   const isFront = index2 === 0;
   const isVisible = index2 + 1 <= visibleToasts;
   const toastType = toast2.type;
   const dismissible = toast2.dismissible !== false;
   const toastClassname = toast2.className || "";
   const toastDescriptionClassname = toast2.descriptionClassName || "";
-  const heightIndex = E.useMemo(() => heights.findIndex((height) => height.toastId === toast2.id) || 0, [
+  const heightIndex = React$2.useMemo(() => heights.findIndex((height) => height.toastId === toast2.id) || 0, [
     heights,
     toast2.id
   ]);
-  const closeButton = E.useMemo(() => {
+  const closeButton = React$2.useMemo(() => {
     var _toast_closeButton;
     return (_toast_closeButton = toast2.closeButton) != null ? _toast_closeButton : closeButtonFromToaster;
   }, [
     toast2.closeButton,
     closeButtonFromToaster
   ]);
-  const duration = E.useMemo(() => toast2.duration || durationFromToaster || TOAST_LIFETIME, [
+  const duration = React$2.useMemo(() => toast2.duration || durationFromToaster || TOAST_LIFETIME, [
     toast2.duration,
     durationFromToaster
   ]);
-  const closeTimerStartTimeRef = E.useRef(0);
-  const offset = E.useRef(0);
-  const lastCloseTimerStartTimeRef = E.useRef(0);
-  const pointerStartRef = E.useRef(null);
+  const closeTimerStartTimeRef = React$2.useRef(0);
+  const offset = React$2.useRef(0);
+  const lastCloseTimerStartTimeRef = React$2.useRef(0);
+  const pointerStartRef = React$2.useRef(null);
   const [y, x2] = position.split("-");
-  const toastsHeightBefore = E.useMemo(() => {
+  const toastsHeightBefore = React$2.useMemo(() => {
     return heights.reduce((prev, curr, reducerIndex) => {
       if (reducerIndex >= heightIndex) {
         return prev;
@@ -20114,19 +20114,19 @@ const Toast = (props) => {
   const isDocumentHidden = useIsDocumentHidden();
   const invert = toast2.invert || ToasterInvert;
   const disabled = toastType === "loading";
-  offset.current = E.useMemo(() => heightIndex * gap + toastsHeightBefore, [
+  offset.current = React$2.useMemo(() => heightIndex * gap + toastsHeightBefore, [
     heightIndex,
     toastsHeightBefore
   ]);
-  E.useEffect(() => {
+  React$2.useEffect(() => {
     remainingTime.current = duration;
   }, [
     duration
   ]);
-  E.useEffect(() => {
+  React$2.useEffect(() => {
     setMounted(true);
   }, []);
-  E.useEffect(() => {
+  React$2.useEffect(() => {
     const toastNode = toastRef.current;
     if (toastNode) {
       const height = toastNode.getBoundingClientRect().height;
@@ -20145,7 +20145,7 @@ const Toast = (props) => {
     setHeights,
     toast2.id
   ]);
-  E.useLayoutEffect(() => {
+  React$2.useLayoutEffect(() => {
     if (!mounted) return;
     const toastNode = toastRef.current;
     const originalHeight = toastNode.style.height;
@@ -20181,7 +20181,7 @@ const Toast = (props) => {
     toast2.action,
     toast2.cancel
   ]);
-  const deleteToast = E.useCallback(() => {
+  const deleteToast = React$2.useCallback(() => {
     setRemoved(true);
     setOffsetBeforeRemove(offset.current);
     setHeights((h) => h.filter((height) => height.toastId !== toast2.id));
@@ -20194,7 +20194,7 @@ const Toast = (props) => {
     setHeights,
     offset
   ]);
-  E.useEffect(() => {
+  React$2.useEffect(() => {
     if (toast2.promise && toastType === "loading" || toast2.duration === Infinity || toast2.type === "loading") return;
     let timeoutId;
     const pauseTimer = () => {
@@ -20226,7 +20226,7 @@ const Toast = (props) => {
     isDocumentHidden,
     deleteToast
   ]);
-  E.useEffect(() => {
+  React$2.useEffect(() => {
     if (toast2.delete) {
       deleteToast();
       toast2.onDismiss == null ? void 0 : toast2.onDismiss.call(toast2, toast2);
@@ -20239,19 +20239,19 @@ const Toast = (props) => {
     var _toast_classNames9;
     if (icons == null ? void 0 : icons.loading) {
       var _toast_classNames12;
-      return /* @__PURE__ */ E.createElement("div", {
+      return /* @__PURE__ */ React$2.createElement("div", {
         className: cn$1(classNames == null ? void 0 : classNames.loader, toast2 == null ? void 0 : (_toast_classNames12 = toast2.classNames) == null ? void 0 : _toast_classNames12.loader, "sonner-loader"),
         "data-visible": toastType === "loading"
       }, icons.loading);
     }
-    return /* @__PURE__ */ E.createElement(Loader, {
+    return /* @__PURE__ */ React$2.createElement(Loader, {
       className: cn$1(classNames == null ? void 0 : classNames.loader, toast2 == null ? void 0 : (_toast_classNames9 = toast2.classNames) == null ? void 0 : _toast_classNames9.loader),
       visible: toastType === "loading"
     });
   }
   const icon = toast2.icon || (icons == null ? void 0 : icons[toastType]) || getAsset(toastType);
   var _toast_richColors, _icons_close;
-  return /* @__PURE__ */ E.createElement("li", {
+  return /* @__PURE__ */ React$2.createElement("li", {
     tabIndex: 0,
     ref: toastRef,
     className: cn$1(className, toastClassname, classNames == null ? void 0 : classNames.toast, toast2 == null ? void 0 : (_toast_classNames = toast2.classNames) == null ? void 0 : _toast_classNames.toast, classNames == null ? void 0 : classNames.default, classNames == null ? void 0 : classNames[toastType], toast2 == null ? void 0 : (_toast_classNames1 = toast2.classNames) == null ? void 0 : _toast_classNames1[toastType]),
@@ -20376,7 +20376,7 @@ const Toast = (props) => {
       (_toastRef_current = toastRef.current) == null ? void 0 : _toastRef_current.style.setProperty("--swipe-amount-x", `${swipeAmount.x}px`);
       (_toastRef_current1 = toastRef.current) == null ? void 0 : _toastRef_current1.style.setProperty("--swipe-amount-y", `${swipeAmount.y}px`);
     }
-  }, closeButton && !toast2.jsx && toastType !== "loading" ? /* @__PURE__ */ E.createElement("button", {
+  }, closeButton && !toast2.jsx && toastType !== "loading" ? /* @__PURE__ */ React$2.createElement("button", {
     "aria-label": closeButtonAriaLabel,
     "data-disabled": disabled,
     "data-close-button": true,
@@ -20386,19 +20386,19 @@ const Toast = (props) => {
       toast2.onDismiss == null ? void 0 : toast2.onDismiss.call(toast2, toast2);
     },
     className: cn$1(classNames == null ? void 0 : classNames.closeButton, toast2 == null ? void 0 : (_toast_classNames2 = toast2.classNames) == null ? void 0 : _toast_classNames2.closeButton)
-  }, (_icons_close = icons == null ? void 0 : icons.close) != null ? _icons_close : CloseIcon) : null, (toastType || toast2.icon || toast2.promise) && toast2.icon !== null && ((icons == null ? void 0 : icons[toastType]) !== null || toast2.icon) ? /* @__PURE__ */ E.createElement("div", {
+  }, (_icons_close = icons == null ? void 0 : icons.close) != null ? _icons_close : CloseIcon) : null, (toastType || toast2.icon || toast2.promise) && toast2.icon !== null && ((icons == null ? void 0 : icons[toastType]) !== null || toast2.icon) ? /* @__PURE__ */ React$2.createElement("div", {
     "data-icon": "",
     className: cn$1(classNames == null ? void 0 : classNames.icon, toast2 == null ? void 0 : (_toast_classNames3 = toast2.classNames) == null ? void 0 : _toast_classNames3.icon)
-  }, toast2.promise || toast2.type === "loading" && !toast2.icon ? toast2.icon || getLoadingIcon() : null, toast2.type !== "loading" ? icon : null) : null, /* @__PURE__ */ E.createElement("div", {
+  }, toast2.promise || toast2.type === "loading" && !toast2.icon ? toast2.icon || getLoadingIcon() : null, toast2.type !== "loading" ? icon : null) : null, /* @__PURE__ */ React$2.createElement("div", {
     "data-content": "",
     className: cn$1(classNames == null ? void 0 : classNames.content, toast2 == null ? void 0 : (_toast_classNames4 = toast2.classNames) == null ? void 0 : _toast_classNames4.content)
-  }, /* @__PURE__ */ E.createElement("div", {
+  }, /* @__PURE__ */ React$2.createElement("div", {
     "data-title": "",
     className: cn$1(classNames == null ? void 0 : classNames.title, toast2 == null ? void 0 : (_toast_classNames5 = toast2.classNames) == null ? void 0 : _toast_classNames5.title)
-  }, toast2.jsx ? toast2.jsx : typeof toast2.title === "function" ? toast2.title() : toast2.title), toast2.description ? /* @__PURE__ */ E.createElement("div", {
+  }, toast2.jsx ? toast2.jsx : typeof toast2.title === "function" ? toast2.title() : toast2.title), toast2.description ? /* @__PURE__ */ React$2.createElement("div", {
     "data-description": "",
     className: cn$1(descriptionClassName, toastDescriptionClassname, classNames == null ? void 0 : classNames.description, toast2 == null ? void 0 : (_toast_classNames6 = toast2.classNames) == null ? void 0 : _toast_classNames6.description)
-  }, typeof toast2.description === "function" ? toast2.description() : toast2.description) : null), /* @__PURE__ */ E.isValidElement(toast2.cancel) ? toast2.cancel : toast2.cancel && isAction(toast2.cancel) ? /* @__PURE__ */ E.createElement("button", {
+  }, typeof toast2.description === "function" ? toast2.description() : toast2.description) : null), /* @__PURE__ */ React$2.isValidElement(toast2.cancel) ? toast2.cancel : toast2.cancel && isAction(toast2.cancel) ? /* @__PURE__ */ React$2.createElement("button", {
     "data-button": true,
     "data-cancel": true,
     style: toast2.cancelButtonStyle || cancelButtonStyle,
@@ -20409,7 +20409,7 @@ const Toast = (props) => {
       deleteToast();
     },
     className: cn$1(classNames == null ? void 0 : classNames.cancelButton, toast2 == null ? void 0 : (_toast_classNames7 = toast2.classNames) == null ? void 0 : _toast_classNames7.cancelButton)
-  }, toast2.cancel.label) : null, /* @__PURE__ */ E.isValidElement(toast2.action) ? toast2.action : toast2.action && isAction(toast2.action) ? /* @__PURE__ */ E.createElement("button", {
+  }, toast2.cancel.label) : null, /* @__PURE__ */ React$2.isValidElement(toast2.action) ? toast2.action : toast2.action && isAction(toast2.action) ? /* @__PURE__ */ React$2.createElement("button", {
     "data-button": true,
     "data-action": true,
     style: toast2.actionButtonStyle || actionButtonStyle,
@@ -20471,13 +20471,13 @@ function assignOffset(defaultOffset, mobileOffset) {
   });
   return styles;
 }
-const Toaster = /* @__PURE__ */ E.forwardRef(function Toaster2(props, ref) {
+const Toaster = /* @__PURE__ */ React$2.forwardRef(function Toaster2(props, ref) {
   const { id, invert, position = "bottom-right", hotkey = [
     "altKey",
     "KeyT"
   ], expand, closeButton, className, offset, mobileOffset, theme = "light", richColors, duration, style: style2, visibleToasts = VISIBLE_TOASTS_AMOUNT, toastOptions, dir = getDocumentDirection(), gap = GAP, icons, containerAriaLabel = "Notifications" } = props;
-  const [toasts, setToasts] = E.useState([]);
-  const filteredToasts = E.useMemo(() => {
+  const [toasts, setToasts] = React$2.useState([]);
+  const filteredToasts = React$2.useMemo(() => {
     if (id) {
       return toasts.filter((toast2) => toast2.toasterId === id);
     }
@@ -20486,7 +20486,7 @@ const Toaster = /* @__PURE__ */ E.forwardRef(function Toaster2(props, ref) {
     toasts,
     id
   ]);
-  const possiblePositions = E.useMemo(() => {
+  const possiblePositions = React$2.useMemo(() => {
     return Array.from(new Set([
       position
     ].concat(filteredToasts.filter((toast2) => toast2.position).map((toast2) => toast2.position))));
@@ -20494,15 +20494,15 @@ const Toaster = /* @__PURE__ */ E.forwardRef(function Toaster2(props, ref) {
     filteredToasts,
     position
   ]);
-  const [heights, setHeights] = E.useState([]);
-  const [expanded, setExpanded] = E.useState(false);
-  const [interacting, setInteracting] = E.useState(false);
-  const [actualTheme, setActualTheme] = E.useState(theme !== "system" ? theme : typeof window !== "undefined" ? window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light" : "light");
-  const listRef = E.useRef(null);
+  const [heights, setHeights] = React$2.useState([]);
+  const [expanded, setExpanded] = React$2.useState(false);
+  const [interacting, setInteracting] = React$2.useState(false);
+  const [actualTheme, setActualTheme] = React$2.useState(theme !== "system" ? theme : typeof window !== "undefined" ? window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light" : "light");
+  const listRef = React$2.useRef(null);
   const hotkeyLabel = hotkey.join("+").replace(/Key/g, "").replace(/Digit/g, "");
-  const lastFocusedElementRef = E.useRef(null);
-  const isFocusWithinRef = E.useRef(false);
-  const removeToast = E.useCallback((toastToRemove) => {
+  const lastFocusedElementRef = React$2.useRef(null);
+  const isFocusWithinRef = React$2.useRef(false);
+  const removeToast = React$2.useCallback((toastToRemove) => {
     setToasts((toasts2) => {
       var _toasts_find;
       if (!((_toasts_find = toasts2.find((toast2) => toast2.id === toastToRemove.id)) == null ? void 0 : _toasts_find.delete)) {
@@ -20511,7 +20511,7 @@ const Toaster = /* @__PURE__ */ E.forwardRef(function Toaster2(props, ref) {
       return toasts2.filter(({ id: id2 }) => id2 !== toastToRemove.id);
     });
   }, []);
-  E.useEffect(() => {
+  React$2.useEffect(() => {
     return ToastState.subscribe((toast2) => {
       if (toast2.dismiss) {
         requestAnimationFrame(() => {
@@ -20547,7 +20547,7 @@ const Toaster = /* @__PURE__ */ E.forwardRef(function Toaster2(props, ref) {
   }, [
     toasts
   ]);
-  E.useEffect(() => {
+  React$2.useEffect(() => {
     if (theme !== "system") {
       setActualTheme(theme);
       return;
@@ -20585,14 +20585,14 @@ const Toaster = /* @__PURE__ */ E.forwardRef(function Toaster2(props, ref) {
   }, [
     theme
   ]);
-  E.useEffect(() => {
+  React$2.useEffect(() => {
     if (toasts.length <= 1) {
       setExpanded(false);
     }
   }, [
     toasts
   ]);
-  E.useEffect(() => {
+  React$2.useEffect(() => {
     const handleKeyDown = (event) => {
       var _listRef_current;
       const isHotkeyPressed = hotkey.every((key) => event[key] || event.code === key);
@@ -20610,7 +20610,7 @@ const Toaster = /* @__PURE__ */ E.forwardRef(function Toaster2(props, ref) {
   }, [
     hotkey
   ]);
-  E.useEffect(() => {
+  React$2.useEffect(() => {
     if (listRef.current) {
       return () => {
         if (lastFocusedElementRef.current) {
@@ -20627,7 +20627,7 @@ const Toaster = /* @__PURE__ */ E.forwardRef(function Toaster2(props, ref) {
   ]);
   return (
     // Remove item from normal navigation flow, only available via hotkey
-    /* @__PURE__ */ E.createElement("section", {
+    /* @__PURE__ */ React$2.createElement("section", {
       ref,
       "aria-label": `${containerAriaLabel} ${hotkeyLabel}`,
       tabIndex: -1,
@@ -20639,7 +20639,7 @@ const Toaster = /* @__PURE__ */ E.forwardRef(function Toaster2(props, ref) {
       var _heights_;
       const [y, x2] = position2.split("-");
       if (!filteredToasts.length) return null;
-      return /* @__PURE__ */ E.createElement("ol", {
+      return /* @__PURE__ */ React$2.createElement("ol", {
         key: position2,
         dir: dir === "auto" ? getDocumentDirection() : dir,
         tabIndex: -1,
@@ -20691,7 +20691,7 @@ const Toaster = /* @__PURE__ */ E.forwardRef(function Toaster2(props, ref) {
         onPointerUp: () => setInteracting(false)
       }, filteredToasts.filter((toast2) => !toast2.position && index2 === 0 || toast2.position === position2).map((toast2, index3) => {
         var _toastOptions_duration, _toastOptions_closeButton;
-        return /* @__PURE__ */ E.createElement(Toast, {
+        return /* @__PURE__ */ React$2.createElement(Toast, {
           key: toast2.id,
           icons,
           index: index3,
@@ -20780,16 +20780,6 @@ const KEYBOARD_SHORTCUTS = [
   { keys: ["?"], description: "Show keyboard shortcuts" },
   { keys: ["Esc"], description: "Close modal" }
 ];
-function RootLayout() {
-  useGlobalShortcuts();
-  reactExports.useEffect(() => {
-    uiBackendBridge.initialize();
-    return () => {
-      uiBackendBridge.cleanup();
-    };
-  }, []);
-  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "min-h-screen bg-background text-foreground", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Outlet, {}) });
-}
 function r(e) {
   var t, f, n = "";
   if ("string" == typeof e || "number" == typeof e) n += e;
@@ -23813,45 +23803,6 @@ const twMerge = /* @__PURE__ */ createTailwindMerge(getDefaultConfig);
 function cn(...inputs) {
   return twMerge(clsx(inputs));
 }
-const Card = reactExports.forwardRef(
-  ({ className, ...props }, ref) => /* @__PURE__ */ jsxRuntimeExports.jsx(
-    "div",
-    {
-      ref,
-      className: cn(
-        "rounded-lg border bg-card text-card-foreground shadow-sm",
-        className
-      ),
-      ...props
-    }
-  )
-);
-Card.displayName = "Card";
-const CardHeader = reactExports.forwardRef(
-  ({ className, ...props }, ref) => /* @__PURE__ */ jsxRuntimeExports.jsx("div", { ref, className: cn("flex flex-col space-y-1.5 p-6", className), ...props })
-);
-CardHeader.displayName = "CardHeader";
-const CardTitle = reactExports.forwardRef(
-  ({ className, ...props }, ref) => /* @__PURE__ */ jsxRuntimeExports.jsx(
-    "h3",
-    {
-      ref,
-      className: cn("text-2xl font-semibold leading-none tracking-tight", className),
-      ...props
-    }
-  )
-);
-CardTitle.displayName = "CardTitle";
-const CardDescription = reactExports.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsxRuntimeExports.jsx("p", { ref, className: cn("text-sm text-muted-foreground", className), ...props }));
-CardDescription.displayName = "CardDescription";
-const CardContent = reactExports.forwardRef(
-  ({ className, ...props }, ref) => /* @__PURE__ */ jsxRuntimeExports.jsx("div", { ref, className: cn("p-6 pt-0", className), ...props })
-);
-CardContent.displayName = "CardContent";
-const CardFooter = reactExports.forwardRef(
-  ({ className, ...props }, ref) => /* @__PURE__ */ jsxRuntimeExports.jsx("div", { ref, className: cn("flex items-center p-6 pt-0", className), ...props })
-);
-CardFooter.displayName = "CardFooter";
 /**
  * @license lucide-react v0.562.0 - ISC
  *
@@ -23957,13 +23908,133 @@ const createLucideIcon = (iconName, iconNode) => {
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$4 = [
+const __iconNode$e = [
+  ["path", { d: "M12 8V4H8", key: "hb8ula" }],
+  ["rect", { width: "16", height: "12", x: "4", y: "8", rx: "2", key: "enze0r" }],
+  ["path", { d: "M2 14h2", key: "vft8re" }],
+  ["path", { d: "M20 14h2", key: "4cs60a" }],
+  ["path", { d: "M15 13v2", key: "1xurst" }],
+  ["path", { d: "M9 13v2", key: "rq6x2g" }]
+];
+const Bot = createLucideIcon("bot", __iconNode$e);
+/**
+ * @license lucide-react v0.562.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$d = [["path", { d: "m6 9 6 6 6-6", key: "qrunsl" }]];
+const ChevronDown = createLucideIcon("chevron-down", __iconNode$d);
+/**
+ * @license lucide-react v0.562.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$c = [["path", { d: "m15 18-6-6 6-6", key: "1wnfg3" }]];
+const ChevronLeft = createLucideIcon("chevron-left", __iconNode$c);
+/**
+ * @license lucide-react v0.562.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$b = [["path", { d: "m9 18 6-6-6-6", key: "mthhwq" }]];
+const ChevronRight = createLucideIcon("chevron-right", __iconNode$b);
+/**
+ * @license lucide-react v0.562.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$a = [
   ["line", { x1: "6", x2: "6", y1: "3", y2: "15", key: "17qcm7" }],
   ["circle", { cx: "18", cy: "6", r: "3", key: "1h7g24" }],
   ["circle", { cx: "6", cy: "18", r: "3", key: "fqmcym" }],
   ["path", { d: "M18 9a9 9 0 0 1-9 9", key: "n2h4wq" }]
 ];
-const GitBranch = createLucideIcon("git-branch", __iconNode$4);
+const GitBranch = createLucideIcon("git-branch", __iconNode$a);
+/**
+ * @license lucide-react v0.562.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$9 = [
+  ["rect", { width: "7", height: "9", x: "3", y: "3", rx: "1", key: "10lvy0" }],
+  ["rect", { width: "7", height: "5", x: "14", y: "3", rx: "1", key: "16une8" }],
+  ["rect", { width: "7", height: "9", x: "14", y: "12", rx: "1", key: "1hutg5" }],
+  ["rect", { width: "7", height: "5", x: "3", y: "16", rx: "1", key: "ldoo1y" }]
+];
+const LayoutDashboard = createLucideIcon("layout-dashboard", __iconNode$9);
+/**
+ * @license lucide-react v0.562.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$8 = [
+  ["path", { d: "M13 5h8", key: "a7qcls" }],
+  ["path", { d: "M13 12h8", key: "h98zly" }],
+  ["path", { d: "M13 19h8", key: "c3s6r1" }],
+  ["path", { d: "m3 17 2 2 4-4", key: "1jhpwq" }],
+  ["rect", { x: "3", y: "4", width: "6", height: "6", rx: "1", key: "cif1o7" }]
+];
+const ListTodo = createLucideIcon("list-todo", __iconNode$8);
+/**
+ * @license lucide-react v0.562.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$7 = [["path", { d: "M21 12a9 9 0 1 1-6.219-8.56", key: "13zald" }]];
+const LoaderCircle = createLucideIcon("loader-circle", __iconNode$7);
+/**
+ * @license lucide-react v0.562.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$6 = [
+  [
+    "path",
+    {
+      d: "M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z",
+      key: "18887p"
+    }
+  ]
+];
+const MessageSquare = createLucideIcon("message-square", __iconNode$6);
+/**
+ * @license lucide-react v0.562.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$5 = [
+  ["path", { d: "M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8", key: "v9h5vc" }],
+  ["path", { d: "M21 3v5h-5", key: "1q7to0" }],
+  ["path", { d: "M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16", key: "3uifl3" }],
+  ["path", { d: "M8 16H3v5", key: "1cv678" }]
+];
+const RefreshCw = createLucideIcon("refresh-cw", __iconNode$5);
+/**
+ * @license lucide-react v0.562.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$4 = [
+  [
+    "path",
+    {
+      d: "M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915",
+      key: "1i5ecw"
+    }
+  ],
+  ["circle", { cx: "12", cy: "12", r: "3", key: "1v7zrd" }]
+];
+const Settings = createLucideIcon("settings", __iconNode$4);
 /**
  * @license lucide-react v0.562.0 - ISC
  *
@@ -23971,19 +24042,6 @@ const GitBranch = createLucideIcon("git-branch", __iconNode$4);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$3 = [
-  ["path", { d: "M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8", key: "v9h5vc" }],
-  ["path", { d: "M21 3v5h-5", key: "1q7to0" }],
-  ["path", { d: "M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16", key: "3uifl3" }],
-  ["path", { d: "M8 16H3v5", key: "1cv678" }]
-];
-const RefreshCw = createLucideIcon("refresh-cw", __iconNode$3);
-/**
- * @license lucide-react v0.562.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode$2 = [
   [
     "path",
     {
@@ -23995,7 +24053,18 @@ const __iconNode$2 = [
   ["path", { d: "M22 4h-4", key: "gwowj6" }],
   ["circle", { cx: "4", cy: "20", r: "2", key: "6kqj1y" }]
 ];
-const Sparkles = createLucideIcon("sparkles", __iconNode$2);
+const Sparkles = createLucideIcon("sparkles", __iconNode$3);
+/**
+ * @license lucide-react v0.562.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$2 = [
+  ["path", { d: "M12 19h8", key: "baeox8" }],
+  ["path", { d: "m4 17 6-6-6-6", key: "1yngyt" }]
+];
+const Terminal = createLucideIcon("terminal", __iconNode$2);
 /**
  * @license lucide-react v0.562.0 - ISC
  *
@@ -24025,6 +24094,396 @@ const __iconNode = [
   ["path", { d: "m6 6 12 12", key: "d8bk6v" }]
 ];
 const X = createLucideIcon("x", __iconNode);
+const SIDEBAR_WIDTH_EXPANDED = 240;
+const SIDEBAR_WIDTH_COLLAPSED = 64;
+const badgeVariantClasses = {
+  default: "bg-bg-hover text-text-primary",
+  success: "bg-accent-success/20 text-accent-success",
+  warning: "bg-accent-warning/20 text-accent-warning",
+  error: "bg-accent-error/20 text-accent-error",
+  info: "bg-accent-info/20 text-accent-info",
+  purple: "bg-accent-primary/20 text-accent-primary"
+};
+function SidebarItemComponent({
+  item,
+  collapsed = false,
+  level = 0,
+  onItemClick
+}) {
+  const location = useLocation();
+  const [isExpanded, setIsExpanded] = reactExports.useState(false);
+  const isActive = item.href ? location.pathname === item.href || location.pathname.startsWith(item.href + "/") : item.active;
+  const hasChildren = item.children && item.children.length > 0;
+  const handleClick = reactExports.useCallback(
+    (e) => {
+      if (item.disabled) {
+        e.preventDefault();
+        return;
+      }
+      if (hasChildren && !collapsed) {
+        e.preventDefault();
+        setIsExpanded((prev) => !prev);
+      }
+      if (item.onClick) {
+        item.onClick();
+      }
+      if (onItemClick) {
+        onItemClick(item.id);
+      }
+    },
+    [item, hasChildren, collapsed, onItemClick]
+  );
+  const Icon2 = item.icon;
+  const content = /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "span",
+      {
+        className: cn(
+          "flex items-center justify-center shrink-0",
+          collapsed ? "w-10 h-10" : "w-8 h-8"
+        ),
+        children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+          Icon2,
+          {
+            className: cn(
+              "transition-colors",
+              collapsed ? "w-5 h-5" : "w-4 h-4",
+              isActive ? "text-accent-primary" : "text-text-secondary group-hover:text-text-primary"
+            ),
+            strokeWidth: 1.5
+          }
+        )
+      }
+    ),
+    !collapsed && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "span",
+        {
+          className: cn(
+            "flex-1 text-sm font-medium truncate transition-colors",
+            isActive ? "text-text-primary" : "text-text-secondary group-hover:text-text-primary"
+          ),
+          children: item.label
+        }
+      ),
+      item.badge !== void 0 && /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "span",
+        {
+          className: cn(
+            "px-1.5 py-0.5 text-xs font-medium rounded-md",
+            badgeVariantClasses[item.badgeVariant || "default"]
+          ),
+          children: item.badge
+        }
+      ),
+      hasChildren && /* @__PURE__ */ jsxRuntimeExports.jsx(
+        ChevronDown,
+        {
+          className: cn(
+            "w-4 h-4 text-text-tertiary transition-transform",
+            isExpanded && "rotate-180"
+          ),
+          strokeWidth: 1.5
+        }
+      )
+    ] })
+  ] });
+  const baseClassName = cn(
+    "group flex items-center gap-2 rounded-md transition-all duration-normal",
+    collapsed ? "justify-center p-2" : "px-3 py-2",
+    level > 0 && !collapsed && "ml-6",
+    isActive && "bg-accent-primary/10",
+    !isActive && "hover:bg-bg-hover",
+    item.disabled && "opacity-50 cursor-not-allowed",
+    !item.disabled && "cursor-pointer"
+  );
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+    item.href && !hasChildren ? /* @__PURE__ */ jsxRuntimeExports.jsx(
+      Link,
+      {
+        to: item.href,
+        className: baseClassName,
+        onClick: handleClick,
+        title: collapsed ? item.label : void 0,
+        "data-testid": `sidebar-item-${item.id}`,
+        children: content
+      }
+    ) : /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "button",
+      {
+        type: "button",
+        className: cn(baseClassName, "w-full text-left"),
+        onClick: handleClick,
+        disabled: item.disabled,
+        title: collapsed ? item.label : void 0,
+        "data-testid": `sidebar-item-${item.id}`,
+        children: content
+      }
+    ),
+    hasChildren && !collapsed && isExpanded && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "mt-1 space-y-1", children: item.children?.map((child) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+      SidebarItemComponent,
+      {
+        item: child,
+        collapsed,
+        level: level + 1,
+        onItemClick
+      },
+      child.id
+    )) })
+  ] });
+}
+function SidebarNav({
+  items,
+  activeId,
+  onItemClick,
+  collapsed = false
+}) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("nav", { className: "flex flex-col gap-1 px-2", "data-testid": "sidebar-nav", children: items.map((item) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+    SidebarItemComponent,
+    {
+      item: { ...item, active: item.id === activeId || item.active },
+      collapsed,
+      onItemClick
+    },
+    item.id
+  )) });
+}
+function SidebarLogo({ collapsed = false }) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    Link,
+    {
+      to: "/",
+      className: "flex items-center gap-3 px-4 py-3 transition-colors hover:bg-bg-hover rounded-lg mx-2",
+      "data-testid": "sidebar-logo",
+      children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-8 h-8 rounded-lg bg-gradient-to-br from-accent-primary to-accent-secondary flex items-center justify-center", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Sparkles, { className: "w-5 h-5 text-white", strokeWidth: 1.5 }) }),
+        !collapsed && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-lg font-semibold text-text-primary tracking-tight", children: "Nexus" })
+      ]
+    }
+  );
+}
+function SidebarToggle({ collapsed, onToggle }) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(
+    "button",
+    {
+      type: "button",
+      onClick: onToggle,
+      className: cn(
+        "flex items-center justify-center w-8 h-8 rounded-md",
+        "text-text-secondary hover:text-text-primary",
+        "hover:bg-bg-hover transition-colors",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary"
+      ),
+      "aria-label": collapsed ? "Expand sidebar" : "Collapse sidebar",
+      "data-testid": "sidebar-toggle",
+      children: collapsed ? /* @__PURE__ */ jsxRuntimeExports.jsx(ChevronRight, { className: "w-4 h-4", strokeWidth: 1.5 }) : /* @__PURE__ */ jsxRuntimeExports.jsx(ChevronLeft, { className: "w-4 h-4", strokeWidth: 1.5 })
+    }
+  );
+}
+function SidebarSection({
+  title,
+  children,
+  collapsed = false,
+  className
+}) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: cn("space-y-1", className), children: [
+    title && !collapsed && /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "px-4 py-2 text-xs font-semibold text-text-tertiary uppercase tracking-wider", children: title }),
+    children
+  ] });
+}
+function Sidebar({
+  collapsed = false,
+  onToggle,
+  children,
+  className,
+  header,
+  footer
+}) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    "aside",
+    {
+      className: cn(
+        "flex flex-col bg-bg-card border-r border-border-default",
+        "transition-all duration-normal ease-out",
+        "h-screen sticky top-0",
+        collapsed ? "w-16" : "w-60",
+        className
+      ),
+      style: {
+        width: collapsed ? SIDEBAR_WIDTH_COLLAPSED : SIDEBAR_WIDTH_EXPANDED
+      },
+      "data-testid": "sidebar",
+      "data-collapsed": collapsed,
+      children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between py-2 border-b border-border-default", children: [
+          header || /* @__PURE__ */ jsxRuntimeExports.jsx(SidebarLogo, { collapsed }),
+          onToggle && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: cn("pr-2", collapsed && "absolute right-0 top-3"), children: /* @__PURE__ */ jsxRuntimeExports.jsx(SidebarToggle, { collapsed, onToggle }) })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex-1 overflow-y-auto py-4", children }),
+        footer && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "border-t border-border-default py-2", children: footer })
+      ]
+    }
+  );
+}
+const defaultNavigationItems = [
+  {
+    id: "dashboard",
+    label: "Dashboard",
+    icon: LayoutDashboard,
+    href: "/dashboard"
+  },
+  {
+    id: "interview",
+    label: "Interview",
+    icon: MessageSquare,
+    href: "/genesis"
+  },
+  {
+    id: "tasks",
+    label: "Tasks",
+    icon: ListTodo,
+    href: "/evolution"
+  },
+  {
+    id: "agents",
+    label: "Agents",
+    icon: Bot,
+    href: "/agents"
+  },
+  {
+    id: "execution",
+    label: "Execution",
+    icon: Terminal,
+    href: "/execution"
+  }
+];
+const settingsNavigationItems = [
+  {
+    id: "settings",
+    label: "Settings",
+    icon: Settings,
+    href: "/settings"
+  }
+];
+const SIDEBAR_STATE_KEY = "nexus-sidebar-collapsed";
+const PAGES_WITH_SIDEBAR = [
+  "/dashboard",
+  "/genesis",
+  "/evolution",
+  "/agents",
+  "/execution",
+  "/settings"
+];
+const FULL_SCREEN_PAGES = ["/"];
+function RootLayout() {
+  const location = useLocation();
+  useGlobalShortcuts();
+  const [sidebarCollapsed, setSidebarCollapsed] = reactExports.useState(() => {
+    try {
+      const saved = localStorage.getItem(SIDEBAR_STATE_KEY);
+      return saved === "true";
+    } catch {
+      return false;
+    }
+  });
+  reactExports.useEffect(() => {
+    try {
+      localStorage.setItem(SIDEBAR_STATE_KEY, String(sidebarCollapsed));
+    } catch {
+    }
+  }, [sidebarCollapsed]);
+  const handleSidebarToggle = reactExports.useCallback(() => {
+    setSidebarCollapsed((prev) => !prev);
+  }, []);
+  reactExports.useEffect(() => {
+    uiBackendBridge.initialize();
+    return () => {
+      uiBackendBridge.cleanup();
+    };
+  }, []);
+  const showSidebar = PAGES_WITH_SIDEBAR.some((path) => location.pathname.startsWith(path)) && !FULL_SCREEN_PAGES.includes(location.pathname);
+  if (!showSidebar) {
+    return /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "div",
+      {
+        className: "min-h-screen bg-bg-dark text-text-primary",
+        "data-testid": "root-layout",
+        children: /* @__PURE__ */ jsxRuntimeExports.jsx(Outlet, {})
+      }
+    );
+  }
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    "div",
+    {
+      className: "flex min-h-screen bg-bg-dark text-text-primary",
+      "data-testid": "root-layout",
+      children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          Sidebar,
+          {
+            collapsed: sidebarCollapsed,
+            onToggle: handleSidebarToggle,
+            "data-testid": "app-sidebar",
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(SidebarSection, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(SidebarNav, { items: defaultNavigationItems, collapsed: sidebarCollapsed }) }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(SidebarSection, { className: "mt-auto pt-4 border-t border-border-default", children: /* @__PURE__ */ jsxRuntimeExports.jsx(SidebarNav, { items: settingsNavigationItems, collapsed: sidebarCollapsed }) })
+            ]
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "div",
+          {
+            className: "flex flex-col flex-1 min-w-0",
+            style: {
+              width: `calc(100% - ${sidebarCollapsed ? SIDEBAR_WIDTH_COLLAPSED : SIDEBAR_WIDTH_EXPANDED}px)`
+            },
+            "data-testid": "main-content-area",
+            children: /* @__PURE__ */ jsxRuntimeExports.jsx(Outlet, {})
+          }
+        )
+      ]
+    }
+  );
+}
+const Card = reactExports.forwardRef(
+  ({ className, ...props }, ref) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+    "div",
+    {
+      ref,
+      className: cn(
+        "rounded-lg border bg-card text-card-foreground shadow-sm",
+        className
+      ),
+      ...props
+    }
+  )
+);
+Card.displayName = "Card";
+const CardHeader = reactExports.forwardRef(
+  ({ className, ...props }, ref) => /* @__PURE__ */ jsxRuntimeExports.jsx("div", { ref, className: cn("flex flex-col space-y-1.5 p-6", className), ...props })
+);
+CardHeader.displayName = "CardHeader";
+const CardTitle = reactExports.forwardRef(
+  ({ className, ...props }, ref) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+    "h3",
+    {
+      ref,
+      className: cn("text-2xl font-semibold leading-none tracking-tight", className),
+      ...props
+    }
+  )
+);
+CardTitle.displayName = "CardTitle";
+const CardDescription = reactExports.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsxRuntimeExports.jsx("p", { ref, className: cn("text-sm text-muted-foreground", className), ...props }));
+CardDescription.displayName = "CardDescription";
+const CardContent = reactExports.forwardRef(
+  ({ className, ...props }, ref) => /* @__PURE__ */ jsxRuntimeExports.jsx("div", { ref, className: cn("p-6 pt-0", className), ...props })
+);
+CardContent.displayName = "CardContent";
+const CardFooter = reactExports.forwardRef(
+  ({ className, ...props }, ref) => /* @__PURE__ */ jsxRuntimeExports.jsx("div", { ref, className: cn("flex items-center p-6 pt-0", className), ...props })
+);
+CardFooter.displayName = "CardFooter";
 function ModeSelectorPage() {
   const navigate = useNavigate();
   const isLoading = useUIStore((s) => s.isLoading);
@@ -24134,7 +24593,7 @@ function useComposedRefs(...refs) {
   return reactExports.useCallback(composeRefs(...refs), refs);
 }
 var REACT_LAZY_TYPE = Symbol.for("react.lazy");
-var use = React$2[" use ".trim().toString()];
+var use = React$3[" use ".trim().toString()];
 function isPromiseLike(value) {
   return typeof value === "object" && value !== null && "then" in value;
 }
@@ -24142,15 +24601,15 @@ function isLazyComponent(element) {
   return element != null && typeof element === "object" && "$$typeof" in element && element.$$typeof === REACT_LAZY_TYPE && "_payload" in element && isPromiseLike(element._payload);
 }
 // @__NO_SIDE_EFFECTS__
-function createSlot$2(ownerName) {
-  const SlotClone = /* @__PURE__ */ createSlotClone$2(ownerName);
+function createSlot$1(ownerName) {
+  const SlotClone = /* @__PURE__ */ createSlotClone$1(ownerName);
   const Slot2 = reactExports.forwardRef((props, forwardedRef) => {
     let { children, ...slotProps } = props;
     if (isLazyComponent(children) && typeof use === "function") {
       children = use(children._payload);
     }
     const childrenArray = reactExports.Children.toArray(children);
-    const slottable = childrenArray.find(isSlottable$2);
+    const slottable = childrenArray.find(isSlottable$1);
     if (slottable) {
       const newElement = slottable.props.children;
       const newChildren = childrenArray.map((child) => {
@@ -24168,17 +24627,17 @@ function createSlot$2(ownerName) {
   Slot2.displayName = `${ownerName}.Slot`;
   return Slot2;
 }
-var Slot$1 = /* @__PURE__ */ createSlot$2("Slot");
+var Slot$1 = /* @__PURE__ */ createSlot$1("Slot");
 // @__NO_SIDE_EFFECTS__
-function createSlotClone$2(ownerName) {
+function createSlotClone$1(ownerName) {
   const SlotClone = reactExports.forwardRef((props, forwardedRef) => {
     let { children, ...slotProps } = props;
     if (isLazyComponent(children) && typeof use === "function") {
       children = use(children._payload);
     }
     if (reactExports.isValidElement(children)) {
-      const childrenRef = getElementRef$3(children);
-      const props2 = mergeProps$2(slotProps, children.props);
+      const childrenRef = getElementRef$2(children);
+      const props2 = mergeProps$1(slotProps, children.props);
       if (children.type !== reactExports.Fragment) {
         props2.ref = forwardedRef ? composeRefs(forwardedRef, childrenRef) : childrenRef;
       }
@@ -24189,11 +24648,11 @@ function createSlotClone$2(ownerName) {
   SlotClone.displayName = `${ownerName}.SlotClone`;
   return SlotClone;
 }
-var SLOTTABLE_IDENTIFIER$2 = Symbol("radix.slottable");
-function isSlottable$2(child) {
-  return reactExports.isValidElement(child) && typeof child.type === "function" && "__radixId" in child.type && child.type.__radixId === SLOTTABLE_IDENTIFIER$2;
+var SLOTTABLE_IDENTIFIER$1 = Symbol("radix.slottable");
+function isSlottable$1(child) {
+  return reactExports.isValidElement(child) && typeof child.type === "function" && "__radixId" in child.type && child.type.__radixId === SLOTTABLE_IDENTIFIER$1;
 }
-function mergeProps$2(slotProps, childProps) {
+function mergeProps$1(slotProps, childProps) {
   const overrideProps = { ...childProps };
   for (const propName in childProps) {
     const slotPropValue = slotProps[propName];
@@ -24217,7 +24676,7 @@ function mergeProps$2(slotProps, childProps) {
   }
   return { ...slotProps, ...overrideProps };
 }
-function getElementRef$3(element) {
+function getElementRef$2(element) {
   let getter = Object.getOwnPropertyDescriptor(element.props, "ref")?.get;
   let mayWarn = getter && "isReactWarning" in getter && getter.isReactWarning;
   if (mayWarn) {
@@ -24271,34 +24730,146 @@ const cva = (base, config) => (props) => {
   return cx(base, getVariantClassNames, getCompoundVariantClassNames, props === null || props === void 0 ? void 0 : props.class, props === null || props === void 0 ? void 0 : props.className);
 };
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  // Base styles
+  [
+    "inline-flex items-center justify-center gap-2 whitespace-nowrap",
+    "font-medium transition-all duration-150",
+    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
+    "focus-visible:ring-offset-[#0D1117] focus-visible:ring-[#7C3AED]",
+    "disabled:pointer-events-none disabled:opacity-50",
+    "active:scale-[0.98]",
+    "[&_svg]:pointer-events-none [&_svg]:shrink-0"
+  ].join(" "),
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90",
-        destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
-        outline: "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
-        secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
-        link: "text-primary underline-offset-4 hover:underline"
+        // Primary - Main CTA actions (Nexus Purple)
+        primary: [
+          "bg-[#7C3AED] text-white",
+          "hover:bg-[#6D28D9]",
+          "shadow-sm hover:shadow-md hover:shadow-[0_0_20px_rgba(124,58,237,0.3)]"
+        ].join(" "),
+        // Secondary - Secondary actions with border
+        secondary: [
+          "border border-[#30363D] bg-transparent",
+          "text-[#F0F6FC]",
+          "hover:bg-[#21262D] hover:border-[#6E7681]"
+        ].join(" "),
+        // Ghost - Minimal styling for tertiary actions
+        ghost: [
+          "bg-transparent text-[#8B949E]",
+          "hover:bg-[#21262D] hover:text-[#F0F6FC]"
+        ].join(" "),
+        // Danger - Destructive actions
+        danger: [
+          "bg-[#EF4444] text-white",
+          "hover:bg-[#DC2626]",
+          "shadow-sm hover:shadow-md hover:shadow-[0_0_20px_rgba(239,68,68,0.3)]"
+        ].join(" "),
+        // Success - Positive/confirmation actions
+        success: [
+          "bg-[#10B981] text-white",
+          "hover:bg-[#059669]",
+          "shadow-sm hover:shadow-md hover:shadow-[0_0_20px_rgba(16,185,129,0.3)]"
+        ].join(" "),
+        // Link - Text link style
+        link: [
+          "text-[#7C3AED] underline-offset-4",
+          "hover:underline hover:text-[#6D28D9]",
+          "p-0 h-auto"
+        ].join(" "),
+        // Outline - Similar to secondary but with accent border
+        outline: [
+          "border-2 border-[#7C3AED] bg-transparent",
+          "text-[#7C3AED]",
+          "hover:bg-[#7C3AED]/10"
+        ].join(" "),
+        // Default - for backward compatibility (maps to primary)
+        default: [
+          "bg-[#7C3AED] text-white",
+          "hover:bg-[#6D28D9]",
+          "shadow-sm hover:shadow-md"
+        ].join(" "),
+        // Destructive - alias for danger (backward compatibility)
+        destructive: [
+          "bg-[#EF4444] text-white",
+          "hover:bg-[#DC2626]",
+          "shadow-sm hover:shadow-md"
+        ].join(" ")
       },
       size: {
-        default: "h-10 px-4 py-2",
-        sm: "h-9 rounded-md px-3",
-        lg: "h-11 rounded-md px-8",
-        icon: "h-10 w-10"
+        xs: "h-7 px-2.5 text-xs rounded [&_svg]:h-3.5 [&_svg]:w-3.5",
+        sm: "h-8 px-3 text-sm rounded [&_svg]:h-4 [&_svg]:w-4",
+        md: "h-10 px-4 text-sm rounded-md [&_svg]:h-4 [&_svg]:w-4",
+        lg: "h-11 px-6 text-base rounded-md [&_svg]:h-5 [&_svg]:w-5",
+        xl: "h-12 px-8 text-base rounded-lg [&_svg]:h-5 [&_svg]:w-5",
+        icon: "h-10 w-10 rounded-md [&_svg]:h-5 [&_svg]:w-5",
+        "icon-sm": "h-8 w-8 rounded [&_svg]:h-4 [&_svg]:w-4",
+        "icon-lg": "h-12 w-12 rounded-md [&_svg]:h-6 [&_svg]:w-6",
+        // Backward compatibility
+        default: "h-10 px-4 py-2 rounded-md [&_svg]:h-4 [&_svg]:w-4"
+      },
+      fullWidth: {
+        true: "w-full",
+        false: ""
       }
     },
     defaultVariants: {
-      variant: "default",
-      size: "default"
+      variant: "primary",
+      size: "md",
+      fullWidth: false
     }
   }
 );
 const Button = reactExports.forwardRef(
-  ({ className, variant, size, asChild = false, ...props }, ref) => {
+  ({
+    className,
+    variant,
+    size,
+    fullWidth,
+    asChild = false,
+    loading = false,
+    icon,
+    iconPosition = "left",
+    disabled,
+    children,
+    ...props
+  }, ref) => {
     const Comp = asChild ? Slot$1 : "button";
-    return /* @__PURE__ */ jsxRuntimeExports.jsx(Comp, { className: cn(buttonVariants({ variant, size, className })), ref, ...props });
+    const isDisabled = disabled || loading;
+    const isIconOnly = size?.toString().startsWith("icon");
+    const iconElement = loading ? /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "animate-spin", "aria-hidden": "true" }) : icon;
+    if (isIconOnly) {
+      return /* @__PURE__ */ jsxRuntimeExports.jsx(
+        Comp,
+        {
+          className: cn(buttonVariants({ variant, size, fullWidth, className })),
+          ref,
+          disabled: isDisabled,
+          "aria-disabled": isDisabled,
+          ...props,
+          children: loading ? /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "animate-spin", "aria-hidden": "true" }) : children || icon
+        }
+      );
+    }
+    return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      Comp,
+      {
+        className: cn(buttonVariants({ variant, size, fullWidth, className })),
+        ref,
+        disabled: isDisabled,
+        "aria-disabled": isDisabled,
+        ...props,
+        children: [
+          iconElement && iconPosition === "left" && iconElement,
+          loading && !icon ? /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "animate-spin", "aria-hidden": "true" }),
+            children
+          ] }) : children,
+          iconElement && iconPosition === "right" && !loading && iconElement
+        ]
+      }
+    );
   }
 );
 Button.displayName = "Button";
@@ -24552,7 +25123,7 @@ function composeContextScopes(...scopes) {
 }
 var useLayoutEffect2 = globalThis?.document ? reactExports.useLayoutEffect : () => {
 };
-var useReactId = React$2[" useId ".trim().toString()] || (() => void 0);
+var useReactId = React$3[" useId ".trim().toString()] || (() => void 0);
 var count$1 = 0;
 function useId(deterministicId) {
   const [id, setId] = reactExports.useState(useReactId());
@@ -24561,7 +25132,7 @@ function useId(deterministicId) {
   }, [deterministicId]);
   return deterministicId || (id ? `radix-${id}` : "");
 }
-var useInsertionEffect = React$2[" useInsertionEffect ".trim().toString()] || useLayoutEffect2;
+var useInsertionEffect = React$3[" useInsertionEffect ".trim().toString()] || useLayoutEffect2;
 function useControllableState({
   prop,
   defaultProp,
@@ -24626,12 +25197,12 @@ function isFunction(value) {
   return typeof value === "function";
 }
 // @__NO_SIDE_EFFECTS__
-function createSlot$1(ownerName) {
-  const SlotClone = /* @__PURE__ */ createSlotClone$1(ownerName);
+function createSlot(ownerName) {
+  const SlotClone = /* @__PURE__ */ createSlotClone(ownerName);
   const Slot2 = reactExports.forwardRef((props, forwardedRef) => {
     const { children, ...slotProps } = props;
     const childrenArray = reactExports.Children.toArray(children);
-    const slottable = childrenArray.find(isSlottable$1);
+    const slottable = childrenArray.find(isSlottable);
     if (slottable) {
       const newElement = slottable.props.children;
       const newChildren = childrenArray.map((child) => {
@@ -24650,12 +25221,12 @@ function createSlot$1(ownerName) {
   return Slot2;
 }
 // @__NO_SIDE_EFFECTS__
-function createSlotClone$1(ownerName) {
+function createSlotClone(ownerName) {
   const SlotClone = reactExports.forwardRef((props, forwardedRef) => {
     const { children, ...slotProps } = props;
     if (reactExports.isValidElement(children)) {
-      const childrenRef = getElementRef$2(children);
-      const props2 = mergeProps$1(slotProps, children.props);
+      const childrenRef = getElementRef$1(children);
+      const props2 = mergeProps(slotProps, children.props);
       if (children.type !== reactExports.Fragment) {
         props2.ref = forwardedRef ? composeRefs(forwardedRef, childrenRef) : childrenRef;
       }
@@ -24666,11 +25237,11 @@ function createSlotClone$1(ownerName) {
   SlotClone.displayName = `${ownerName}.SlotClone`;
   return SlotClone;
 }
-var SLOTTABLE_IDENTIFIER$1 = Symbol("radix.slottable");
-function isSlottable$1(child) {
-  return reactExports.isValidElement(child) && typeof child.type === "function" && "__radixId" in child.type && child.type.__radixId === SLOTTABLE_IDENTIFIER$1;
+var SLOTTABLE_IDENTIFIER = Symbol("radix.slottable");
+function isSlottable(child) {
+  return reactExports.isValidElement(child) && typeof child.type === "function" && "__radixId" in child.type && child.type.__radixId === SLOTTABLE_IDENTIFIER;
 }
-function mergeProps$1(slotProps, childProps) {
+function mergeProps(slotProps, childProps) {
   const overrideProps = { ...childProps };
   for (const propName in childProps) {
     const slotPropValue = slotProps[propName];
@@ -24694,7 +25265,7 @@ function mergeProps$1(slotProps, childProps) {
   }
   return { ...slotProps, ...overrideProps };
 }
-function getElementRef$2(element) {
+function getElementRef$1(element) {
   let getter = Object.getOwnPropertyDescriptor(element.props, "ref")?.get;
   let mayWarn = getter && "isReactWarning" in getter && getter.isReactWarning;
   if (mayWarn) {
@@ -24727,7 +25298,7 @@ var NODES = [
   "ul"
 ];
 var Primitive = NODES.reduce((primitive, node) => {
-  const Slot2 = /* @__PURE__ */ createSlot$1(`Primitive.${node}`);
+  const Slot2 = /* @__PURE__ */ createSlot(`Primitive.${node}`);
   const Node2 = reactExports.forwardRef((props, forwardedRef) => {
     const { asChild, ...primitiveProps } = props;
     const Comp = asChild ? Slot2 : node;
@@ -25180,7 +25751,7 @@ var Presence = (props) => {
   const { present, children } = props;
   const presence = usePresence(present);
   const child = typeof children === "function" ? children({ present: presence.isPresent }) : reactExports.Children.only(children);
-  const ref = useComposedRefs(presence.ref, getElementRef$1(child));
+  const ref = useComposedRefs(presence.ref, getElementRef(child));
   const forceMount = typeof children === "function";
   return forceMount || presence.isPresent ? reactExports.cloneElement(child, { ref }) : null;
 };
@@ -25279,7 +25850,7 @@ function usePresence(present) {
 function getAnimationName(styles) {
   return styles?.animationName || "none";
 }
-function getElementRef$1(element) {
+function getElementRef(element) {
   let getter = Object.getOwnPropertyDescriptor(element.props, "ref")?.get;
   let mayWarn = getter && "isReactWarning" in getter && getter.isReactWarning;
   if (mayWarn) {
@@ -26096,88 +26667,6 @@ var hideOthers = function(originalTarget, parentNode, markerName) {
   targets.push.apply(targets, Array.from(activeParentNode.querySelectorAll("[aria-live], script")));
   return applyAttributeToOthers(targets, activeParentNode, markerName, "aria-hidden");
 };
-// @__NO_SIDE_EFFECTS__
-function createSlot(ownerName) {
-  const SlotClone = /* @__PURE__ */ createSlotClone(ownerName);
-  const Slot2 = reactExports.forwardRef((props, forwardedRef) => {
-    const { children, ...slotProps } = props;
-    const childrenArray = reactExports.Children.toArray(children);
-    const slottable = childrenArray.find(isSlottable);
-    if (slottable) {
-      const newElement = slottable.props.children;
-      const newChildren = childrenArray.map((child) => {
-        if (child === slottable) {
-          if (reactExports.Children.count(newElement) > 1) return reactExports.Children.only(null);
-          return reactExports.isValidElement(newElement) ? newElement.props.children : null;
-        } else {
-          return child;
-        }
-      });
-      return /* @__PURE__ */ jsxRuntimeExports.jsx(SlotClone, { ...slotProps, ref: forwardedRef, children: reactExports.isValidElement(newElement) ? reactExports.cloneElement(newElement, void 0, newChildren) : null });
-    }
-    return /* @__PURE__ */ jsxRuntimeExports.jsx(SlotClone, { ...slotProps, ref: forwardedRef, children });
-  });
-  Slot2.displayName = `${ownerName}.Slot`;
-  return Slot2;
-}
-// @__NO_SIDE_EFFECTS__
-function createSlotClone(ownerName) {
-  const SlotClone = reactExports.forwardRef((props, forwardedRef) => {
-    const { children, ...slotProps } = props;
-    if (reactExports.isValidElement(children)) {
-      const childrenRef = getElementRef(children);
-      const props2 = mergeProps(slotProps, children.props);
-      if (children.type !== reactExports.Fragment) {
-        props2.ref = forwardedRef ? composeRefs(forwardedRef, childrenRef) : childrenRef;
-      }
-      return reactExports.cloneElement(children, props2);
-    }
-    return reactExports.Children.count(children) > 1 ? reactExports.Children.only(null) : null;
-  });
-  SlotClone.displayName = `${ownerName}.SlotClone`;
-  return SlotClone;
-}
-var SLOTTABLE_IDENTIFIER = Symbol("radix.slottable");
-function isSlottable(child) {
-  return reactExports.isValidElement(child) && typeof child.type === "function" && "__radixId" in child.type && child.type.__radixId === SLOTTABLE_IDENTIFIER;
-}
-function mergeProps(slotProps, childProps) {
-  const overrideProps = { ...childProps };
-  for (const propName in childProps) {
-    const slotPropValue = slotProps[propName];
-    const childPropValue = childProps[propName];
-    const isHandler = /^on[A-Z]/.test(propName);
-    if (isHandler) {
-      if (slotPropValue && childPropValue) {
-        overrideProps[propName] = (...args) => {
-          const result = childPropValue(...args);
-          slotPropValue(...args);
-          return result;
-        };
-      } else if (slotPropValue) {
-        overrideProps[propName] = slotPropValue;
-      }
-    } else if (propName === "style") {
-      overrideProps[propName] = { ...slotPropValue, ...childPropValue };
-    } else if (propName === "className") {
-      overrideProps[propName] = [slotPropValue, childPropValue].filter(Boolean).join(" ");
-    }
-  }
-  return { ...slotProps, ...overrideProps };
-}
-function getElementRef(element) {
-  let getter = Object.getOwnPropertyDescriptor(element.props, "ref")?.get;
-  let mayWarn = getter && "isReactWarning" in getter && getter.isReactWarning;
-  if (mayWarn) {
-    return element.ref;
-  }
-  getter = Object.getOwnPropertyDescriptor(element, "ref")?.get;
-  mayWarn = getter && "isReactWarning" in getter && getter.isReactWarning;
-  if (mayWarn) {
-    return element.props.ref;
-  }
-  return element.props.ref || element.ref;
-}
 var DIALOG_NAME = "Dialog";
 var [createDialogContext] = createContextScope(DIALOG_NAME);
 var [DialogProvider, useDialogContext] = createDialogContext(DIALOG_NAME);
@@ -26560,12 +27049,17 @@ function KeyboardShortcutsModal() {
     )) })
   ] }) });
 }
-const InterviewPage = reactExports.lazy(() => __vitePreload(() => import("./InterviewPage-DOkPN8-L.js"), true ? __vite__mapDeps([0,1,2,3,4]) : void 0, import.meta.url));
-const KanbanPage = reactExports.lazy(() => __vitePreload(() => import("./KanbanPage-m5rjJwck.js"), true ? __vite__mapDeps([5,6,7,2,3]) : void 0, import.meta.url));
-const DashboardPage = reactExports.lazy(() => __vitePreload(() => import("./DashboardPage-cZLwOR6B.js"), true ? __vite__mapDeps([8,7,9,3,1,6]) : void 0, import.meta.url));
-const SettingsPage = reactExports.lazy(() => __vitePreload(() => import("./SettingsPage-Dxb9-iuB.js"), true ? __vite__mapDeps([10,3,1,6,4,9]) : void 0, import.meta.url));
+const InterviewPage = reactExports.lazy(() => __vitePreload(() => import("./InterviewPage-BpcNc9ja.js"), true ? __vite__mapDeps([0,1,2,3,4,5,6,7,8,9,10]) : void 0, import.meta.url));
+const KanbanPage = reactExports.lazy(() => __vitePreload(() => import("./KanbanPage-CxdU7IjI.js"), true ? __vite__mapDeps([11,12,7,13,14,6,5,15]) : void 0, import.meta.url));
+const DashboardPage = reactExports.lazy(() => __vitePreload(() => import("./DashboardPage-ZoW09plv.js"), true ? __vite__mapDeps([16,3,17,18,7,6,14,2,1,12,15,13]) : void 0, import.meta.url));
+const SettingsPage = reactExports.lazy(() => __vitePreload(() => import("./SettingsPage-BptkqiYf.js"), true ? __vite__mapDeps([19,20,10,1,12,4,21,2,18]) : void 0, import.meta.url));
+const AgentsPage = reactExports.lazy(() => __vitePreload(() => import("./AgentsPage-D72cBo_Z.js"), true ? __vite__mapDeps([22,20,10,3,17,18,13,8,2,14,6]) : void 0, import.meta.url));
+const ExecutionPage = reactExports.lazy(() => __vitePreload(() => import("./ExecutionPage-f3f2C11Z.js"), true ? __vite__mapDeps([23,20,10,9,8,14,21]) : void 0, import.meta.url));
 function PageLoader() {
-  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex items-center justify-center min-h-screen", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "animate-pulse text-muted-foreground", children: "Loading..." }) });
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex items-center justify-center min-h-screen bg-bg-dark", "data-testid": "page-loader", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col items-center gap-3", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-8 h-8 rounded-full border-2 border-accent-primary border-t-transparent animate-spin" }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-sm text-text-secondary animate-pulse", children: "Loading..." })
+  ] }) });
 }
 const router = createBrowserRouter([
   {
@@ -26587,6 +27081,14 @@ const router = createBrowserRouter([
       {
         path: "dashboard",
         element: /* @__PURE__ */ jsxRuntimeExports.jsx(reactExports.Suspense, { fallback: /* @__PURE__ */ jsxRuntimeExports.jsx(PageLoader, {}), children: /* @__PURE__ */ jsxRuntimeExports.jsx(DashboardPage, {}) })
+      },
+      {
+        path: "agents",
+        element: /* @__PURE__ */ jsxRuntimeExports.jsx(reactExports.Suspense, { fallback: /* @__PURE__ */ jsxRuntimeExports.jsx(PageLoader, {}), children: /* @__PURE__ */ jsxRuntimeExports.jsx(AgentsPage, {}) })
+      },
+      {
+        path: "execution",
+        element: /* @__PURE__ */ jsxRuntimeExports.jsx(reactExports.Suspense, { fallback: /* @__PURE__ */ jsxRuntimeExports.jsx(PageLoader, {}), children: /* @__PURE__ */ jsxRuntimeExports.jsx(ExecutionPage, {}) })
       },
       {
         path: "settings",
@@ -26631,39 +27133,50 @@ root.render(
   /* @__PURE__ */ jsxRuntimeExports.jsx(reactExports.StrictMode, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(App, {}) })
 );
 export {
-  useSettingsStore as A,
-  Button as B,
-  Card as C,
+  useMetricsStore as A,
+  Bot as B,
+  ChevronDown as C,
   Dialog as D,
-  E,
-  CardDescription as F,
-  useHasApiKey as G,
-  create as H,
+  Link as E,
+  ChevronRight as F,
+  useSettings as G,
+  useSettingsLoading as H,
+  useSettingsDirty as I,
+  useSettingsStore as J,
+  CardDescription as K,
+  LoaderCircle as L,
+  MessageSquare as M,
+  useHasApiKey as N,
+  create as O,
+  cva as P,
+  TriangleAlert as Q,
   React$2 as R,
+  Sparkles as S,
+  Terminal as T,
   cn as a,
-  CardContent as b,
+  useNavigate as b,
   createLucideIcon as c,
-  CardFooter as d,
-  reactDomExports as e,
+  reactDomExports as d,
+  Card as e,
   CardHeader as f,
   CardTitle as g,
-  DialogContent as h,
-  DialogHeader as i,
+  CardContent as h,
+  DialogContent as i,
   jsxRuntimeExports as j,
-  DialogTitle as k,
-  DialogDescription as l,
-  clsx as m,
-  getDefaultExportFromCjs as n,
-  useAgentMetrics as o,
-  fo as p,
-  RefreshCw as q,
+  DialogHeader as k,
+  DialogTitle as l,
+  DialogDescription as m,
+  Button as n,
+  useCosts as o,
+  clsx as p,
+  getDefaultExportFromCjs as q,
   reactExports as r,
-  useTimeline as s,
-  useIsMetricsLoading as t,
-  useCosts as u,
-  useOverview as v,
-  useMetricsStore as w,
-  useSettings as x,
-  useSettingsLoading as y,
-  useSettingsDirty as z
+  React$3 as s,
+  useAgentMetrics as t,
+  useProjectStore as u,
+  fo as v,
+  RefreshCw as w,
+  useTimeline as x,
+  useIsMetricsLoading as y,
+  useOverview as z
 };

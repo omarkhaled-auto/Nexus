@@ -359,7 +359,8 @@ const state = {
   projectId: null,
   projects: /* @__PURE__ */ new Map(),
   tasks: /* @__PURE__ */ new Map(),
-  agents: /* @__PURE__ */ new Map()
+  agents: /* @__PURE__ */ new Map(),
+  features: /* @__PURE__ */ new Map()
 };
 function registerIpcHandlers() {
   ipcMain.handle("mode:genesis", (event) => {
@@ -402,6 +403,54 @@ function registerIpcHandlers() {
       return null;
     }
     return project;
+  });
+  ipcMain.handle("projects:list", (event) => {
+    if (!validateSender$1(event)) {
+      throw new Error("Unauthorized IPC sender");
+    }
+    return Array.from(state.projects.values());
+  });
+  ipcMain.handle("dashboard:getMetrics", (event) => {
+    if (!validateSender$1(event)) {
+      throw new Error("Unauthorized IPC sender");
+    }
+    const projects = Array.from(state.projects.values());
+    const tasks = Array.from(state.tasks.values());
+    const agents = Array.from(state.agents.values());
+    const completedTasks = tasks.filter((t) => t.status === "completed").length;
+    const failedTasks = tasks.filter((t) => t.status === "failed").length;
+    const activeAgents = agents.filter((a) => a.status === "working").length;
+    return {
+      projectId: state.projectId || "no-project",
+      projectName: projects.length > 0 ? projects[0].name : "No Active Project",
+      totalFeatures: Math.ceil(tasks.length / 3),
+      // Approximate features from tasks
+      completedFeatures: Math.floor(completedTasks / 3),
+      completedTasks,
+      totalTasks: tasks.length,
+      failedTasks,
+      activeAgents,
+      estimatedRemainingMinutes: Math.max(0, (tasks.length - completedTasks) * 5),
+      estimatedCompletion: new Date(Date.now() + Math.max(0, (tasks.length - completedTasks) * 5) * 6e4),
+      startedAt: new Date(Date.now() - 2 * 60 * 60 * 1e3),
+      // 2 hours ago
+      updatedAt: /* @__PURE__ */ new Date()
+    };
+  });
+  ipcMain.handle("dashboard:getCosts", (event) => {
+    if (!validateSender$1(event)) {
+      throw new Error("Unauthorized IPC sender");
+    }
+    return {
+      totalCost: 0,
+      totalTokensUsed: 0,
+      inputTokens: 0,
+      outputTokens: 0,
+      estimatedCostUSD: 0,
+      breakdownByModel: [],
+      breakdownByAgent: [],
+      updatedAt: /* @__PURE__ */ new Date()
+    };
   });
   ipcMain.handle(
     "project:create",
@@ -455,6 +504,331 @@ function registerIpcHandlers() {
       throw new Error("Unauthorized IPC sender");
     }
     return Array.from(state.agents.values());
+  });
+  ipcMain.handle("agents:list", (event) => {
+    if (!validateSender$1(event)) {
+      throw new Error("Unauthorized IPC sender");
+    }
+    const agents = Array.from(state.agents.values()).map((agent) => ({
+      id: agent.id,
+      type: agent.type || "coder",
+      status: agent.status || "idle",
+      model: void 0,
+      currentTask: void 0,
+      iteration: void 0,
+      metrics: void 0,
+      currentFile: void 0
+    }));
+    return agents;
+  });
+  ipcMain.handle("agents:get", (event, id) => {
+    if (!validateSender$1(event)) {
+      throw new Error("Unauthorized IPC sender");
+    }
+    if (typeof id !== "string" || !id) {
+      throw new Error("Invalid agent id");
+    }
+    const agent = state.agents.get(id);
+    if (!agent) {
+      return null;
+    }
+    return {
+      id: agent.id,
+      type: agent.type || "coder",
+      status: agent.status || "idle",
+      model: void 0,
+      currentTask: void 0,
+      iteration: void 0,
+      metrics: void 0,
+      currentFile: void 0
+    };
+  });
+  ipcMain.handle("agents:getPoolStatus", (event) => {
+    if (!validateSender$1(event)) {
+      throw new Error("Unauthorized IPC sender");
+    }
+    const agents = Array.from(state.agents.values());
+    const working = agents.filter((a) => a.status === "working").length;
+    const idle = agents.filter((a) => a.status === "idle" || !a.status).length;
+    const error = agents.filter((a) => a.status === "error").length;
+    const complete = agents.filter((a) => a.status === "complete").length;
+    const byType = {
+      planner: { total: 0, active: 0, idle: 0, max: 1 },
+      coder: { total: 0, active: 0, idle: 0, max: 4 },
+      tester: { total: 0, active: 0, idle: 0, max: 2 },
+      reviewer: { total: 0, active: 0, idle: 0, max: 2 },
+      merger: { total: 0, active: 0, idle: 0, max: 1 }
+    };
+    for (const agent of agents) {
+      const agentType = agent.type || "coder";
+      if (byType[agentType]) {
+        byType[agentType].total++;
+        if (agent.status === "working") {
+          byType[agentType].active++;
+        } else {
+          byType[agentType].idle++;
+        }
+      }
+    }
+    return {
+      totalAgents: agents.length,
+      maxAgents: 10,
+      // Default maximum
+      working,
+      idle,
+      error,
+      complete,
+      byType,
+      tasksInProgress: working
+    };
+  });
+  ipcMain.handle("agents:getOutput", (event, id) => {
+    if (!validateSender$1(event)) {
+      throw new Error("Unauthorized IPC sender");
+    }
+    if (typeof id !== "string" || !id) {
+      throw new Error("Invalid agent id");
+    }
+    return [];
+  });
+  ipcMain.handle("agents:getQAStatus", (event) => {
+    if (!validateSender$1(event)) {
+      throw new Error("Unauthorized IPC sender");
+    }
+    return {
+      steps: [
+        { type: "build", status: "pending" },
+        { type: "lint", status: "pending" },
+        { type: "test", status: "pending" },
+        { type: "review", status: "pending" }
+      ],
+      iteration: 0,
+      maxIterations: 50
+    };
+  });
+  const executionLogs = /* @__PURE__ */ new Map([
+    ["build", []],
+    ["lint", []],
+    ["test", []],
+    ["review", []]
+  ]);
+  const executionStatuses = /* @__PURE__ */ new Map([
+    ["build", "pending"],
+    ["lint", "pending"],
+    ["test", "pending"],
+    ["review", "pending"]
+  ]);
+  const executionDurations = /* @__PURE__ */ new Map();
+  const executionCounts = /* @__PURE__ */ new Map();
+  let currentExecutionTaskId = null;
+  let currentExecutionTaskName = null;
+  ipcMain.handle("execution:getLogs", (event, stepType) => {
+    if (!validateSender$1(event)) {
+      throw new Error("Unauthorized IPC sender");
+    }
+    if (!["build", "lint", "test", "review"].includes(stepType)) {
+      throw new Error("Invalid step type");
+    }
+    return executionLogs.get(stepType) || [];
+  });
+  ipcMain.handle("execution:getStatus", (event) => {
+    if (!validateSender$1(event)) {
+      throw new Error("Unauthorized IPC sender");
+    }
+    const steps = ["build", "lint", "test", "review"].map((type) => ({
+      type,
+      status: executionStatuses.get(type) || "pending",
+      count: executionCounts.get(type),
+      duration: executionDurations.get(type),
+      logs: executionLogs.get(type) || []
+    }));
+    return {
+      steps,
+      currentTaskId: currentExecutionTaskId,
+      currentTaskName: currentExecutionTaskName,
+      totalDuration: Array.from(executionDurations.values()).reduce((a, b) => a + b, 0)
+    };
+  });
+  ipcMain.handle("execution:clearLogs", (event) => {
+    if (!validateSender$1(event)) {
+      throw new Error("Unauthorized IPC sender");
+    }
+    for (const type of ["build", "lint", "test", "review"]) {
+      executionLogs.set(type, []);
+      executionStatuses.set(type, "pending");
+      executionDurations.delete(type);
+      executionCounts.delete(type);
+    }
+    currentExecutionTaskId = null;
+    currentExecutionTaskName = null;
+    return { success: true };
+  });
+  ipcMain.handle("execution:exportLogs", (event) => {
+    if (!validateSender$1(event)) {
+      throw new Error("Unauthorized IPC sender");
+    }
+    let output = `Nexus Execution Logs
+`;
+    output += `Generated: ${(/* @__PURE__ */ new Date()).toISOString()}
+`;
+    output += `Task: ${currentExecutionTaskName || "N/A"}
+`;
+    output += `${"=".repeat(60)}
+
+`;
+    for (const type of ["build", "lint", "test", "review"]) {
+      const logs = executionLogs.get(type) || [];
+      const status = executionStatuses.get(type) || "pending";
+      const duration = executionDurations.get(type);
+      output += `## ${type.toUpperCase()} [${status.toUpperCase()}]`;
+      if (duration) output += ` (${(duration / 1e3).toFixed(2)}s)`;
+      output += `
+${"-".repeat(40)}
+`;
+      if (logs.length === 0) {
+        output += `No logs
+`;
+      } else {
+        for (const log of logs) {
+          output += `[${new Date(log.timestamp).toISOString()}] ${log.message}
+`;
+          if (log.details) output += `  ${log.details}
+`;
+        }
+      }
+      output += `
+`;
+    }
+    return output;
+  });
+  function addExecutionLog(type, message, details, logType = "info") {
+    const logs = executionLogs.get(type) || [];
+    logs.push({
+      id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+      timestamp: /* @__PURE__ */ new Date(),
+      type: logType,
+      message,
+      details
+    });
+    executionLogs.set(type, logs);
+  }
+  global.addExecutionLog = addExecutionLog;
+  global.executionStatuses = executionStatuses;
+  global.executionDurations = executionDurations;
+  global.executionCounts = executionCounts;
+  global.setCurrentExecutionTask = (id, name) => {
+    currentExecutionTaskId = id;
+    currentExecutionTaskName = name;
+  };
+  ipcMain.handle("features:list", (event) => {
+    if (!validateSender$1(event)) {
+      throw new Error("Unauthorized IPC sender");
+    }
+    return Array.from(state.features.values());
+  });
+  ipcMain.handle("feature:get", (event, id) => {
+    if (!validateSender$1(event)) {
+      throw new Error("Unauthorized IPC sender");
+    }
+    if (typeof id !== "string" || !id) {
+      throw new Error("Invalid feature id");
+    }
+    return state.features.get(id) || null;
+  });
+  ipcMain.handle("feature:create", (event, input) => {
+    if (!validateSender$1(event)) {
+      throw new Error("Unauthorized IPC sender");
+    }
+    if (typeof input.title !== "string" || !input.title) {
+      throw new Error("Invalid feature title");
+    }
+    const id = `feature-${Date.now()}`;
+    const now = (/* @__PURE__ */ new Date()).toISOString();
+    const feature = {
+      id,
+      title: input.title,
+      description: input.description || "",
+      status: "backlog",
+      priority: input.priority || "medium",
+      complexity: input.complexity || "moderate",
+      progress: 0,
+      tasks: [],
+      createdAt: now,
+      updatedAt: now
+    };
+    state.features.set(id, feature);
+    const eventBus = EventBus.getInstance();
+    void eventBus.emit("feature:created", {
+      feature: {
+        id,
+        projectId: state.projectId || "current",
+        name: feature.title,
+        description: feature.description,
+        priority: feature.priority === "critical" ? "critical" : feature.priority === "high" ? "high" : feature.priority === "medium" ? "medium" : "low",
+        status: "pending",
+        createdAt: /* @__PURE__ */ new Date(),
+        updatedAt: /* @__PURE__ */ new Date()
+      },
+      projectId: state.projectId || "current"
+    }, { source: "IPC" });
+    return feature;
+  });
+  ipcMain.handle("feature:update", (event, id, update) => {
+    if (!validateSender$1(event)) {
+      throw new Error("Unauthorized IPC sender");
+    }
+    if (typeof id !== "string" || !id) {
+      throw new Error("Invalid feature id");
+    }
+    const feature = state.features.get(id);
+    if (!feature) {
+      throw new Error(`Feature not found: ${id}`);
+    }
+    const previousStatus = feature.status;
+    const allowedKeys = ["title", "description", "status", "priority", "complexity", "progress", "assignedAgent"];
+    for (const key of allowedKeys) {
+      if (key in update) {
+        feature[key] = update[key];
+      }
+    }
+    feature.updatedAt = (/* @__PURE__ */ new Date()).toISOString();
+    state.features.set(id, feature);
+    if (update.status && update.status !== previousStatus) {
+      const eventBus = EventBus.getInstance();
+      void eventBus.emit("feature:status-changed", {
+        featureId: id,
+        projectId: state.projectId || "current",
+        previousStatus: mapUIStatusToCoreStatus(previousStatus),
+        newStatus: mapUIStatusToCoreStatus(update.status)
+      }, { source: "IPC" });
+      if (update.status === "done") {
+        void eventBus.emit("feature:completed", {
+          featureId: id,
+          projectId: state.projectId || "current",
+          tasksCompleted: feature.tasks.length,
+          duration: 0
+        }, { source: "IPC" });
+      }
+    }
+    return feature;
+  });
+  ipcMain.handle("feature:delete", (event, id) => {
+    if (!validateSender$1(event)) {
+      throw new Error("Unauthorized IPC sender");
+    }
+    if (typeof id !== "string" || !id) {
+      throw new Error("Invalid feature id");
+    }
+    const deleted = state.features.delete(id);
+    if (!deleted) {
+      throw new Error(`Feature not found: ${id}`);
+    }
+    const eventBus = EventBus.getInstance();
+    void eventBus.emit("feature:deleted", {
+      featureId: id,
+      projectId: state.projectId || "current"
+    }, { source: "IPC" });
+    return { success: true };
   });
   ipcMain.handle("execution:pause", (event, reason) => {
     if (!validateSender$1(event)) {
@@ -754,6 +1128,19 @@ function forwardTimelineEvent(timelineEvent) {
   if (eventForwardingWindow && !eventForwardingWindow.isDestroyed()) {
     eventForwardingWindow.webContents.send("timeline:event", timelineEvent);
   }
+}
+function mapUIStatusToCoreStatus(status) {
+  const map = {
+    backlog: "pending",
+    planning: "decomposing",
+    in_progress: "in_progress",
+    ai_review: "in_progress",
+    // AI review is still in progress
+    human_review: "ready",
+    // Ready for final review
+    done: "completed"
+  };
+  return map[status] || "pending";
 }
 const DEFAULT_CLAUDE_MODEL = "claude-sonnet-4-5-20250929";
 const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";

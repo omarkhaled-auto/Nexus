@@ -1,4 +1,12 @@
-import { r as reactExports, j as jsxRuntimeExports } from "./index--90KcRKo.js";
+import { c as createLucideIcon, r as reactExports, j as jsxRuntimeExports } from "./index-xnK5wLuD.js";
+/**
+ * @license lucide-react v0.562.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode = [["circle", { cx: "12", cy: "12", r: "10", key: "1mglay" }]];
+const Circle = createLucideIcon("circle", __iconNode);
 const LayoutGroupContext = reactExports.createContext({});
 function useConstant(init) {
   const ref = reactExports.useRef(null);
@@ -7338,5 +7346,6 @@ function AnimatedPage({ children, className }) {
   );
 }
 export {
-  AnimatedPage as A
+  AnimatedPage as A,
+  Circle as C
 };

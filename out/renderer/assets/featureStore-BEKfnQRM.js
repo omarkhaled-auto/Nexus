@@ -1,4 +1,4 @@
-import { H as create } from "./index--90KcRKo.js";
+import { O as create } from "./index-xnK5wLuD.js";
 const WIP_LIMIT = 3;
 function emitEvent(channel, payload) {
   if (window.nexusAPI?.emitEvent) {

@@ -3238,3 +3238,70 @@ Task 29 identified a critical issue: On mobile viewports (< 768px), the sidebar 
 **NEXT TASK:** Task 32 - Connect all pages to real data (Phase 17E Integration) - Already completed in Task 30.1-30.6
 
 **PHASE 17E STATUS:** Tasks 30.1-30.6 completed the data connection work. Phase 17E continues with Task 33.
+
+---
+
+### Task 33: Test all real-time updates with Playwright MCP
+- **Status:** ✅ COMPLETED
+- **Date:** 2026-01-19
+- **Output:** Screenshots saved to `.playwright-mcp/` directory
+
+**Summary:** Comprehensive Playwright MCP testing of all real-time updates across all pages.
+
+**Test Results by Page:**
+
+| Page | Real-Time Feature | Status | Notes |
+|------|-------------------|--------|-------|
+| **Dashboard** | Stats Cards | ✅ | Progress 72%, Features 4/12, Agents 3, Projects 2 |
+| **Dashboard** | Recent Projects | ✅ | 3 projects with progress bars and status |
+| **Dashboard** | Cost Tracker | ✅ | $12.47 estimated, token breakdown |
+| **Dashboard** | Agent Activity | ✅ | 2 active agents displayed |
+| **Dashboard** | Progress Chart | ✅ | 70% with gradient area chart |
+| **Dashboard** | Activity Timeline | ✅ | 10 events, filters work (All/Tasks/QA/Builds/Errors) |
+| **Dashboard** | Live/Paused Toggle | ✅ | Toggles between Live and Paused states |
+| **Agents** | Agent Pool Status | ✅ | 5/10 capacity, Working: 2, Idle: 3 |
+| **Agents** | Active Agents List | ✅ | Coder (65%), Reviewer (30%), Planner, Tester, Merger |
+| **Agents** | Agent Selection | ✅ | Click selects agent, shows purple border highlight |
+| **Agents** | Agent Output | ✅ | Live terminal with 15 lines, auto-scroll |
+| **Agents** | QA Status Panel | ✅ | Build ✓, Lint ✓, Test Running, Review Pending |
+| **Agents** | Iteration Counter | ✅ | Shows 3/50 or 1/10 based on selected agent |
+| **Execution** | Tab Navigation | ✅ | Build/Lint/Test/Review tabs switch content |
+| **Execution** | Build Log | ✅ | tsc --noEmit, 47 files, 0 errors, 2.3s |
+| **Execution** | Test Log | ✅ | vitest run, 47 tests, detailed output |
+| **Execution** | Summary Bar | ✅ | Status indicators, Total Duration: 3.4s |
+| **Interview** | Chat Interface | ✅ | Welcome screen, suggestion buttons |
+| **Interview** | Message Sending | ✅ | User message appears with timestamp |
+| **Interview** | Requirements Panel | ✅ | Progress bar 14%, stage dots |
+| **Kanban** | Feature Cards | ✅ | 6 features across 6 columns |
+| **Kanban** | Agent Assignments | ✅ | decomposer-agent, coder-agent, qa-agent, reviewer-agent |
+| **Kanban** | WIP Limits | ✅ | "In Progress 1/3" displayed |
+| **Settings** | LLM Providers | ✅ | Claude/Gemini/Embeddings config with dropdowns |
+| **Settings** | Backend Toggles | ✅ | CLI/API toggles work |
+| **Settings** | Model Dropdowns | ✅ | All 5 Claude and 5 Gemini models |
+| **Settings** | Agent Assignments | ✅ | 8 agent types with Provider/Model dropdowns |
+| **Settings** | Pool Settings | ✅ | Max Concurrent, QA Limit, Time Limit inputs |
+
+**Screenshots Captured:**
+- `task33-dashboard-realtime.png` - Dashboard with all real-time data
+- `task33-agents-realtime.png` - Agents page with pool status
+- `task33-agents-selected.png` - Agent selection with highlight
+- `task33-execution-build.png` - Execution page Build tab
+- `task33-execution-test.png` - Execution page Test tab
+- `task33-interview-message-typed.png` - Interview with message input
+- `task33-interview-message-sent.png` - Interview with sent message
+- `task33-kanban-realtime.png` - Kanban board with features
+- `task33-settings-llm.png` - Settings LLM Providers tab
+- `task33-settings-agents.png` - Settings Agents tab
+
+**All Real-Time Features Verified:**
+- ✅ Event subscriptions work (timeline filters, Live/Paused toggle)
+- ✅ Agent status updates display correctly
+- ✅ QA pipeline status shows proper states
+- ✅ Form inputs and dropdowns function correctly
+- ✅ Message sending in Interview works
+- ✅ Kanban board displays features with agent assignments
+- ✅ Settings tabs load and display all configuration options
+
+---
+
+**NEXT TASK:** Task 34 - Run FULL Playwright test suite (all pages)
