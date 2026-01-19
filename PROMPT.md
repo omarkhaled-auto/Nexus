@@ -2614,4 +2614,87 @@ All 7 research tasks have been completed. Documentation created:
 
 ---
 
-**NEXT TASK:** Task 24 - Redesign Settings - LLM Providers tab
+### Task 24: Redesign Settings - LLM Providers Tab
+- **Status:** COMPLETED
+- **Commit:** 1af3121
+
+**Features Implemented:**
+- ✅ Backend toggle (CLI/API) for Claude configuration
+- ✅ Backend toggle (CLI/API) for Gemini configuration
+- ✅ Backend toggle (Local/API) for Embeddings configuration
+- ✅ Model dropdown selectors using CLAUDE_MODELS and GEMINI_MODELS constants
+- ✅ Model descriptions displayed below dropdown
+- ✅ Collapsible Advanced section with timeout/maxRetries for Claude
+- ✅ Provider Cards with icons and status indicators ("CLI detected")
+- ✅ API Key inputs with visibility toggle and save/clear buttons
+- ✅ Demo mode support for visual testing without Electron backend
+- ✅ Header with Settings icon and Reset Defaults button
+- ✅ Vertical tab navigation (LLM Providers, Agents, Checkpoints, UI, Projects)
+- ✅ Footer with Cancel/Save Changes buttons
+- ✅ All tabs tested and working
+
+**Playwright Test Results:**
+- ✅ Settings page loads with dark theme (#0D1117 background)
+- ✅ LLM Providers tab displays with Claude, Gemini, Embeddings configurations
+- ✅ Backend toggles switch correctly (CLI/API)
+- ✅ Model dropdowns show all available models with descriptions
+- ✅ Advanced section expands/collapses correctly
+- ✅ Tab navigation works (Agents, Checkpoints, UI, Projects)
+- ✅ All form inputs functional
+
+**Screenshots:**
+- `settings-llm-providers.png` - LLM Providers tab view
+- `settings-llm-providers-advanced.png` - Advanced section expanded
+- `settings-agents-tab.png` - Agents tab view
+- `settings-ui-tab.png` - UI tab view
+
+---
+
+### Task 25: Redesign Settings - Agents tab (per-agent model assignments)
+- **Status:** COMPLETED
+- **Commit:** ae2d940
+- **Test Date:** 2026-01-19
+
+**Features Implemented:**
+- ✅ Agent Model Assignments table with all 8 agent types:
+  - Planner (🧠), Coder (💻), Tester (🧪), Reviewer (👁)
+  - Merger (🔀), Architect (🏗), Debugger (🐛), Documenter (📝)
+- ✅ Provider dropdown (Claude/Gemini) for each agent type
+- ✅ Model dropdown that dynamically updates based on selected provider
+- ✅ "Use Recommended Defaults" button to reset all assignments
+- ✅ Agent Pool Settings section:
+  - Max Concurrent Agents (1-10)
+  - QA Iteration Limit (10-100) - escalate to human after limit
+  - Task Time Limit (1-120 minutes) - split task if exceeded
+- ✅ Retry Settings section:
+  - Auto Retry on Failure toggle
+  - Max Retries input (disabled when auto-retry is off)
+
+**Default Model Assignments:**
+| Agent | Provider | Model |
+|-------|----------|-------|
+| Planner | Claude | claude-opus-4-5-20251101 |
+| Coder | Claude | claude-sonnet-4-5-20250929 |
+| Tester | Claude | claude-sonnet-4-5-20250929 |
+| Reviewer | Gemini | gemini-2.5-pro |
+| Merger | Claude | claude-sonnet-4-5-20250929 |
+| Architect | Claude | claude-opus-4-5-20251101 |
+| Debugger | Claude | claude-sonnet-4-5-20250929 |
+| Documenter | Gemini | gemini-2.5-flash |
+
+**Playwright Test Results:**
+- ✅ Tab navigation to Agents tab working
+- ✅ Agent Model Assignments table renders with all 8 agents
+- ✅ Provider dropdown switching correctly (Claude ↔ Gemini)
+- ✅ Model dropdown updates dynamically based on provider
+- ✅ "Use Recommended Defaults" button resets all assignments
+- ✅ Agent Pool Settings inputs functional
+- ✅ Retry Settings toggle and input working
+
+**Screenshots:**
+- `settings-agents-tab-full.png` - Full Agents tab view
+- `settings-agents-tab-reset.png` - After reset to defaults
+
+---
+
+**NEXT TASK:** Task 26 - TEST all Settings tabs with Playwright MCP (comprehensive testing)
