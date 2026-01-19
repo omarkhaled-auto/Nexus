@@ -1776,12 +1776,32 @@ export const DEFAULT_LLM_SETTINGS: LLMProviderSettings = {
 ```
 
 ### Task 14 Completion Checklist
-- [ ] LLMProviderSettings interface created
-- [ ] NexusSettings updated
-- [ ] Default values set (CLI-first)
-- [ ] API key fields marked for encryption
+- [x] LLMProviderSettings interface created (ClaudeProviderSettings, GeminiProviderSettings, EmbeddingsProviderSettings)
+- [x] NexusSettings updated (LLMSettings now includes claude, gemini, embeddings provider objects)
+- [x] Default values set (CLI-first: DEFAULT_CLAUDE_SETTINGS, DEFAULT_GEMINI_SETTINGS, DEFAULT_EMBEDDINGS_SETTINGS, etc.)
+- [x] API key fields marked for encryption (apiKeyEncrypted in each provider)
+- [x] Public settings view updated (LLMSettingsPublic, ClaudeProviderSettingsPublic, etc.)
+- [x] Backend type exports added (LLMBackendType, EmbeddingsBackendType)
 
-**[TASK 14 COMPLETE]** <- Mark when done
+**[TASK 14 COMPLETE]** - Completed on 2026-01-19
+
+### Task 14 Summary
+- **File Modified**: `src/shared/types/settings.ts`
+- **New Types Created**:
+  - `LLMBackendType` ('cli' | 'api')
+  - `EmbeddingsBackendType` ('local' | 'api')
+  - `ClaudeProviderSettings` - Backend, API key, CLI path, timeout, maxRetries, model
+  - `GeminiProviderSettings` - Backend, API key, CLI path, timeout, model
+  - `EmbeddingsProviderSettings` - Backend, API key, localModel, dimensions, cache settings
+  - `ClaudeProviderSettingsPublic`, `GeminiProviderSettingsPublic`, `EmbeddingsProviderSettingsPublic` - Public views
+  - `LLMSettingsPublic` - Updated public LLM settings
+- **Default Values Created**:
+  - `DEFAULT_CLAUDE_SETTINGS` (backend: 'cli')
+  - `DEFAULT_GEMINI_SETTINGS` (backend: 'cli')
+  - `DEFAULT_EMBEDDINGS_SETTINGS` (backend: 'local')
+  - `DEFAULT_LLM_SETTINGS` - Complete LLM settings
+  - `DEFAULT_NEXUS_SETTINGS` - Complete Nexus settings
+- **Note**: settingsService.ts needs updating in Task 15 to use new structure
 
 ---
 
