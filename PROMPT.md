@@ -3057,7 +3057,46 @@ On mobile viewports (< 768px), the sidebar remains visible and takes up screen s
   - Dashboard maintains backwards compatibility with demo mode
 
 ### Task 30.3: Connect Kanban/Tasks Page to Real Task Data
-- **Status:** PENDING
+- **Status:** COMPLETED
+- **Commit:** 10601a7
+- **Date:** 2026-01-19
+
+**Features Implemented:**
+
+1. **IPC Handlers (`src/main/ipc/handlers.ts`):**
+   - `features:list` - List all features for Kanban board
+   - `feature:get` - Get single feature by ID
+   - `feature:create` - Create new feature with EventBus emission
+   - `feature:update` - Update feature with status change events
+   - `feature:delete` - Delete feature with EventBus emission
+   - Added `UIFeature` interface for feature data structure
+   - Added `mapUIStatusToCoreStatus` helper for type conversion
+   - Added `forwardFeatureUpdate` for real-time updates
+
+2. **Preload API (`src/preload/index.ts`):**
+   - `getFeatures()` - Get all features
+   - `getFeature(id)` - Get single feature
+   - `createFeature(input)` - Create new feature
+   - `updateFeature(id, update)` - Update feature
+   - `deleteFeature(id)` - Delete feature
+   - `onFeatureUpdate(callback)` - Subscribe to real-time updates
+
+3. **KanbanPage (`src/renderer/src/pages/KanbanPage.tsx`):**
+   - `isElectronEnvironment()` - Check for Electron/nexusAPI availability
+   - `mapBackendFeature()` - Map backend format to renderer format
+   - `loadRealData()` - Fetch features from backend API
+   - `subscribeToEvents()` - Subscribe to feature & task updates
+   - Loading state with spinner
+   - Error banner for failures
+   - Falls back to demo data when:
+     - Not in Electron environment
+     - Backend returns empty array
+     - API call fails
+
+**Verification:**
+- TypeScript compilation passes (no errors in modified files)
+- Electron build succeeds
+- Backwards compatibility with demo mode maintained
 
 ### Task 30.4: Connect Agents Page to Real Agent Pool Data
 - **Status:** PENDING
@@ -3070,4 +3109,4 @@ On mobile viewports (< 768px), the sidebar remains visible and takes up screen s
 
 ---
 
-**NEXT TASK:** Task 30.3 - Connect Kanban/Tasks Page to Real Task Data
+**NEXT TASK:** Task 30.4 - Connect Agents Page to Real Agent Pool Data
