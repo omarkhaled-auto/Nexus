@@ -699,14 +699,201 @@ function LLMProvidersSettings({ settings, updateSetting }: SettingsTabProps): Re
   )
 }
 
+// ============================================
+// Agent Types and Model Assignment
+// ============================================
+
+type AgentType = 'planner' | 'coder' | 'tester' | 'reviewer' | 'merger' | 'architect' | 'debugger' | 'documenter'
+type ProviderType = 'claude' | 'gemini'
+
+interface AgentModelConfig {
+  provider: ProviderType
+  model: string
+}
+
+interface AgentModelAssignments {
+  planner: AgentModelConfig
+  coder: AgentModelConfig
+  tester: AgentModelConfig
+  reviewer: AgentModelConfig
+  merger: AgentModelConfig
+  architect: AgentModelConfig
+  debugger: AgentModelConfig
+  documenter: AgentModelConfig
+}
+
+const AGENT_DISPLAY_INFO: Record<AgentType, { label: string; icon: string; description: string }> = {
+  planner: { label: 'Planner', icon: '🧠', description: 'Plans and decomposes tasks' },
+  coder: { label: 'Coder', icon: '💻', description: 'Writes and edits code' },
+  tester: { label: 'Tester', icon: '🧪', description: 'Creates and runs tests' },
+  reviewer: { label: 'Reviewer', icon: '👁', description: 'Reviews code for quality' },
+  merger: { label: 'Merger', icon: '🔀', description: 'Merges code changes' },
+  architect: { label: 'Architect', icon: '🏗', description: 'Designs system architecture' },
+  debugger: { label: 'Debugger', icon: '🐛', description: 'Diagnoses and fixes issues' },
+  documenter: { label: 'Documenter', icon: '📝', description: 'Writes documentation' },
+}
+
+const DEFAULT_AGENT_MODEL_ASSIGNMENTS: AgentModelAssignments = {
+  planner: { provider: 'claude', model: 'claude-opus-4-5-20251101' },
+  coder: { provider: 'claude', model: 'claude-sonnet-4-5-20250929' },
+  tester: { provider: 'claude', model: 'claude-sonnet-4-5-20250929' },
+  reviewer: { provider: 'gemini', model: 'gemini-2.5-pro' },
+  merger: { provider: 'claude', model: 'claude-sonnet-4-5-20250929' },
+  architect: { provider: 'claude', model: 'claude-opus-4-5-20251101' },
+  debugger: { provider: 'claude', model: 'claude-sonnet-4-5-20250929' },
+  documenter: { provider: 'gemini', model: 'gemini-2.5-flash' },
+}
+
+interface AgentModelRowProps {
+  agentType: AgentType
+  config: AgentModelConfig
+  onChange: (agentType: AgentType, config: AgentModelConfig) => void
+  claudeModels: ModelInfo[]
+  geminiModels: ModelInfo[]
+}
+
+function AgentModelRow({ agentType, config, onChange, claudeModels, geminiModels }: AgentModelRowProps): ReactElement {
+  const info = AGENT_DISPLAY_INFO[agentType]
+  const models = config.provider === 'claude' ? claudeModels : geminiModels
+
+  const handleProviderChange = (provider: ProviderType): void => {
+    // When switching providers, select the first model from the new provider
+    const newModels = provider === 'claude' ? claudeModels : geminiModels
+    const defaultModel = newModels.find(m => m.isDefault)?.id || newModels[0]?.id || ''
+    onChange(agentType, { provider, model: defaultModel })
+  }
+
+  const handleModelChange = (model: string): void => {
+    onChange(agentType, { ...config, model })
+  }
+
+  return (
+    <tr className="border-b border-border-default last:border-0" data-testid={`agent-model-row-${agentType}`}>
+      <td className="py-3 pr-4">
+        <div className="flex items-center gap-2">
+          <span className="text-lg">{info.icon}</span>
+          <div>
+            <div className="text-sm font-medium text-text-primary">{info.label}</div>
+            <div className="text-xs text-text-tertiary">{info.description}</div>
+          </div>
+        </div>
+      </td>
+      <td className="py-3 px-4">
+        <select
+          value={config.provider}
+          onChange={(e) => handleProviderChange(e.target.value as ProviderType)}
+          className={cn(
+            'h-9 w-28 rounded-md border border-border-default bg-bg-dark px-2 py-1 text-sm text-text-primary',
+            'focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-accent-primary',
+            'transition-colors cursor-pointer'
+          )}
+          data-testid={`agent-provider-${agentType}`}
+        >
+          <option value="claude">Claude</option>
+          <option value="gemini">Gemini</option>
+        </select>
+      </td>
+      <td className="py-3 pl-4">
+        <select
+          value={config.model}
+          onChange={(e) => handleModelChange(e.target.value)}
+          className={cn(
+            'h-9 w-full rounded-md border border-border-default bg-bg-dark px-2 py-1 text-sm text-text-primary',
+            'focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-accent-primary',
+            'transition-colors cursor-pointer'
+          )}
+          data-testid={`agent-model-${agentType}`}
+        >
+          {models.map((model) => (
+            <option key={model.id} value={model.id}>
+              {model.name} {model.isDefault ? '(Recommended)' : ''}
+            </option>
+          ))}
+        </select>
+      </td>
+    </tr>
+  )
+}
+
 function AgentSettings({ settings, updateSetting }: SettingsTabProps): ReactElement {
+  // Per-agent model assignments - stored locally for now
+  // In a future phase, this could be persisted to settings
+  const [agentModels, setAgentModels] = useState<AgentModelAssignments>(DEFAULT_AGENT_MODEL_ASSIGNMENTS)
+  const [qaIterationLimit, setQaIterationLimit] = useState(50)
+
+  const claudeModels = getClaudeModelList()
+  const geminiModels = getGeminiModelList()
+
+  const handleAgentModelChange = (agentType: AgentType, config: AgentModelConfig): void => {
+    setAgentModels(prev => ({
+      ...prev,
+      [agentType]: config
+    }))
+  }
+
+  const handleResetToDefaults = (): void => {
+    setAgentModels(DEFAULT_AGENT_MODEL_ASSIGNMENTS)
+  }
+
+  const agentTypes: AgentType[] = ['planner', 'coder', 'tester', 'reviewer', 'merger', 'architect', 'debugger', 'documenter']
+
   return (
     <div className="space-y-6" data-testid="agents-tab">
+      {/* Agent Model Assignments */}
       <Card className="bg-bg-card border-border-default">
         <CardHeader>
-          <CardTitle>Parallelism</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Bot className="w-5 h-5 text-accent-primary" />
+            Agent Model Assignments
+          </CardTitle>
           <CardDescription>
-            Control how many agents can run simultaneously.
+            Assign different models to each agent type for optimal performance. Each agent can use a different provider and model.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <table className="w-full" data-testid="agent-model-table">
+              <thead>
+                <tr className="border-b border-border-default">
+                  <th className="text-left py-2 pr-4 text-xs font-medium text-text-secondary uppercase tracking-wider">Agent</th>
+                  <th className="text-left py-2 px-4 text-xs font-medium text-text-secondary uppercase tracking-wider">Provider</th>
+                  <th className="text-left py-2 pl-4 text-xs font-medium text-text-secondary uppercase tracking-wider">Model</th>
+                </tr>
+              </thead>
+              <tbody>
+                {agentTypes.map((agentType) => (
+                  <AgentModelRow
+                    key={agentType}
+                    agentType={agentType}
+                    config={agentModels[agentType]}
+                    onChange={handleAgentModelChange}
+                    claudeModels={claudeModels}
+                    geminiModels={geminiModels}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="mt-4 pt-4 border-t border-border-default">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleResetToDefaults}
+              data-testid="use-recommended-defaults"
+            >
+              <RotateCcw className="w-4 h-4 mr-2" />
+              Use Recommended Defaults
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Agent Pool Settings */}
+      <Card className="bg-bg-card border-border-default">
+        <CardHeader>
+          <CardTitle>Agent Pool Settings</CardTitle>
+          <CardDescription>
+            Configure agent pool capacity and resource limits.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -715,31 +902,51 @@ function AgentSettings({ settings, updateSetting }: SettingsTabProps): ReactElem
             type="number"
             min={1}
             max={10}
-            label="Max Parallel Agents"
-            description="Maximum number of agents that can execute concurrently (1-10)"
+            label="Max Concurrent Agents"
+            description="Maximum number of agents running simultaneously (1-10)"
             value={settings.agents.maxParallelAgents}
             onChange={(e): void => { updateSetting('agents', 'maxParallelAgents', parseInt(e.target.value) || 1) }}
           />
-        </CardContent>
-      </Card>
 
-      <Card className="bg-bg-card border-border-default">
-        <CardHeader>
-          <CardTitle>Timeouts & Retries</CardTitle>
-          <CardDescription>
-            Configure task execution limits and retry behavior.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+          <Input
+            id="qa-iteration-limit"
+            type="number"
+            min={10}
+            max={100}
+            label="QA Iteration Limit"
+            description="Escalate to human after this many QA iterations (10-100)"
+            value={qaIterationLimit}
+            onChange={(e): void => { setQaIterationLimit(parseInt(e.target.value) || 50) }}
+          />
+
           <Input
             id="task-timeout"
             type="number"
             min={1}
-            max={60}
-            label="Task Timeout (minutes)"
-            description="Maximum time a single task can run before timing out"
+            max={120}
+            label="Task Time Limit (minutes)"
+            description="Split task if it exceeds this duration (1-120)"
             value={settings.agents.taskTimeoutMinutes}
-            onChange={(e): void => { updateSetting('agents', 'taskTimeoutMinutes', parseInt(e.target.value) || 5) }}
+            onChange={(e): void => { updateSetting('agents', 'taskTimeoutMinutes', parseInt(e.target.value) || 30) }}
+          />
+        </CardContent>
+      </Card>
+
+      {/* Retry Settings */}
+      <Card className="bg-bg-card border-border-default">
+        <CardHeader>
+          <CardTitle>Retry Settings</CardTitle>
+          <CardDescription>
+            Configure retry behavior for failed tasks.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Checkbox
+            id="auto-retry"
+            label="Auto Retry on Failure"
+            description="Automatically retry tasks when they fail"
+            checked={settings.agents.autoRetryEnabled}
+            onChange={(e): void => { updateSetting('agents', 'autoRetryEnabled', e.target.checked) }}
           />
 
           <Input
@@ -748,17 +955,10 @@ function AgentSettings({ settings, updateSetting }: SettingsTabProps): ReactElem
             min={0}
             max={10}
             label="Max Retries"
-            description="Number of times to retry a failed task"
+            description="Number of times to retry a failed task (0-10)"
             value={settings.agents.maxRetries}
             onChange={(e): void => { updateSetting('agents', 'maxRetries', parseInt(e.target.value) || 0) }}
-          />
-
-          <Checkbox
-            id="auto-retry"
-            label="Auto Retry on Failure"
-            description="Automatically retry tasks when they fail"
-            checked={settings.agents.autoRetryEnabled}
-            onChange={(e): void => { updateSetting('agents', 'autoRetryEnabled', e.target.checked) }}
+            disabled={!settings.agents.autoRetryEnabled}
           />
         </CardContent>
       </Card>
