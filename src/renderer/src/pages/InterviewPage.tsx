@@ -1,9 +1,18 @@
 import { useEffect, useState, type ReactElement } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { InterviewLayout, ChatPanel, RequirementsSidebar } from '@renderer/components/interview';
-import { useInterviewStore, useIsInterviewing } from '@renderer/stores/interviewStore';
+import { useInterviewStore, useIsInterviewing, useRequirements } from '@renderer/stores/interviewStore';
 import { useInterviewPersistence } from '@renderer/hooks';
 import { AnimatedPage } from '@renderer/components/AnimatedPage';
-import { RotateCcw, Check } from 'lucide-react';
+import {
+  RotateCcw,
+  Check,
+  Save,
+  ArrowLeft,
+  CheckCircle2,
+  Sparkles,
+} from 'lucide-react';
+import { cn } from '@renderer/lib/utils';
 
 /**
  * Interview Page - Genesis mode interview interface.
@@ -13,7 +22,9 @@ import { RotateCcw, Check } from 'lucide-react';
  * Supports draft persistence with auto-save and session recovery.
  */
 export default function InterviewPage(): ReactElement {
+  const navigate = useNavigate();
   const isInterviewing = useIsInterviewing();
+  const requirements = useRequirements();
   const startInterview = useInterviewStore((s) => s.startInterview);
   const reset = useInterviewStore((s) => s.reset);
 
@@ -62,11 +73,17 @@ export default function InterviewPage(): ReactElement {
     setPendingDraft(null);
   };
 
-  // Handle new interview button
-  const handleNewInterview = () => {
-    clearDraft();
-    reset();
-    startInterview();
+  // Handle save draft
+  const handleSaveDraft = () => {
+    // The persistence hook auto-saves, but we can trigger a manual save here
+    // For now, this is just a visual confirmation
+  };
+
+  // Handle complete interview
+  const handleComplete = () => {
+    // TODO: Integrate with backend to finalize requirements
+    console.log('Interview complete with requirements:', requirements);
+    navigate('/tasks');
   };
 
   // Format last saved time
@@ -85,33 +102,126 @@ export default function InterviewPage(): ReactElement {
     }
   };
 
+  // Can complete when we have at least 3 requirements
+  const canComplete = requirements.length >= 3;
+
   return (
-    <AnimatedPage className="h-full flex flex-col">
+    <AnimatedPage className="h-full flex flex-col bg-bg-dark">
+      {/* Page Header */}
+      <header className="flex-shrink-0 border-b border-border-default bg-bg-card px-6 py-4">
+        <div className="flex items-center justify-between">
+          {/* Left: Back button and title */}
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => navigate(-1)}
+              className="p-2 -ml-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-bg-hover transition-colors"
+              data-testid="back-button"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <div>
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-accent-primary" />
+                <h1 className="text-lg font-semibold text-text-primary">Genesis Interview</h1>
+              </div>
+              <p className="text-sm text-text-secondary mt-0.5">
+                Define your project requirements through conversation
+              </p>
+            </div>
+          </div>
+
+          {/* Right: Actions */}
+          <div className="flex items-center gap-3">
+            {/* Save status indicator */}
+            <div className="flex items-center gap-2 text-xs text-text-tertiary">
+              {isSaving ? (
+                <>
+                  <span className="h-2 w-2 rounded-full bg-accent-warning animate-pulse" />
+                  <span>Saving...</span>
+                </>
+              ) : lastSaved ? (
+                <>
+                  <Check className="h-3.5 w-3.5 text-accent-success" />
+                  <span>Saved {formatLastSaved()}</span>
+                </>
+              ) : null}
+            </div>
+
+            {/* Save Draft button */}
+            <button
+              onClick={handleSaveDraft}
+              className={cn(
+                'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium',
+                'border border-border-default bg-bg-dark text-text-secondary',
+                'hover:bg-bg-hover hover:text-text-primary',
+                'transition-colors'
+              )}
+              data-testid="save-draft-button"
+            >
+              <Save className="w-4 h-4" />
+              Save Draft
+            </button>
+
+            {/* Complete button */}
+            <button
+              onClick={handleComplete}
+              disabled={!canComplete}
+              className={cn(
+                'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium',
+                'bg-accent-primary text-white',
+                'hover:bg-accent-primary/90 hover:shadow-glow-primary',
+                'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none',
+                'transition-all'
+              )}
+              data-testid="complete-button"
+            >
+              <CheckCircle2 className="w-4 h-4" />
+              Complete
+            </button>
+          </div>
+        </div>
+      </header>
+
       {/* Resume Banner */}
       {showResumeBanner && (
-        <div className="flex items-center justify-between px-6 py-3 bg-violet-500/10 border-b border-violet-500/20">
-          <div className="flex items-center gap-2">
-            <RotateCcw className="h-4 w-4 text-violet-500" />
-            <span className="text-sm text-foreground">
-              Resume your previous interview?
-            </span>
-            <span className="text-xs text-muted-foreground">
-              ({pendingDraft?.messages.length || 0} messages,{' '}
-              {pendingDraft?.requirements.length || 0} requirements)
-            </span>
+        <div
+          className="flex items-center justify-between px-6 py-3 bg-accent-primary/10 border-b border-accent-primary/20"
+          data-testid="resume-banner"
+        >
+          <div className="flex items-center gap-3">
+            <RotateCcw className="h-5 w-5 text-accent-primary" />
+            <div>
+              <span className="text-sm font-medium text-text-primary">
+                Resume your previous interview?
+              </span>
+              <span className="text-xs text-text-secondary ml-2">
+                ({pendingDraft?.messages.length || 0} messages,{' '}
+                {pendingDraft?.requirements.length || 0} requirements)
+              </span>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={handleStartFresh}
-              className="px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground
-                        border border-border rounded-md hover:bg-background/50 transition-colors"
+              className={cn(
+                'px-4 py-2 text-sm font-medium rounded-lg',
+                'border border-border-default text-text-secondary',
+                'hover:bg-bg-hover hover:text-text-primary',
+                'transition-colors'
+              )}
+              data-testid="start-fresh-button"
             >
               Start Fresh
             </button>
             <button
               onClick={handleResume}
-              className="px-3 py-1.5 text-xs text-white bg-violet-600 hover:bg-violet-500
-                        rounded-md transition-colors"
+              className={cn(
+                'px-4 py-2 text-sm font-medium rounded-lg',
+                'bg-accent-primary text-white',
+                'hover:bg-accent-primary/90',
+                'transition-colors'
+              )}
+              data-testid="resume-button"
             >
               Resume
             </button>
@@ -119,43 +229,38 @@ export default function InterviewPage(): ReactElement {
         </div>
       )}
 
-      {/* Main Layout */}
-      <div className="flex-1 relative">
+      {/* Main Content */}
+      <main className="flex-1 min-h-0">
         <InterviewLayout
           chatPanel={<ChatPanel />}
           sidebarPanel={<RequirementsSidebar />}
         />
-      </div>
+      </main>
 
       {/* Bottom Status Bar */}
       {!showResumeBanner && (
-        <div className="flex items-center justify-between px-6 py-2 border-t border-border bg-background/50 text-xs text-muted-foreground">
-          <div className="flex items-center gap-4">
-            {/* Draft saved indicator */}
-            <div className="flex items-center gap-1.5">
-              {isSaving ? (
-                <>
-                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
-                  <span>Saving...</span>
-                </>
-              ) : lastSaved ? (
-                <>
-                  <Check className="h-3 w-3 text-green-500" />
-                  <span>Draft saved {formatLastSaved()}</span>
-                </>
-              ) : null}
-            </div>
+        <footer className="flex-shrink-0 flex items-center justify-between px-6 py-2 border-t border-border-default bg-bg-card">
+          <div className="flex items-center gap-4 text-xs text-text-tertiary">
+            <span>
+              {requirements.length} requirement{requirements.length !== 1 ? 's' : ''} captured
+            </span>
+            {requirements.length < 3 && (
+              <span className="text-accent-warning">
+                Need at least 3 requirements to complete
+              </span>
+            )}
           </div>
 
           {/* New Interview button */}
           <button
-            onClick={handleNewInterview}
-            className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-muted/50 transition-colors"
+            onClick={handleStartFresh}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-text-secondary hover:text-text-primary hover:bg-bg-hover transition-colors"
+            data-testid="new-interview-button"
           >
-            <RotateCcw className="h-3 w-3" />
+            <RotateCcw className="h-3.5 w-3.5" />
             <span>New Interview</span>
           </button>
-        </div>
+        </footer>
       )}
     </AnimatedPage>
   );

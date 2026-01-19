@@ -1,5 +1,17 @@
 import { useState, type ReactElement } from 'react';
-import { ChevronDown, ChevronRight, Layers, Shield, Cpu, Lock, User, Palette, Zap, TestTube, Plug } from 'lucide-react';
+import {
+  ChevronDown,
+  ChevronRight,
+  Layers,
+  Shield,
+  Cpu,
+  Lock,
+  User,
+  Palette,
+  Zap,
+  TestTube,
+  Plug,
+} from 'lucide-react';
 import { cn } from '@renderer/lib/utils';
 import type { Requirement, RequirementCategory } from '@renderer/types/interview';
 import { RequirementCard } from './RequirementCard';
@@ -12,18 +24,58 @@ interface CategorySectionProps {
 
 const CATEGORY_CONFIG: Record<
   RequirementCategory,
-  { label: string; icon: typeof Layers }
+  { label: string; icon: typeof Layers; description: string }
 > = {
-  functional: { label: 'Functional', icon: Layers },
-  non_functional: { label: 'Non-Functional', icon: Shield },
-  technical: { label: 'Technical', icon: Cpu },
-  constraint: { label: 'Constraints', icon: Lock },
-  user_story: { label: 'User Stories', icon: User },
-  ui: { label: 'UI/UX', icon: Palette },
-  performance: { label: 'Performance', icon: Zap },
-  security: { label: 'Security', icon: Shield },
-  integration: { label: 'Integration', icon: Plug },
-  testing: { label: 'Testing', icon: TestTube }
+  functional: {
+    label: 'Functional',
+    icon: Layers,
+    description: 'Core features and capabilities',
+  },
+  non_functional: {
+    label: 'Non-Functional',
+    icon: Shield,
+    description: 'Quality attributes and constraints',
+  },
+  technical: {
+    label: 'Technical',
+    icon: Cpu,
+    description: 'Implementation specifications',
+  },
+  constraint: {
+    label: 'Constraints',
+    icon: Lock,
+    description: 'Limitations and boundaries',
+  },
+  user_story: {
+    label: 'User Stories',
+    icon: User,
+    description: 'User-centric requirements',
+  },
+  ui: {
+    label: 'UI/UX',
+    icon: Palette,
+    description: 'Interface and experience',
+  },
+  performance: {
+    label: 'Performance',
+    icon: Zap,
+    description: 'Speed and efficiency targets',
+  },
+  security: {
+    label: 'Security',
+    icon: Shield,
+    description: 'Protection requirements',
+  },
+  integration: {
+    label: 'Integration',
+    icon: Plug,
+    description: 'External system connections',
+  },
+  testing: {
+    label: 'Testing',
+    icon: TestTube,
+    description: 'Quality assurance needs',
+  },
 };
 
 /**
@@ -36,7 +88,7 @@ const CATEGORY_CONFIG: Record<
 export function CategorySection({
   category,
   requirements,
-  newRequirementIds
+  newRequirementIds,
 }: CategorySectionProps): ReactElement {
   const [isExpanded, setIsExpanded] = useState(true);
 
@@ -44,66 +96,80 @@ export function CategorySection({
   const Icon = config.icon;
   const count = requirements.length;
 
+  // Don't render empty categories
+  if (count === 0) {
+    return <></>;
+  }
+
   return (
-    <div className="border-b border-border/50 last:border-b-0">
+    <div className="border-b border-border-default/30 last:border-b-0">
       {/* Header - clickable to toggle */}
       <button
-        onClick={() => { setIsExpanded(!isExpanded); }}
+        onClick={() => setIsExpanded(!isExpanded)}
         className={cn(
-          'flex w-full items-center gap-2 px-4 py-3 text-left transition-colors',
-          'hover:bg-muted/50'
+          'flex w-full items-center gap-3 px-4 py-3 text-left transition-colors',
+          'hover:bg-bg-hover'
         )}
         aria-expanded={isExpanded}
         aria-controls={`category-${category}`}
       >
         {/* Expand/collapse icon */}
-        {isExpanded ? (
-          <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
-        ) : (
-          <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
-        )}
+        <div
+          className={cn(
+            'flex-shrink-0 w-5 h-5 flex items-center justify-center',
+            'text-text-tertiary transition-transform duration-200',
+            isExpanded && 'rotate-0',
+            !isExpanded && '-rotate-90'
+          )}
+        >
+          <ChevronDown className="w-4 h-4" />
+        </div>
 
         {/* Category icon */}
-        <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
+        <div
+          className={cn(
+            'flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center',
+            'bg-bg-muted'
+          )}
+        >
+          <Icon className="w-3.5 h-3.5 text-text-secondary" />
+        </div>
 
-        {/* Category label */}
-        <span className="text-sm font-medium text-foreground">{config.label}</span>
+        {/* Category label and description */}
+        <div className="flex-1 min-w-0">
+          <span className="text-sm font-medium text-text-primary">{config.label}</span>
+          <span className="text-xs text-text-tertiary ml-2 hidden sm:inline">
+            {config.description}
+          </span>
+        </div>
 
         {/* Count badge */}
         <span
           className={cn(
-            'ml-auto inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full px-1.5 text-xs font-medium',
-            count > 0
-              ? 'bg-violet-500/20 text-violet-400'
-              : 'bg-muted text-muted-foreground'
+            'flex-shrink-0 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full px-1.5 text-xs font-medium',
+            count > 0 ? 'bg-accent-primary/20 text-accent-primary' : 'bg-bg-muted text-text-tertiary'
           )}
         >
           {count}
         </span>
       </button>
 
-      {/* Content - requirements list or empty state */}
+      {/* Content - requirements list */}
       <div
         id={`category-${category}`}
         className={cn(
-          'overflow-hidden transition-all duration-200',
+          'overflow-hidden transition-all duration-300 ease-out',
           isExpanded ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'
         )}
       >
         <div className="px-4 pb-3 space-y-2">
-          {count > 0 ? (
-            requirements.map((requirement) => (
-              <RequirementCard
-                key={requirement.id}
-                requirement={requirement}
-                isNew={newRequirementIds.has(requirement.id)}
-              />
-            ))
-          ) : (
-            <p className="py-2 text-sm text-muted-foreground/60 italic">
-              No requirements yet
-            </p>
-          )}
+          {requirements.map((requirement) => (
+            <RequirementCard
+              key={requirement.id}
+              requirement={requirement}
+              isNew={newRequirementIds.has(requirement.id)}
+            />
+          ))}
         </div>
       </div>
     </div>
