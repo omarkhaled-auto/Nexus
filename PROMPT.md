@@ -1865,7 +1865,28 @@ REQUIRED OUTPUTS:
   - Configuration Priority System (config file > settings UI > env vars > defaults)
 
 #### Task R5: Extract Database Schema
-- **Status:** PENDING
+- **Status:** COMPLETED
+- **Output:** `.agent/workspace/PHASE_17_RESEARCH/DATABASE.md`
+- **Summary:** Comprehensive documentation of the complete SQLite/Drizzle ORM database schema:
+  - Database Technology: SQLite with better-sqlite3, Drizzle ORM, WAL mode
+  - 12 Tables documented with full column definitions:
+    1. `projects` - Core project metadata (mode, status, settings)
+    2. `features` - High-level features with MoSCoW prioritization
+    3. `sub_features` - Sub-components for finer granularity
+    4. `tasks` - Individual work items with QA iterations, dependencies, agent assignments
+    5. `agents` - AI agent instances with model configs, metrics
+    6. `checkpoints` - Project state snapshots for recovery
+    7. `requirements` - Extracted requirements from interviews
+    8. `metrics` - Performance and usage tracking
+    9. `sessions` - Interview and interaction history
+    10. `episodes` - Episodic memory for AI learning
+    11. `continue_points` - Save points for resuming interrupted work
+    12. `code_chunks` - Semantic code search with vector embeddings
+  - 6 Migrations documented (0000-0005)
+  - Entity Relationship Diagram
+  - Type exports for TypeScript
+  - Status value enums (Project, Task, Agent, Session)
+  - UI integration points for each page
 
 #### Task R6: Extract Existing UI Components
 - **Status:** PENDING
