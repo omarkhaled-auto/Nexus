@@ -112,6 +112,68 @@ const nexusAPI = {
     ipcRenderer.invoke('task:update', id, update),
 
   // ========================================
+  // Feature Operations (Phase 17 - Kanban)
+  // ========================================
+
+  /**
+   * Get all features for Kanban board
+   * @returns Promise with array of features
+   */
+  getFeatures: (): Promise<unknown[]> => ipcRenderer.invoke('features:list'),
+
+  /**
+   * Get a single feature by ID
+   * @param id - Feature ID
+   * @returns Promise with feature data or null
+   */
+  getFeature: (id: string): Promise<unknown> =>
+    ipcRenderer.invoke('feature:get', id),
+
+  /**
+   * Create a new feature
+   * @param input - Feature creation data
+   * @returns Promise with created feature
+   */
+  createFeature: (input: {
+    title: string
+    description?: string
+    priority?: string
+    complexity?: string
+  }): Promise<unknown> => ipcRenderer.invoke('feature:create', input),
+
+  /**
+   * Update a feature
+   * @param id - Feature ID
+   * @param update - Partial feature update
+   * @returns Promise with updated feature
+   */
+  updateFeature: (id: string, update: Record<string, unknown>): Promise<unknown> =>
+    ipcRenderer.invoke('feature:update', id, update),
+
+  /**
+   * Delete a feature
+   * @param id - Feature ID
+   * @returns Promise that resolves on success
+   */
+  deleteFeature: (id: string): Promise<{ success: boolean }> =>
+    ipcRenderer.invoke('feature:delete', id),
+
+  /**
+   * Subscribe to feature update events
+   * @param callback - Called when a feature is updated
+   * @returns Unsubscribe function
+   */
+  onFeatureUpdate: (callback: (feature: unknown) => void): Unsubscribe => {
+    const handler = (_event: IpcRendererEvent, feature: unknown): void => {
+      callback(feature)
+    }
+    ipcRenderer.on('feature:updated', handler)
+    return () => {
+      ipcRenderer.removeListener('feature:updated', handler)
+    }
+  },
+
+  // ========================================
   // Agent Operations
   // ========================================
 

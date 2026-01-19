@@ -33,6 +33,24 @@ function validateSender(event: IpcMainInvokeEvent): boolean {
 }
 
 /**
+ * Feature interface for Kanban data
+ * Maps database schema to UI-friendly format
+ */
+interface UIFeature {
+  id: string
+  title: string
+  description: string
+  status: string
+  priority: string
+  complexity: string
+  progress: number
+  assignedAgent?: string
+  tasks: { id: string; title: string; status: string }[]
+  createdAt: string
+  updatedAt: string
+}
+
+/**
  * Orchestration state holder
  * Will be wired to real NexusCoordinator when dependencies are ready
  */
@@ -40,8 +58,9 @@ interface OrchestrationState {
   mode: 'genesis' | 'evolution' | null
   projectId: string | null
   projects: Map<string, { id: string; name: string; mode: 'genesis' | 'evolution' }>
-  tasks: Map<string, { id: string; name: string; status: string }>
+  tasks: Map<string, { id: string; name: string; status: string; featureId?: string }>
   agents: Map<string, { id: string; type: string; status: string }>
+  features: Map<string, UIFeature>
 }
 
 // Orchestration state (will be replaced by real coordinator)
@@ -51,6 +70,7 @@ const state: OrchestrationState = {
   projects: new Map(),
   tasks: new Map(),
   agents: new Map(),
+  features: new Map(),
 }
 
 // Service references for checkpoint and review handlers
@@ -393,6 +413,168 @@ export function registerIpcHandlers(): void {
     }
 
     return Array.from(state.agents.values())
+  })
+
+  // ========================================
+  // Feature Operations (Phase 17 - Kanban)
+  // ========================================
+
+  /**
+   * List all features (for Kanban board)
+   * @returns Array of features with their tasks
+   */
+  ipcMain.handle('features:list', (event) => {
+    if (!validateSender(event)) {
+      throw new Error('Unauthorized IPC sender')
+    }
+
+    return Array.from(state.features.values())
+  })
+
+  /**
+   * Get a single feature by ID
+   * @param id - Feature ID
+   * @returns Feature or null
+   */
+  ipcMain.handle('feature:get', (event, id: string) => {
+    if (!validateSender(event)) {
+      throw new Error('Unauthorized IPC sender')
+    }
+    if (typeof id !== 'string' || !id) {
+      throw new Error('Invalid feature id')
+    }
+
+    return state.features.get(id) || null
+  })
+
+  /**
+   * Create a new feature
+   * @param input - Feature data
+   * @returns Created feature with ID
+   */
+  ipcMain.handle('feature:create', (event, input: { title: string; description?: string; priority?: string; complexity?: string }) => {
+    if (!validateSender(event)) {
+      throw new Error('Unauthorized IPC sender')
+    }
+    if (typeof input.title !== 'string' || !input.title) {
+      throw new Error('Invalid feature title')
+    }
+
+    const id = `feature-${Date.now()}`
+    const now = new Date().toISOString()
+    const feature: UIFeature = {
+      id,
+      title: input.title,
+      description: input.description || '',
+      status: 'backlog',
+      priority: input.priority || 'medium',
+      complexity: input.complexity || 'moderate',
+      progress: 0,
+      tasks: [],
+      createdAt: now,
+      updatedAt: now
+    }
+    state.features.set(id, feature)
+
+    // Emit feature created event
+    // Note: Using type assertion to work around core vs UI type differences
+    const eventBus = EventBus.getInstance()
+    void eventBus.emit('feature:created', {
+      feature: {
+        id,
+        projectId: state.projectId || 'current',
+        name: feature.title,
+        description: feature.description,
+        priority: (feature.priority === 'critical' ? 'critical' : feature.priority === 'high' ? 'high' : feature.priority === 'medium' ? 'medium' : 'low') as 'critical' | 'high' | 'medium' | 'low',
+        status: 'pending' as 'pending' | 'decomposing' | 'ready' | 'in_progress' | 'completed' | 'failed',
+        createdAt: new Date(),
+        updatedAt: new Date()
+      },
+      projectId: state.projectId || 'current'
+    }, { source: 'IPC' })
+
+    return feature
+  })
+
+  /**
+   * Update a feature
+   * @param id - Feature ID
+   * @param update - Partial feature update
+   */
+  ipcMain.handle('feature:update', (event, id: string, update: Partial<UIFeature>) => {
+    if (!validateSender(event)) {
+      throw new Error('Unauthorized IPC sender')
+    }
+    if (typeof id !== 'string' || !id) {
+      throw new Error('Invalid feature id')
+    }
+
+    const feature = state.features.get(id)
+    if (!feature) {
+      throw new Error(`Feature not found: ${id}`)
+    }
+
+    const previousStatus = feature.status
+
+    // Merge update (only allow safe properties)
+    const allowedKeys = ['title', 'description', 'status', 'priority', 'complexity', 'progress', 'assignedAgent']
+    for (const key of allowedKeys) {
+      if (key in update) {
+        ;(feature as unknown as Record<string, unknown>)[key] = update[key as keyof typeof update]
+      }
+    }
+    feature.updatedAt = new Date().toISOString()
+    state.features.set(id, feature)
+
+    // Emit status change event if status changed
+    if (update.status && update.status !== previousStatus) {
+      const eventBus = EventBus.getInstance()
+      void eventBus.emit('feature:status-changed', {
+        featureId: id,
+        projectId: state.projectId || 'current',
+        previousStatus: mapUIStatusToCoreStatus(previousStatus),
+        newStatus: mapUIStatusToCoreStatus(update.status)
+      }, { source: 'IPC' })
+
+      // Emit completed event if moved to done
+      if (update.status === 'done') {
+        void eventBus.emit('feature:completed', {
+          featureId: id,
+          projectId: state.projectId || 'current',
+          tasksCompleted: feature.tasks.length,
+          duration: 0
+        }, { source: 'IPC' })
+      }
+    }
+
+    return feature
+  })
+
+  /**
+   * Delete a feature
+   * @param id - Feature ID
+   */
+  ipcMain.handle('feature:delete', (event, id: string) => {
+    if (!validateSender(event)) {
+      throw new Error('Unauthorized IPC sender')
+    }
+    if (typeof id !== 'string' || !id) {
+      throw new Error('Invalid feature id')
+    }
+
+    const deleted = state.features.delete(id)
+    if (!deleted) {
+      throw new Error(`Feature not found: ${id}`)
+    }
+
+    // Emit feature deleted event
+    const eventBus = EventBus.getInstance()
+    void eventBus.emit('feature:deleted', {
+      featureId: id,
+      projectId: state.projectId || 'current'
+    }, { source: 'IPC' })
+
+    return { success: true }
   })
 
   // Execution control
@@ -833,4 +1015,38 @@ export function forwardCostUpdate(
   if (eventForwardingWindow && !eventForwardingWindow.isDestroyed()) {
     eventForwardingWindow.webContents.send('costs:updated', costs)
   }
+}
+
+/**
+ * Forward feature update to the renderer
+ */
+export function forwardFeatureUpdate(
+  feature: Record<string, unknown>
+): void {
+  if (eventForwardingWindow && !eventForwardingWindow.isDestroyed()) {
+    eventForwardingWindow.webContents.send('feature:updated', feature)
+  }
+}
+
+// ========================================
+// Helper Functions
+// ========================================
+
+/**
+ * Map UI feature status to core FeatureStatus for EventBus payloads
+ * UI uses kanban statuses (backlog, planning, in_progress, ai_review, human_review, done)
+ * Core uses execution statuses (pending, decomposing, ready, in_progress, completed, failed)
+ */
+function mapUIStatusToCoreStatus(
+  status: string
+): 'pending' | 'decomposing' | 'ready' | 'in_progress' | 'completed' | 'failed' {
+  const map: Record<string, 'pending' | 'decomposing' | 'ready' | 'in_progress' | 'completed' | 'failed'> = {
+    backlog: 'pending',
+    planning: 'decomposing',
+    in_progress: 'in_progress',
+    ai_review: 'in_progress',  // AI review is still in progress
+    human_review: 'ready',     // Ready for final review
+    done: 'completed'
+  }
+  return map[status] || 'pending'
 }
