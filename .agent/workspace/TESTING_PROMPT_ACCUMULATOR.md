@@ -16,7 +16,7 @@
 | 4 | Integration Sequences | COMPLETE | 120 |
 | 5 | Genesis Workflow | COMPLETE | 75 |
 | 6 | Evolution Workflow | COMPLETE | 80 |
-| 7 | Phase 13 Features | PENDING | 0 |
+| 7 | Phase 13 Features | COMPLETE | 70 |
 | 8 | Phase 14B Bindings | PENDING | 0 |
 | 9 | Silent Failures | PENDING | 0 |
 | 10 | Edge Cases | PENDING | 0 |
@@ -2656,3 +2656,419 @@ Each test includes:
 - SILENT_FAILURE_CHECK statements
 
 Total tests added: ~80 new workflow tests
+
+---
+
+## SECTION 7: PHASE 13 CONTEXT ENHANCEMENT TESTS
+
+### P13-001: RepoMapGenerator
+```
+TEST: RepoMapGenerator creates compressed codebase representation
+LOCATION: src/infrastructure/analysis/RepoMapGenerator.ts
+METHODS: generate(), generateIncremental(), findSymbol(), findUsages(), formatForContext(), getTokenCount()
+
+VERIFY: generate() scans codebase and returns RepoMap
+VERIFY: generate() uses tree-sitter for TypeScript/JavaScript parsing
+VERIFY: generate() extracts functions, classes, interfaces, types
+VERIFY: generate() outputs compressed representation with signatures
+VERIFY: generate() includes file structure and symbol count
+VERIFY: generate() excludes implementation details
+VERIFY: generate() respects includePatterns and excludePatterns
+VERIFY: generate() handles maxFiles limit
+VERIFY: generateIncremental() only processes changed files
+VERIFY: generateIncremental() merges with existing RepoMap
+VERIFY: findSymbol() returns SymbolEntry[] for symbol name
+VERIFY: findUsages() returns Usage[] with file, line, context, usageType
+VERIFY: findImplementations() returns implementations of interface
+VERIFY: getDependencies() returns import dependencies for file
+VERIFY: getDependents() returns files that import given file
+VERIFY: formatForContext() produces text within maxTokens budget
+VERIFY: formatForContext() prioritizes by reference count when rankByReferences=true
+VERIFY: formatForContext() groups by file when groupByFile=true
+VERIFY: getTokenCount() returns accurate token estimate
+VERIFY: Output size < 10% of codebase size
+
+INTEGRATION_CHECK: RepoMap used by agents for context building
+INTEGRATION_CHECK: RepoMap integrated with FreshContextManager
+INTEGRATION_CHECK: RepoMap persisted in RepoMapStore
+SILENT_FAILURE_CHECK: tree-sitter fails on syntax error, empty map generated
+SILENT_FAILURE_CHECK: Large files skipped without warning
+SILENT_FAILURE_CHECK: Binary files cause crash or corruption
+SILENT_FAILURE_CHECK: Incremental update misses changed file
+SILENT_FAILURE_CHECK: Symbol references miscounted
+```
+
+### P13-002: CodebaseAnalyzer
+```
+TEST: CodebaseAnalyzer generates comprehensive documentation
+LOCATION: src/infrastructure/analysis/CodebaseAnalyzer.ts
+METHODS: analyze(), generateArchitecture(), generatePatterns(), generateDependencies(), generateAPISurface(), generateDataFlow(), generateTestStrategy(), generateKnownIssues(), saveDocs(), loadDocs(), updateDocs()
+
+VERIFY: analyze() generates all 7 document types
+VERIFY: generateArchitecture() produces ARCHITECTURE.md with:
+  - Directory structure analysis
+  - Layer patterns identification
+  - Entry points documentation
+  - Key components description
+VERIFY: generatePatterns() produces PATTERNS.md with:
+  - Naming conventions (camelCase, snake_case, etc.)
+  - Error handling patterns
+  - Component patterns
+  - State management approach
+  - Async patterns
+VERIFY: generateDependencies() produces DEPENDENCIES.md with:
+  - Runtime dependencies from package.json
+  - Dev dependencies
+  - Peer dependencies
+  - Version constraints
+  - Security notes
+VERIFY: generateAPISurface() produces API_SURFACE.md with:
+  - Exported functions with signatures
+  - Exported classes with methods
+  - Exported types and interfaces
+  - Public API endpoints
+VERIFY: generateDataFlow() produces DATA_FLOW.md with:
+  - State management description
+  - Data transformation flows
+  - API integrations
+  - Event flows
+VERIFY: generateTestStrategy() produces TEST_STRATEGY.md with:
+  - Test framework used
+  - Test structure conventions
+  - Coverage targets
+  - Mocking strategy
+  - E2E approach
+VERIFY: generateKnownIssues() produces KNOWN_ISSUES.md with:
+  - TODO/FIXME/HACK comments extracted
+  - Complexity hotspots (cyclomatic complexity)
+  - Tech debt items
+  - Workarounds documented
+VERIFY: saveDocs() persists all docs to .nexus/codebase/
+VERIFY: loadDocs() restores docs from disk
+VERIFY: updateDocs() performs incremental update based on changed files
+VERIFY: useParallelAnalysis option runs generators concurrently
+
+INTEGRATION_CHECK: Docs available to agents via DynamicContextProvider
+INTEGRATION_CHECK: Docs stored in CodebaseDocsStore
+INTEGRATION_CHECK: Docs refreshed when codebase changes detected
+SILENT_FAILURE_CHECK: Analysis incomplete, partial docs saved as complete
+SILENT_FAILURE_CHECK: Docs outdated after code changes
+SILENT_FAILURE_CHECK: LLM call fails, generic placeholder doc saved
+SILENT_FAILURE_CHECK: forceRegenerate=false skips stale docs
+```
+
+### P13-003: Code Embeddings / MemorySystem Extension
+```
+TEST: MemorySystem extended with semantic code search
+LOCATION: src/persistence/memory/MemorySystem.ts (extended), src/persistence/memory/CodeMemory.ts
+METHODS: indexFile(), indexProject(), updateFile(), removeFile(), searchCode(), findSimilarCode(), findUsages(), findDefinition(), getChunksForFile()
+
+VERIFY: indexFile() chunks code by function/class boundaries
+VERIFY: indexFile() generates embedding for each chunk
+VERIFY: indexFile() stores chunks in code_chunks table
+VERIFY: indexProject() indexes all relevant files in project
+VERIFY: indexProject() respects include/exclude patterns
+VERIFY: updateFile() updates chunks when file changes
+VERIFY: removeFile() removes all chunks for deleted file
+VERIFY: searchCode() performs semantic similarity search
+VERIFY: searchCode() returns CodeSearchResult[] with score
+VERIFY: searchCode() respects threshold option (default 0.7)
+VERIFY: searchCode() respects limit option (default 10)
+VERIFY: searchCode() supports projectId filter
+VERIFY: searchCode() supports filePattern filter
+VERIFY: findSimilarCode() finds semantically similar code snippets
+VERIFY: findUsages() returns all usages of symbol with context
+VERIFY: findDefinition() returns symbol definition with signature and docs
+VERIFY: getChunksForFile() returns all chunks for a file
+VERIFY: Embeddings persisted to SQLite with vector similarity search
+VERIFY: Incremental indexing updates only changed files
+
+INTEGRATION_CHECK: MemorySystem.getRelevantContext() includes code search results
+INTEGRATION_CHECK: CodeMemory used by DynamicContextProvider for search requests
+INTEGRATION_CHECK: Schema includes code_chunks table with proper indexes
+SILENT_FAILURE_CHECK: Embedding API fails, empty results returned instead of error
+SILENT_FAILURE_CHECK: Stale embeddings after code change (index not updated)
+SILENT_FAILURE_CHECK: Dimension mismatch corrupts search results
+SILENT_FAILURE_CHECK: Chunking fails on complex syntax, file skipped
+SILENT_FAILURE_CHECK: Query returns 0 results when matches exist (threshold too high)
+```
+
+### P13-004: FreshContextManager
+```
+TEST: FreshContextManager ensures clean context per task
+LOCATION: src/orchestration/context/FreshContextManager.ts
+METHODS: buildFreshContext(), clearAgentContext(), clearTaskContext(), validateContextSize(), estimateTokenCount()
+
+VERIFY: buildFreshContext() returns complete TaskContext with:
+  - repoMap: Compressed repository structure
+  - codebaseDocs: Relevant architectural info
+  - projectConfig: Project settings
+  - taskSpec: Full task specification
+  - relevantFiles: Task-specific file contents
+  - relevantMemories: Relevant memory entries
+  - conversationHistory: ALWAYS EMPTY (no accumulated history)
+  - tokenCount: Accurate count
+  - generatedAt: Timestamp
+VERIFY: clearAgentContext() removes all context for agent ID
+VERIFY: clearTaskContext() removes all context for task ID
+VERIFY: validateContextSize() returns ContextValidation with:
+  - valid: boolean indicating within budget
+  - tokenCount: actual count
+  - maxTokens: configured maximum
+  - warnings: list of issues
+  - suggestions: optimization hints
+VERIFY: estimateTokenCount() returns accurate token count
+
+TOKEN_BUDGET_VERIFICATION:
+  - System Prompt: ~2,000 tokens (fixed)
+  - Repo Map: ~2,000 tokens (configurable)
+  - Codebase Docs: ~3,000 tokens (fixed)
+  - Task Spec: ~1,000 tokens (fixed)
+  - Reserved Response: ~16,000 tokens (fixed)
+  - Task Files: 60% of remaining (~75,000 tokens)
+  - Related Files: 25% of remaining (~31,500 tokens)
+  - Memories: 15% of remaining (~19,000 tokens)
+
+VERIFY: Token budget allocation follows priority order
+VERIFY: Lower-priority content truncated when over budget
+VERIFY: Critical content (task files) never truncated silently
+
+INTEGRATION_CHECK: Called by AgentPool before task assignment
+INTEGRATION_CHECK: Context cleared after task completion or failure
+INTEGRATION_CHECK: No context pollution between sequential tasks
+SILENT_FAILURE_CHECK: Reset fails silently, stale context persists
+SILENT_FAILURE_CHECK: Context pollution between tasks (Task B sees Task A history)
+SILENT_FAILURE_CHECK: Context exceeds limit, truncated without warning
+SILENT_FAILURE_CHECK: relevantFiles empty despite task requiring files
+SILENT_FAILURE_CHECK: conversationHistory not empty (accumulation bug)
+```
+
+### P13-005: DynamicContextProvider
+```
+TEST: DynamicContextProvider allows agent mid-task context requests
+LOCATION: src/orchestration/context/DynamicContextProvider.ts
+METHODS: registerAgent(), unregisterAgent(), requestFile(), requestSymbol(), requestSearch(), requestUsages(), requestFiles(), requestContext(), getRemainingBudget(), getUsedTokens()
+
+VERIFY: registerAgent() tracks agent and associates with task
+VERIFY: unregisterAgent() removes agent tracking
+VERIFY: requestFile() loads file content from project
+VERIFY: requestFile() respects token budget
+VERIFY: requestFile() returns null for non-existent file
+VERIFY: requestFile() tracks file in used context
+VERIFY: requestSymbol() uses RepoMap to find symbol
+VERIFY: requestSymbol() returns SymbolContext with definition, signature, docs, usages
+VERIFY: requestSymbol() handles ambiguous names (multiple matches)
+VERIFY: requestSearch() uses CodeMemory for semantic search
+VERIFY: requestSearch() returns ranked SearchResults with scores
+VERIFY: requestSearch() respects result limit
+VERIFY: requestUsages() returns UsageContext[] with surrounding code
+VERIFY: requestFiles() batch loads multiple files efficiently
+VERIFY: requestContext() handles all request types via single interface
+VERIFY: getRemainingBudget() returns accurate remaining tokens
+VERIFY: getUsedTokens() returns accurate used tokens
+
+AGENT_TOOL_INTEGRATION:
+VERIFY: request_context tool available to coder/tester agents
+VERIFY: Tool calls routed correctly to DynamicContextProvider
+VERIFY: Results formatted appropriately for agent consumption
+VERIFY: Tool usage tracked in metrics
+
+INTEGRATION_CHECK: Handlers use RepoMapGenerator and CodeMemory
+INTEGRATION_CHECK: Budget enforcement prevents excessive requests
+INTEGRATION_CHECK: All requests logged for debugging and analysis
+SILENT_FAILURE_CHECK: Request fails silently, agent continues without context
+SILENT_FAILURE_CHECK: Budget exceeded without warning to agent
+SILENT_FAILURE_CHECK: Circular request loop (infinite context fetching)
+SILENT_FAILURE_CHECK: File loaded but content corrupted
+SILENT_FAILURE_CHECK: Symbol search returns wrong symbol (name collision)
+```
+
+### P13-006: RalphStyleIterator
+```
+TEST: RalphStyleIterator implements persistent git-based iteration
+LOCATION: src/execution/iteration/RalphStyleIterator.ts
+METHODS: execute(), pause(), resume(), abort(), getStatus(), getHistory()
+
+VERIFY: execute() runs iteration loop with IterationOptions:
+  - maxIterations: respects limit (default 20)
+  - commitEachIteration: commits after each iteration (default true)
+  - includeGitDiff: includes diff in context (default true)
+  - includePreviousErrors: includes errors in context (default true)
+  - escalateAfter: triggers escalation at threshold
+VERIFY: execute() returns IterationResult with:
+  - success: boolean indicating pass/fail
+  - iterations: count of iterations executed
+  - finalState: 'passed' | 'failed' | 'escalated' | 'aborted'
+  - history: complete IterationHistory[]
+  - totalDuration: total time
+  - totalTokens: total tokens used
+
+ITERATION_FLOW_VERIFICATION:
+VERIFY: Step 1 - Build fresh context (includes task spec, relevant files, repo map)
+VERIFY: Step 1 - If N > 1, includes previous diff and errors
+VERIFY: Step 2 - Agent executes and writes/modifies code
+VERIFY: Step 3 - Iteration work committed with message "iteration-N: {summary}"
+VERIFY: Step 4 - QA sequence runs: Build -> Lint -> Test -> Review
+VERIFY: Step 5 - If ALL PASS: SUCCESS, merge to main
+VERIFY: Step 5 - If FAIL and N < maxIter: increment N, loop back
+VERIFY: Step 5 - If N >= maxIter: ESCALATE
+
+VERIFY: pause() pauses iteration at next safe point
+VERIFY: resume() continues from paused state
+VERIFY: abort() terminates immediately
+VERIFY: getStatus() returns current IterationStatus:
+  - taskId, currentIteration, maxIterations
+  - state: 'running' | 'paused' | 'completed' | 'failed'
+  - lastActivity, currentPhase
+VERIFY: getHistory() returns complete IterationHistory
+
+INTEGRATION_CHECK: Uses FreshContextManager for context per iteration
+INTEGRATION_CHECK: Git diff injected via GitDiffContextBuilder
+INTEGRATION_CHECK: Errors aggregated via ErrorContextAggregator
+INTEGRATION_CHECK: Commits handled via IterationCommitHandler
+INTEGRATION_CHECK: QALoopEngine can use Ralph mode
+SILENT_FAILURE_CHECK: Git diff empty when changes exist
+SILENT_FAILURE_CHECK: State not persisted, progress lost on crash
+SILENT_FAILURE_CHECK: Iteration count resets (runs forever)
+SILENT_FAILURE_CHECK: Commit fails silently, changes lost
+SILENT_FAILURE_CHECK: QA step skipped but iteration counted
+SILENT_FAILURE_CHECK: Escalation triggered but handler not called
+```
+
+### P13-007: DynamicReplanner
+```
+TEST: DynamicReplanner detects complexity and re-decomposes tasks
+LOCATION: src/orchestration/planning/DynamicReplanner.ts
+METHODS: startMonitoring(), stopMonitoring(), checkReplanningNeeded(), replan(), setTriggerThresholds()
+
+VERIFY: startMonitoring() begins tracking task execution
+VERIFY: stopMonitoring() stops tracking task
+VERIFY: checkReplanningNeeded() evaluates all triggers:
+  - time_exceeded: Task taking > 1.5x estimate
+  - iterations_high: Iterations > 40% of max
+  - scope_creep: Files modified > expected + 3
+  - complexity_discovered: Agent reports complexity
+  - dependency_discovered: New dependencies found
+  - blocking_issue: Fundamental blocker detected
+  - agent_request: Agent explicitly requests replan
+VERIFY: checkReplanningNeeded() returns ReplanDecision with:
+  - shouldReplan: boolean
+  - reason: ReplanReason if applicable
+  - confidence: 0.0-1.0
+  - suggestedAction: 'continue' | 'split' | 'escalate' | 'abort'
+VERIFY: replan() performs re-decomposition
+VERIFY: replan() returns ReplanResult with:
+  - success: boolean
+  - action: 'split' | 'rescoped' | 'escalated' | 'continued'
+  - originalTask: the oversized task
+  - newTasks: split subtasks if applicable
+  - message: explanation
+VERIFY: setTriggerThresholds() configures trigger sensitivity
+
+TRIGGER_EVALUATION_VERIFICATION:
+VERIFY: TimeExceededTrigger fires when elapsed > estimate * 1.5
+VERIFY: IterationsTrigger fires when iteration > maxIterations * 0.4
+VERIFY: ScopeCreepTrigger fires when filesModified > filesExpected + 3
+VERIFY: All triggers respect configured thresholds
+
+TASK_SPLITTING_VERIFICATION:
+VERIFY: TaskSplitter creates valid subtasks from oversized task
+VERIFY: Subtasks preserve original dependencies
+VERIFY: Subtasks added to TaskQueue in correct order
+VERIFY: Partial completion preserved (completed work not lost)
+
+AGENT_TOOL_INTEGRATION:
+VERIFY: request_replan tool available to agents
+VERIFY: Tool accepts reason, suggestion, blockers
+VERIFY: Agent requests routed to DynamicReplanner
+
+INTEGRATION_CHECK: NexusCoordinator calls replanner during execution
+INTEGRATION_CHECK: TaskQueue updated with new tasks from split
+INTEGRATION_CHECK: Replanning events emitted for tracking
+SILENT_FAILURE_CHECK: Complexity not detected, task runs forever
+SILENT_FAILURE_CHECK: Replan creates invalid/circular dependencies
+SILENT_FAILURE_CHECK: Subtasks not added to queue
+SILENT_FAILURE_CHECK: Partial completion lost during split
+SILENT_FAILURE_CHECK: Trigger fires repeatedly (replan loop)
+```
+
+### P13-008: SelfAssessmentEngine
+```
+TEST: SelfAssessmentEngine evaluates agent progress and identifies blockers
+LOCATION: src/orchestration/assessment/SelfAssessmentEngine.ts
+METHODS: assessProgress(), assessBlockers(), assessApproach(), recommendNextStep(), recommendAlternativeApproach(), recordOutcome(), getHistoricalInsights()
+
+VERIFY: assessProgress() returns ProgressAssessment with:
+  - taskId: task being assessed
+  - completionEstimate: 0.0-1.0
+  - confidence: 0.0-1.0
+  - remainingWork: string[] of outstanding items
+  - blockers: string[] of current blockers
+  - risks: Risk[] with type, description, probability, impact
+VERIFY: assessBlockers() returns BlockerAssessment with:
+  - blockers: Blocker[] with type, description, affectedFiles, possibleSolutions
+  - severity: 'none' | 'low' | 'medium' | 'high' | 'critical'
+  - canProceed: boolean
+  - suggestedActions: string[]
+VERIFY: assessBlockers() detects blocker types:
+  - technical: Code/implementation issues
+  - dependency: Missing or incompatible dependencies
+  - unclear_requirement: Ambiguous task definition
+  - external: External service/API issues
+  - knowledge_gap: Agent lacks required knowledge
+VERIFY: assessApproach() returns ApproachAssessment with:
+  - currentApproach: description of current strategy
+  - effectiveness: 'working' | 'struggling' | 'stuck' | 'wrong_direction'
+  - confidence: 0.0-1.0
+  - alternatives: AlternativeApproach[] with pros/cons
+  - recommendation: suggested action
+VERIFY: recommendNextStep() returns Recommendation with:
+  - action: 'continue' | 'try_alternative' | 'request_help' | 'split_task' | 'abort'
+  - reason: explanation
+  - details: specific guidance
+  - confidence: 0.0-1.0
+VERIFY: recommendAlternativeApproach() returns AlternativeApproach[] with:
+  - description, pros, cons, estimatedEffort, confidence
+
+LEARNING_VERIFICATION:
+VERIFY: recordOutcome() saves task outcome with:
+  - success, approach, iterations, blockers, lessonsLearned
+VERIFY: getHistoricalInsights() returns HistoricalInsight[] with:
+  - pattern: type of task
+  - successRate: historical success rate
+  - averageIterations: typical iteration count
+  - commonBlockers: frequently encountered blockers
+  - recommendedApproach: historically successful approach
+
+INTEGRATION_CHECK: Assessments used by DynamicReplanner
+INTEGRATION_CHECK: Called periodically by NexusCoordinator
+INTEGRATION_CHECK: Outcomes stored in MemorySystem for learning
+SILENT_FAILURE_CHECK: Assessment always returns "good" (false positive)
+SILENT_FAILURE_CHECK: Blocker identified but not acted upon
+SILENT_FAILURE_CHECK: Historical data not retrieved (always cold start)
+SILENT_FAILURE_CHECK: Confidence always 1.0 (overconfident)
+SILENT_FAILURE_CHECK: Recommendation action not executed
+```
+
+---
+
+**[TASK 7 COMPLETE]**
+
+Task 7 extracted all 8 Phase 13 Context Enhancement features:
+- P13-001: RepoMapGenerator - 30+ VERIFY statements
+- P13-002: CodebaseAnalyzer - 35+ VERIFY statements
+- P13-003: Code Embeddings / MemorySystem Extension - 30+ VERIFY statements
+- P13-004: FreshContextManager - 25+ VERIFY statements
+- P13-005: DynamicContextProvider - 25+ VERIFY statements
+- P13-006: RalphStyleIterator - 30+ VERIFY statements
+- P13-007: DynamicReplanner - 30+ VERIFY statements
+- P13-008: SelfAssessmentEngine - 30+ VERIFY statements
+
+Each feature includes:
+- LOCATION: Source file path
+- METHODS: Key methods to test
+- VERIFY: Specific behavior verifications
+- INTEGRATION_CHECK: Integration points
+- SILENT_FAILURE_CHECK: Potential silent failure modes
+
+Total tests added: ~70 new Phase 13 tests
