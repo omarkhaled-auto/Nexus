@@ -19,7 +19,7 @@
 | 7 | Phase 13 Features | COMPLETE | 70 |
 | 8 | Phase 14B Bindings | COMPLETE | 85 |
 | 9 | Silent Failures | COMPLETE | 35 |
-| 10 | Edge Cases | PENDING | 0 |
+| 10 | Edge Cases | COMPLETE | 34 |
 | 11 | Synthesis | PENDING | 0 |
 | 12 | Assembly | PENDING | 0 |
 
@@ -4471,3 +4471,789 @@ Each test includes:
 - SILENT_FAILURE: How it fails silently
 - DETECTION_STRATEGY: How to catch it
 - TEST_CASE: Specific test steps and assertions
+
+---
+
+## SECTION 10: EDGE CASE AND BOUNDARY TESTS
+
+### Layer 7: Infrastructure Edge Cases
+
+#### EDGE-INF-001: Empty File Operations
+```
+TEST: Handle empty files correctly
+COMPONENTS: FileSystemService
+
+EDGE_CASE: Empty file read/write operations
+EXPECTED_BEHAVIOR: Empty files handled as valid state
+
+VERIFY: readFile('empty.txt') returns '' (empty string, not null/undefined)
+VERIFY: writeFile('new.txt', '') creates empty file with 0 bytes
+VERIFY: exists() returns true for empty files
+VERIFY: getSize('empty.txt') returns 0
+VERIFY: glob() includes empty files in results
+VERIFY: watch() triggers events for empty file modifications
+
+TEST_CASE:
+  1. Create empty file
+  2. Read file, verify returns ''
+  3. Write '' to existing file
+  4. Verify file exists with 0 bytes
+  5. Delete and recreate as empty
+```
+
+#### EDGE-INF-002: Very Large Files
+```
+TEST: Handle large files without crashing
+COMPONENTS: FileSystemService, GitService, MemorySystem
+
+EDGE_CASE: Files exceeding memory limits
+EXPECTED_BEHAVIOR: Graceful handling with streaming or chunking
+
+VERIFY: Read 100MB file doesn't OOM (uses streaming)
+VERIFY: Write 100MB file uses chunked writes
+VERIFY: Git diff handles 10MB+ file changes
+VERIFY: Memory system limits embedding size
+VERIFY: Context truncation for >500KB files
+VERIFY: Progress callback for large operations
+
+TEST_CASE:
+  1. Generate 100MB test file
+  2. Read file, measure memory usage
+  3. Write 100MB data, verify completion
+  4. Create git diff with large file
+  5. Verify no memory leaks after operations
+```
+
+#### EDGE-INF-003: Special Characters in Paths
+```
+TEST: Handle special characters in file paths
+COMPONENTS: FileSystemService, WorktreeManager, GitService
+
+EDGE_CASE: Non-ASCII and problematic path characters
+EXPECTED_BEHAVIOR: Proper escaping and encoding
+
+VERIFY: Spaces in path work: 'path with spaces/file.ts'
+VERIFY: Unicode in path works: 'путь/文件.ts'
+VERIFY: Windows/Unix path normalization: C:\Users vs /c/Users
+VERIFY: Special chars escaped: 'file[1](2).ts'
+VERIFY: Dots handled: '../relative/path.ts'
+VERIFY: Null bytes rejected
+VERIFY: Max path length (260 Windows, 4096 Unix) enforced
+
+TEST_CASE:
+  1. Create file with spaces in path
+  2. Create file with unicode name
+  3. Test cross-platform path conversion
+  4. Test bracket and parenthesis handling
+  5. Verify relative path resolution
+```
+
+#### EDGE-INF-004: Concurrent File Access
+```
+TEST: Handle concurrent file operations
+COMPONENTS: FileSystemService, CheckpointManager
+
+EDGE_CASE: Multiple readers/writers on same file
+EXPECTED_BEHAVIOR: No corruption, proper synchronization
+
+VERIFY: Parallel reads work (multiple readers OK)
+VERIFY: Parallel writes don't corrupt (mutex/queue)
+VERIFY: Read during write returns consistent state
+VERIFY: File locking prevents conflicts
+VERIFY: Lock timeout prevents deadlock
+VERIFY: Atomic operations for critical files
+
+TEST_CASE:
+  1. Spawn 10 parallel readers
+  2. Verify all get same content
+  3. Spawn 10 parallel writers
+  4. Verify final content is one complete write
+  5. Test read-write interleaving
+```
+
+#### EDGE-INF-005: Network Failures during Git Operations
+```
+TEST: Handle network issues during git
+COMPONENTS: GitService
+
+EDGE_CASE: Network timeout/disconnect during remote operations
+EXPECTED_BEHAVIOR: Graceful retry or error
+
+VERIFY: Clone handles network timeout
+VERIFY: Push retries on transient failure
+VERIFY: Pull handles partial fetch
+VERIFY: Detects incomplete clone
+VERIFY: Rollback on push failure
+VERIFY: Clear error message for user
+
+TEST_CASE:
+  1. Simulate network drop during clone
+  2. Verify partial clone cleaned up
+  3. Simulate timeout during push
+  4. Verify local commits preserved
+  5. Test retry logic with eventual success
+```
+
+### Layer 6: Persistence Edge Cases
+
+#### EDGE-PER-001: Database Under Load
+```
+TEST: Database handles high load
+COMPONENTS: DatabaseService
+
+EDGE_CASE: Many concurrent queries/connections
+EXPECTED_BEHAVIOR: Connection pooling, query queuing
+
+VERIFY: 1000 concurrent queries complete
+VERIFY: Transaction isolation maintained
+VERIFY: Connection pool limits respected
+VERIFY: Queue backpressure when saturated
+VERIFY: No deadlocks under load
+VERIFY: Graceful degradation when overwhelmed
+
+TEST_CASE:
+  1. Create 1000 parallel queries
+  2. Measure latency distribution
+  3. Verify no query failures
+  4. Test with 100 parallel transactions
+  5. Verify isolation (no dirty reads)
+```
+
+#### EDGE-PER-002: Checkpoint Size Limits
+```
+TEST: Handle large checkpoints
+COMPONENTS: CheckpointManager, StateManager
+
+EDGE_CASE: Checkpoint with many tasks and large state
+EXPECTED_BEHAVIOR: Incremental/compressed checkpoints
+
+VERIFY: Checkpoint with 1000 tasks succeeds
+VERIFY: Restore 1000-task checkpoint in reasonable time
+VERIFY: Incremental checkpoints only save diffs
+VERIFY: Compression reduces checkpoint size
+VERIFY: Checkpoint size limit enforced (500MB)
+VERIFY: Warning at 80% of size limit
+
+TEST_CASE:
+  1. Create project with 1000 tasks
+  2. Create checkpoint
+  3. Measure checkpoint file size
+  4. Modify 1 task
+  5. Create incremental checkpoint (should be small)
+```
+
+#### EDGE-PER-003: Memory System Limits
+```
+TEST: Handle embedding storage limits
+COMPONENTS: MemorySystem
+
+EDGE_CASE: Very large codebase or many queries
+EXPECTED_BEHAVIOR: LRU eviction, query limits
+
+VERIFY: Maximum embeddings stored (configurable limit)
+VERIFY: LRU eviction when limit reached
+VERIFY: Query with no results returns empty array
+VERIFY: Query with thousands of results paginated
+VERIFY: Stale embeddings automatically refreshed
+VERIFY: Memory usage stays bounded
+
+TEST_CASE:
+  1. Store maximum number of embeddings
+  2. Add one more, verify oldest evicted
+  3. Query for non-existent term
+  4. Query with 1000+ results
+  5. Monitor memory over extended use
+```
+
+#### EDGE-PER-004: State Recovery from Corruption
+```
+TEST: Handle corrupted state files
+COMPONENTS: StateManager, CheckpointManager
+
+EDGE_CASE: Power loss or crash during write
+EXPECTED_BEHAVIOR: Recovery from backup or graceful reset
+
+VERIFY: Detects corrupted JSON files
+VERIFY: Falls back to backup if available
+VERIFY: Initializes fresh state if no backup
+VERIFY: Logs corruption for debugging
+VERIFY: Notifies user of data loss
+VERIFY: Atomic writes prevent partial corruption
+
+TEST_CASE:
+  1. Write state file
+  2. Corrupt file mid-write (truncate)
+  3. Restart system
+  4. Verify recovery or reset
+  5. Verify user notification
+```
+
+### Layer 5: Quality Edge Cases
+
+#### EDGE-QUA-001: No Files to Lint/Build
+```
+TEST: Handle empty project
+COMPONENTS: BuildRunner, LintRunner, TestRunner
+
+EDGE_CASE: Project with no source files
+EXPECTED_BEHAVIOR: Graceful success or clear message
+
+VERIFY: Build with no .ts files returns success (nothing to compile)
+VERIFY: Lint with no .ts files returns success (nothing to lint)
+VERIFY: Test with no .test.ts files returns success (0/0 tests)
+VERIFY: Clear message distinguishing "no files" from "no errors"
+VERIFY: Metrics report 0 files processed
+
+TEST_CASE:
+  1. Create empty project directory
+  2. Run tsc --noEmit
+  3. Verify exit code 0
+  4. Run eslint
+  5. Verify reports no files
+```
+
+#### EDGE-QUA-002: All Tests Skip
+```
+TEST: Handle all tests skipped
+COMPONENTS: TestRunner
+
+EDGE_CASE: Every test marked skip or only.skip()
+EXPECTED_BEHAVIOR: Report skips, not falsely report success
+
+VERIFY: Result shows 0 pass, 0 fail, N skip
+VERIFY: Skips counted in statistics
+VERIFY: NOT marked as full success (warning state)
+VERIFY: Reason for skip included if available
+VERIFY: Can configure skip-is-failure mode
+
+TEST_CASE:
+  1. Create test file with all tests skipped
+  2. Run vitest
+  3. Verify result distinguishes from success
+  4. Check skip reasons in output
+```
+
+#### EDGE-QUA-003: Review Very Large Diff
+```
+TEST: Handle large code review
+COMPONENTS: ReviewRunner, GeminiClient
+
+EDGE_CASE: Diff exceeding context window
+EXPECTED_BEHAVIOR: Smart truncation or chunked review
+
+VERIFY: Diff > 10000 lines handled (chunked)
+VERIFY: Truncation preserves critical changes
+VERIFY: Summary of truncated sections provided
+VERIFY: Still produces meaningful review
+VERIFY: Token count tracked and warned
+
+TEST_CASE:
+  1. Generate 10000+ line diff
+  2. Submit for review
+  3. Verify review completes
+  4. Check review covers all sections
+  5. Verify truncation warning if needed
+```
+
+#### EDGE-QUA-004: Timeout During QA Step
+```
+TEST: Handle QA step timeout
+COMPONENTS: BuildRunner, TestRunner, ReviewRunner
+
+EDGE_CASE: QA step exceeds timeout
+EXPECTED_BEHAVIOR: Kill process, report timeout error
+
+VERIFY: Process killed after timeout (60s default)
+VERIFY: Timeout error clearly reported
+VERIFY: Partial output captured before timeout
+VERIFY: Resources cleaned up (no zombie processes)
+VERIFY: Iteration continues with timeout error
+
+TEST_CASE:
+  1. Create test that runs forever
+  2. Run with 5s timeout
+  3. Verify killed after 5s
+  4. Verify error includes "timeout"
+  5. Verify no hung process
+```
+
+### Layer 4: Execution Edge Cases
+
+#### EDGE-EXE-001: Agent Generates No Code
+```
+TEST: Handle agent producing nothing
+COMPONENTS: CoderAgent, BaseAgentRunner
+
+EDGE_CASE: Agent response contains no code
+EXPECTED_BEHAVIOR: Detected as failure, retry
+
+VERIFY: Detected as incomplete (not success)
+VERIFY: Iteration continues with "no code" error
+VERIFY: Eventually escalates if repeated
+VERIFY: Error message specific: "Agent produced no code"
+VERIFY: Context fed back includes failure reason
+
+TEST_CASE:
+  1. Mock LLM to return only text
+  2. Run CoderAgent
+  3. Verify detected as failure
+  4. Verify iteration increments
+  5. Check escalation after N failures
+```
+
+#### EDGE-EXE-002: Agent Generates Invalid Code
+```
+TEST: Handle syntactically invalid code
+COMPONENTS: CoderAgent, BuildRunner
+
+EDGE_CASE: Agent produces unparseable code
+EXPECTED_BEHAVIOR: Build catches it, feeds back to agent
+
+VERIFY: Build step catches syntax errors
+VERIFY: Error includes file and line number
+VERIFY: Error fed back to agent with context
+VERIFY: Agent can attempt fix
+VERIFY: Multiple syntax errors all reported
+
+TEST_CASE:
+  1. Mock LLM to return invalid TypeScript
+  2. Run through QA loop
+  3. Verify build fails with syntax error
+  4. Verify error sent to agent
+  5. (With real LLM) Verify fix attempt
+```
+
+#### EDGE-EXE-003: Agent Exceeds Token Limit
+```
+TEST: Handle token limit exceeded
+COMPONENTS: BaseAgentRunner, ClaudeClient, GeminiClient
+
+EDGE_CASE: Agent response or context too large
+EXPECTED_BEHAVIOR: Truncation or chunking with warning
+
+VERIFY: Response truncated gracefully (at sentence boundary)
+VERIFY: Agent notified of limit in next iteration
+VERIFY: Can request continuation for long outputs
+VERIFY: Context automatically trimmed if needed
+VERIFY: Warning logged when truncation occurs
+
+TEST_CASE:
+  1. Request very large code generation
+  2. Verify response truncated
+  3. Check log for truncation warning
+  4. Verify continuation mechanism works
+```
+
+#### EDGE-EXE-004: Agent Stuck in Loop
+```
+TEST: Handle agent repeating same fix
+COMPONENTS: RalphStyleIterator, BaseAgentRunner
+
+EDGE_CASE: Agent keeps trying same unsuccessful fix
+EXPECTED_BEHAVIOR: Detect loop, escalate or try different approach
+
+VERIFY: Same diff detected across iterations
+VERIFY: Loop counter increments
+VERIFY: After N same-diffs, flag as stuck
+VERIFY: Stuck triggers escalation or context reset
+VERIFY: Log includes "repetition detected"
+
+TEST_CASE:
+  1. Create scenario with only one failing fix
+  2. Run multiple iterations
+  3. Verify loop detection triggers
+  4. Verify escalation or intervention
+```
+
+### Layer 3: Planning Edge Cases
+
+#### EDGE-PLN-001: Feature with No Tasks
+```
+TEST: Handle feature that needs no tasks
+COMPONENTS: TaskDecomposer
+
+EDGE_CASE: Simple feature already implemented or trivial
+EXPECTED_BEHAVIOR: Empty task list or single verification task
+
+VERIFY: Decomposition can return zero tasks (already done)
+VERIFY: Decomposition can return single "verify" task
+VERIFY: Not treated as error
+VERIFY: Clear message: "Feature requires no changes"
+VERIFY: Status updated appropriately
+
+TEST_CASE:
+  1. Request feature that already exists
+  2. Decompose
+  3. Verify returns 0 tasks or 1 verification task
+  4. Verify appropriate status
+```
+
+#### EDGE-PLN-002: Circular Dependencies
+```
+TEST: Handle circular dependencies
+COMPONENTS: DependencyResolver
+
+EDGE_CASE: Task A depends on B, B depends on A
+EXPECTED_BEHAVIOR: Cycle detected, error reported clearly
+
+VERIFY: Cycle detected before execution
+VERIFY: Error message includes cycle path: A -> B -> A
+VERIFY: All cycles reported (not just first)
+VERIFY: Suggests resolution (break dependency)
+VERIFY: Does not attempt execution of cyclic tasks
+
+TEST_CASE:
+  1. Create task A depending on B
+  2. Create task B depending on A
+  3. Run dependency resolution
+  4. Verify cycle error with path
+```
+
+#### EDGE-PLN-003: All Tasks Same Priority
+```
+TEST: Handle no clear priority order
+COMPONENTS: DependencyResolver, TaskQueue
+
+EDGE_CASE: All tasks priority 5, no dependencies
+EXPECTED_BEHAVIOR: Deterministic arbitrary order
+
+VERIFY: Consistent ordering across runs (stable sort)
+VERIFY: All tasks can run in parallel
+VERIFY: No single task blocked
+VERIFY: FIFO or creation-order fallback
+
+TEST_CASE:
+  1. Create 10 tasks all priority 5
+  2. No dependencies between them
+  3. Run resolution twice
+  4. Verify same order both times
+```
+
+#### EDGE-PLN-004: Extremely Deep Dependency Chain
+```
+TEST: Handle very deep dependency chains
+COMPONENTS: DependencyResolver
+
+EDGE_CASE: Task A -> B -> C -> ... -> Z (26+ levels)
+EXPECTED_BEHAVIOR: Correct ordering, no stack overflow
+
+VERIFY: Deep chain (100+ levels) handled
+VERIFY: No stack overflow in topological sort
+VERIFY: Correct execution order maintained
+VERIFY: Progress reporting for deep chains
+VERIFY: Time warning for very deep chains
+
+TEST_CASE:
+  1. Create chain of 100 dependent tasks
+  2. Run dependency resolution
+  3. Verify correct order (first is 0, last is 99)
+  4. Verify no crash or timeout
+```
+
+### Layer 2: Orchestration Edge Cases
+
+#### EDGE-ORC-001: All Agents Busy
+```
+TEST: Handle agent pool exhaustion
+COMPONENTS: AgentPool, NexusCoordinator
+
+EDGE_CASE: More tasks than available agents
+EXPECTED_BEHAVIOR: Queue tasks, wait for agents
+
+VERIFY: New task waits in queue (doesn't fail)
+VERIFY: Doesn't create extra agents beyond limit
+VERIFY: Task resumes when agent becomes free
+VERIFY: Priority queue respected while waiting
+VERIFY: Timeout for waiting in queue (optional)
+
+TEST_CASE:
+  1. Set agent pool limit to 2
+  2. Start 5 concurrent tasks
+  3. Verify 2 run immediately
+  4. Verify 3 queued
+  5. Complete 1, verify next starts
+```
+
+#### EDGE-ORC-002: Empty Task Queue
+```
+TEST: Handle empty queue
+COMPONENTS: TaskQueue, NexusCoordinator
+
+EDGE_CASE: No tasks to execute
+EXPECTED_BEHAVIOR: Idle state, wait for tasks
+
+VERIFY: dequeue() returns null/undefined (not error)
+VERIFY: Coordinator enters idle state
+VERIFY: Idle state is observable (event/status)
+VERIFY: Resumes immediately when tasks added
+VERIFY: No busy-wait (CPU efficient)
+
+TEST_CASE:
+  1. Start with empty queue
+  2. Verify dequeue() returns null
+  3. Verify coordinator status is 'idle'
+  4. Add task
+  5. Verify immediate processing
+```
+
+#### EDGE-ORC-003: Event Flood
+```
+TEST: Handle rapid event emission
+COMPONENTS: EventBus
+
+EDGE_CASE: 1000+ events/second
+EXPECTED_BEHAVIOR: No events lost, reasonable throughput
+
+VERIFY: No events lost under load
+VERIFY: Subscribers not overwhelmed (async/queue)
+VERIFY: Backpressure mechanism if needed
+VERIFY: Memory bounded during flood
+VERIFY: Slow subscriber doesn't block others
+
+TEST_CASE:
+  1. Emit 10000 events rapidly
+  2. Count events received by subscriber
+  3. Verify count matches
+  4. Measure latency distribution
+```
+
+#### EDGE-ORC-004: Agent Crash During Execution
+```
+TEST: Handle agent crash mid-task
+COMPONENTS: AgentPool, BaseAgentRunner
+
+EDGE_CASE: Agent throws unhandled exception
+EXPECTED_BEHAVIOR: Task marked failed, resources cleaned
+
+VERIFY: Exception caught at AgentPool level
+VERIFY: Task marked as failed (not stuck)
+VERIFY: Agent removed from pool
+VERIFY: Worktree cleaned up
+VERIFY: New agent can be spawned
+VERIFY: Task can be retried
+
+TEST_CASE:
+  1. Inject crash in agent mid-execution
+  2. Verify task status = 'failed'
+  3. Verify agent not in pool
+  4. Verify worktree removed
+  5. Retry task with new agent
+```
+
+### Layer 1: UI Edge Cases
+
+#### EDGE-UI-001: Very Long Interview
+```
+TEST: Handle long interview session
+COMPONENTS: InterviewPage, InterviewEngine
+
+EDGE_CASE: 100+ message exchanges
+EXPECTED_BEHAVIOR: Performance maintained, no memory leak
+
+VERIFY: 100+ messages displayed without lag
+VERIFY: No memory leak (monitor heap)
+VERIFY: Scroll performance remains smooth
+VERIFY: Can scroll to any message quickly
+VERIFY: History persisted correctly
+
+TEST_CASE:
+  1. Simulate 100 message interview
+  2. Measure scroll FPS
+  3. Monitor memory usage
+  4. Verify all messages retrievable
+```
+
+#### EDGE-UI-002: Rapid User Input
+```
+TEST: Handle rapid user actions
+COMPONENTS: All UI components
+
+EDGE_CASE: User clicking buttons rapidly
+EXPECTED_BEHAVIOR: Debounce, no duplicates
+
+VERIFY: Debounce works (500ms default)
+VERIFY: No duplicate form submissions
+VERIFY: UI remains responsive
+VERIFY: Visual feedback for pending action
+VERIFY: Can cancel pending action
+
+TEST_CASE:
+  1. Click submit 10 times in 100ms
+  2. Verify only 1 submission
+  3. Verify loading state shown
+```
+
+#### EDGE-UI-003: Browser Refresh During Operation
+```
+TEST: Handle page refresh mid-operation
+COMPONENTS: StateManager, UI
+
+EDGE_CASE: User refreshes during task execution
+EXPECTED_BEHAVIOR: State restored, operation resumable
+
+VERIFY: State saved to localStorage/IndexedDB
+VERIFY: On refresh, state restored
+VERIFY: Pending operations can resume
+VERIFY: No duplicate executions
+VERIFY: User notified of recovery
+
+TEST_CASE:
+  1. Start long operation
+  2. Refresh page mid-way
+  3. Verify state restored
+  4. Verify operation can continue
+```
+
+### Boundary Tests
+
+#### BOUNDARY-001: Task Duration Exactly 30 Minutes
+```
+TEST: Task exactly at time limit
+COMPONENTS: TaskDecomposer, TimeEstimator
+
+BOUNDARY: 30-minute task limit
+
+VERIFY: Task estimated at exactly 30 min accepted
+VERIFY: Task estimated at 30.001 min triggers split
+VERIFY: Task at 29.999 min accepted without split
+VERIFY: Rounding rules documented and consistent
+VERIFY: Buffer zone configurable
+
+TEST_CASE:
+  1. Create task with 30:00 estimate
+  2. Verify accepted
+  3. Create task with 30:01 estimate
+  4. Verify split triggered
+```
+
+#### BOUNDARY-002: Iteration Count Exactly 50
+```
+TEST: Iteration exactly at escalation limit
+COMPONENTS: RalphStyleIterator
+
+BOUNDARY: 50-iteration escalation limit
+
+VERIFY: Iteration 49 runs QA and continues
+VERIFY: Iteration 50 runs QA and can complete
+VERIFY: Iteration 51 would trigger escalation
+VERIFY: Success on iteration 50 completes task
+VERIFY: Failure on iteration 50 escalates
+
+TEST_CASE:
+  1. Run QA loop to iteration 49
+  2. Verify continues
+  3. Run to iteration 50, pass QA
+  4. Verify task completes (no escalation)
+  5. Repeat with failure at 50
+  6. Verify escalation triggered
+```
+
+#### BOUNDARY-003: Context Size at Limit
+```
+TEST: Context exactly at token limit
+COMPONENTS: FreshContextManager, DynamicContextProvider
+
+BOUNDARY: Token limit (e.g., 100K tokens)
+
+VERIFY: Context at exactly limit not truncated
+VERIFY: Context at limit+1 truncated
+VERIFY: Warning at 90% of limit (90K)
+VERIFY: Critical warning at 95% of limit (95K)
+VERIFY: Truncation preserves most recent/relevant content
+
+TEST_CASE:
+  1. Build context to exactly limit
+  2. Verify no truncation
+  3. Add 1 more token
+  4. Verify truncation and warning
+```
+
+#### BOUNDARY-004: Maximum Concurrent Agents
+```
+TEST: Agent pool at maximum capacity
+COMPONENTS: AgentPool
+
+BOUNDARY: Maximum agents per type (e.g., 5 CoderAgents)
+
+VERIFY: At max, new requests queue
+VERIFY: max+1 request doesn't spawn new agent
+VERIFY: Releasing one agent allows queued request to proceed
+VERIFY: Each agent type has independent limit
+
+TEST_CASE:
+  1. Set Coder limit to 3
+  2. Start 3 Coder tasks
+  3. Start 4th Coder task
+  4. Verify 4th queued
+  5. Complete 1, verify 4th starts
+```
+
+#### BOUNDARY-005: Maximum Task Dependencies
+```
+TEST: Maximum dependencies per task
+COMPONENTS: DependencyResolver
+
+BOUNDARY: Maximum incoming/outgoing dependencies
+
+VERIFY: Task with 100 dependencies resolved correctly
+VERIFY: Warning for tasks with >50 dependencies
+VERIFY: Hard limit enforced (if exists)
+VERIFY: Performance acceptable with many dependencies
+
+TEST_CASE:
+  1. Create task with 100 dependencies
+  2. Verify resolution completes
+  3. Measure resolution time
+  4. Verify warning logged
+```
+
+#### BOUNDARY-006: Zero-Length Operations
+```
+TEST: Handle zero-length operations
+COMPONENTS: All layers
+
+BOUNDARY: Zero-length inputs that are technically valid
+
+VERIFY: Empty string search returns no results (not error)
+VERIFY: Zero-second timeout rejects immediately
+VERIFY: Zero-byte file write succeeds
+VERIFY: Zero tasks in queue is valid state
+VERIFY: Zero requirements from interview is valid (rare)
+
+TEST_CASE:
+  1. Search for ''
+  2. Verify returns []
+  3. Write 0 bytes
+  4. Verify file created empty
+```
+
+---
+
+**[TASK 10 COMPLETE]**
+
+Task 10 generated Edge Case and Boundary Tests across 7 layers + boundary conditions:
+
+### Layer Edge Cases:
+- Layer 7 Infrastructure: 5 tests (empty files, large files, special chars, concurrent access, network failures)
+- Layer 6 Persistence: 4 tests (database load, checkpoint limits, memory limits, corruption recovery)
+- Layer 5 Quality: 4 tests (empty project, all skips, large diff, timeout)
+- Layer 4 Execution: 4 tests (no code, invalid code, token limit, stuck loop)
+- Layer 3 Planning: 4 tests (no tasks, circular deps, same priority, deep chain)
+- Layer 2 Orchestration: 4 tests (busy agents, empty queue, event flood, agent crash)
+- Layer 1 UI: 3 tests (long interview, rapid input, browser refresh)
+
+### Boundary Tests:
+- BOUNDARY-001: Task Duration at 30 minutes
+- BOUNDARY-002: Iteration Count at 50
+- BOUNDARY-003: Context Size at token limit
+- BOUNDARY-004: Maximum Concurrent Agents
+- BOUNDARY-005: Maximum Task Dependencies
+- BOUNDARY-006: Zero-Length Operations
+
+Total: 34 Edge Case and Boundary Tests
+
+Each test includes:
+- EDGE_CASE/BOUNDARY: What condition is being tested
+- EXPECTED_BEHAVIOR: Correct system response
+- VERIFY: Specific assertions (5-7 per test)
+- TEST_CASE: Step-by-step test procedure
