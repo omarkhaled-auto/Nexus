@@ -13,7 +13,7 @@
 | 1 | Layer Architecture | COMPLETE | 28 |
 | 2 | Component Catalog | COMPLETE | 85 |
 | 3 | ADRs & Constraints | COMPLETE | 105 |
-| 4 | Integration Sequences | PENDING | 0 |
+| 4 | Integration Sequences | COMPLETE | 120 |
 | 5 | Genesis Workflow | PENDING | 0 |
 | 6 | Evolution Workflow | PENDING | 0 |
 | 7 | Phase 13 Features | PENDING | 0 |
@@ -1223,3 +1223,583 @@ Task 3 extracted all 10 ADRs with testable constraints:
 - ADR-010: Monorepo Structure (8 VERIFY + 8 DIRECTORY_STRUCTURE + 3 SILENT_FAILURE_CHECK)
 
 Total tests added: ~105 new constraint tests
+
+---
+
+## SECTION 4: INTEGRATION SEQUENCE TESTS
+
+### SEQ-GEN-001: Interview Sequence
+```
+TEST: Interview captures requirements correctly
+FLOW: User Input → InterviewPage → ClaudeClient → RequirementsDB → EventBus
+PURPOSE: Gather requirements through conversational AI interview
+TRIGGER: User clicks "New Project" in the UI
+
+STEP 1: User clicks "New Project"
+VERIFY: InterviewPage captures navigation event
+VERIFY: PROJECT_START event emitted with timestamp and userId
+
+STEP 2: Mount InterviewChat interface
+VERIFY: Chat UI renders correctly
+VERIFY: Typing indicators work
+
+STEP 3: User sends message
+VERIFY: Message validated (non-empty)
+VERIFY: Message appended to conversation history
+
+STEP 4: Claude generates response
+VERIFY: ClaudeClient.stream() called with interview system prompt
+VERIFY: Response chunks displayed in real-time
+VERIFY: AI follows up with clarifying questions
+
+STEP 5: Extract requirements from response
+VERIFY: RequirementsDB receives extracted requirements
+VERIFY: Requirements have categories (functional, non-functional, constraint, assumption)
+VERIFY: Requirements have priorities (high, medium, low)
+VERIFY: Confidence scores calculated
+
+STEP 6: User completes interview
+VERIFY: Interview completion confirmed if <5 requirements (warning)
+VERIFY: RequirementsDB.exportToJSON() creates JSON file
+VERIFY: INTERVIEW_COMPLETE event emitted with projectId, requirementCount
+
+INTEGRATION_CHECK: Data flows correctly between InterviewPage → ClaudeClient → RequirementsDB
+INTEGRATION_CHECK: EventBus correctly routes PROJECT_START and INTERVIEW_COMPLETE events
+SILENT_FAILURE_CHECK: Claude response ignored, empty requirements saved
+SILENT_FAILURE_CHECK: RequirementsDB write fails, interview continues without error
+SILENT_FAILURE_CHECK: User input truncated without warning
+SILENT_FAILURE_CHECK: API rate limit hit, no "AI is busy" message shown
+```
+
+### SEQ-GEN-002: Planning Sequence
+```
+TEST: Planning decomposes features into tasks
+FLOW: Requirements → NexusCoordinator → TaskDecomposer → DependencyResolver → TaskQueue → Database
+PURPOSE: Decompose approved requirements into executable tasks
+TRIGGER: User approves requirements (clicks "Approve and Plan")
+
+STEP 1: User approves requirements
+VERIFY: PLANNING_START event emitted with projectId
+
+STEP 2: Load requirements
+VERIFY: All requirements retrieved from RequirementsDB
+VERIFY: RequirementsExport structure validated
+
+STEP 3: Create Planner Agent
+VERIFY: Planner initialized with Claude Opus model
+VERIFY: System prompt loaded from config/prompts/planner.md
+
+STEP 4: Decompose each feature
+VERIFY: TaskDecomposer.decompose() called for each feature
+VERIFY: Each task has title, description, type, estimatedMinutes, dependencies
+VERIFY: Each task < 30 minutes (else split automatically)
+VERIFY: Acceptance criteria included
+
+STEP 5: Resolve dependencies
+VERIFY: DependencyResolver.resolve() creates dependency graph
+VERIFY: Topological sort (Kahn's algorithm) applied
+VERIFY: No circular dependencies (or detected and reported)
+VERIFY: TaskWave[] groups parallelizable tasks
+
+STEP 6: Persist tasks
+VERIFY: All tasks saved to database atomically (transaction)
+VERIFY: Tasks ordered by wave number
+VERIFY: Task status initialized to 'pending'
+
+STEP 7: Complete planning
+VERIFY: PLANNING_COMPLETE event emitted with taskCount, waveCount
+VERIFY: Plan displayed for user review
+VERIFY: User can approve or request changes
+
+INTEGRATION_CHECK: Decomposition output matches DependencyResolver input format
+INTEGRATION_CHECK: DependencyResolver output matches TaskQueue expected format
+SILENT_FAILURE_CHECK: Claude returns malformed JSON, partial tasks created
+SILENT_FAILURE_CHECK: Dependency cycle ignored, execution will deadlock
+SILENT_FAILURE_CHECK: Tasks enqueued but status not updated
+SILENT_FAILURE_CHECK: Database transaction fails, partial tasks saved
+```
+
+### SEQ-GEN-003: Execution Sequence
+```
+TEST: Execution completes tasks through agent coordination with QA
+FLOW: TaskQueue → NexusCoordinator → AgentPool → CoderRunner → WorktreeManager → QALoopEngine → MergerRunner
+PURPOSE: Execute tasks through multi-agent coordination
+TRIGGER: User approves the project plan
+
+STEP 1: Start execution
+VERIFY: EXECUTION_START event emitted with totalTasks, totalWaves, estimatedDuration
+
+STEP 2: Get waves from DependencyResolver
+VERIFY: TaskWave[] returned with parallel groups
+VERIFY: Wave 1 tasks have no dependencies
+
+STEP 3: For each task in wave (parallel up to 4)
+  STEP 3a: Get available agent
+  VERIFY: AgentPool.spawn() returns Coder agent
+  VERIFY: Wait if pool exhausted (max 4)
+
+  STEP 3b: Create worktree
+  VERIFY: WorktreeManager.create() creates isolated directory
+  VERIFY: Path follows pattern: .nexus/worktrees/{taskId}
+  VERIFY: Branch created: nexus/task/{taskId}
+
+  STEP 3c: Execute task
+  VERIFY: CoderRunner.execute() generates code
+  VERIFY: [TASK_COMPLETE] marker detected
+  VERIFY: Files created/modified in worktree
+
+  STEP 3d: Run QA loop
+  VERIFY: Build passes (tsc --noEmit)
+  VERIFY: Lint passes (eslint)
+  VERIFY: Tests pass (vitest)
+  VERIFY: Review approves (Gemini)
+
+  STEP 3e: Merge changes
+  VERIFY: MergerRunner.merge() to main branch
+  VERIFY: Conflict resolution if needed
+
+  STEP 3f: Cleanup worktree
+  VERIFY: WorktreeManager.remove() cleans up
+
+STEP 4: Advance to next wave
+VERIFY: All Wave N tasks complete before Wave N+1 starts
+VERIFY: Checkpoints created every 2 hours
+
+STEP 5: Complete execution
+VERIFY: EXECUTION_COMPLETE event emitted with tasksCompleted, tasksFailed, cost
+
+INTEGRATION_CHECK: All components coordinate correctly across layers
+INTEGRATION_CHECK: Events emitted at each major step
+SILENT_FAILURE_CHECK: Agent fails silently, task marked complete anyway
+SILENT_FAILURE_CHECK: QA step skipped, bad code merged
+SILENT_FAILURE_CHECK: Merge conflict ignored, code corrupted
+SILENT_FAILURE_CHECK: Worktree not cleaned up, accumulates
+```
+
+### SEQ-EVO-001: Context Analysis Sequence
+```
+TEST: Context analysis understands existing codebase for Evolution mode
+FLOW: User → NexusCoordinator → FileSystemService → LSPClient → MemorySystem → EventBus
+PURPOSE: Analyze existing codebase to understand current state
+TRIGGER: User selects existing project for Evolution mode
+
+STEP 1: Select project
+VERIFY: PROJECT_LOAD event emitted with projectPath and mode='evolution'
+
+STEP 2: Scan filesystem
+VERIFY: FileSystemService.glob() finds all source files
+VERIFY: File metadata collected (path, size, lastModified, type, language)
+
+STEP 3: Initialize LSP
+VERIFY: LSPClient.initialize() starts TypeScript server
+VERIFY: Fallback to basic parsing if LSP fails
+
+STEP 4: Analyze project structure
+VERIFY: Entry points identified
+VERIFY: Module exports/imports mapped
+VERIFY: Symbol index created (classes, functions, interfaces)
+VERIFY: Dependency graph built (internal and external)
+
+STEP 5: Query memory system
+VERIFY: MemorySystem.query() returns relevant historical context
+VERIFY: Previous architectural decisions surfaced
+
+STEP 6: Context ready
+VERIFY: CONTEXT_READY event emitted with fileCount, symbolCount, memoryCount
+VERIFY: Project overview displayed in UI
+
+INTEGRATION_CHECK: FileSystemService → LSPClient → MemorySystem data flows correctly
+INTEGRATION_CHECK: Analysis results stored for later agent use
+SILENT_FAILURE_CHECK: LSP crashes but no warning shown
+SILENT_FAILURE_CHECK: Memory query fails, continues without historical context
+SILENT_FAILURE_CHECK: File scan incomplete, missing files
+```
+
+### SEQ-EVO-002: Feature Planning Sequence
+```
+TEST: Feature planning integrates with existing codebase context
+FLOW: User → KanbanBoard → NexusCoordinator → TaskDecomposer (with context) → Database → TaskQueue
+PURPOSE: Plan implementation of new feature in existing codebase
+TRIGGER: User drags feature card to "In Progress"
+
+STEP 1: Drag to "In Progress"
+VERIFY: Kanban state updated
+VERIFY: Complexity assessment triggered
+
+STEP 2: Assess complexity
+VERIFY: Factors checked: fileCount, dependencyDepth, integrationPoints, estimatedDuration
+VERIFY: If score > 4 OR duration > 60min → planning required
+VERIFY: Simple features bypass planning
+
+STEP 3: Decompose with context
+VERIFY: TaskDecomposer receives EvolutionPlanningContext:
+  - relatedFiles (files likely to be modified)
+  - dependencies (files depending on related files)
+  - patterns (detected code patterns)
+  - previousDecisions (historical architectural decisions)
+  - constraints (backward compat, existing tests, protected files)
+VERIFY: Tasks include predicted file locations
+
+STEP 4: User reviews plan
+VERIFY: Plan displayed with task breakdown
+VERIFY: Affected files highlighted
+VERIFY: User can approve or modify
+
+STEP 5: Save and queue tasks
+VERIFY: Tasks saved to database
+VERIFY: Tasks added to TaskQueue with dependencies
+VERIFY: TASKS_CREATED event emitted
+
+INTEGRATION_CHECK: Context from SEQ-EVO-001 used by TaskDecomposer
+INTEGRATION_CHECK: Decomposition respects existing patterns
+SILENT_FAILURE_CHECK: Context analysis incomplete, wrong files identified
+SILENT_FAILURE_CHECK: Pattern detection fails, generic code generated
+SILENT_FAILURE_CHECK: Protected files not respected
+```
+
+### SEQ-EVO-003: Evolution Execution Sequence
+```
+TEST: Evolution execution integrates changes with existing codebase
+FLOW: Same as SEQ-GEN-003 but with existing code context and PR creation
+PURPOSE: Execute feature tasks while integrating with existing code
+TRIGGER: Feature plan approved
+
+SAME AS SEQ-GEN-003 WITH DIFFERENCES:
+VERIFY: Base branch is main (with existing code), not empty
+VERIFY: Agent prompts include existing code context
+VERIFY: Merge strategy is conflict-aware
+VERIFY: New tests AND existing tests must pass
+
+ADDITIONAL STEP: PR Creation (after feature complete)
+VERIFY: Feature branch created: feature/{featureId}
+VERIFY: PR created with auto-generated title and body
+VERIFY: Human review requested
+VERIFY: Labels applied from project config
+
+INTEGRATION_CHECK: Existing tests run and pass
+INTEGRATION_CHECK: PR integrates with git workflow
+SILENT_FAILURE_CHECK: Existing tests broken by change but not detected
+SILENT_FAILURE_CHECK: PR created but merge conflicts not surfaced
+SILENT_FAILURE_CHECK: Code style inconsistent with existing codebase
+```
+
+### SEQ-QA-001: Full QA Loop
+```
+TEST: QA loop iterates until pass or escalation
+FLOW: CoderRunner → BuildVerifier → LintRunner → TestRunner → CodeReviewer → (Fix or Complete)
+PURPOSE: Iteratively improve code until it passes all quality checks
+TRIGGER: Coder completes initial implementation
+
+STATE MACHINE:
+  START → BUILD → [PASS] → LINT → [PASS] → TEST → [PASS] → REVIEW → [APPROVED] → COMPLETE
+                   [FAIL] → CODER_FIX (iteration++) → BUILD
+                            [FAIL] → AUTO-FIX → [FIXED] → TEST
+                                               [NOT_FIXED] → CODER_FIX
+                                     [FAIL] → CODER_FIX
+                            [ISSUES] → CODER_FIX
+
+PHASE 1: BUILD (tsc --noEmit)
+VERIFY: BuildVerifier.verify() spawns tsc process
+VERIFY: TypeScript errors parsed (file, line, column, code, message)
+VERIFY: BuildResult returned with success/errors
+IF FAIL: Errors sent to CoderRunner for fix
+
+PHASE 2: LINT (eslint)
+VERIFY: LintRunner.run() spawns eslint with --format json
+VERIFY: Errors and warnings extracted separately
+IF FAIL:
+  VERIFY: LintRunner.fix() tries auto-fix with --fix
+  IF STILL FAIL: Errors sent to CoderRunner for fix
+
+PHASE 3: TEST (vitest)
+VERIFY: TestRunner.run() spawns vitest with --reporter=json
+VERIFY: Passed/failed/skipped counts extracted
+VERIFY: Test failure details captured (testName, file, error, expected, actual)
+IF FAIL: Failures sent to CoderRunner for fix
+
+PHASE 4: REVIEW (Gemini)
+VERIFY: CodeReviewer.review() calls GeminiClient
+VERIFY: Git diff included in review prompt
+VERIFY: Issues extracted with severity (critical, major, minor, suggestion)
+VERIFY: Approval status determined
+IF ISSUES: Issues sent to CoderRunner for fix
+
+ITERATION LIMIT:
+VERIFY: iteration counter starts at 1
+VERIFY: iteration increments after each CODER_FIX
+VERIFY: If iteration >= 50: ESCALATE to human
+VERIFY: Escalation includes detailed checkpoint
+
+EXIT CONDITIONS:
+- All phases pass → COMPLETE (success)
+- Iteration >= 50 → ESCALATE (escalated)
+- Critical error → IMMEDIATE_ESCALATE (critical)
+- User cancellation → ABORT (cancelled)
+
+INTEGRATION_CHECK: Each phase output feeds into next correctly
+INTEGRATION_CHECK: CoderRunner receives structured error context
+SILENT_FAILURE_CHECK: Build step returns success despite tsc errors
+SILENT_FAILURE_CHECK: Iteration count not incremented on certain errors
+SILENT_FAILURE_CHECK: Escalation threshold bypassed
+SILENT_FAILURE_CHECK: QA step skipped but iteration counted
+SILENT_FAILURE_CHECK: Tests skip but reported as pass
+```
+
+### SEQ-CHK-001: Automatic Checkpoint
+```
+TEST: Automatic checkpoints create recovery points
+FLOW: Trigger → CheckpointManager → StateManager → GitService → Database → EventBus
+PURPOSE: Create recovery points automatically
+TRIGGER: Time-based (every 2 hours), Event-based (feature completion), Safety-based (before risky ops)
+
+STEP 1: Trigger checkpoint
+VERIFY: Timer triggers every 2 hours (configurable)
+VERIFY: Feature completion triggers checkpoint
+VERIFY: Risky operations (merge, replan) trigger safety checkpoint
+
+STEP 2: Load current state
+VERIFY: StateManager.getState() returns complete NexusState
+VERIFY: State includes tasks, agents, queue, progress
+
+STEP 3: Create checkpoint branch
+VERIFY: GitService creates branch: checkpoint/{timestamp}
+VERIFY: Current commit hash recorded
+VERIFY: Uncommitted changes noted
+
+STEP 4: Save checkpoint metadata
+VERIFY: Checkpoint record saved to database:
+  - id, projectId, type, trigger
+  - serialized state with SHA256 hash
+  - git branch and commit info
+  - database snapshot path
+  - metadata (tasksPending, tasksCompleted)
+VERIFY: Transaction ensures atomicity
+
+STEP 5: Emit event
+VERIFY: CHECKPOINT_CREATED event emitted with checkpointId, size, duration
+
+INTEGRATION_CHECK: State serialization reversible
+INTEGRATION_CHECK: Git state matches database state
+SILENT_FAILURE_CHECK: Checkpoint created but state incomplete
+SILENT_FAILURE_CHECK: Database backup fails silently
+SILENT_FAILURE_CHECK: Git branch creation fails, no recovery point
+SILENT_FAILURE_CHECK: State hash not verified
+```
+
+### SEQ-CHK-002: Checkpoint Recovery
+```
+TEST: Checkpoint recovery restores project to previous state
+FLOW: User/System → CheckpointManager → AgentPool → GitService → StateManager → TaskQueue
+PURPOSE: Restore project to a previous checkpoint
+TRIGGER: User selects checkpoint OR system detects unrecoverable failure
+
+STEP 1: Select checkpoint
+VERIFY: User can list available checkpoints
+VERIFY: System auto-selects on failure
+
+STEP 2: Load and verify checkpoint
+VERIFY: Checkpoint record loaded from database
+VERIFY: State hash verified (SHA256 match)
+VERIFY: Corrupted checkpoints rejected with clear error
+
+STEP 3: Pause all agents
+VERIFY: AgentPool.pauseAll() stops all running agents
+VERIFY: Force terminate if agents don't pause within timeout
+
+STEP 4: Git checkout
+VERIFY: GitService.checkout() switches to checkpoint branch
+VERIFY: Conflicts handled (stash or discard)
+
+STEP 5: Restore state
+VERIFY: StateManager.restore() loads serialized state
+VERIFY: State fully reconstructed
+
+STEP 6: Re-queue incomplete tasks
+VERIFY: Tasks that were in_progress marked as pending
+VERIFY: TaskQueue re-populated with correct order
+
+STEP 7: Reset agents
+VERIFY: AgentPool.resetAll() clears agent states
+VERIFY: Agents ready for new work
+
+STEP 8: Emit event
+VERIFY: CHECKPOINT_RESTORED event emitted with:
+  - tasksRequeued count
+  - agentsReset count
+  - dataLost (tasks lost since checkpoint)
+
+INTEGRATION_CHECK: All components restore to consistent state
+INTEGRATION_CHECK: No orphaned worktrees after restore
+SILENT_FAILURE_CHECK: State corrupted during restore
+SILENT_FAILURE_CHECK: Tasks lost during restore
+SILENT_FAILURE_CHECK: Agent state mismatch after restore
+SILENT_FAILURE_CHECK: Git conflicts cause partial restore
+```
+
+### SEQ-AGT-001: Planner → Coder Handoff
+```
+TEST: Planner successfully hands off decomposed tasks to Coder
+FLOW: Planner → EventBus (TASKS_CREATED) → TaskQueue → NexusCoordinator → AgentPool → CoderRunner
+PURPOSE: Transfer decomposed tasks from Planner to Coder for execution
+
+STEP 1: Planner completes decomposition
+VERIFY: Feature broken into Task[] with dependencies
+VERIFY: Each task has title, description, estimatedMinutes
+
+STEP 2: Emit TASKS_CREATED
+VERIFY: Event includes featureId, tasks array, totalEstimate, waveCount
+
+STEP 3: TaskQueue enqueues
+VERIFY: Tasks added in dependency order
+VERIFY: Wave assignments correct
+
+STEP 4: Signal task available
+VERIFY: Coordinator notified of new work
+
+STEP 5: Get available Coder
+VERIFY: AgentPool returns available agent
+VERIFY: Wait if pool exhausted
+
+STEP 6: Dequeue task
+VERIFY: Highest priority ready task returned
+VERIFY: Dependencies satisfied
+
+STEP 7: Emit TASK_ASSIGNED
+VERIFY: Event includes taskId, agentId, worktreePath
+
+STEP 8: Build context and execute
+VERIFY: PlannerToCoderHandoff includes:
+  - task details
+  - featureGoal and taskRationale
+  - relatedTasks
+  - filesIdentified
+  - techStack and conventions
+  - existingPatterns
+
+INTEGRATION_CHECK: Task format matches Coder expectations
+INTEGRATION_CHECK: Context sufficient for independent execution
+SILENT_FAILURE_CHECK: Task lost between queue and agent
+SILENT_FAILURE_CHECK: Wrong task dequeued (priority bug)
+SILENT_FAILURE_CHECK: Context incomplete, agent lacks information
+```
+
+### SEQ-AGT-002: Coder → Reviewer Handoff
+```
+TEST: Coder successfully hands off completed code to Reviewer
+FLOW: CoderRunner → GitService → EventBus (REVIEW_REQUESTED) → CodeReviewer → (back to Coder if issues)
+PURPOSE: Submit completed code for AI review
+
+STEP 1: Complete implementation
+VERIFY: CoderRunner.execute() returns FileChange[]
+VERIFY: [TASK_COMPLETE] marker detected
+
+STEP 2: Stage and commit
+VERIFY: GitService.commit() stages all changes
+VERIFY: Commit message descriptive
+
+STEP 3: Generate diff
+VERIFY: GitService.diff() returns unified diff
+VERIFY: Diff includes file additions, modifications, deletions
+
+STEP 4: Emit REVIEW_REQUESTED
+VERIFY: Event includes taskId, commitHash, diff, context (taskDescription, acceptanceCriteria)
+
+STEP 5: Reviewer receives
+VERIFY: EventBus routes to CodeReviewer
+
+STEP 6: Review with Gemini
+VERIFY: CodeReviewer.review() calls GeminiClient
+VERIFY: Review prompt includes diff and context
+
+STEP 7: Parse review
+VERIFY: Issues extracted with severity, category, file, line, description, suggestion
+VERIFY: Approval status determined
+
+STEP 8a: If APPROVED
+VERIFY: REVIEW_APPROVED event emitted with confidence and summary
+
+STEP 8b: If ISSUES
+VERIFY: REVIEW_ISSUES event emitted with issues array and blockers count
+
+STEP 9: If issues, Coder fixes
+VERIFY: CoderRunner receives issues in structured format
+VERIFY: Fixes applied and back to step 2
+
+INTEGRATION_CHECK: Diff format parseable by reviewer
+INTEGRATION_CHECK: Issues format actionable by coder
+SILENT_FAILURE_CHECK: Commit succeeds but diff empty
+SILENT_FAILURE_CHECK: Review always approves (Gemini failure masked)
+SILENT_FAILURE_CHECK: Issues lost between reviewer and coder
+```
+
+### SEQ-AGT-003: Reviewer → Merger Handoff
+```
+TEST: Reviewer successfully hands off approved code to Merger
+FLOW: CodeReviewer → EventBus (MERGE_REQUESTED) → MergerRunner → WorktreeManager → Coordinator
+PURPOSE: Transfer approved code for merging to main branch
+
+STEP 1: Approve review
+VERIFY: CodeReviewer marks task as approved
+VERIFY: Review result recorded
+
+STEP 2: Emit MERGE_REQUESTED
+VERIFY: Event includes taskId, featureId, sourceBranch, targetBranch
+
+STEP 3: Merger receives
+VERIFY: MergerRunner triggered by event
+
+STEP 4: Get worktree info
+VERIFY: WorktreeManager.getInfo() returns path and branch
+
+STEP 5: Attempt merge
+VERIFY: GitService.merge() attempts merge to main
+
+STEP 6a: If SUCCESS
+VERIFY: MERGE_COMPLETED event emitted with commitHash
+VERIFY: Task status updated to 'done'
+
+STEP 6b: If CONFLICT
+VERIFY: Conflict analyzed (files, lines, severity)
+  IF RESOLVABLE: Auto-resolve with Claude assistance
+  IF COMPLEX: Escalate to human with MERGE_CONFLICT_ESCALATED event
+
+STEP 7: Cleanup worktree
+VERIFY: WorktreeManager.remove() cleans up task worktree
+
+STEP 8: Update task status
+VERIFY: Database updated with final status
+VERIFY: Coordinator notified for next task
+
+INTEGRATION_CHECK: Merge result correctly updates all state
+INTEGRATION_CHECK: Worktree cleanup happens even on failure
+SILENT_FAILURE_CHECK: Merge succeeds but conflict resolution wrong
+SILENT_FAILURE_CHECK: Worktree not cleaned up
+SILENT_FAILURE_CHECK: Task marked done but merge actually failed
+SILENT_FAILURE_CHECK: Escalation not triggered for complex conflict
+```
+
+---
+
+**[TASK 4 COMPLETE]**
+
+Task 4 extracted all 12 integration sequences from Integration Specification:
+- SEQ-GEN-001: Interview Sequence (11 steps)
+- SEQ-GEN-002: Planning Sequence (11 steps)
+- SEQ-GEN-003: Execution Sequence (7+ steps per task)
+- SEQ-EVO-001: Context Analysis Sequence (10 steps)
+- SEQ-EVO-002: Feature Planning Sequence (9 steps)
+- SEQ-EVO-003: Evolution Execution Sequence (same as Genesis + PR)
+- SEQ-QA-001: Full QA Loop (6 phases, 50 max iterations)
+- SEQ-CHK-001: Automatic Checkpoint (7 steps)
+- SEQ-CHK-002: Checkpoint Recovery (10 steps)
+- SEQ-AGT-001: Planner → Coder Handoff (9 steps)
+- SEQ-AGT-002: Coder → Reviewer Handoff (9 steps)
+- SEQ-AGT-003: Reviewer → Merger Handoff (10 steps)
+
+Each sequence includes:
+- PURPOSE and TRIGGER
+- Step-by-step VERIFY statements
+- INTEGRATION_CHECK statements
+- SILENT_FAILURE_CHECK statements
+
+Total tests added: ~120 new integration tests
