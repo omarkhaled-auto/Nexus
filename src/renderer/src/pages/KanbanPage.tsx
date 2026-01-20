@@ -5,88 +5,6 @@ import { AnimatedPage } from '@renderer/components/AnimatedPage'
 import { useFeatureStore } from '@renderer/stores/featureStore'
 import type { Feature, FeatureStatus, FeaturePriority, FeatureComplexity } from '@renderer/types/feature'
 
-// Demo features for visual testing (used when not in Electron environment)
-const DEMO_FEATURES: Feature[] = [
-  {
-    id: 'feat-1',
-    title: 'User Authentication System',
-    description: 'Implement OAuth2 login flow with Google and GitHub providers. Include session management and token refresh.',
-    status: 'backlog',
-    complexity: 'complex',
-    progress: 0,
-    assignedAgent: undefined,
-    tasks: [],
-    priority: 'high',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  },
-  {
-    id: 'feat-2',
-    title: 'Dashboard Analytics Widget',
-    description: 'Create real-time analytics dashboard showing key metrics and trends.',
-    status: 'planning',
-    complexity: 'moderate',
-    progress: 15,
-    assignedAgent: 'decomposer-agent',
-    tasks: [],
-    priority: 'medium',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  },
-  {
-    id: 'feat-3',
-    title: 'API Rate Limiting',
-    description: 'Add rate limiting middleware to protect API endpoints from abuse.',
-    status: 'in_progress',
-    complexity: 'simple',
-    progress: 45,
-    assignedAgent: 'coder-agent',
-    tasks: [],
-    priority: 'critical',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  },
-  {
-    id: 'feat-4',
-    title: 'Email Notification Service',
-    description: 'Build email notification system with template support and queue processing.',
-    status: 'ai_review',
-    complexity: 'moderate',
-    progress: 80,
-    assignedAgent: 'qa-agent',
-    tasks: [],
-    priority: 'medium',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  },
-  {
-    id: 'feat-5',
-    title: 'Dark Mode Support',
-    description: 'Add system-wide dark mode toggle with CSS variable theming.',
-    status: 'human_review',
-    complexity: 'simple',
-    progress: 95,
-    assignedAgent: 'reviewer-agent',
-    tasks: [],
-    priority: 'low',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  },
-  {
-    id: 'feat-6',
-    title: 'File Upload Component',
-    description: 'Drag and drop file upload with progress indicator and validation.',
-    status: 'done',
-    complexity: 'moderate',
-    progress: 100,
-    assignedAgent: undefined,
-    tasks: [],
-    priority: 'medium',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  }
-]
-
 /**
  * Check if running in Electron environment with nexusAPI available
  */
@@ -161,7 +79,7 @@ function mapBackendFeature(backendFeature: Record<string, unknown>): Feature {
 /**
  * KanbanPage - Evolution mode Kanban board.
  * Displays features flowing through the 6-column pipeline.
- * Connects to real backend data when running in Electron, falls back to demo data otherwise.
+ * Connects to real backend data via IPC when running in Electron.
  */
 export default function KanbanPage(): ReactElement {
   const setFeatures = useFeatureStore((s) => s.setFeatures)
@@ -169,17 +87,17 @@ export default function KanbanPage(): ReactElement {
   const features = useFeatureStore((s) => s.features)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [isEmpty, setIsEmpty] = useState(false)
 
   /**
    * Load features from backend API
    */
   const loadRealData = useCallback(async () => {
     if (!isElectronEnvironment()) {
-      // Not in Electron - use demo data
-      if (features.length === 0) {
-        setFeatures(DEMO_FEATURES)
-      }
+      // Not in Electron environment - show error state
+      setError('Backend not available. Please run in Electron.')
       setIsLoading(false)
+      setIsEmpty(true)
       return
     }
 
@@ -196,20 +114,16 @@ export default function KanbanPage(): ReactElement {
           mapBackendFeature(f as Record<string, unknown>)
         )
         setFeatures(mappedFeatures)
+        setIsEmpty(false)
       } else {
-        // No features from backend - use demo data for now
-        // In production, this would show an empty board or onboarding
-        if (features.length === 0) {
-          setFeatures(DEMO_FEATURES)
-        }
+        // No features from backend - show empty state
+        setFeatures([])
+        setIsEmpty(true)
       }
     } catch (err) {
       console.error('Failed to load features:', err)
-      setError('Failed to load features. Using demo data.')
-      // Fall back to demo data on error
-      if (features.length === 0) {
-        setFeatures(DEMO_FEATURES)
-      }
+      setError('Failed to load features from backend.')
+      setIsEmpty(features.length === 0)
     } finally {
       setIsLoading(false)
     }
@@ -272,6 +186,22 @@ export default function KanbanPage(): ReactElement {
             <div className="flex flex-col items-center gap-3">
               <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent-primary border-t-transparent" />
               <span className="text-sm text-text-secondary">Loading features...</span>
+            </div>
+          </div>
+        ) : isEmpty && features.length === 0 ? (
+          <div className="flex h-full items-center justify-center">
+            <div className="flex flex-col items-center gap-4 text-center max-w-md px-4">
+              <div className="h-16 w-16 rounded-full bg-bg-tertiary flex items-center justify-center">
+                <svg className="h-8 w-8 text-text-tertiary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-lg font-medium text-text-primary mb-1">No features yet</h3>
+                <p className="text-sm text-text-secondary">
+                  Complete the interview process to generate features, or add them manually using the button above.
+                </p>
+              </div>
             </div>
           </div>
         ) : (
