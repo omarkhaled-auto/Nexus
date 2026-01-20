@@ -121,12 +121,12 @@ export default function InterviewPage(): ReactElement {
       completeInterviewStore();
 
       // Navigate to tasks page with requirements context
-      void navigate('/tasks', { state: { requirements } });
+      void navigate('/evolution', { state: { requirements } });
     } catch (err) {
       console.error('Failed to complete interview:', err);
       // Still navigate even if backend call fails - requirements are in store
       completeInterviewStore();
-      void navigate('/tasks', { state: { requirements } });
+      void navigate('/evolution', { state: { requirements } });
     } finally {
       setIsCompleting(false);
     }
