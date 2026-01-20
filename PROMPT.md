@@ -1,1453 +1,1315 @@
-# Phase 18B: Complete Feature Reconciliation & Verification
+# Phase 19: Complete System Wiring & End-to-End Integration
 
 ## Context
 
 - **Project:** Nexus AI Builder
 - **Repository:** https://github.com/omarkhaled-auto/Nexus_Builder
-- **Previous Phase:** Phase 18A merged two unrelated git histories
-- **Purpose:** Ensure NOTHING is missing - every feature from BOTH halves must be present
-- **Philosophy:** THE BEST OF BOTH WORLDS - not just a merge, but a COMPLETE NEXUS
+- **Previous Phases:**
+  - Phase 18A: Merged two unrelated git histories
+  - Phase 18B: Reconciled all features (100% coverage, 2119 tests)
+- **Current Problem:** Components exist and pass tests individually, but are NOT WIRED TOGETHER
+- **Goal:** Wire everything end-to-end so Nexus actually WORKS as a complete system
 
 ---
 
-## THE SITUATION
+## PHASE A PROGRESS (Wiring Audit) - COMPLETED
+
+### Completed Tasks:
+- [x] **Task 1: Wiring Audit** - `.agent/workspace/WIRING/WIRING_AUDIT.md`
+  - Analyzed 64 connections across Genesis/Evolution flows
+  - Found: 2 wired, 21 partial, 41 missing
+  - Root cause: No bootstrap/factory to create and wire components
+
+- [x] **Task 2: Missing Wiring** - `.agent/workspace/WIRING/MISSING_WIRING.md`
+  - Identified 23 wiring items across 6 priorities
+  - Estimated 14-18 hours total effort
+  - Key: Must create NexusBootstrap.ts first
+
+- [x] **Task 3: Implementation Plan** - `.agent/workspace/WIRING/WIRING_PLAN.md`
+  - Detailed code examples for NexusBootstrap.ts
+  - IPC handler updates
+  - UI event handling
+  - Integration test examples
+
+---
+
+## THE PROBLEM
 
 ```
 +============================================================================+
-|                    PHASE 18A MERGE COMPLETED - BUT...                      |
+|                    THE WIRING PROBLEM                                      |
 +============================================================================+
 |                                                                            |
-|  What happened:                                                            |
-|  - 140 conflicts resolved (used LOCAL)                                     |
-|  - 162 REMOTE-ONLY files added                                            |
-|  - 77 REMOTE files REMOVED due to type conflicts                          |
+|  CURRENT STATE:                                                           |
+|  - All components exist (95 features across 13 layers)                    |
+|  - All tests pass (2119 tests)                                            |
+|  - TypeScript compiles (0 errors)                                         |
+|  - BUT: Components are NOT connected to each other!                       |
 |                                                                            |
-|  The question:                                                             |
-|  - Were those 77 files truly redundant?                                   |
-|  - Or did we lose critical functionality?                                 |
-|  - Are there features in REMOTE that LOCAL doesn't have?                  |
+|  WHAT'S MISSING:                                                          |
+|  - Interview completion does NOT trigger TaskDecomposer                   |
+|  - TaskDecomposer does NOT feed into AgentPool                           |
+|  - Agents are NOT actually called when tasks are assigned                |
+|  - QA Loop is NOT triggered after agent execution                        |
+|  - UI does NOT reflect real-time backend state                           |
+|  - Genesis flow does NOT work end-to-end                                 |
+|  - Evolution flow does NOT work end-to-end                               |
 |                                                                            |
-|  THE GOAL:                                                                 |
-|  - Audit EVERY removed file                                               |
-|  - Identify ANY missing functionality                                     |
-|  - Reimplement what's needed with current types                          |
-|  - Verify COMPLETE feature coverage                                       |
-|  - Result: THE COMPLETE NEXUS with NOTHING missing                        |
+|  THE COMPONENTS ARE ISLANDS - WE NEED TO BUILD BRIDGES                   |
 |                                                                            |
 +============================================================================+
 ```
 
 ---
 
-## GOLDEN RULES FOR THIS PHASE
+## THE GOAL
 
 ```
-
 +============================================================================+
-|                      RECONCILIATION PHILOSOPHY                             |
+|                    COMPLETE WIRED SYSTEM                                   |
 +============================================================================+
 |                                                                            |
-|  RULE 1: NOTHING IS REDUNDANT UNTIL PROVEN                                |
-|          - Every removed file must be analyzed                            |
-|          - Find the equivalent in LOCAL, or reimplement                   |
-|          - Document the mapping explicitly                                |
+|  GENESIS MODE (Click "Start" -> Working Application):                     |
 |                                                                            |
-|  RULE 2: FEATURES > FILES                                                 |
-|          - We care about FUNCTIONALITY, not file names                    |
-|          - A feature can exist under different names/patterns             |
-|          - Map REMOTE features to LOCAL implementations                   |
-|                                                                            |
-|  RULE 3: IF IN DOUBT, IMPLEMENT                                           |
-|          - Better to have redundant code than missing features            |
-|          - We can refactor later, but missing features break users        |
-|                                                                            |
-|  RULE 4: COMPREHENSIVE TESTING                                            |
-|          - Every reconciled feature must have tests                       |
-|          - Tests must pass before moving on                               |
-|          - Integration tests verify features work together                |
-|                                                                            |
-|  RULE 5: DOCUMENTATION                                                    |
-|          - Create a complete FEATURE_MATRIX.md                            |
-|          - Map every REMOTE feature to its MERGED equivalent              |
-|          - No feature left undocumented                                   |
+|  User clicks "Genesis"                                                    |
+|       |                                                                   |
+|       v                                                                   |
+|  InterviewEngine.start() -----> UI shows chat interface                  |
+|       |                                                                   |
+|       v                                                                   |
+|  User describes project ------> RequirementExtractor captures            |
+|       |                                                                   |
+|       v                                                                   |
+|  User clicks "Complete" ------> Requirements finalized                   |
+|       |                                                                   |
+|       v                                                                   |
+|  TaskDecomposer.decompose() --> Creates atomic tasks (<30 min)           |
+|       |                                                                   |
+|       v                                                                   |
+|  DependencyResolver.resolve() -> Orders tasks by dependencies            |
+|       |                                                                   |
+|       v                                                                   |
+|  NexusCoordinator.start() ----> Orchestration begins                     |
+|       |                                                                   |
+|       v                                                                   |
+|  AgentPool.acquire() ---------> Assigns agents to tasks                  |
+|       |                                                                   |
+|       v                                                                   |
+|  Agent.execute() -------------> Calls Claude/Gemini, writes code         |
+|       |                                                                   |
+|       v                                                                   |
+|  RalphStyleIterator.run() ----> QA Loop (build/lint/test/review)        |
+|       |                                                                   |
+|       v                                                                   |
+|  Loop until pass or escalate -> Human checkpoint if needed               |
+|       |                                                                   |
+|       v                                                                   |
+|  Merge to main ---------------> Code integrated                          |
+|       |                                                                   |
+|       v                                                                   |
+|  WORKING APPLICATION DELIVERED                                            |
 |                                                                            |
 +============================================================================+
+```
 
-GENERAL RULE: BE COMPREHENSIVE AND COMPLETE THIS PHASE OVER AS MANY ITERATIONS AS YOU NEED.
+---
 
+## GOLDEN RULES
+
+```
++============================================================================+
+|                       WIRING PHILOSOPHY                                    |
++============================================================================+
+|                                                                            |
+|  RULE 1: TRACE THE DATA FLOW                                              |
+|          - For each step, identify: input -> component -> output          |
+|          - Verify the output of step N is the input of step N+1          |
+|          - If not connected, wire it                                      |
+|                                                                            |
+|  RULE 2: USE EXISTING COMPONENTS                                          |
+|          - Do NOT rewrite components                                      |
+|          - Only add wiring/glue code                                      |
+|          - Components are tested - trust them                             |
+|                                                                            |
+|  RULE 3: EVENT-DRIVEN WHERE POSSIBLE                                      |
+|          - Use EventBus for loose coupling                                |
+|          - Components emit events, others subscribe                       |
+|          - This is already the pattern in NexusCoordinator               |
+|                                                                            |
+|  RULE 4: TEST END-TO-END AFTER EACH WIRING                               |
+|          - Wire one connection                                            |
+|          - Test that specific connection                                  |
+|          - Then move to next                                              |
+|                                                                            |
+|  RULE 5: UI REFLECTS BACKEND STATE                                        |
+|          - Every backend state change should update UI                    |
+|          - Use IPC handlers for Electron                                  |
+|          - Zustand stores subscribe to backend events                     |
+|                                                                            |
++============================================================================+
 ```
 
 ---
 
 ## Pre-Requisites
 
-- [ ] Phase 18A merge completed
-- [ ] Current codebase builds (TypeScript 0 errors)
-- [ ] Current tests pass (2105+)
-- [ ] Access to REMOTE branch for reference: `git show origin/master:<file>`
-
+- [ ] Phase 18B complete (all features reconciled)
+- [ ] Codebase builds (npm run build)
+- [ ] Tests pass (npm test)
+- [ ] Understand NexusFactory.ts (main wiring component)
+- [ ] Understand NexusCoordinator.ts (orchestration brain)
 
 ---
 
 # =============================================================================
-# PHASE A: AUDIT REMOVED FILES (Tasks 1-5)
+# PHASE A: WIRING AUDIT (Tasks 1-3)
 # =============================================================================
 
-## Task 1: Inventory All Removed Files
+## Task 1: Trace Current Wiring State
 
 ### Objective
-Create a complete list of the 77 files that were removed during merge, categorized by type.
+Map out what IS currently wired and what IS NOT.
 
 ### Requirements
 
-- [ ] List all files that were in REMOTE but removed during merge:
+- [ ] Analyze NexusFactory.ts:
   ```bash
-  # Get the list of REMOTE-ONLY files that were supposed to be added
-  cat .agent/workspace/MERGE_INVENTORY/REMOTE_ONLY_FILES.txt | grep "^src/" > /tmp/remote-src-files.txt
+  echo "=== NexusFactory Analysis ===" 
+  cat src/NexusFactory.ts
   
-  # Check which ones actually exist now
-  while read file; do
-    if [ ! -f "$file" ]; then
-      echo "REMOVED: $file"
-    fi
-  done < /tmp/remote-src-files.txt > .agent/workspace/RECONCILIATION/REMOVED_FILES.txt
+  echo ""
+  echo "=== What NexusFactory Creates ===" 
+  grep -E "new |create|build" src/NexusFactory.ts | head -30
   
-  # Count
-  echo "Total removed source files: $(wc -l < .agent/workspace/RECONCILIATION/REMOVED_FILES.txt)"
+  echo ""
+  echo "=== What NexusFactory Wires ===" 
+  grep -E "\.on\(|subscribe|addEventListener|connect" src/NexusFactory.ts | head -20
   ```
 
-- [ ] Create reconciliation workspace:
+- [ ] Analyze NexusCoordinator.ts:
   ```bash
-  mkdir -p .agent/workspace/RECONCILIATION
+  echo "=== NexusCoordinator Analysis ===" 
+  cat src/orchestration/coordinator/NexusCoordinator.ts | head -200
+  
+  echo ""
+  echo "=== What NexusCoordinator Calls ===" 
+  grep -E "this\.[a-zA-Z]+\." src/orchestration/coordinator/NexusCoordinator.ts | head -30
+  
+  echo ""
+  echo "=== Event Emissions ===" 
+  grep -E "emit\(|publish\(" src/orchestration/coordinator/NexusCoordinator.ts | head -20
   ```
 
-- [ ] Categorize removed files:
+- [ ] Analyze Interview -> Planning connection:
   ```bash
-  echo "=== REMOVED FILES BY CATEGORY ===" 
+  echo "=== Interview Engine ===" 
+  grep -E "complete|finish|end|decompos" src/interview/InterviewEngine.ts | head -20
   
   echo ""
-  echo "ADAPTERS:"
-  grep "/adapters/" .agent/workspace/RECONCILIATION/REMOVED_FILES.txt || echo "(none)"
-  
-  echo ""
-  echo "EXECUTION/QA-LOOP:"
-  grep "/qa-loop/\|QALoop" .agent/workspace/RECONCILIATION/REMOVED_FILES.txt || echo "(none)"
-  
-  echo ""
-  echo "EXECUTION/AGENTS (*Runner.ts):"
-  grep "Runner.ts" .agent/workspace/RECONCILIATION/REMOVED_FILES.txt || echo "(none)"
-  
-  echo ""
-  echo "QUALITY:"
-  grep "/quality/" .agent/workspace/RECONCILIATION/REMOVED_FILES.txt || echo "(none)"
-  
-  echo ""
-  echo "TEST FILES:"
-  grep "\.test\.ts\|\.spec\.ts" .agent/workspace/RECONCILIATION/REMOVED_FILES.txt || echo "(none)"
-  
-  echo ""
-  echo "OTHER:"
-  grep -v "/adapters/\|/qa-loop/\|Runner.ts\|/quality/\|\.test\.ts\|\.spec\.ts" .agent/workspace/RECONCILIATION/REMOVED_FILES.txt || echo "(none)"
+  echo "=== Does Interview call TaskDecomposer? ===" 
+  grep -E "TaskDecomposer|decompose" src/interview/*.ts
   ```
 
-- [ ] Create REMOVED_FILES_ANALYSIS.md:
+- [ ] Analyze Planning -> Execution connection:
   ```bash
-  cat > .agent/workspace/RECONCILIATION/REMOVED_FILES_ANALYSIS.md << 'EOF'
-  # Removed Files Analysis
+  echo "=== TaskDecomposer Output ===" 
+  grep -E "return|emit|publish" src/planning/TaskDecomposer.ts | head -20
   
-  ## Overview
-  These files were removed during Phase 18A merge due to TypeScript type conflicts.
-  This document analyzes each file to determine if functionality was lost.
+  echo ""
+  echo "=== Does Planning trigger AgentPool? ===" 
+  grep -E "AgentPool|agent|assign" src/planning/*.ts
+  ```
+
+- [ ] Analyze Execution -> QA connection:
+  ```bash
+  echo "=== Agent Execution ===" 
+  grep -E "complete|finish|done|qa|iterate" src/execution/agents/*.ts | head -20
   
-  ## Categories
+  echo ""
+  echo "=== Does Agent trigger QA Loop? ===" 
+  grep -E "RalphStyleIterator|QALoop|iterate" src/execution/agents/*.ts
+  ```
+
+- [ ] Analyze UI -> Backend connection:
+  ```bash
+  echo "=== IPC Handlers ===" 
+  grep -rn "ipcMain.handle\|ipcRenderer.invoke" src/main/ src/preload/ src/renderer/ | head -30
   
-  ### 1. Adapters
-  [List files and their purpose]
+  echo ""
+  echo "=== UI Store Subscriptions ===" 
+  grep -rn "subscribe\|on\(" src/renderer/src/stores/*.ts | head -20
+  ```
+
+- [ ] Create WIRING_AUDIT.md:
+  ```bash
+  cat > .agent/workspace/WIRING/WIRING_AUDIT.md << 'EOF'
+  # Current Wiring Audit
   
-  ### 2. QA Loop Engine
-  [List files and their purpose]
+  ## Legend
+  - [x] WIRED - Connection exists and works
+  - [~] PARTIAL - Connection exists but incomplete
+  - [ ] NOT WIRED - Connection missing
   
-  ### 3. Agent Runners (*Runner.ts)
-  [List files and their purpose]
+  ## Genesis Flow Wiring
   
-  ### 4. Quality System
-  [List files and their purpose]
+  | Step | From | To | Status | Notes |
+  |------|------|----|--------|-------|
+  | 1 | UI "Start Genesis" | InterviewEngine.start() | ? | |
+  | 2 | InterviewEngine | UI Chat Display | ? | |
+  | 3 | User Message | InterviewEngine.sendMessage() | ? | |
+  | 4 | InterviewEngine | RequirementExtractor | ? | |
+  | 5 | RequirementExtractor | RequirementsDB | ? | |
+  | 6 | UI "Complete Interview" | InterviewEngine.complete() | ? | |
+  | 7 | InterviewEngine.complete() | TaskDecomposer.decompose() | ? | |
+  | 8 | TaskDecomposer | DependencyResolver | ? | |
+  | 9 | DependencyResolver | TimeEstimator | ? | |
+  | 10 | Planning Complete | NexusCoordinator.start() | ? | |
+  | 11 | NexusCoordinator | AgentPool.acquire() | ? | |
+  | 12 | AgentPool | Agent.execute() | ? | |
+  | 13 | Agent.execute() | LLM Client (Claude/Gemini) | ? | |
+  | 14 | Agent Complete | RalphStyleIterator.run() | ? | |
+  | 15 | QA Pass | Merge to main | ? | |
+  | 16 | QA Fail | Re-iterate or Escalate | ? | |
+  | 17 | All Tasks Complete | UI Shows "Done" | ? | |
   
-  ### 5. Test Files
-  [List files and their purpose]
+  ## Evolution Flow Wiring
   
-  ### 6. Other
-  [List files and their purpose]
+  | Step | From | To | Status | Notes |
+  |------|------|----|--------|-------|
+  | 1 | UI "Start Evolution" | Project Selector | ? | |
+  | 2 | Project Selected | RepoMapGenerator | ? | |
+  | 3 | RepoMap Generated | InterviewEngine (context) | ? | |
+  | 4-17 | (Same as Genesis 4-17) | | ? | |
   
-  ## Analysis Required
-  For each removed file:
-  1. What functionality did it provide?
-  2. Does LOCAL have an equivalent?
-  3. If no equivalent, does it need reimplementation?
+  ## Event Bus Subscriptions
+  
+  | Event | Publisher | Subscribers | Status |
+  |-------|-----------|-------------|--------|
+  | interview.started | ? | ? | ? |
+  | interview.message | ? | ? | ? |
+  | interview.completed | ? | ? | ? |
+  | planning.started | ? | ? | ? |
+  | planning.completed | ? | ? | ? |
+  | task.assigned | ? | ? | ? |
+  | task.started | ? | ? | ? |
+  | task.completed | ? | ? | ? |
+  | qa.started | ? | ? | ? |
+  | qa.passed | ? | ? | ? |
+  | qa.failed | ? | ? | ? |
+  | qa.escalated | ? | ? | ? |
+  | agent.acquired | ? | ? | ? |
+  | agent.released | ? | ? | ? |
+  
+  ## UI -> Backend IPC
+  
+  | Channel | Direction | Handler | Status |
+  |---------|-----------|---------|--------|
+  | start-genesis | UI -> Main | ? | ? |
+  | start-evolution | UI -> Main | ? | ? |
+  | send-message | UI -> Main | ? | ? |
+  | complete-interview | UI -> Main | ? | ? |
+  | get-requirements | UI -> Main | ? | ? |
+  | get-tasks | UI -> Main | ? | ? |
+  | get-agent-status | UI -> Main | ? | ? |
+  
+  ## Summary
+  
+  | Category | Total | Wired | Partial | Missing |
+  |----------|-------|-------|---------|---------|
+  | Genesis Flow | 17 | ? | ? | ? |
+  | Evolution Flow | 17 | ? | ? | ? |
+  | Event Bus | ? | ? | ? | ? |
+  | IPC Channels | ? | ? | ? | ? |
+  
   EOF
   ```
 
+- [ ] Fill in the WIRING_AUDIT.md by tracing actual code
+
 ### Task 1 Completion Checklist
-- [ ] REMOVED_FILES.txt created with all removed files
-- [ ] Files categorized by type
-- [ ] REMOVED_FILES_ANALYSIS.md template created
+- [ ] NexusFactory analyzed
+- [ ] NexusCoordinator analyzed
+- [ ] All flow connections traced
+- [ ] WIRING_AUDIT.md completed with actual status
 
 **[TASK 1 COMPLETE]** <- Mark when done, proceed to Task 2
 
 ---
 
-## Task 2: Analyze Adapters (CRITICAL)
+## Task 2: Identify All Missing Wiring
 
 ### Objective
-Determine if StateFormatAdapter and TaskSchemaAdapter functionality exists in LOCAL.
-
-### Files to Analyze
-
-```
-REMOVED ADAPTERS:
-- src/adapters/StateFormatAdapter.ts
-- src/adapters/TaskSchemaAdapter.ts
-- src/adapters/StateFormatAdapter.test.ts
-- src/adapters/TaskSchemaAdapter.test.ts
-```
+From the audit, create a prioritized list of all missing connections.
 
 ### Requirements
 
-- [ ] Extract REMOTE adapter implementations for reference:
+- [ ] Extract missing connections from audit:
   ```bash
-  mkdir -p .agent/workspace/RECONCILIATION/REMOTE_REFERENCE/adapters
+  cat > .agent/workspace/WIRING/MISSING_WIRING.md << 'EOF'
+  # Missing Wiring - Prioritized List
   
-  git show origin/master:src/adapters/StateFormatAdapter.ts > \
-    .agent/workspace/RECONCILIATION/REMOTE_REFERENCE/adapters/StateFormatAdapter.ts 2>/dev/null || \
-    echo "File not found in REMOTE"
+  ## Priority 1: Genesis Flow Critical Path
+  These must be wired for Genesis to work AT ALL:
   
-  git show origin/master:src/adapters/TaskSchemaAdapter.ts > \
-    .agent/workspace/RECONCILIATION/REMOTE_REFERENCE/adapters/TaskSchemaAdapter.ts 2>/dev/null || \
-    echo "File not found in REMOTE"
-  ```
-
-- [ ] Analyze StateFormatAdapter:
-  ```bash
-  echo "=== StateFormatAdapter Analysis ===" 
+  1. [ ] Interview Complete -> TaskDecomposer
+     - Current: Interview ends, nothing happens
+     - Needed: Call TaskDecomposer.decompose(requirements)
+     - Location: src/interview/InterviewEngine.ts or NexusCoordinator
   
-  # What did it do?
-  echo "PURPOSE:"
-  head -50 .agent/workspace/RECONCILIATION/REMOTE_REFERENCE/adapters/StateFormatAdapter.ts
+  2. [ ] TaskDecomposer -> NexusCoordinator
+     - Current: Tasks created but not executed
+     - Needed: NexusCoordinator.startExecution(tasks)
+     - Location: src/planning/TaskDecomposer.ts or NexusCoordinator
   
-  # What methods did it have?
-  echo ""
-  echo "METHODS:"
-  grep -E "^\s*(public|private|async)?\s*\w+\s*\(" \
-    .agent/workspace/RECONCILIATION/REMOTE_REFERENCE/adapters/StateFormatAdapter.ts
-  ```
-
-- [ ] Search for equivalent in LOCAL:
-  ```bash
-  echo "=== Searching LOCAL for state format/conversion functionality ===" 
+  3. [ ] NexusCoordinator -> AgentPool
+     - Current: ?
+     - Needed: AgentPool.acquire(taskType) for each task
+     - Location: src/orchestration/coordinator/NexusCoordinator.ts
   
-  # Search for similar functionality
-  grep -rn "StateFormat\|stateFormat\|formatState\|convertState" src/ --include="*.ts" | head -20
+  4. [ ] AgentPool -> Agent Execution
+     - Current: ?
+     - Needed: Agent.execute(task) after acquisition
+     - Location: src/orchestration/agents/AgentPool.ts
   
-  # Search for state serialization
-  grep -rn "serialize.*state\|deserialize.*state\|state.*json" src/ --include="*.ts" -i | head -20
-  ```
-
-- [ ] Analyze TaskSchemaAdapter:
-  ```bash
-  echo "=== TaskSchemaAdapter Analysis ===" 
+  5. [ ] Agent -> QA Loop
+     - Current: ?
+     - Needed: RalphStyleIterator.run() after agent completes
+     - Location: src/execution/agents/*.ts or NexusCoordinator
   
-  # What did it do?
-  echo "PURPOSE:"
-  head -50 .agent/workspace/RECONCILIATION/REMOTE_REFERENCE/adapters/TaskSchemaAdapter.ts
+  [Continue listing ALL missing connections...]
   
-  # What methods did it have?
-  echo ""
-  echo "METHODS:"
-  grep -E "^\s*(public|private|async)?\s*\w+\s*\(" \
-    .agent/workspace/RECONCILIATION/REMOTE_REFERENCE/adapters/TaskSchemaAdapter.ts
-  ```
-
-- [ ] Search for equivalent in LOCAL:
-  ```bash
-  echo "=== Searching LOCAL for task schema functionality ===" 
+  ## Priority 2: Evolution Flow Additions
+  Additional wiring needed for Evolution mode:
   
-  # Search for similar functionality
-  grep -rn "TaskSchema\|taskSchema\|convertTask\|transformTask" src/ --include="*.ts" | head -20
+  1. [ ] Project Selection -> RepoMapGenerator
+  2. [ ] RepoMap -> Interview Context
+  [...]
   
-  # Search for task conversion
-  grep -rn "task.*convert\|task.*transform\|task.*adapt" src/ --include="*.ts" -i | head -20
-  ```
-
-- [ ] Document findings in ADAPTER_ANALYSIS.md:
-  ```bash
-  cat > .agent/workspace/RECONCILIATION/ADAPTER_ANALYSIS.md << 'EOF'
-  # Adapter Analysis
+  ## Priority 3: UI Integration
+  UI must reflect backend state:
   
-  ## StateFormatAdapter
+  1. [ ] Backend Events -> IPC -> UI Stores
+  2. [ ] Real-time progress updates
+  [...]
   
-  ### REMOTE Implementation
-  - Purpose: [describe]
-  - Key methods: [list]
-  - Dependencies: [list]
+  ## Priority 4: Error Handling & Escalation
   
-  ### LOCAL Equivalent
-  - Found: YES/NO
-  - Location: [path if found]
-  - Coverage: FULL/PARTIAL/NONE
+  1. [ ] QA Failure -> Escalation Handler
+  2. [ ] Escalation -> Human Checkpoint UI
+  [...]
   
-  ### Action Required
-  - [ ] No action (LOCAL has equivalent)
-  - [ ] Reimplement with current types
-  - [ ] Partial reimplement (specify what)
-  
-  ---
-  
-  ## TaskSchemaAdapter
-  
-  ### REMOTE Implementation
-  - Purpose: [describe]
-  - Key methods: [list]
-  - Dependencies: [list]
-  
-  ### LOCAL Equivalent
-  - Found: YES/NO
-  - Location: [path if found]
-  - Coverage: FULL/PARTIAL/NONE
-  
-  ### Action Required
-  - [ ] No action (LOCAL has equivalent)
-  - [ ] Reimplement with current types
-  - [ ] Partial reimplement (specify what)
   EOF
   ```
 
-- [ ] If adapters need reimplementation, DO IT NOW:
-  
-  **If StateFormatAdapter needed:**
-  ```typescript
-  // Create src/adapters/StateFormatAdapter.ts
-  // Implement with CURRENT type definitions
-  // Add tests
-  ```
-  
-  **If TaskSchemaAdapter needed:**
-  ```typescript
-  // Create src/adapters/TaskSchemaAdapter.ts
-  // Implement with CURRENT type definitions
-  // Add tests
-  ```
+- [ ] Populate with actual findings from Task 1
 
 ### Task 2 Completion Checklist
-- [ ] StateFormatAdapter analyzed
-- [ ] TaskSchemaAdapter analyzed
-- [ ] LOCAL equivalents searched
-- [ ] ADAPTER_ANALYSIS.md completed
-- [ ] Missing adapters reimplemented (if needed)
-- [ ] Tests added for any new adapters
-- [ ] TypeScript compiles after changes
+- [ ] All missing wiring identified
+- [ ] Prioritized by importance
+- [ ] Location for each fix identified
 
 **[TASK 2 COMPLETE]** <- Mark when done, proceed to Task 3
 
 ---
 
-## Task 3: Analyze QA Loop Engine (CRITICAL)
+## Task 3: Create Wiring Implementation Plan
 
 ### Objective
-Determine if QALoopEngine functionality is fully covered by RalphStyleIterator.
-
-### Files to Analyze
-
-```
-REMOVED QA-LOOP FILES:
-- src/execution/qa-loop/QALoopEngine.ts
-- src/execution/qa-loop/QALoopEngine.test.ts
-- src/execution/qa-loop/index.ts
-```
+Create a detailed plan for implementing each missing connection.
 
 ### Requirements
 
-- [ ] Extract REMOTE QALoopEngine for reference:
+- [ ] Create WIRING_PLAN.md:
   ```bash
-  mkdir -p .agent/workspace/RECONCILIATION/REMOTE_REFERENCE/qa-loop
+  cat > .agent/workspace/WIRING/WIRING_PLAN.md << 'EOF'
+  # Wiring Implementation Plan
   
-  git show origin/master:src/execution/qa-loop/QALoopEngine.ts > \
-    .agent/workspace/RECONCILIATION/REMOTE_REFERENCE/qa-loop/QALoopEngine.ts 2>/dev/null || \
-    echo "File not found"
-  ```
-
-- [ ] Analyze QALoopEngine capabilities:
-  ```bash
-  echo "=== QALoopEngine Analysis ===" 
+  ## Approach
   
-  # Full file content
-  cat .agent/workspace/RECONCILIATION/REMOTE_REFERENCE/qa-loop/QALoopEngine.ts
+  We will wire the system in this order:
+  1. Genesis Critical Path (minimum viable flow)
+  2. Genesis Complete Path (all features)
+  3. Genesis E2E Test
+  4. Evolution Critical Path
+  5. Evolution Complete Path
+  6. Evolution E2E Test
+  7. UI Integration
+  8. Error Handling & Escalation
+  9. Full System E2E Test
   
-  echo ""
-  echo "=== METHODS ===" 
-  grep -E "^\s*(public|private|async)?\s*\w+\s*\(" \
-    .agent/workspace/RECONCILIATION/REMOTE_REFERENCE/qa-loop/QALoopEngine.ts
-  ```
-
-- [ ] Analyze LOCAL's RalphStyleIterator:
-  ```bash
-  echo "=== RalphStyleIterator Analysis ===" 
+  ## Implementation Details
   
-  # Find the file
-  find src -name "*RalphStyle*" -o -name "*Iterator*" | grep -v node_modules
+  ### Wire 1: Interview Complete -> TaskDecomposer
   
-  # Show its content
-  cat src/execution/iteration/RalphStyleIterator.ts 2>/dev/null || \
-    find src -name "RalphStyleIterator.ts" -exec cat {} \;
-  ```
-
-- [ ] Create feature comparison matrix:
-  ```bash
-  cat > .agent/workspace/RECONCILIATION/QA_LOOP_COMPARISON.md << 'EOF'
-  # QA Loop Engine vs RalphStyleIterator Comparison
-  
-  ## Feature Matrix
-  
-  | Feature | QALoopEngine (REMOTE) | RalphStyleIterator (LOCAL) | Status |
-  |---------|----------------------|---------------------------|--------|
-  | Build verification | ? | ? | ? |
-  | Lint running | ? | ? | ? |
-  | Test execution | ? | ? | ? |
-  | Code review | ? | ? | ? |
-  | Max iterations limit | ? | ? | ? |
-  | Error context aggregation | ? | ? | ? |
-  | Git diff context | ? | ? | ? |
-  | Escalation to human | ? | ? | ? |
-  | Progress tracking | ? | ? | ? |
-  | Checkpoint support | ? | ? | ? |
-  
-  ## Analysis
-  
-  ### Features ONLY in QALoopEngine
-  [List any features LOCAL is missing]
-  
-  ### Features ONLY in RalphStyleIterator
-  [List any features REMOTE didn't have]
-  
-  ### Action Required
-  - [ ] RalphStyleIterator fully covers QALoopEngine (no action)
-  - [ ] Need to add missing features to RalphStyleIterator
-  - [ ] Need to keep both (different purposes)
-  EOF
-  ```
-
-- [ ] Fill in the comparison matrix by analyzing both implementations
-
-- [ ] If features are missing from RalphStyleIterator, ADD THEM:
+  **Current Code:**
   ```typescript
-  // Add any missing QALoopEngine features to RalphStyleIterator
-  // Or create a compatibility layer
+  // src/interview/InterviewEngine.ts
+  async complete(): Promise<Requirements> {
+    // Returns requirements but doesn't trigger next step
+    return this.requirements;
+  }
+  ```
+  
+  **New Code:**
+  ```typescript
+  // Option A: In InterviewEngine
+  async complete(): Promise<Requirements> {
+    const requirements = this.requirements;
+    this.eventBus.emit('interview.completed', { requirements });
+    return requirements;
+  }
+  
+  // Option B: In NexusCoordinator (preferred - separation of concerns)
+  // NexusCoordinator listens for interview.completed and triggers decomposition
+  this.eventBus.on('interview.completed', async ({ requirements }) => {
+    const tasks = await this.taskDecomposer.decompose(requirements);
+    this.eventBus.emit('planning.completed', { tasks });
+  });
+  ```
+  
+  **Chosen Approach:** Option B (NexusCoordinator orchestrates)
+  
+  **Files to Modify:**
+  - src/orchestration/coordinator/NexusCoordinator.ts
+  - src/interview/InterviewEngine.ts (add event emission)
+  
+  **Test:**
+  ```typescript
+  it('should trigger decomposition when interview completes', async () => {
+    const coordinator = new NexusCoordinator(...);
+    await coordinator.initialize();
+    
+    // Simulate interview completion
+    eventBus.emit('interview.completed', { requirements: mockRequirements });
+    
+    // Verify decomposition was triggered
+    expect(taskDecomposer.decompose).toHaveBeenCalledWith(mockRequirements);
+  });
+  ```
+  
+  ---
+  
+  ### Wire 2: TaskDecomposer -> NexusCoordinator
+  
+  [Same detailed structure...]
+  
+  ---
+  
+  [Continue for ALL wiring items...]
+  
+  EOF
   ```
 
 ### Task 3 Completion Checklist
-- [ ] QALoopEngine fully analyzed
-- [ ] RalphStyleIterator fully analyzed
-- [ ] Feature comparison matrix completed
-- [ ] Missing features identified
-- [ ] Missing features implemented (if any)
-- [ ] Tests pass after changes
+- [ ] Implementation plan for each missing wire
+- [ ] Code examples provided
+- [ ] Test examples provided
+- [ ] Files to modify listed
 
-**[TASK 3 COMPLETE]** <- Mark when done, proceed to Task 4
+**[TASK 3 COMPLETE]** <- Mark when done, proceed to Phase B
 
 ---
 
-## Task 4: Analyze Agent Runners vs Agent Pattern
+# =============================================================================
+# PHASE B: WIRE GENESIS MODE (Tasks 4-8)
+# =============================================================================
+
+## Task 4: Wire Genesis Critical Path
 
 ### Objective
-Determine if *Runner.ts pattern functionality is fully covered by *Agent.ts pattern.
+Wire the minimum connections needed for Genesis to work end-to-end.
 
-### Files to Analyze
+### The Critical Path
 
 ```
-REMOVED RUNNER FILES:
-- src/execution/agents/CoderRunner.ts
-- src/execution/agents/TesterRunner.ts
-- src/execution/agents/ReviewerRunner.ts
-- src/execution/agents/MergerRunner.ts
-- src/execution/agents/PlannerRunner.ts
-- (and their test files)
+Interview Complete
+       |
+       v
+TaskDecomposer.decompose()
+       |
+       v
+NexusCoordinator.startExecution()
+       |
+       v
+AgentPool.acquire() + Agent.execute()
+       |
+       v
+RalphStyleIterator.run()
+       |
+       v
+Merge or Escalate
 ```
 
 ### Requirements
 
-- [ ] Extract REMOTE runner implementations:
-  ```bash
-  mkdir -p .agent/workspace/RECONCILIATION/REMOTE_REFERENCE/runners
+- [ ] Wire Interview -> Planning:
   
-  for runner in Coder Tester Reviewer Merger Planner; do
-    git show origin/master:src/execution/agents/${runner}Runner.ts > \
-      .agent/workspace/RECONCILIATION/REMOTE_REFERENCE/runners/${runner}Runner.ts 2>/dev/null
-  done
+  **In InterviewEngine.ts:**
+  ```typescript
+  async complete(): Promise<Requirements> {
+    const requirements = await this.finalizeRequirements();
+    
+    // WIRING: Emit event for NexusCoordinator
+    this.eventBus.emit('interview.completed', {
+      projectId: this.projectId,
+      requirements,
+      mode: 'genesis'
+    });
+    
+    return requirements;
+  }
+  ```
   
-  ls -la .agent/workspace/RECONCILIATION/REMOTE_REFERENCE/runners/
+  **In NexusCoordinator.ts:**
+  ```typescript
+  private setupEventHandlers(): void {
+    // WIRING: Listen for interview completion
+    this.eventBus.on('interview.completed', async (data) => {
+      if (data.mode === 'genesis') {
+        await this.handleGenesisInterviewComplete(data.requirements);
+      }
+    });
+  }
+  
+  private async handleGenesisInterviewComplete(requirements: Requirements): Promise<void> {
+    // Decompose requirements into tasks
+    const decompositionResult = await this.taskDecomposer.decompose(requirements);
+    
+    // Resolve dependencies
+    const orderedTasks = await this.dependencyResolver.resolve(decompositionResult.tasks);
+    
+    // Emit planning complete
+    this.eventBus.emit('planning.completed', {
+      tasks: orderedTasks,
+      waves: decompositionResult.waves
+    });
+    
+    // Start execution
+    await this.startExecution(orderedTasks);
+  }
   ```
 
-- [ ] List LOCAL agent implementations:
-  ```bash
-  echo "=== LOCAL Agent Implementations ===" 
-  find src/execution/agents -name "*.ts" -not -name "*.test.ts" | head -20
+- [ ] Wire Planning -> Execution:
   
-  echo ""
-  echo "=== Agent file contents (first 30 lines each) ===" 
-  for f in src/execution/agents/*.ts; do
-    if [[ ! "$f" =~ ".test.ts" ]]; then
-      echo "--- $f ---"
-      head -30 "$f"
-      echo ""
-    fi
-  done
+  **In NexusCoordinator.ts:**
+  ```typescript
+  private async startExecution(tasks: Task[]): Promise<void> {
+    this.eventBus.emit('execution.started', { taskCount: tasks.length });
+    
+    for (const task of tasks) {
+      // Acquire appropriate agent
+      const agentType = this.determineAgentType(task);
+      const agent = await this.agentPool.acquire(agentType);
+      
+      try {
+        // Execute task
+        this.eventBus.emit('task.started', { taskId: task.id, agentId: agent.id });
+        const result = await agent.execute(task);
+        
+        // Run QA loop
+        const qaResult = await this.runQALoop(task, result);
+        
+        if (qaResult.passed) {
+          this.eventBus.emit('task.completed', { taskId: task.id, success: true });
+        } else {
+          await this.handleQAFailure(task, qaResult);
+        }
+      } finally {
+        await this.agentPool.release(agent);
+      }
+    }
+    
+    this.eventBus.emit('execution.completed', { success: true });
+  }
   ```
 
-- [ ] Compare Runner vs Agent patterns:
-  ```bash
-  cat > .agent/workspace/RECONCILIATION/RUNNER_VS_AGENT.md << 'EOF'
-  # Runner Pattern vs Agent Pattern Comparison
+- [ ] Wire Execution -> QA:
   
-  ## Pattern Overview
-  
-  ### REMOTE: *Runner.ts Pattern
-  [Describe the pattern - how runners work]
-  
-  ### LOCAL: *Agent.ts Pattern
-  [Describe the pattern - how agents work]
-  
-  ## Agent-by-Agent Comparison
-  
-  ### Coder
-  | Capability | CoderRunner (REMOTE) | CoderAgent (LOCAL) | Status |
-  |------------|---------------------|-------------------|--------|
-  | Code generation | ? | ? | ? |
-  | File creation | ? | ? | ? |
-  | Multi-file edits | ? | ? | ? |
-  | Context handling | ? | ? | ? |
-  
-  ### Tester
-  | Capability | TesterRunner (REMOTE) | TesterAgent (LOCAL) | Status |
-  |------------|----------------------|---------------------|--------|
-  | Test generation | ? | ? | ? |
-  | Test execution | ? | ? | ? |
-  | Coverage tracking | ? | ? | ? |
-  
-  ### Reviewer
-  | Capability | ReviewerRunner (REMOTE) | ReviewerAgent (LOCAL) | Status |
-  |------------|------------------------|----------------------|--------|
-  | Code review | ? | ? | ? |
-  | Issue detection | ? | ? | ? |
-  | Suggestions | ? | ? | ? |
-  
-  ### Merger
-  | Capability | MergerRunner (REMOTE) | MergerAgent (LOCAL) | Status |
-  |------------|----------------------|---------------------|--------|
-  | Branch merging | ? | ? | ? |
-  | Conflict resolution | ? | ? | ? |
-  
-  ### Planner
-  | Capability | PlannerRunner (REMOTE) | PlannerAgent (LOCAL) | Status |
-  |------------|----------------------|----------------------|--------|
-  | Task decomposition | ? | ? | ? |
-  | Dependency mapping | ? | ? | ? |
-  | Time estimation | ? | ? | ? |
-  
-  ## Missing Capabilities
-  [List any capabilities LOCAL is missing]
-  
-  ## Action Required
-  - [ ] LOCAL agents fully cover REMOTE runners (no action)
-  - [ ] Add missing capabilities to LOCAL agents
-  - [ ] Keep both patterns (different use cases)
-  EOF
+  **In NexusCoordinator.ts:**
+  ```typescript
+  private async runQALoop(task: Task, agentResult: AgentResult): Promise<QAResult> {
+    const iterator = new RalphStyleIterator({
+      maxIterations: this.config.qaMaxIterations,
+      buildRunner: this.buildRunner,
+      lintRunner: this.lintRunner,
+      testRunner: this.testRunner,
+      reviewRunner: this.reviewRunner
+    });
+    
+    return await iterator.run({
+      task,
+      agentResult,
+      onIteration: (iteration) => {
+        this.eventBus.emit('qa.iteration', { taskId: task.id, iteration });
+      }
+    });
+  }
   ```
 
-- [ ] Fill in the comparison by analyzing implementations
-
-- [ ] If capabilities are missing, ADD THEM to LOCAL agents
+- [ ] Verify wiring compiles:
+  ```bash
+  npx tsc --noEmit
+  ```
 
 ### Task 4 Completion Checklist
-- [ ] All REMOTE runners analyzed
-- [ ] All LOCAL agents analyzed
-- [ ] Capability comparison completed
-- [ ] Missing capabilities identified
-- [ ] Missing capabilities implemented (if any)
-- [ ] Tests pass after changes
+- [ ] Interview -> Planning wired
+- [ ] Planning -> Execution wired
+- [ ] Execution -> QA wired
+- [ ] TypeScript compiles
 
 **[TASK 4 COMPLETE]** <- Mark when done, proceed to Task 5
 
 ---
 
-## Task 5: Analyze Quality System Integration
+## Task 5: Wire Genesis Complete Path
 
 ### Objective
-Verify the preserved Quality system (src/quality/) integrates properly with LOCAL.
+Wire all remaining Genesis connections (error handling, escalation, merge, UI updates).
 
 ### Requirements
 
-- [ ] List preserved quality files:
-  ```bash
-  echo "=== Preserved Quality System Files ===" 
-  find src/quality -name "*.ts" 2>/dev/null | head -20
-  ```
-
-- [ ] Check for integration issues:
-  ```bash
-  echo "=== TypeScript Check on Quality System ===" 
-  npx tsc --noEmit 2>&1 | grep "src/quality" || echo "No quality system errors"
-  ```
-
-- [ ] Verify quality components are imported/used:
-  ```bash
-  echo "=== Quality System Usage in Codebase ===" 
-  
-  echo "BuildVerifier usage:"
-  grep -rn "BuildVerifier" src/ --include="*.ts" | grep -v "src/quality" | head -5
-  
-  echo ""
-  echo "LintRunner usage:"
-  grep -rn "LintRunner" src/ --include="*.ts" | grep -v "src/quality" | head -5
-  
-  echo ""
-  echo "TestRunner usage:"
-  grep -rn "TestRunner" src/ --include="*.ts" | grep -v "src/quality" | head -5
-  
-  echo ""
-  echo "CodeReviewer usage:"
-  grep -rn "CodeReviewer" src/ --include="*.ts" | grep -v "src/quality" | head -5
-  ```
-
-- [ ] If quality components are NOT used, wire them up:
-  ```bash
-  # Check if NexusFactory or other orchestration uses quality system
-  grep -n "quality\|BuildVerifier\|LintRunner" src/NexusFactory.ts || \
-    echo "WARNING: Quality system may not be wired up!"
-  ```
-
-- [ ] Create integration if missing:
+- [ ] Wire QA Failure -> Escalation:
   ```typescript
-  // If quality system is not integrated:
-  // 1. Import in NexusFactory or appropriate orchestration
-  // 2. Wire up to the execution pipeline
-  // 3. Add tests verifying integration
+  private async handleQAFailure(task: Task, qaResult: QAResult): Promise<void> {
+    if (qaResult.shouldEscalate) {
+      this.eventBus.emit('qa.escalated', {
+        taskId: task.id,
+        reason: qaResult.escalationReason,
+        context: qaResult.errorContext
+      });
+      
+      // Create human checkpoint
+      await this.checkpointManager.createCheckpoint({
+        type: 'human_review',
+        taskId: task.id,
+        state: this.captureState()
+      });
+    } else {
+      // Re-queue task for another attempt
+      this.eventBus.emit('task.retry', { taskId: task.id });
+    }
+  }
+  ```
+
+- [ ] Wire Success -> Merge:
+  ```typescript
+  private async handleTaskSuccess(task: Task): Promise<void> {
+    // Merge task branch to main
+    await this.gitService.mergeBranch(task.branchName, 'main');
+    
+    this.eventBus.emit('task.merged', { taskId: task.id });
+    
+    // Update progress
+    this.progress.completedTasks++;
+    this.eventBus.emit('progress.updated', this.progress);
+  }
+  ```
+
+- [ ] Wire Backend -> UI Events:
+  ```typescript
+  // In main process IPC setup
+  const setupUIBridge = (nexusCoordinator: NexusCoordinator) => {
+    const eventBus = nexusCoordinator.eventBus;
+    
+    // Forward all relevant events to renderer
+    const eventsToForward = [
+      'interview.started', 'interview.message', 'interview.completed',
+      'planning.started', 'planning.completed',
+      'execution.started', 'task.started', 'task.completed',
+      'qa.iteration', 'qa.passed', 'qa.failed', 'qa.escalated',
+      'progress.updated', 'execution.completed'
+    ];
+    
+    eventsToForward.forEach(eventName => {
+      eventBus.on(eventName, (data) => {
+        mainWindow.webContents.send('nexus-event', { type: eventName, data });
+      });
+    });
+  };
+  ```
+
+- [ ] Wire UI Store Subscriptions:
+  ```typescript
+  // In renderer preload or store setup
+  window.electronAPI.onNexusEvent((event) => {
+    switch (event.type) {
+      case 'progress.updated':
+        useProjectStore.getState().setProgress(event.data);
+        break;
+      case 'task.completed':
+        useTaskStore.getState().markComplete(event.data.taskId);
+        break;
+      // ... handle all events
+    }
+  });
   ```
 
 ### Task 5 Completion Checklist
-- [ ] Quality system files verified
-- [ ] No TypeScript errors in quality system
-- [ ] Integration points identified
-- [ ] Quality system properly wired up
-- [ ] Tests verify quality system works
+- [ ] QA failure handling wired
+- [ ] Success merge wired
+- [ ] Checkpoints wired
+- [ ] Backend -> UI events wired
+- [ ] UI stores subscribe to events
 
-**[TASK 5 COMPLETE]** <- Mark when done, proceed to Phase B
+**[TASK 5 COMPLETE]** <- Mark when done, proceed to Task 6
 
 ---
 
-# =============================================================================
-# PHASE B: COMPREHENSIVE FEATURE AUDIT (Tasks 6-10)
-# =============================================================================
-
-## Task 6: Create Master Feature Matrix
+## Task 6: Create Genesis Integration Tests
 
 ### Objective
-Create a comprehensive matrix of ALL Nexus features from both LOCAL and REMOTE.
+Create comprehensive integration tests that verify the entire Genesis flow.
 
 ### Requirements
 
-- [ ] Extract all features from Nexus documentation:
-  ```bash
-  # Read the Nexus description and master book
-  echo "=== Extracting Features from Documentation ===" 
+- [ ] Create Genesis flow integration test:
+  ```typescript
+  // tests/integration/genesis-flow.test.ts
   
-  # Check for feature documentation
-  find . -name "*.md" -path "*/docs/*" -o -name "*FEATURE*" -o -name "*MASTER*" | head -20
+  describe('Genesis Mode End-to-End', () => {
+    let nexus: NexusFactory;
+    let eventLog: string[];
+    
+    beforeEach(async () => {
+      nexus = await NexusFactory.create({ mode: 'test' });
+      eventLog = [];
+      
+      // Log all events
+      nexus.eventBus.onAny((event, data) => {
+        eventLog.push(event);
+      });
+    });
+    
+    it('should complete full Genesis flow', async () => {
+      // 1. Start Genesis
+      const interview = await nexus.startGenesis({
+        description: 'A simple CLI calculator'
+      });
+      expect(eventLog).toContain('interview.started');
+      
+      // 2. Simulate interview conversation
+      await interview.sendMessage('It should add, subtract, multiply, divide');
+      await interview.sendMessage('TypeScript, Node.js');
+      await interview.sendMessage('Yes, that covers it');
+      
+      // 3. Complete interview
+      const requirements = await interview.complete();
+      expect(eventLog).toContain('interview.completed');
+      expect(requirements.features.length).toBeGreaterThan(0);
+      
+      // 4. Verify planning triggered
+      await waitFor(() => eventLog.includes('planning.completed'));
+      
+      // 5. Verify execution started
+      await waitFor(() => eventLog.includes('execution.started'));
+      
+      // 6. Verify tasks execute
+      await waitFor(() => eventLog.includes('task.started'));
+      
+      // 7. Verify QA runs
+      await waitFor(() => eventLog.includes('qa.iteration'));
+      
+      // 8. Wait for completion (with timeout)
+      await waitFor(() => eventLog.includes('execution.completed'), {
+        timeout: 5 * 60 * 1000 // 5 minutes for test
+      });
+      
+      // 9. Verify output
+      const result = nexus.getResult();
+      expect(result.success).toBe(true);
+      expect(result.files.length).toBeGreaterThan(0);
+    }, 10 * 60 * 1000); // 10 minute timeout
+    
+    it('should handle QA failure and re-iterate', async () => {
+      // Setup: Mock LLM to return code that fails lint
+      mockLLM.setResponse('code with lint errors');
+      
+      // ... run flow ...
+      
+      // Verify re-iteration
+      const qaIterations = eventLog.filter(e => e === 'qa.iteration');
+      expect(qaIterations.length).toBeGreaterThan(1);
+    });
+    
+    it('should escalate after max iterations', async () => {
+      // Setup: Mock LLM to always return failing code
+      mockLLM.setResponse('always failing code');
+      
+      // ... run flow ...
+      
+      // Verify escalation
+      expect(eventLog).toContain('qa.escalated');
+    });
+  });
   ```
 
-- [ ] Create MASTER_FEATURE_MATRIX.md:
-  ```bash
-  cat > .agent/workspace/RECONCILIATION/MASTER_FEATURE_MATRIX.md << 'EOF'
-  # Nexus Master Feature Matrix
+- [ ] Create Genesis unit tests for wiring:
+  ```typescript
+  // tests/unit/genesis-wiring.test.ts
   
-  ## Legend
-  - [x] Feature fully implemented and tested
-  - [~] Feature partially implemented
-  - [ ] Feature missing/not implemented
-  - N/A - Feature not applicable
-  
-  ---
-  
-  ## Layer 1: UI Features
-  
-  | Feature | LOCAL | REMOTE | MERGED | Tests |
-  |---------|-------|--------|--------|-------|
-  | Interview Page | ? | ? | ? | ? |
-  | Kanban Board | ? | ? | ? | ? |
-  | Dashboard | ? | ? | ? | ? |
-  | Settings Page | ? | ? | ? | ? |
-  | Agent Activity View | ? | ? | ? | ? |
-  | Execution Logs | ? | ? | ? | ? |
-  | Genesis Mode UI | ? | ? | ? | ? |
-  | Evolution Mode UI | ? | ? | ? | ? |
-  
-  ---
-  
-  ## Layer 2: Orchestration Features
-  
-  | Feature | LOCAL | REMOTE | MERGED | Tests |
-  |---------|-------|--------|--------|-------|
-  | NexusCoordinator | ? | ? | ? | ? |
-  | AgentPool | ? | ? | ? | ? |
-  | TaskQueue | ? | ? | ? | ? |
-  | EventBus | ? | ? | ? | ? |
-  | WorkflowController | ? | ? | ? | ? |
-  
-  ---
-  
-  ## Layer 3: Planning Features
-  
-  | Feature | LOCAL | REMOTE | MERGED | Tests |
-  |---------|-------|--------|--------|-------|
-  | TaskDecomposer | ? | ? | ? | ? |
-  | DependencyResolver | ? | ? | ? | ? |
-  | TimeEstimator | ? | ? | ? | ? |
-  | DynamicReplanner | ? | ? | ? | ? |
-  
-  ---
-  
-  ## Layer 4: Execution Features
-  
-  | Feature | LOCAL | REMOTE | MERGED | Tests |
-  |---------|-------|--------|--------|-------|
-  | CoderAgent/Runner | ? | ? | ? | ? |
-  | TesterAgent/Runner | ? | ? | ? | ? |
-  | ReviewerAgent/Runner | ? | ? | ? | ? |
-  | MergerAgent/Runner | ? | ? | ? | ? |
-  | PlannerAgent/Runner | ? | ? | ? | ? |
-  | RalphStyleIterator | ? | ? | ? | ? |
-  | QALoopEngine | ? | ? | ? | ? |
-  
-  ---
-  
-  ## Layer 5: Quality Features
-  
-  | Feature | LOCAL | REMOTE | MERGED | Tests |
-  |---------|-------|--------|--------|-------|
-  | BuildVerifier | ? | ? | ? | ? |
-  | LintRunner | ? | ? | ? | ? |
-  | TestRunner | ? | ? | ? | ? |
-  | CodeReviewer | ? | ? | ? | ? |
-  
-  ---
-  
-  ## Layer 6: Persistence Features
-  
-  | Feature | LOCAL | REMOTE | MERGED | Tests |
-  |---------|-------|--------|--------|-------|
-  | Database Schema | ? | ? | ? | ? |
-  | StateManager | ? | ? | ? | ? |
-  | CheckpointManager | ? | ? | ? | ? |
-  | RequirementsDB | ? | ? | ? | ? |
-  | MemorySystem | ? | ? | ? | ? |
-  | EmbeddingsService | ? | ? | ? | ? |
-  
-  ---
-  
-  ## Layer 7: Infrastructure Features
-  
-  | Feature | LOCAL | REMOTE | MERGED | Tests |
-  |---------|-------|--------|--------|-------|
-  | GitService | ? | ? | ? | ? |
-  | WorktreeManager | ? | ? | ? | ? |
-  | FileSystemService | ? | ? | ? | ? |
-  | ProcessRunner | ? | ? | ? | ? |
-  | TreeSitterParser | ? | ? | ? | ? |
-  | RepoMapGenerator | ? | ? | ? | ? |
-  
-  ---
-  
-  ## Layer 8: LLM Integration Features
-  
-  | Feature | LOCAL | REMOTE | MERGED | Tests |
-  |---------|-------|--------|--------|-------|
-  | ClaudeClient (API) | ? | ? | ? | ? |
-  | ClaudeCodeCLIClient | ? | ? | ? | ? |
-  | GeminiClient (API) | ? | ? | ? | ? |
-  | GeminiCLIClient | ? | ? | ? | ? |
-  | LLMProvider | ? | ? | ? | ? |
-  
-  ---
-  
-  ## Layer 9: Bridge Features
-  
-  | Feature | LOCAL | REMOTE | MERGED | Tests |
-  |---------|-------|--------|--------|-------|
-  | AgentWorktreeBridge | ? | ? | ? | ? |
-  | PlanningExecutionBridge | ? | ? | ? | ? |
-  | UIBackendBridge | ? | ? | ? | ? |
-  
-  ---
-  
-  ## Layer 10: Interview Features
-  
-  | Feature | LOCAL | REMOTE | MERGED | Tests |
-  |---------|-------|--------|--------|-------|
-  | InterviewEngine | ? | ? | ? | ? |
-  | SessionManager | ? | ? | ? | ? |
-  | RequirementExtractor | ? | ? | ? | ? |
-  
-  ---
-  
-  ## Summary
-  
-  | Category | Total | Implemented | Missing | Coverage |
-  |----------|-------|-------------|---------|----------|
-  | UI | ? | ? | ? | ?% |
-  | Orchestration | ? | ? | ? | ?% |
-  | Planning | ? | ? | ? | ?% |
-  | Execution | ? | ? | ? | ?% |
-  | Quality | ? | ? | ? | ?% |
-  | Persistence | ? | ? | ? | ?% |
-  | Infrastructure | ? | ? | ? | ?% |
-  | LLM | ? | ? | ? | ?% |
-  | Bridges | ? | ? | ? | ?% |
-  | Interview | ? | ? | ? | ?% |
-  | **TOTAL** | ? | ? | ? | ?% |
-  
-  EOF
+  describe('Genesis Wiring', () => {
+    it('interview.completed triggers TaskDecomposer', async () => {
+      const mockDecomposer = { decompose: vi.fn() };
+      const coordinator = new NexusCoordinator({ taskDecomposer: mockDecomposer });
+      
+      eventBus.emit('interview.completed', { requirements: mockRequirements });
+      
+      await nextTick();
+      expect(mockDecomposer.decompose).toHaveBeenCalledWith(mockRequirements);
+    });
+    
+    it('planning.completed triggers execution', async () => {
+      // ...
+    });
+    
+    it('task.completed triggers next task', async () => {
+      // ...
+    });
+  });
   ```
 
-- [ ] Fill in the matrix by checking each feature's existence:
+- [ ] Run Genesis tests:
   ```bash
-  # For each feature, check if file exists and has tests
-  # Example for NexusCoordinator:
-  echo "NexusCoordinator:"
-  echo "  File exists: $([ -f src/orchestration/coordinator/NexusCoordinator.ts ] && echo 'YES' || echo 'NO')"
-  echo "  Test exists: $(find . -name '*NexusCoordinator*.test.ts' | head -1)"
-  echo "  LOC: $(wc -l < src/orchestration/coordinator/NexusCoordinator.ts 2>/dev/null || echo '0')"
+  npm test -- --filter="genesis"
   ```
 
 ### Task 6 Completion Checklist
-- [ ] Feature matrix template created
-- [ ] All features inventoried
-- [ ] Each feature checked for implementation
-- [ ] Each feature checked for tests
-- [ ] Summary calculated
+- [ ] Genesis flow integration test created
+- [ ] Genesis wiring unit tests created
+- [ ] All Genesis tests pass
 
 **[TASK 6 COMPLETE]** <- Mark when done, proceed to Task 7
 
 ---
 
-## Task 7: Identify and Document ALL Gaps
+## Task 7: Manual Genesis E2E Test
 
 ### Objective
-From the feature matrix, identify every gap and create implementation plan.
+Manually test Genesis mode works end-to-end in the actual application.
 
 ### Requirements
 
-- [ ] Extract gaps from feature matrix:
+- [ ] Start the application:
   ```bash
-  # Create GAPS.md with all missing/partial features
-  cat > .agent/workspace/RECONCILIATION/GAPS.md << 'EOF'
-  # Feature Gaps Identified
+  npm run dev:electron
+  ```
+
+- [ ] Test Genesis flow manually:
   
-  ## Critical Gaps (Must Fix)
-  [List features that are missing and essential]
+  **Step 1: Start Genesis**
+  - [ ] Click "Genesis" mode
+  - [ ] Interview UI appears
+  - [ ] Chat interface is visible
   
-  ## Important Gaps (Should Fix)
-  [List features that are partial or have issues]
+  **Step 2: Interview**
+  - [ ] Type: "I want a simple todo CLI app in TypeScript"
+  - [ ] AI responds with questions
+  - [ ] Answer questions until complete
+  - [ ] Requirements sidebar shows captured requirements
   
-  ## Minor Gaps (Nice to Have)
-  [List features that would be nice but not essential]
+  **Step 3: Complete Interview**
+  - [ ] Click "Complete Interview" button
+  - [ ] Verify: Tasks appear in Kanban
+  - [ ] Verify: Task decomposition worked
   
-  ## Gap Details
+  **Step 4: Execution**
+  - [ ] Verify: Agents start working (activity in Agents tab)
+  - [ ] Verify: Progress updates in Dashboard
+  - [ ] Verify: Execution logs appear
   
-  ### Gap 1: [Feature Name]
-  - **Status:** Missing/Partial
-  - **Impact:** Critical/High/Medium/Low
-  - **What's Missing:** [describe]
-  - **Implementation Plan:** [describe]
-  - **Estimated Effort:** [hours]
-  - **Dependencies:** [list]
+  **Step 5: QA Loop**
+  - [ ] Verify: Build/Lint/Test results shown
+  - [ ] Verify: Iterations visible if retrying
   
-  [Repeat for each gap]
+  **Step 6: Completion**
+  - [ ] Verify: "Complete" status shown
+  - [ ] Verify: Output files exist
+  - [ ] Verify: Output code works (run it)
+
+- [ ] Document any issues found:
+  ```bash
+  cat > .agent/workspace/WIRING/GENESIS_E2E_RESULTS.md << 'EOF'
+  # Genesis E2E Test Results
   
-  ## Implementation Priority
-  1. [Most critical gap]
-  2. [Second most critical]
-  ...
+  ## Test Date: [DATE]
+  
+  ## Results
+  
+  | Step | Expected | Actual | Status |
+  |------|----------|--------|--------|
+  | Start Genesis | Interview UI appears | ? | ? |
+  | Send Message | AI responds | ? | ? |
+  | Complete Interview | Tasks created | ? | ? |
+  | Execution Starts | Agents active | ? | ? |
+  | QA Runs | Results shown | ? | ? |
+  | Completion | Files generated | ? | ? |
+  
+  ## Issues Found
+  
+  1. [Issue description]
+     - Location: [file]
+     - Fix needed: [description]
+  
+  ## Overall Status
+  
+  Genesis Mode: WORKING / PARTIAL / BROKEN
+  
   EOF
   ```
 
-- [ ] Populate GAPS.md with findings from Task 6
-
 ### Task 7 Completion Checklist
-- [ ] All gaps identified
-- [ ] Gaps categorized by severity
-- [ ] Implementation plan for each gap
-- [ ] Priority order established
+- [ ] Genesis flow tested manually
+- [ ] All steps verified
+- [ ] Issues documented
+- [ ] Genesis mode WORKING
 
 **[TASK 7 COMPLETE]** <- Mark when done, proceed to Task 8
 
 ---
 
-## Task 8: Implement Missing Features (ITERATION)
+## Task 8: Fix Genesis Issues
 
 ### Objective
-Implement each missing feature identified in Task 7.
+Fix any issues found during Genesis E2E testing.
 
 ### Requirements
 
-For EACH gap identified:
+- [ ] For each issue in GENESIS_E2E_RESULTS.md:
+  1. Identify root cause
+  2. Implement fix
+  3. Add test for the fix
+  4. Verify fix works
 
-- [ ] Create/modify the feature file
-- [ ] Ensure TypeScript types are correct
-- [ ] Add comprehensive tests
-- [ ] Verify integration with existing code
-- [ ] Update feature matrix
+- [ ] Re-run Genesis E2E test after fixes
 
-### Implementation Template
-
-```typescript
-// For each missing feature:
-
-// 1. Create the file
-// src/[layer]/[feature]/[FeatureName].ts
-
-// 2. Implement with current types
-export class FeatureName {
-  // Implementation using CURRENT type definitions
-}
-
-// 3. Create tests
-// src/[layer]/[feature]/[FeatureName].test.ts
-
-// 4. Export from index
-// Update src/[layer]/[feature]/index.ts
-```
-
-### Verification After Each Feature
-
-```bash
-# After implementing each feature:
-npx tsc --noEmit  # TypeScript check
-npm test -- --filter="[FeatureName]"  # Run feature tests
-```
+- [ ] Repeat until Genesis mode works completely
 
 ### Task 8 Completion Checklist
-- [ ] All critical gaps implemented
-- [ ] All important gaps implemented
-- [ ] Each implementation has tests
-- [ ] TypeScript compiles after all changes
-- [ ] All tests pass
+- [ ] All Genesis issues fixed
+- [ ] Tests added for fixes
+- [ ] Genesis E2E passes completely
 
-**[TASK 8 COMPLETE]** <- Mark when done, proceed to Task 9
+**[TASK 8 COMPLETE]** <- Mark when done, proceed to Phase C
 
 ---
 
-## Task 9: Integration Verification
+# =============================================================================
+# PHASE C: WIRE EVOLUTION MODE (Tasks 9-13)
+# =============================================================================
+
+## Task 9: Wire Evolution Critical Path
 
 ### Objective
-Verify all features work together as a complete system.
+Wire connections specific to Evolution mode (existing project enhancement).
+
+### Evolution-Specific Connections
+
+```
+User clicks "Evolution"
+       |
+       v
+Project Selector UI
+       |
+       v
+ProjectLoader.load(path)
+       |
+       v
+RepoMapGenerator.generate()
+       |
+       v
+InterviewEngine.start(existingContext)
+       |
+       v
+[Same as Genesis from here...]
+```
 
 ### Requirements
 
-- [ ] Run full TypeScript compilation:
-  ```bash
-  npx tsc --noEmit
-  echo "TypeScript errors: $?"
+- [ ] Wire Project Selection -> Load:
+  ```typescript
+  // In Evolution UI handler
+  async handleProjectSelect(projectPath: string): Promise<void> {
+    this.eventBus.emit('evolution.started', { projectPath });
+    
+    // Load project
+    const project = await this.projectLoader.load(projectPath);
+    
+    // Generate repo map
+    const repoMap = await this.repoMapGenerator.generate(projectPath);
+    
+    // Start interview with context
+    await this.interviewEngine.start({
+      mode: 'evolution',
+      existingProject: project,
+      repoMap
+    });
+  }
   ```
 
-- [ ] Run full lint:
-  ```bash
-  npm run lint
+- [ ] Wire RepoMap -> Interview Context:
+  ```typescript
+  // InterviewEngine should use repoMap for context
+  async start(options: InterviewOptions): Promise<void> {
+    if (options.mode === 'evolution' && options.repoMap) {
+      this.context.existingCode = options.repoMap;
+      this.systemPrompt = this.generateEvolutionPrompt(options.repoMap);
+    }
+    // ... rest of start logic
+  }
   ```
 
-- [ ] Run full test suite:
-  ```bash
-  npm test 2>&1 | tee .agent/workspace/RECONCILIATION/full-test-results.txt
-  
-  # Extract summary
-  tail -20 .agent/workspace/RECONCILIATION/full-test-results.txt
-  ```
-
-- [ ] Run build:
-  ```bash
-  npm run build
-  ```
-
-- [ ] Test Genesis mode flow (if possible):
-  ```bash
-  # Manual or automated test of Genesis flow
-  # Interview -> Requirements -> Tasks -> Execution
-  ```
-
-- [ ] Test Evolution mode flow (if possible):
-  ```bash
-  # Manual or automated test of Evolution flow
-  # Project selection -> Interview -> Enhancement
-  ```
+- [ ] Ensure Evolution flows to same execution path as Genesis
 
 ### Task 9 Completion Checklist
-- [ ] TypeScript: 0 errors
-- [ ] Lint: passes
-- [ ] Tests: 2100+ passing
-- [ ] Build: succeeds
-- [ ] Genesis flow: verified
-- [ ] Evolution flow: verified
+- [ ] Project selection wired
+- [ ] RepoMap generation wired
+- [ ] Evolution context flows to interview
+- [ ] Evolution joins Genesis execution path
 
 **[TASK 9 COMPLETE]** <- Mark when done, proceed to Task 10
 
 ---
 
-## Task 10: Final Documentation
+## Task 10: Create Evolution Integration Tests
 
 ### Objective
-Create comprehensive documentation of the reconciliation.
+Create tests verifying Evolution mode works end-to-end.
 
 ### Requirements
 
-- [ ] Update MASTER_FEATURE_MATRIX.md with final status
+- [ ] Create Evolution flow integration test:
+  ```typescript
+  describe('Evolution Mode End-to-End', () => {
+    it('should enhance existing project', async () => {
+      // Setup: Create a mock existing project
+      const projectPath = await createMockProject({
+        files: ['src/index.ts', 'package.json'],
+        content: { /* ... */ }
+      });
+      
+      // 1. Start Evolution
+      const evolution = await nexus.startEvolution({ projectPath });
+      expect(eventLog).toContain('evolution.started');
+      
+      // 2. Verify repo map generated
+      await waitFor(() => eventLog.includes('repomap.generated'));
+      
+      // 3. Interview with context
+      await evolution.sendMessage('Add a dark mode toggle');
+      
+      // 4. Complete and verify
+      await evolution.complete();
+      
+      // 5. Verify changes made to existing project
+      const modifiedFiles = await getModifiedFiles(projectPath);
+      expect(modifiedFiles.length).toBeGreaterThan(0);
+    });
+  });
+  ```
 
-- [ ] Create COMPREHENSIVE FINAL REPORT:
+### Task 10 Completion Checklist
+- [ ] Evolution integration test created
+- [ ] Test passes
 
-  **CRITICAL: This report must document EVERYTHING done during Phase 18B**
-  
+**[TASK 10 COMPLETE]** <- Mark when done, proceed to Task 11
+
+---
+
+## Task 11: Manual Evolution E2E Test
+
+### Objective
+Manually test Evolution mode with a real existing project.
+
+### Requirements
+
+- [ ] Create or use test project
+- [ ] Test Evolution flow manually (similar to Task 7)
+- [ ] Document results in EVOLUTION_E2E_RESULTS.md
+
+### Task 11 Completion Checklist
+- [ ] Evolution flow tested manually
+- [ ] Issues documented
+
+**[TASK 11 COMPLETE]** <- Mark when done, proceed to Task 12
+
+---
+
+## Task 12: Fix Evolution Issues
+
+### Objective
+Fix any issues found during Evolution testing.
+
+### Task 12 Completion Checklist
+- [ ] All Evolution issues fixed
+- [ ] Evolution E2E passes
+
+**[TASK 12 COMPLETE]** <- Mark when done, proceed to Task 13
+
+---
+
+## Task 13: Verify Both Modes Work
+
+### Objective
+Run both Genesis and Evolution tests to ensure they both work.
+
+### Requirements
+
+- [ ] Run all integration tests:
   ```bash
-  cat > .agent/workspace/RECONCILIATION/PHASE_18B_FINAL_REPORT.md << 'EOF'
-  # Phase 18B: Complete Feature Reconciliation - Final Report
-  
-  **Generated:** [DATE]
-  **Duration:** [X iterations over Y hours]
-  **Status:** COMPLETE
-  
-  ---
-  
-  ## Executive Summary
-  
-  [2-3 paragraph summary of what was accomplished, key decisions made, and final state of Nexus]
-  
-  ---
-  
-  ## 1. Removed Files Audit
-  
-  ### 1.1 Files Analyzed
-  
-  | Category | Count | Action Taken |
-  |----------|-------|--------------|
-  | Adapters | X | [Reimplemented/Covered by LOCAL/Not needed] |
-  | QA Loop | X | [Reimplemented/Covered by LOCAL/Not needed] |
-  | Agent Runners | X | [Reimplemented/Covered by LOCAL/Not needed] |
-  | Test Files | X | [Reimplemented/Covered by LOCAL/Not needed] |
-  | Other | X | [Reimplemented/Covered by LOCAL/Not needed] |
-  | **TOTAL** | 77 | |
-  
-  ### 1.2 Detailed File-by-File Analysis
-  
-  | File | Original Purpose | LOCAL Equivalent | Action | Result |
-  |------|-----------------|------------------|--------|--------|
-  | src/adapters/StateFormatAdapter.ts | [purpose] | [equivalent or NONE] | [action] | [result] |
-  | src/adapters/TaskSchemaAdapter.ts | [purpose] | [equivalent or NONE] | [action] | [result] |
-  | src/execution/qa-loop/QALoopEngine.ts | [purpose] | [equivalent or NONE] | [action] | [result] |
-  | [... list ALL 77 files ...] | | | | |
-  
-  ### 1.3 Files Reimplemented
-  
-  | New File | Based On | Lines of Code | Tests Added |
-  |----------|----------|---------------|-------------|
-  | [path] | [original] | [LOC] | [test count] |
-  
-  ### 1.4 Files Confirmed Redundant
-  
-  | Removed File | Why Redundant | LOCAL Equivalent |
-  |--------------|---------------|------------------|
-  | [path] | [reason] | [LOCAL path] |
-  
-  ---
-  
-  ## 2. Adapter Analysis
-  
-  ### 2.1 StateFormatAdapter
-  
-  **REMOTE Implementation:**
-  - Purpose: [describe]
-  - Methods: [list all methods]
-  - Dependencies: [list]
-  - Lines of Code: [count]
-  
-  **LOCAL Equivalent:**
-  - Found: YES/NO
-  - Location: [path]
-  - Method Mapping:
-    | REMOTE Method | LOCAL Equivalent | Coverage |
-    |---------------|------------------|----------|
-    | [method1] | [equivalent] | FULL/PARTIAL/NONE |
-  
-  **Resolution:**
-  - Action Taken: [describe]
-  - New Code Written: [YES/NO, if yes describe]
-  - Tests Added: [count]
-  
-  ### 2.2 TaskSchemaAdapter
-  
-  [Same structure as above]
-  
-  ---
-  
-  ## 3. QA Loop Analysis
-  
-  ### 3.1 QALoopEngine (REMOTE)
-  
-  **Capabilities:**
-  | Capability | Implementation | Used By |
-  |------------|----------------|---------|
-  | [cap1] | [how] | [components] |
-  
-  ### 3.2 RalphStyleIterator (LOCAL)
-  
-  **Capabilities:**
-  | Capability | Implementation | Used By |
-  |------------|----------------|---------|
-  | [cap1] | [how] | [components] |
-  
-  ### 3.3 Comparison Matrix
-  
-  | Feature | QALoopEngine | RalphStyleIterator | Gap? |
-  |---------|--------------|-------------------|------|
-  | Build verification | [YES/NO] | [YES/NO] | [YES/NO] |
-  | Lint running | [YES/NO] | [YES/NO] | [YES/NO] |
-  | Test execution | [YES/NO] | [YES/NO] | [YES/NO] |
-  | Code review | [YES/NO] | [YES/NO] | [YES/NO] |
-  | Max iterations | [YES/NO] | [YES/NO] | [YES/NO] |
-  | Error aggregation | [YES/NO] | [YES/NO] | [YES/NO] |
-  | Human escalation | [YES/NO] | [YES/NO] | [YES/NO] |
-  
-  ### 3.4 Resolution
-  
-  - Features Added to RalphStyleIterator: [list]
-  - Code Changes Made: [describe]
-  - Tests Added: [count]
-  
-  ---
-  
-  ## 4. Agent Pattern Analysis
-  
-  ### 4.1 Runner Pattern (REMOTE)
-  
-  | Runner | Purpose | Key Methods | LOC |
-  |--------|---------|-------------|-----|
-  | CoderRunner | [purpose] | [methods] | [loc] |
-  | TesterRunner | [purpose] | [methods] | [loc] |
-  | ReviewerRunner | [purpose] | [methods] | [loc] |
-  | MergerRunner | [purpose] | [methods] | [loc] |
-  | PlannerRunner | [purpose] | [methods] | [loc] |
-  
-  ### 4.2 Agent Pattern (LOCAL)
-  
-  | Agent | Purpose | Key Methods | LOC |
-  |-------|---------|-------------|-----|
-  | CoderAgent | [purpose] | [methods] | [loc] |
-  | TesterAgent | [purpose] | [methods] | [loc] |
-  | ReviewerAgent | [purpose] | [methods] | [loc] |
-  | MergerAgent | [purpose] | [methods] | [loc] |
-  | PlannerAgent | [purpose] | [methods] | [loc] |
-  
-  ### 4.3 Capability Comparison
-  
-  | Capability | Runners | Agents | Gap? | Resolution |
-  |------------|---------|--------|------|------------|
-  | [cap1] | [YES/NO] | [YES/NO] | [YES/NO] | [action] |
-  
-  ### 4.4 Resolution
-  
-  - Capabilities Added to Agents: [list]
-  - Code Changes Made: [describe]
-  - Tests Added: [count]
-  
-  ---
-  
-  ## 5. Quality System Integration
-  
-  ### 5.1 Components Present
-  
-  | Component | File | Status | Integrated With |
-  |-----------|------|--------|-----------------|
-  | BuildVerifier | [path] | [status] | [components] |
-  | LintRunner | [path] | [status] | [components] |
-  | TestRunner | [path] | [status] | [components] |
-  | CodeReviewer | [path] | [status] | [components] |
-  
-  ### 5.2 Integration Points
-  
-  | Quality Component | Integrated In | Method Called | Working? |
-  |-------------------|---------------|---------------|----------|
-  | [component] | [file] | [method] | [YES/NO] |
-  
-  ### 5.3 Changes Made
-  
-  - Wiring Added: [describe]
-  - Configuration Changes: [describe]
-  - Tests Added: [count]
-  
-  ---
-  
-  ## 6. Master Feature Matrix
-  
-  ### 6.1 Summary by Layer
-  
-  | Layer | Total Features | Implemented | Tested | Coverage |
-  |-------|----------------|-------------|--------|----------|
-  | UI | X | X | X | X% |
-  | Orchestration | X | X | X | X% |
-  | Planning | X | X | X | X% |
-  | Execution | X | X | X | X% |
-  | Quality | X | X | X | X% |
-  | Persistence | X | X | X | X% |
-  | Infrastructure | X | X | X | X% |
-  | LLM Integration | X | X | X | X% |
-  | Bridges | X | X | X | X% |
-  | Interview | X | X | X | X% |
-  | **TOTAL** | **X** | **X** | **X** | **X%** |
-  
-  ### 6.2 Complete Feature List
-  
-  [Include the full MASTER_FEATURE_MATRIX.md content here]
-  
-  ---
-  
-  ## 7. Gaps Identified and Resolved
-  
-  ### 7.1 Critical Gaps
-  
-  | Gap | Description | Resolution | Tests Added |
-  |-----|-------------|------------|-------------|
-  | [gap1] | [desc] | [resolution] | [count] |
-  
-  ### 7.2 Important Gaps
-  
-  | Gap | Description | Resolution | Tests Added |
-  |-----|-------------|------------|-------------|
-  | [gap1] | [desc] | [resolution] | [count] |
-  
-  ### 7.3 Minor Gaps
-  
-  | Gap | Description | Resolution | Tests Added |
-  |-----|-------------|------------|-------------|
-  | [gap1] | [desc] | [resolution] | [count] |
-  
-  ---
-  
-  ## 8. Code Changes Summary
-  
-  ### 8.1 Files Created
-  
-  | File | Purpose | LOC | Tests |
-  |------|---------|-----|-------|
-  | [path] | [purpose] | [loc] | [test file] |
-  
-  ### 8.2 Files Modified
-  
-  | File | Changes Made | Lines Changed |
-  |------|--------------|---------------|
-  | [path] | [description] | +X/-Y |
-  
-  ### 8.3 Files Deleted
-  
-  | File | Reason |
-  |------|--------|
-  | [path] | [reason] |
-  
-  ### 8.4 Total Code Changes
-  
-  - Files Created: [count]
-  - Files Modified: [count]
-  - Files Deleted: [count]
-  - Lines Added: [count]
-  - Lines Removed: [count]
-  - Net Change: [+/- count]
-  
-  ---
-  
-  ## 9. Test Results
-  
-  ### 9.1 Test Suite Summary
-  
-  | Metric | Before Phase 18B | After Phase 18B | Change |
-  |--------|------------------|-----------------|--------|
-  | Total Tests | X | X | +X |
-  | Passing | X | X | +X |
-  | Failing | X | X | -X |
-  | Skipped | X | X | X |
-  | Coverage | X% | X% | +X% |
-  
-  ### 9.2 New Tests Added
-  
-  | Test File | Tests | Purpose |
-  |-----------|-------|---------|
-  | [path] | [count] | [purpose] |
-  
-  ### 9.3 Test Output
-  
+  npm test -- --filter="genesis|evolution"
   ```
-  [Paste final test output here]
+
+- [ ] Manual smoke test both modes
+
+### Task 13 Completion Checklist
+- [ ] Genesis mode: WORKING
+- [ ] Evolution mode: WORKING
+- [ ] All integration tests pass
+
+**[TASK 13 COMPLETE]** <- Mark when done, proceed to Phase D
+
+---
+
+# =============================================================================
+# PHASE D: WIRE REMAINING COMPONENTS (Tasks 14-16)
+# =============================================================================
+
+## Task 14: Wire Checkpoints & Human Review
+
+### Objective
+Ensure checkpoint system and human review escalation work.
+
+### Requirements
+
+- [ ] Wire checkpoint creation on escalation
+- [ ] Wire checkpoint restore functionality
+- [ ] Wire human review UI
+- [ ] Test checkpoint flow
+
+### Task 14 Completion Checklist
+- [ ] Checkpoints wire correctly
+- [ ] Human review UI works
+
+**[TASK 14 COMPLETE]** <- Mark when done, proceed to Task 15
+
+---
+
+## Task 15: Wire Settings & Configuration
+
+### Objective
+Ensure settings UI properly configures the backend.
+
+### Requirements
+
+- [ ] Wire LLM provider selection
+- [ ] Wire model selection per agent
+- [ ] Wire backend toggle (API vs CLI)
+- [ ] Test settings persistence and application
+
+### Task 15 Completion Checklist
+- [ ] Settings properly configure backend
+- [ ] Changes persist
+- [ ] Changes take effect
+
+**[TASK 15 COMPLETE]** <- Mark when done, proceed to Task 16
+
+---
+
+## Task 16: Wire Real-time UI Updates
+
+### Objective
+Ensure all UI components update in real-time with backend state.
+
+### Requirements
+
+- [ ] Dashboard shows live metrics
+- [ ] Kanban updates when tasks change state
+- [ ] Agent activity shows real-time status
+- [ ] Execution logs stream in real-time
+- [ ] Progress indicators update
+
+### Task 16 Completion Checklist
+- [ ] All UI components update in real-time
+- [ ] No stale state issues
+
+**[TASK 16 COMPLETE]** <- Mark when done, proceed to Phase E
+
+---
+
+# =============================================================================
+# PHASE E: FINAL VERIFICATION (Tasks 17-18)
+# =============================================================================
+
+## Task 17: Full System Integration Test
+
+### Objective
+Run comprehensive test of the entire system.
+
+### Requirements
+
+- [ ] Run full test suite:
+  ```bash
+  npm test
   ```
-  
-  ---
-  
-  ## 10. Build Verification
-  
-  ### 10.1 TypeScript Compilation
-  
+
+- [ ] Run E2E tests:
+  ```bash
+  npm run test:e2e
   ```
-  [Paste tsc --noEmit output]
-  ```
-  
-  - Errors: [count]
-  - Warnings: [count]
-  - Status: PASS/FAIL
-  
-  ### 10.2 Lint Results
-  
-  ```
-  [Paste lint output summary]
-  ```
-  
-  - Errors: [count]
-  - Warnings: [count]
-  - Status: PASS/FAIL
-  
-  ### 10.3 Build Output
-  
-  ```
-  [Paste build output]
-  ```
-  
-  - Status: PASS/FAIL
-  - Bundle Size: [size]
-  - Build Time: [time]
-  
-  ---
-  
-  ## 11. Integration Verification
-  
-  ### 11.1 Genesis Mode Flow
-  
-  | Step | Component | Status | Notes |
-  |------|-----------|--------|-------|
-  | Start Interview | InterviewEngine | [PASS/FAIL] | [notes] |
-  | Capture Requirements | RequirementExtractor | [PASS/FAIL] | [notes] |
-  | Decompose Tasks | TaskDecomposer | [PASS/FAIL] | [notes] |
-  | Assign Agents | AgentPool | [PASS/FAIL] | [notes] |
-  | Execute Tasks | Agents | [PASS/FAIL] | [notes] |
-  | QA Loop | RalphStyleIterator | [PASS/FAIL] | [notes] |
-  | Complete | NexusCoordinator | [PASS/FAIL] | [notes] |
-  
-  ### 11.2 Evolution Mode Flow
-  
-  | Step | Component | Status | Notes |
-  |------|-----------|--------|-------|
-  | Load Project | ProjectLoader | [PASS/FAIL] | [notes] |
-  | Analyze Codebase | RepoMapGenerator | [PASS/FAIL] | [notes] |
-  | Interview | InterviewEngine | [PASS/FAIL] | [notes] |
-  | Plan Enhancement | TaskDecomposer | [PASS/FAIL] | [notes] |
-  | Execute | Agents | [PASS/FAIL] | [notes] |
-  
-  ---
-  
-  ## 12. Commits Made
-  
-  | Commit Hash | Message | Files Changed |
-  |-------------|---------|---------------|
-  | [hash] | [message] | [count] |
-  
-  ---
-  
-  ## 13. Recommendations
-  
-  ### 13.1 Immediate Actions
-  
-  [List any immediate follow-up actions needed]
-  
-  ### 13.2 Future Improvements
-  
-  [List any future improvements identified during reconciliation]
-  
-  ### 13.3 Technical Debt
-  
-  [List any technical debt created or discovered]
-  
-  ---
-  
-  ## 14. Conclusion
-  
-  ### The Complete Nexus
-  
-  Phase 18B reconciliation is **COMPLETE**. The Nexus codebase now contains:
-  
-  - [X] ALL features from LOCAL (Phases 14-17)
-  - [X] ALL features from REMOTE (Phases 1-13) - either original or reimplemented
-  - [X] Full adapter functionality
-  - [X] Complete QA loop capabilities
-  - [X] All agent capabilities
-  - [X] Integrated quality system
-  - [X] [count]+ tests passing
-  - [X] Clean TypeScript compilation
-  - [X] Successful build
-  
-  **NOTHING IS MISSING. THE BEST OF BOTH WORLDS ACHIEVED.**
-  
-  ---
-  
-  ## Appendices
-  
-  ### Appendix A: Full Removed Files List
-  
-  [Complete list of all 77 removed files with status]
-  
-  ### Appendix B: Full Feature Matrix
-  
-  [Complete MASTER_FEATURE_MATRIX.md content]
-  
-  ### Appendix C: All Test Results
-  
-  [Complete test output]
-  
-  ### Appendix D: File Tree After Reconciliation
-  
-  ```
-  [Output of: find src -type f -name "*.ts" | head -200]
-  ```
-  
-  EOF
-  ```
+
+- [ ] Manual verification:
+  - Genesis mode end-to-end
+  - Evolution mode end-to-end
+  - Settings configuration
+  - Checkpoint save/restore
+  - Human review escalation
+
+### Task 17 Completion Checklist
+- [ ] All tests pass
+- [ ] Manual verification complete
+- [ ] System fully functional
+
+**[TASK 17 COMPLETE]** <- Mark when done, proceed to Task 18
+
+---
+
+## Task 18: Create Comprehensive Wiring Report
+
+### Objective
+Document all wiring completed and final system state.
+
+### Requirements
+
+- [ ] Create PHASE_19_FINAL_REPORT.md with:
+  - Executive summary
+  - All wiring implemented (list each connection)
+  - Code changes summary
+  - Test results
+  - Before/after comparison
+  - Known limitations
+  - Recommendations
 
 - [ ] Commit all changes:
   ```bash
   git add .
-  git commit -m "feat: Phase 18B complete feature reconciliation
+  git commit -m "feat: Phase 19 complete system wiring
+
+  - Genesis mode fully wired and tested
+  - Evolution mode fully wired and tested
+  - UI properly reflects backend state
+  - Checkpoints and escalation working
+  - Settings properly configure backend
+  - All integration tests pass
   
-  - Audited all 77 removed files
-  - Verified/reimplemented adapters as needed
-  - Confirmed RalphStyleIterator covers QALoopEngine
-  - Verified Agent pattern covers Runner pattern
-  - Integrated quality system
-  - Created comprehensive feature matrix
-  - All features accounted for
-  - [count]+ tests passing
-  
-  THE COMPLETE NEXUS - nothing missing"
+  NEXUS IS NOW FULLY OPERATIONAL"
   ```
 
-### Task 10 Completion Checklist
-- [ ] MASTER_FEATURE_MATRIX.md finalized
-- [ ] PHASE_18B_FINAL_REPORT.md created with ALL 15 sections + appendices
-- [ ] Report includes file-by-file analysis of all 77 removed files
-- [ ] Report includes all code changes with LOC counts
-- [ ] Report includes before/after test comparison
-- [ ] Report includes all build verification outputs
+### Task 18 Completion Checklist
+- [ ] PHASE_19_FINAL_REPORT.md complete
 - [ ] All changes committed
-- [ ] Documentation is COMPREHENSIVE - nothing left undocumented
+- [ ] System fully wired and operational
 
-**[TASK 10 COMPLETE]**
+**[TASK 18 COMPLETE]**
 
 ---
 
@@ -1456,50 +1318,48 @@ Create comprehensive documentation of the reconciliation.
 # =============================================================================
 
 ```
-PHASE A: AUDIT REMOVED FILES
+PHASE A: WIRING AUDIT
+=====================
+[ ] Task 1: Current wiring state traced
+[ ] Task 2: Missing wiring identified
+[ ] Task 3: Implementation plan created
+
+PHASE B: WIRE GENESIS MODE
+==========================
+[ ] Task 4: Genesis critical path wired
+[ ] Task 5: Genesis complete path wired
+[ ] Task 6: Genesis integration tests pass
+[ ] Task 7: Genesis manual E2E verified
+[ ] Task 8: Genesis issues fixed
+
+PHASE C: WIRE EVOLUTION MODE
 ============================
-[ ] Task 1: Inventory all removed files
-[ ] Task 2: Analyze adapters (StateFormat, TaskSchema)
-[ ] Task 3: Analyze QA Loop Engine vs RalphStyleIterator
-[ ] Task 4: Analyze Runner pattern vs Agent pattern
-[ ] Task 5: Verify quality system integration
+[ ] Task 9: Evolution critical path wired
+[ ] Task 10: Evolution integration tests pass
+[ ] Task 11: Evolution manual E2E verified
+[ ] Task 12: Evolution issues fixed
+[ ] Task 13: Both modes verified working
 
-PHASE B: COMPREHENSIVE FEATURE AUDIT
-====================================
-[ ] Task 6: Create master feature matrix
-[ ] Task 7: Identify and document all gaps
-[ ] Task 8: Implement missing features
-[ ] Task 9: Integration verification
-[ ] Task 10: Final documentation
+PHASE D: WIRE REMAINING COMPONENTS
+==================================
+[ ] Task 14: Checkpoints & human review wired
+[ ] Task 15: Settings & configuration wired
+[ ] Task 16: Real-time UI updates wired
 
-COMPREHENSIVE REPORT VERIFICATION
-=================================
-[ ] PHASE_18B_FINAL_REPORT.md exists
-[ ] Report has Executive Summary
-[ ] Report has file-by-file analysis of ALL 77 removed files
-[ ] Report has Adapter Analysis with full detail
-[ ] Report has QA Loop comparison matrix
-[ ] Report has Agent Pattern comparison matrix
-[ ] Report has Quality System integration status
-[ ] Report has complete Feature Matrix (all 10 layers)
-[ ] Report has all Gaps with resolutions
-[ ] Report has Code Changes summary with LOC
-[ ] Report has Test Results (before/after)
-[ ] Report has Build Verification outputs
-[ ] Report has Integration Verification (Genesis + Evolution)
-[ ] Report has all Commits listed
-[ ] Report has Recommendations
-[ ] Report has Appendices (A, B, C, D)
+PHASE E: FINAL VERIFICATION
+===========================
+[ ] Task 17: Full system integration test
+[ ] Task 18: Comprehensive report created
 
 RESULT
 ======
-[ ] Every removed file analyzed and accounted for
-[ ] Every gap identified and resolved
-[ ] Every feature from BOTH halves present
-[ ] Full test suite passing (2100+)
-[ ] Build succeeds
-[ ] PHASE_18B_FINAL_REPORT.md is COMPREHENSIVE
-[ ] THE COMPLETE NEXUS achieved
+[ ] Genesis mode: FULLY OPERATIONAL
+[ ] Evolution mode: FULLY OPERATIONAL
+[ ] UI: FULLY CONNECTED
+[ ] Checkpoints: WORKING
+[ ] Settings: WORKING
+[ ] All tests pass
+[ ] NEXUS IS COMPLETE AND OPERATIONAL
 ```
 
 ---
@@ -1511,41 +1371,37 @@ RESULT
 |                      SUCCESS CRITERIA                                      |
 +============================================================================+
 |                                                                            |
-|  1. NOTHING MISSING                                                       |
-|     - Every REMOTE feature has LOCAL equivalent or reimplementation       |
-|     - Every LOCAL feature preserved                                       |
-|     - Feature matrix shows 100% coverage                                  |
+|  1. GENESIS MODE WORKS END-TO-END                                         |
+|     - Click "Genesis" -> Describe project -> Get working code             |
+|     - All components connected                                            |
+|     - QA loop runs                                                        |
+|     - Output is functional                                                |
 |                                                                            |
-|  2. EVERYTHING INTEGRATED                                                 |
-|     - Quality system wired up                                             |
-|     - Adapters working (if needed)                                        |
-|     - All layers communicate properly                                     |
+|  2. EVOLUTION MODE WORKS END-TO-END                                       |
+|     - Select existing project -> Describe enhancement -> Code updated     |
+|     - Context from existing code used                                     |
+|     - Changes integrate properly                                          |
 |                                                                            |
-|  3. FULLY TESTED                                                          |
-|     - 2100+ tests passing                                                 |
-|     - No regressions                                                      |
-|     - New implementations have tests                                      |
+|  3. UI REFLECTS BACKEND STATE                                             |
+|     - Real-time progress updates                                          |
+|     - Task status changes visible                                         |
+|     - Agent activity visible                                              |
+|     - Execution logs stream                                               |
 |                                                                            |
-|  4. BUILDS CLEAN                                                          |
-|     - TypeScript: 0 errors                                                |
-|     - Lint: passes                                                        |
-|     - Build: succeeds                                                     |
+|  4. CHECKPOINTS & ESCALATION WORK                                         |
+|     - Can save checkpoint                                                 |
+|     - Can restore checkpoint                                              |
+|     - Human review escalation works                                       |
 |                                                                            |
-|  5. DOCUMENTED                                                            |
-|     - Feature matrix complete                                             |
-|     - PHASE_18B_FINAL_REPORT.md complete with ALL details                |
-|     - Every decision documented                                           |
+|  5. SETTINGS CONFIGURE BACKEND                                            |
+|     - LLM provider selection works                                        |
+|     - Model selection works                                               |
+|     - Backend toggle works                                                |
 |                                                                            |
-|  6. COMPREHENSIVE FINAL REPORT (CRITICAL)                                 |
-|     - PHASE_18B_FINAL_REPORT.md contains EVERYTHING done                 |
-|     - All 77 removed files analyzed with file-by-file table              |
-|     - All code changes documented (created/modified/deleted)             |
-|     - All gaps identified and their resolutions                          |
-|     - Complete test results with before/after comparison                 |
-|     - Build verification outputs included                                |
-|     - Integration verification for Genesis and Evolution flows           |
-|     - All commits listed with hashes                                     |
-|     - Recommendations for future work                                    |
+|  6. ALL TESTS PASS                                                        |
+|     - Unit tests                                                          |
+|     - Integration tests                                                   |
+|     - E2E tests                                                           |
 |                                                                            |
 +============================================================================+
 ```
@@ -1555,406 +1411,25 @@ RESULT
 ## Recommended Settings
 
 ```
-ralph run PROMPT-PHASE-18B-RECONCILIATION.md --max-iterations 150
+ralph run PROMPT-PHASE-19-SYSTEM-WIRING.md --max-iterations 200
 ```
 
-**Estimated Duration:** 6-12 hours (thorough analysis and implementation)
-
----
-
-## Task Completion Markers
-
-**Phase A:**
-- [x] [TASK 1 COMPLETE] - Inventoried 74 removed source files, categorized by type
-- [x] [TASK 2 COMPLETE] - Analyzed adapters, reimplemented StateFormatAdapter (14 tests)
-- [x] [TASK 3 COMPLETE] - Analyzed QA Loop Engine vs RalphStyleIterator - LOCAL fully covers REMOTE
-- [x] [TASK 4 COMPLETE] - Analyzed Agent Runners vs Agent Pattern - LOCAL Agents FULLY COVER REMOTE Runners
-- [x] [TASK 5 COMPLETE] - Analyzed Quality System Integration - LOCAL execution/qa fully integrated via QARunnerFactory
-
-**Phase B:**
-- [x] [TASK 6 COMPLETE] - Created MASTER_FEATURE_MATRIX.md with 95 features across 13 layers - 100% coverage, 0 gaps
-- [x] [TASK 7 COMPLETE] - GAPS.md created confirming ZERO functionality gaps - all 77 removed files reconciled
-- [ ] [TASK 8 COMPLETE]
-- [ ] [TASK 9 COMPLETE]
-- [ ] [TASK 10 COMPLETE]
-
-**Final:**
-- [ ] [PHASE 18B COMPLETE - THE COMPLETE NEXUS]
+**Estimated Duration:** 8-16 hours (wiring + testing + fixing)
 
 ---
 
 ## Notes
 
 - ASCII only in all output
-- If ANY task reveals missing functionality, IMPLEMENT IT before proceeding
-- Do not skip analysis - every removed file must be accounted for
-- Feature matrix must show 100% coverage before completion
-- This is about QUALITY not SPEED - take the iterations needed
-- The goal is THE BEST OF BOTH WORLDS - complete, integrated, tested
+- Wire one connection at a time, test, then move on
+- If a connection breaks tests, fix before proceeding
+- Use EventBus pattern for loose coupling
+- NexusCoordinator is the orchestration brain - most wiring goes there
+- UI updates via IPC from main process
+- Create integration tests for each wired flow
+- Manual E2E testing is CRITICAL - automated tests can miss UI issues
+- Document everything in the final report
 
 ---
 
-## CRITICAL: Final Report Requirements
-
-```
-+============================================================================+
-|            PHASE_18B_FINAL_REPORT.md MUST INCLUDE ALL OF THIS             |
-+============================================================================+
-|                                                                            |
-|  Section 1:  Executive Summary (2-3 paragraphs of what was done)          |
-|  Section 2:  Removed Files Audit (ALL 77 files in file-by-file table)     |
-|  Section 3:  Adapter Analysis (StateFormat, TaskSchema - full detail)     |
-|  Section 4:  QA Loop Analysis (feature-by-feature comparison matrix)      |
-|  Section 5:  Agent Pattern Analysis (capability-by-capability table)      |
-|  Section 6:  Quality System Integration (components and wiring)           |
-|  Section 7:  Master Feature Matrix (complete, all 10 layers)              |
-|  Section 8:  Gaps Identified and Resolved (every gap with resolution)     |
-|  Section 9:  Code Changes Summary (files created/modified/deleted + LOC)  |
-|  Section 10: Test Results (before/after comparison, new tests added)      |
-|  Section 11: Build Verification (tsc, lint, build command outputs)        |
-|  Section 12: Integration Verification (Genesis and Evolution flows)       |
-|  Section 13: Commits Made (hash, message, files changed for each)         |
-|  Section 14: Recommendations (immediate actions, future, tech debt)       |
-|  Section 15: Conclusion (final status with completion checklist)          |
-|  Appendix A: Full list of all 77 removed files with final status          |
-|  Appendix B: Complete MASTER_FEATURE_MATRIX.md content                    |
-|  Appendix C: Full test suite output                                       |
-|  Appendix D: File tree after reconciliation (find src -type f output)     |
-|                                                                            |
-|  THIS REPORT IS THE PRIMARY DELIVERABLE                                   |
-|  IT MUST BE COMPREHENSIVE AND DOCUMENT EVERYTHING DONE                    |
-|  DO NOT MARK PHASE 18B COMPLETE WITHOUT THIS REPORT                       |
-|                                                                            |
-+============================================================================+
-```
-
----
-
-**[BEGIN COMPLETE RECONCILIATION]**
-
----
-
-## Progress Log
-
-### Iteration 1 - Task 1 Complete
-**Date:** 2025-01-20
-**Task:** Inventory All Removed Files
-
-**Accomplishments:**
-1. Created RECONCILIATION workspace at `.agent/workspace/RECONCILIATION/`
-2. Analyzed REMOTE_ONLY_FILES.txt to identify files that exist in REMOTE but not in LOCAL
-3. Found **74 removed source files** (not 77 as estimated)
-4. Categorized files into 12 categories:
-   - Adapters: 3 files (2 source, 1 test) - **CRITICAL**
-   - QA Loop: 3 files (2 source, 1 test) - **CRITICAL**
-   - Agent Runners: 10 files (5 source, 5 test) - **CRITICAL**
-   - Quality Tests: 4 files
-   - Bridges Tests: 2 files
-   - Infrastructure Tests: 10 files
-   - LLM Tests: 2 files
-   - Orchestration Tests: 3 files
-   - Persistence Tests: 4 files
-   - UI Components: 27 files (10 source, 17 test)
-   - Types: 3 files
-   - Integration Tests: 2 files
-
-5. Created REMOVED_FILES_ANALYSIS.md with full categorization and analysis plan
-6. Committed changes: `35453f1`
-
-**Files Created:**
-- `.agent/workspace/RECONCILIATION/REMOVED_FILES.txt`
-- `.agent/workspace/RECONCILIATION/REMOVED_FILES_ANALYSIS.md`
-
-**Next:** Task 2 - Analyze Adapters (StateFormatAdapter, TaskSchemaAdapter)
-
----
-
-### Iteration 2 - Task 2 Complete
-**Date:** 2025-01-20
-**Task:** Analyze Adapters (CRITICAL)
-
-**Accomplishments:**
-1. Extracted REMOTE adapter implementations from `origin/master` for reference
-2. **StateFormatAdapter Analysis:**
-   - NOT found in LOCAL codebase
-   - REMOTE purpose: Convert between NexusState and STATE.md format
-   - **ACTION TAKEN: REIMPLEMENTED** with LOCAL types
-   - Created `src/adapters/StateFormatAdapter.ts` (222 LOC)
-   - Features: export/import STATE.md, progress bars, features table, task lists
-   - Error handling with StateValidationError class
-3. **TaskSchemaAdapter Analysis:**
-   - FOUND in LOCAL at `src/adapters/TaskSchemaAdapter.ts`
-   - IDENTICAL to REMOTE implementation
-   - **ACTION TAKEN: NONE** (already exists)
-4. Created `src/adapters/index.ts` for module exports
-5. Added comprehensive tests: `src/adapters/StateFormatAdapter.test.ts` (14 tests)
-6. Verified TypeScript compiles (0 errors)
-7. Created ADAPTER_ANALYSIS.md documentation
-8. Committed changes: `a53d66e`
-
-**Files Created:**
-- `src/adapters/StateFormatAdapter.ts` (222 LOC)
-- `src/adapters/StateFormatAdapter.test.ts` (280 LOC, 14 tests)
-- `src/adapters/index.ts` (8 LOC)
-- `.agent/workspace/RECONCILIATION/ADAPTER_ANALYSIS.md`
-- `.agent/workspace/RECONCILIATION/REMOTE_REFERENCE/adapters/StateFormatAdapter.ts`
-- `.agent/workspace/RECONCILIATION/REMOTE_REFERENCE/adapters/TaskSchemaAdapter.ts`
-
-**Test Results:** 14 tests passing
-
-**Next:** Task 3 - Analyze QA Loop Engine vs RalphStyleIterator
-
----
-
-### Iteration 3 - Task 3 Complete
-**Date:** 2025-01-20
-**Task:** Analyze QA Loop Engine vs RalphStyleIterator (CRITICAL)
-
-**Accomplishments:**
-1. Extracted REMOTE QALoopEngine.ts (355 LOC) from `origin/master`
-2. Analyzed LOCAL RalphStyleIterator.ts (1064 LOC)
-3. Created comprehensive feature comparison matrix
-
-**Feature Coverage Analysis:**
-| Feature | QALoopEngine | RalphStyleIterator | Status |
-|---------|-------------|-------------------|--------|
-| Build verification | YES | YES | COVERED |
-| Lint running | YES | YES | COVERED |
-| Test execution | YES | YES | COVERED |
-| Code review | YES | YES | COVERED |
-| Max iterations | YES (50) | YES (20) | COVERED |
-| Error aggregation | YES | YES | COVERED (BETTER) |
-| Git diff context | NO | YES | LOCAL BETTER |
-| Escalation | YES | YES | COVERED (BETTER) |
-| Pause/Resume/Abort | NO | YES | LOCAL BETTER |
-| Token tracking | NO | YES | LOCAL BETTER |
-| History tracking | NO | YES | LOCAL BETTER |
-
-**VERDICT:** RalphStyleIterator is a **SUPERSET** of QALoopEngine functionality.
-- All essential QALoopEngine features are present
-- RalphStyleIterator adds: pause/resume, git diff context, fresh context per iteration, timeout escalation, repeated failure detection, token tracking, history tracking
-- **NO REIMPLEMENTATION NEEDED** - LOCAL is superior
-
-**Features ONLY in QALoopEngine (not critical):**
-1. Custom error classes (QAError, EscalationError) - LOW IMPACT
-2. runStage() single-stage execution - UTILITY FEATURE
-
-**Files Created:**
-- `.agent/workspace/RECONCILIATION/QA_LOOP_COMPARISON.md`
-- `.agent/workspace/RECONCILIATION/REMOTE_REFERENCE/qa-loop/QALoopEngine.ts`
-- `.agent/workspace/RECONCILIATION/REMOTE_REFERENCE/qa-loop/index.ts`
-
-**TypeScript:** Compiles cleanly (0 errors)
-**RalphStyleIterator Tests:** 1108 LOC, ~89 test cases
-
-**Commit:** `b344edc`
-
-**Next:** Task 4 - Analyze Agent Runners vs Agent Pattern
-
----
-
-### Iteration 4 - Task 4 Complete
-**Date:** 2025-01-20
-**Task:** Analyze Agent Runners vs Agent Pattern (CRITICAL)
-
-**Accomplishments:**
-1. Extracted REMOTE runner implementations from `origin/master`:
-   - CoderRunner.ts (198 LOC)
-   - TesterRunner.ts (103 LOC)
-   - ReviewerRunner.ts (87 LOC)
-   - MergerRunner.ts (134 LOC)
-   - PlannerRunner.ts (0 LOC - was empty file)
-
-2. Analyzed LOCAL agent implementations:
-   - BaseAgentRunner.ts (471 LOC)
-   - CoderAgent.ts (213 LOC)
-   - TesterAgent.ts (266 LOC)
-   - ReviewerAgent.ts (372 LOC)
-   - MergerAgent.ts (492 LOC)
-
-3. Created comprehensive feature comparison matrix
-
-**Pattern Comparison:**
-| Agent | REMOTE LOC | LOCAL LOC | LOCAL Covers REMOTE? | LOCAL Better? |
-|-------|-----------|-----------|---------------------|---------------|
-| Coder | 198 | 213 | YES | YES |
-| Tester | 103 | 266 | YES | YES |
-| Reviewer | 87 | 372 | YES | YES |
-| Merger | 134 | 492 | YES | YES |
-| Planner | 0 | N/A (planning layer) | YES | YES |
-
-**VERDICT:** LOCAL Agent Pattern is a **SUPERSET** of REMOTE Runner Pattern.
-
-**LOCAL Advantages:**
-- EventBus integration for observability
-- Timeout handling (30-minute default)
-- Max iterations with escalation (50 iterations)
-- Rich context (relevantFiles, previousAttempts)
-- Structured output parsing (ReviewOutput, MergeOutput)
-- Multiple completion markers detection
-- Error recovery with continuation prompts
-- Approval/Auto-complete logic
-
-**REMOTE-Only Features (LOW IMPACT):**
-1. Explicit ToolDefinition system - Not needed (prompt-based works well)
-2. fixIssues() method - LOCAL handles via retries
-3. Custom error classes - Not critical
-
-**NO REIMPLEMENTATION NEEDED** - LOCAL agents are superior.
-
-**Files Created:**
-- `.agent/workspace/RECONCILIATION/RUNNER_VS_AGENT.md`
-- `.agent/workspace/RECONCILIATION/REMOTE_REFERENCE/runners/CoderRunner.ts`
-- `.agent/workspace/RECONCILIATION/REMOTE_REFERENCE/runners/TesterRunner.ts`
-- `.agent/workspace/RECONCILIATION/REMOTE_REFERENCE/runners/ReviewerRunner.ts`
-- `.agent/workspace/RECONCILIATION/REMOTE_REFERENCE/runners/MergerRunner.ts`
-
-**TypeScript:** Compiles cleanly (0 errors)
-**Agent Tests:** 133 tests passing (5 test files, 2721 LOC total)
-
-**Commit:** `fcd0f4e`
-
-**Next:** Task 5 - Analyze Quality System Integration
-
----
-
-### Iteration 5 - Task 5 Complete
-**Date:** 2025-01-20
-**Task:** Analyze Quality System Integration
-
-**Accomplishments:**
-1. Discovered **TWO quality systems** exist in the codebase:
-   - **REMOTE (`src/quality/`)** - From Phase 03-03, ORPHANED (not imported anywhere)
-   - **LOCAL (`src/execution/qa/`)** - From Phase 14B, ACTIVE and fully integrated
-
-2. **REMOTE Quality System Analysis (`src/quality/`):**
-   - BuildVerifier.ts (217 LOC)
-   - LintRunner.ts (~200 LOC)
-   - TestRunner.ts (~200 LOC)
-   - CodeReviewer.ts (~200 LOC)
-   - Requires ProcessRunner dependency injection
-   - **NOT INTEGRATED** - Zero imports from outside src/quality/
-
-3. **LOCAL Quality System Analysis (`src/execution/qa/`):**
-   - BuildRunner.ts (297 LOC)
-   - LintRunner.ts (~300 LOC)
-   - TestRunner.ts (~300 LOC)
-   - ReviewRunner.ts (~250 LOC)
-   - QARunnerFactory.ts (~300 LOC) - Factory pattern
-   - **FULLY INTEGRATED** via QARunnerFactory in NexusFactory.ts
-   - Compatible with RalphStyleIterator's QARunner interface
-   - Test coverage: 2152 LOC
-
-4. **Integration Verification:**
-   - NexusFactory.ts imports QARunnerFactory (line 28)
-   - QARunnerFactory.create() used for production (line 302)
-   - QARunnerFactory.createMock() used for testing (lines 470-471)
-
-5. **Decision:** KEEP LOCAL as the active quality system
-   - REMOTE is redundant and orphaned
-   - LOCAL provides all functionality + factory pattern + test coverage
-   - NO CODE CHANGES NEEDED
-
-6. Created QUALITY_SYSTEM_ANALYSIS.md documentation
-
-**Files Created:**
-- `.agent/workspace/RECONCILIATION/QUALITY_SYSTEM_ANALYSIS.md`
-
-**TypeScript:** Compiles cleanly (0 errors)
-**Quality Tests:** 2152 LOC in src/execution/qa/*.test.ts files
-
-**PHASE A COMPLETE** - All 5 tasks done!
-
-**Next:** Task 6 - Create Master Feature Matrix (Phase B begins)
-
----
-
-### Iteration 6 - Task 6 Complete
-**Date:** 2025-01-20
-**Task:** Create Master Feature Matrix
-
-**Accomplishments:**
-1. Conducted comprehensive audit of ALL features across both LOCAL and REMOTE codebases
-2. Identified **95 features** across **13 layers**:
-   - Layer 1: UI (8 features)
-   - Layer 2: Orchestration (5 features)
-   - Layer 3: Planning (11 features including 5 replan triggers)
-   - Layer 4: Execution (13 features)
-   - Layer 5: Quality/Active (5 features)
-   - Layer 6: Persistence (12 features)
-   - Layer 7: Infrastructure (18 features including 8 analyzers)
-   - Layer 8: LLM (7 features)
-   - Layer 9: Bridges (3 features)
-   - Layer 10: Interview (4 features)
-   - Layer 11: Assessment (6 features - NEW from Phase 14B+)
-   - Layer 12: Adapters (2 features)
-   - Layer 13: Main/NexusFactory (1 feature)
-
-3. **Feature Coverage Results:**
-   - Fully Tested [x]: 33 features (35%)
-   - Implemented [~]: 62 features (65%)
-   - Missing [ ]: **0 features (0%)**
-   - **100% FEATURE COVERAGE - ZERO GAPS**
-
-4. **Lines of Code Analysis:**
-   - Total estimated LOC: ~36,480+
-   - Test files: 79
-   - Source files: 200+
-
-5. Created comprehensive MASTER_FEATURE_MATRIX.md with:
-   - Feature-by-feature status for all 95 features
-   - LOC counts for each component
-   - Test coverage analysis
-   - Summary tables by layer
-   - Verification commands
-
-**Files Created:**
-- `.agent/workspace/RECONCILIATION/MASTER_FEATURE_MATRIX.md`
-
-**Key Finding:** ZERO MISSING FEATURES - All functionality from both LOCAL and REMOTE is present.
-
-**Next:** Task 7 - Identify and Document ALL Gaps (should confirm 0 gaps)
-
----
-
-### Iteration 7 - Task 7 Complete
-**Date:** 2025-01-20
-**Task:** Identify and Document ALL Gaps
-
-**Accomplishments:**
-1. Verified existing GAPS.md document (created during Task 6 completion)
-2. Confirmed comprehensive gap analysis was performed:
-   - **Critical Gaps:** NONE
-   - **Important Gaps:** NONE
-   - **Minor Gaps:** NONE (only test coverage recommendations, not functionality gaps)
-
-3. **Removed Files Reconciliation Status (77 files):**
-   | Category | Files | Resolution |
-   |----------|-------|------------|
-   | Adapters | 3 | StateFormatAdapter REIMPLEMENTED, TaskSchemaAdapter EXISTS |
-   | QA Loop | 3 | COVERED by RalphStyleIterator (superset) |
-   | Agent Runners | 10 | COVERED by Agent pattern (superset) |
-   | Quality Tests | 4 | REPLACED by execution/qa tests |
-   | Other Tests/UI | 57 | REPLACED by LOCAL equivalents |
-   | **TOTAL** | **77** | **ALL RECONCILED** |
-
-4. **Key Findings:**
-   - All 95 features are implemented
-   - All 77 removed files have been analyzed and accounted for
-   - Zero functionality gaps found
-   - Zero implementation work required for Task 8
-
-5. GAPS.md confirms:
-   - Feature Coverage: **100%** (95/95 features)
-   - Functionality Gaps: **0**
-   - Test Coverage: 35% (33 features fully tested, 62 implemented without tests)
-
-**Files Verified:**
-- `.agent/workspace/RECONCILIATION/GAPS.md` (198 lines)
-
-**Conclusion:**
-- **ZERO GAPS TO IMPLEMENT**
-- Task 8 can be SKIPPED (no missing features)
-- Proceed directly to Task 9 (Integration Verification)
-
-**Next:** Task 8 - SKIP (no gaps) -> Task 9 - Integration Verification
+**[BEGIN SYSTEM WIRING]**
