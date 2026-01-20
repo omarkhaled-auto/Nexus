@@ -466,11 +466,41 @@ type SettingsState = ReturnType<typeof useSettingsStore.getState>
 
 /**
  * LLM Providers Tab - Enhanced with backend toggles and model dropdowns
+ * Phase 17B: Dynamic CLI availability detection
  */
 function LLMProvidersSettings({ settings, updateSetting }: SettingsTabProps): ReactElement {
   const claudeModels = getClaudeModelList()
   const geminiModels = getGeminiModelList()
   const localEmbeddingModels = getLocalEmbeddingModelList()
+
+  // CLI availability state (Phase 17B)
+  const [claudeCliStatus, setClaudeCliStatus] = useState<{ detected: boolean; message: string }>({ detected: false, message: 'Checking...' })
+  const [geminiCliStatus, setGeminiCliStatus] = useState<{ detected: boolean; message: string }>({ detected: false, message: 'Checking...' })
+
+  // Check CLI availability on mount
+  useEffect(() => {
+    if (!window.nexusAPI?.settings?.checkCliAvailability) {
+      setClaudeCliStatus({ detected: false, message: 'Backend not available' })
+      setGeminiCliStatus({ detected: false, message: 'Backend not available' })
+      return
+    }
+
+    // Check Claude CLI availability
+    window.nexusAPI.settings.checkCliAvailability('claude')
+      .then(setClaudeCliStatus)
+      .catch((err) => {
+        console.error('Failed to check Claude CLI:', err)
+        setClaudeCliStatus({ detected: false, message: 'Check failed' })
+      })
+
+    // Check Gemini CLI availability
+    window.nexusAPI.settings.checkCliAvailability('gemini')
+      .then(setGeminiCliStatus)
+      .catch((err) => {
+        console.error('Failed to check Gemini CLI:', err)
+        setGeminiCliStatus({ detected: false, message: 'Check failed' })
+      })
+  }, [])
 
   return (
     <div className="space-y-6" data-testid="llm-providers-tab">
@@ -488,7 +518,7 @@ function LLMProvidersSettings({ settings, updateSetting }: SettingsTabProps): Re
               { value: 'api', label: 'API', icon: <Cloud className="w-4 h-4" /> }
             ]}
             onChange={(value) => updateSetting('llm', 'claude' as any, { ...settings.llm.claude, backend: value as LLMBackendType })}
-            status={{ detected: true, message: 'CLI detected' }}
+            status={claudeCliStatus}
           />
 
           <ModelDropdown
@@ -556,7 +586,7 @@ function LLMProvidersSettings({ settings, updateSetting }: SettingsTabProps): Re
               { value: 'api', label: 'API', icon: <Cloud className="w-4 h-4" /> }
             ]}
             onChange={(value) => updateSetting('llm', 'gemini' as any, { ...settings.llm.gemini, backend: value as LLMBackendType })}
-            status={{ detected: true, message: 'CLI detected' }}
+            status={geminiCliStatus}
           />
 
           <ModelDropdown

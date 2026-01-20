@@ -308,6 +308,8 @@ export interface SettingsAPI {
   hasApiKey: (provider: LLMProvider) => Promise<boolean>
   clearApiKey: (provider: LLMProvider) => Promise<boolean>
   reset: () => Promise<boolean>
+  /** Check if CLI is available for a provider (Phase 17B) */
+  checkCliAvailability: (provider: 'claude' | 'gemini') => Promise<{ detected: boolean; message: string }>
 }
 
 // ============================================================================

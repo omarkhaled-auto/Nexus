@@ -10,6 +10,8 @@ import type { IpcMainInvokeEvent } from 'electron';
 import { ipcMain } from 'electron'
 import { settingsService } from '../services/settingsService'
 import type { LLMProvider } from '../../shared/types/settings'
+import { ClaudeCodeCLIClient } from '../../llm/clients/ClaudeCodeCLIClient'
+import { GeminiCLIClient } from '../../llm/clients/GeminiCLIClient'
 
 /**
  * Allowed origins for IPC communication
@@ -145,5 +147,42 @@ export function registerSettingsHandlers(): void {
 
     settingsService.reset()
     return true
+  })
+
+  // ========================================
+  // Check CLI Availability (Phase 17B)
+  // ========================================
+
+  ipcMain.handle('settings:checkCliAvailability', async (event, provider: string) => {
+    if (!validateSender(event)) {
+      throw new Error('Unauthorized IPC sender')
+    }
+
+    if (provider !== 'claude' && provider !== 'gemini') {
+      throw new Error('Invalid provider. Must be claude or gemini.')
+    }
+
+    try {
+      if (provider === 'claude') {
+        const client = new ClaudeCodeCLIClient()
+        const available = await client.isAvailable()
+        if (available) {
+          const version = await client.getVersion()
+          return { detected: true, message: `Claude CLI ${version}` }
+        }
+        return { detected: false, message: 'Claude CLI not found' }
+      } else {
+        const client = new GeminiCLIClient()
+        const available = await client.isAvailable()
+        if (available) {
+          const version = await client.getVersion()
+          return { detected: true, message: `Gemini CLI ${version}` }
+        }
+        return { detected: false, message: 'Gemini CLI not found' }
+      }
+    } catch (error) {
+      console.error(`Failed to check ${provider} CLI availability:`, error)
+      return { detected: false, message: `Failed to detect ${provider} CLI` }
+    }
   })
 }

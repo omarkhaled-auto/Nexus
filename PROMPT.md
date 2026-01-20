@@ -148,6 +148,20 @@
 - **Commit**: `22d23bf feat(mode-selector): wire Evolution mode to project selector modal`
 
 ### Iteration 10 (2024-01-20)- **Task**: Wire Save Draft button in InterviewPage to backend persistence- **Status**: COMPLETED- **Changes**:  - Implemented `handleSaveDraft()` async function that calls `window.nexusAPI.interview.pause(sessionId)`  - Added `isSavingDraft` state to track loading status  - Added `Loader2` icon import for spinning animation during save  - Added `toast` from sonner for success/error/info feedback  - Button shows "Saving..." with spinner while in progress  - Button is disabled during save operation  - Proper error handling with console.error logging- **Files Modified**: `src/renderer/src/pages/InterviewPage.tsx`- **Commit**: `e4ac5b1 feat(interview): wire Save Draft button to backend persistence`
+### Iteration 11 (2024-01-20)
+- **Task**: Wire CLI availability detection to Settings Page (replace hardcoded status)
+- **Status**: COMPLETED
+- **Changes**:
+  - Added `settings:checkCliAvailability` IPC handler in `settingsHandlers.ts`
+  - Added `checkCliAvailability` method to `SettingsAPI` interface
+  - Added `checkCliAvailability` preload API method
+  - Updated `LLMProvidersSettings` in `SettingsPage.tsx` with dynamic CLI detection
+- **Files Modified**:
+  - `src/main/ipc/settingsHandlers.ts`
+  - `src/shared/types/settings.ts`
+  - `src/preload/index.ts`
+  - `src/renderer/src/pages/SettingsPage.tsx`
+
 ### Remaining Tasks:
 (Continue from Phase 17B implementation plan)
 

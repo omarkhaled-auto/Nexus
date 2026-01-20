@@ -651,6 +651,14 @@ const nexusAPI = {
      */
     reset: (): Promise<boolean> =>
       ipcRenderer.invoke('settings:reset'),
+
+    /**
+     * Check if CLI is available for a provider (Phase 17B)
+     * @param provider - LLM provider to check ('claude' or 'gemini')
+     * @returns Promise with detection status and message
+     */
+    checkCliAvailability: (provider: 'claude' | 'gemini'): Promise<{ detected: boolean; message: string }> =>
+      ipcRenderer.invoke('settings:checkCliAvailability', provider),
   } satisfies SettingsAPI,
 
   // ========================================
