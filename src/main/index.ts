@@ -2,11 +2,19 @@
  * Main Process Entry Point
  *
  * Phase 19 Task 4: Uses NexusBootstrap for complete system wiring.
+ * Phase 19 Task 15: Reads configuration from SettingsService for proper wiring.
+ *
  * NexusBootstrap handles:
  * - Creating NexusFactory and all orchestration components
  * - Wiring Interview -> Planning -> Execution flow
  * - Setting up event forwarding to renderer
  * - Providing Genesis and Evolution mode entry points
+ *
+ * Settings Configuration:
+ * - LLM provider selection (Claude/Gemini)
+ * - Backend selection (CLI/API) per provider
+ * - API keys from secure storage
+ * - Agent configuration
  */
 
 import { app, BrowserWindow, shell } from 'electron';
@@ -19,6 +27,7 @@ import {
   clearMainWindow,
   type BootstrappedNexus,
 } from './NexusBootstrap';
+import { settingsService } from './services/settingsService';
 
 let mainWindow: BrowserWindow | null = null;
 let nexusInstance: BootstrappedNexus | null = null;
@@ -81,27 +90,77 @@ function createWindow(): void {
 }
 
 /**
+ * Get NexusBootstrap configuration from SettingsService
+ *
+ * Phase 19 Task 15: Settings now properly configure the backend.
+ * Priority order for API keys:
+ * 1. Environment variables (for CI/CD and development)
+ * 2. SettingsService (user-configured via UI, encrypted with safeStorage)
+ *
+ * Priority order for backend selection:
+ * 1. SettingsService configuration (user preference)
+ * 2. Fall back to CLI if no API key available
+ */
+function getNexusConfigFromSettings(): {
+  workingDir: string;
+  dataDir: string;
+  apiKeys: { anthropic?: string; google?: string; openai?: string };
+  useCli: { claude: boolean; gemini: boolean };
+} {
+  // Read settings from SettingsService
+  const settings = settingsService.getAll();
+
+  // Get API keys: environment variables take precedence, then settings
+  const anthropicKey = process.env['ANTHROPIC_API_KEY'] ?? settingsService.getApiKey('claude');
+  const googleKey = process.env['GOOGLE_AI_API_KEY'] ?? settingsService.getApiKey('gemini');
+  const openaiKey = process.env['OPENAI_API_KEY'] ?? settingsService.getApiKey('openai');
+
+  // Get backend preference from settings
+  // If user explicitly set 'api' but no key is available, fall back to 'cli'
+  const claudeWantsCli = settings.llm.claude.backend === 'cli';
+  const geminiWantsCli = settings.llm.gemini.backend === 'cli';
+
+  // Determine actual backend:
+  // - If user wants CLI -> use CLI
+  // - If user wants API but no key -> fall back to CLI
+  // - If user wants API and has key -> use API
+  const useClaudeCli = claudeWantsCli || (!claudeWantsCli && !anthropicKey);
+  const useGeminiCli = geminiWantsCli || (!geminiWantsCli && !googleKey);
+
+  return {
+    workingDir: getWorkingDir(),
+    dataDir: getDataDir(),
+    apiKeys: {
+      anthropic: anthropicKey ?? undefined,
+      google: googleKey ?? undefined,
+      openai: openaiKey ?? undefined,
+    },
+    useCli: {
+      claude: useClaudeCli,
+      gemini: useGeminiCli,
+    },
+  };
+}
+
+/**
  * Initialize Nexus system with NexusBootstrap
+ *
+ * Phase 19 Task 15: Now reads configuration from SettingsService
  */
 async function initializeNexusSystem(): Promise<void> {
   try {
     console.log('[Main] Initializing Nexus system...');
 
-    // Get configuration from environment variables
-    const config = {
-      workingDir: getWorkingDir(),
-      dataDir: getDataDir(),
-      apiKeys: {
-        anthropic: process.env['ANTHROPIC_API_KEY'],
-        google: process.env['GOOGLE_AI_API_KEY'],
-        openai: process.env['OPENAI_API_KEY'],
-      },
-      useCli: {
-        // Default to CLI if no API keys are set
-        claude: !process.env['ANTHROPIC_API_KEY'],
-        gemini: !process.env['GOOGLE_AI_API_KEY'],
-      },
-    };
+    // Get configuration from SettingsService (with env var fallback)
+    const config = getNexusConfigFromSettings();
+
+    // Log configuration source for debugging
+    const settings = settingsService.getAll();
+    console.log('[Main] Configuration sources:');
+    console.log(`[Main]   Claude backend preference: ${settings.llm.claude.backend}`);
+    console.log(`[Main]   Claude API key: ${config.apiKeys.anthropic ? 'present' : 'not set'}`);
+    console.log(`[Main]   Gemini backend preference: ${settings.llm.gemini.backend}`);
+    console.log(`[Main]   Gemini API key: ${config.apiKeys.google ? 'present' : 'not set'}`);
 
     // Initialize Nexus via bootstrap
     nexusInstance = await initializeNexus(config);
