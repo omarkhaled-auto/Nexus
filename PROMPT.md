@@ -58,6 +58,19 @@
 **[TASK 4 COMPLETE]** - Proceeding to Task 5
 
 ### Task 5: Wire Genesis Complete Path - IN PROGRESS
+- [x] **Backend -> UI Events Wiring** - Commit: `05173c6`
+  - Added `onNexusEvent` listener to preload script (`src/preload/index.ts`)
+  - Created `useNexusEvents` hook (`src/renderer/src/hooks/useNexusEvents.ts`)
+  - Added `loadMetrics` action to metricsStore for dashboard refresh
+  - Integrated `useNexusEvents` in App.tsx SettingsInitializer
+  - Events handled: task, project, interview, QA, system events
+  - TypeScript compiles successfully
+
+**Remaining Task 5 items:**
+- [ ] Wire QA Failure -> Escalation (checkpoint creation)
+- [ ] Wire Success -> Merge (git merge after task pass)
+- [ ] Wire checkpoint restore functionality
+- [ ] Integration tests for complete path
 
 ---
 
