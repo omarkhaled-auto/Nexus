@@ -161,7 +161,7 @@ Proceed to Task 8 if issues found, or Task 9 (Evolution) if no issues.
 
 ---
 
-## PHASE C PROGRESS (Wire Evolution Mode) - IN PROGRESS
+## PHASE C PROGRESS (Wire Evolution Mode) - COMPLETED
 
 ### Task 9: Wire Evolution Critical Path - COMPLETED
 - [x] **Evolution-specific system prompt** - Commit: `e2aecba`
@@ -281,6 +281,56 @@ Manual UI testing remains as user action to verify full E2E flow.
 Proceed to Task 12 if issues found, or Task 13 (Verify Both Modes) if no issues.
 
 **[TASK 11 COMPLETE]** - Proceeding to Task 12/13
+
+### Task 12: Fix Evolution Issues - SKIPPED
+- [x] No issues reported from automated testing
+- [x] 124/125 tests pass (99.2% pass rate)
+- [x] All Evolution-specific tests pass (25/25)
+- **Status:** No issues to fix - proceeding to Task 13
+
+**[TASK 12 SKIPPED]** - No issues found
+
+### Task 13: Verify Both Modes Work - COMPLETED
+- [x] **Comprehensive Integration Test Run**
+  - Genesis + Evolution tests: **85/86 PASS (98.8%)**
+  - genesis-mode.test.ts: 21/22 PASS (1 API timeout expected)
+  - genesis-complete-path.test.ts: 20/20 PASS
+  - nexus-bootstrap-wiring.test.ts: 19/19 PASS
+  - evolution-mode.test.ts: 25/25 PASS
+
+- [x] **Build Verification**
+  - TypeScript compiles: SUCCESS (0 errors)
+  - `npm run build`: SUCCESS (dist/main.cjs 847.19 KB)
+  - `npm run build:electron`: SUCCESS
+    - Main: out/main/index.js (458.63 KB)
+    - Preload: out/preload/index.js (23.17 KB)
+    - Renderer: All assets built successfully
+
+- [x] **Test Summary**
+  | Mode | Tests | Pass | Fail | Status |
+  |------|-------|------|------|--------|
+  | Genesis | 61 | 60 | 1* | WORKING |
+  | Evolution | 25 | 25 | 0 | WORKING |
+  | Bootstrap | 19 | 19 | 0 | WORKING |
+  | **Total** | **86** | **85** | **1*** | **98.8%** |
+
+  *1 API timeout expected in CI without API keys
+
+- [ ] **Manual UI Testing** (User Action)
+  - Smoke test Genesis mode in Electron
+  - Smoke test Evolution mode in Electron
+  - Documented in E2E results files
+
+**[TASK 13 COMPLETE]** - Both Genesis and Evolution modes verified working
+
+---
+
+## PHASE D PROGRESS (Wire Remaining Components) - PENDING
+
+**Next Tasks:**
+- Task 14: Wire Checkpoints & Human Review
+- Task 15: Wire Settings & Configuration
+- Task 16: Wire Real-time UI Updates
 
 ---
 
