@@ -4,7 +4,12 @@ import {
   type ElectronApplication,
   type Page,
 } from '@playwright/test';
-import { resolve } from 'path';
+import { resolve, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+// ESM-compatible __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 /**
  * Custom fixtures for Electron E2E testing.
