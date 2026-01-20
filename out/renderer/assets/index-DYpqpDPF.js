@@ -1,4 +1,4 @@
-const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["./InterviewPage-nfViep8k.js","./interviewStore-CEwwD9Jw.js","./circle-alert-VOzXfJTK.js","./zap-Ck3Ga0w_.js","./save-BtxUs1j_.js","./layers-CtKlsgJW.js","./circle-check-B98-0Som.js","./AnimatedPage-6ZXym6yF.js","./trash-2-CFwSGax1.js","./download-DaTaq-gw.js","./arrow-left-BkgIjP-W.js","./KanbanPage-QhlEPfzK.js","./featureStore-SychN_BK.js","./clock-CBF18dB0.js","./circle-x-l4pcAzXm.js","./Input-CiXThQnk.js","./eye-DsNWL9SO.js","./DashboardPage-CibDvY7e.js","./test-tube-diagonal-CqS-yeT3.js","./SettingsPage-DBSM9-u9.js","./Header-DE-IN5uo.js","./circle-check-big-BOptAkcf.js","./info-D1Z_GQ01.js","./AgentsPage-DNPIr-vg.js","./ExecutionPage-AE1KwzBA.js"])))=>i.map(i=>d[i]);
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["./InterviewPage-Wbm8JgPt.js","./circle-alert-DalvgsL5.js","./zap-BU8g-71X.js","./save-BKjY4etK.js","./layers-D9ZOuPXB.js","./circle-check-CZr1TaIC.js","./AnimatedPage-D7ZjgBT9.js","./trash-2-Bz-uxWsr.js","./download-CWcZWjeM.js","./arrow-left-B63aoFAR.js","./KanbanPage-DTbVgvlS.js","./featureStore-wBaaOCqt.js","./clock-BQBgQxoU.js","./circle-x-CtY7q2bK.js","./Input-DqruNAXx.js","./eye-DMj_Ctt0.js","./DashboardPage-CnFFqKBs.js","./test-tube-diagonal-Bagt6Krl.js","./SettingsPage-C63ZMQeI.js","./Header-BGGKOQPc.js","./circle-check-big-ClpwStLI.js","./info-DB-wLqkR.js","./AgentsPage-COR1i5mN.js","./ExecutionPage-Ch7s4tNc.js"])))=>i.map(i=>d[i]);
 function _mergeNamespaces(n, m) {
   for (var i = 0; i < m.length; i++) {
     const e = m[i];
@@ -19324,13 +19324,13 @@ const createImpl = (createState) => {
   return useBoundStore;
 };
 const create = (createState) => createImpl;
-const initialState$2 = {
+const initialState$3 = {
   currentProject: null,
   projects: [],
   mode: null
 };
 const useProjectStore = create()((set) => ({
-  ...initialState$2,
+  ...initialState$3,
   setProject: (project) => {
     set({ currentProject: project });
   },
@@ -19344,7 +19344,7 @@ const useProjectStore = create()((set) => ({
     set({ currentProject: null, mode: null });
   },
   reset: () => {
-    set({ ...initialState$2, projects: [] });
+    set({ ...initialState$3, projects: [] });
   }
 }));
 const useTaskStore = create()((set, get) => ({
@@ -19414,7 +19414,7 @@ const useAgentStore = create()((set, get) => ({
     set({ agents: /* @__PURE__ */ new Map() });
   }
 }));
-const initialState$1 = {
+const initialState$2 = {
   sidebarOpen: true,
   isLoading: false,
   error: null,
@@ -19424,7 +19424,7 @@ const initialState$1 = {
   showShortcuts: false
 };
 const useUIStore = create()((set) => ({
-  ...initialState$1,
+  ...initialState$2,
   toggleSidebar: () => {
     set((state) => ({ sidebarOpen: !state.sidebarOpen }));
   },
@@ -19455,14 +19455,14 @@ const useUIStore = create()((set) => ({
   },
   reset: () => {
     set({
-      ...initialState$1,
+      ...initialState$2,
       toasts: [],
       showShortcuts: false
     });
   }
 }));
 const TIMELINE_MAX_ITEMS = 100;
-const initialState = {
+const initialState$1 = {
   overview: null,
   timeline: [],
   agents: [],
@@ -19471,7 +19471,7 @@ const initialState = {
   lastUpdated: null
 };
 const useMetricsStore = create()((set) => ({
-  ...initialState,
+  ...initialState$1,
   setOverview: (overview) => {
     set({
       overview,
@@ -19504,8 +19504,27 @@ const useMetricsStore = create()((set) => ({
   setLoading: (isLoading) => {
     set({ isLoading });
   },
+  loadMetrics: async () => {
+    if (typeof window.nexusAPI === "undefined") {
+      return;
+    }
+    try {
+      set({ isLoading: true });
+      const metricsData = await window.nexusAPI.getDashboardMetrics();
+      if (metricsData) {
+        set({
+          overview: metricsData,
+          lastUpdated: /* @__PURE__ */ new Date(),
+          isLoading: false
+        });
+      }
+    } catch (error) {
+      console.error("[metricsStore] Failed to load metrics:", error);
+      set({ isLoading: false });
+    }
+  },
   reset: () => {
-    set(initialState);
+    set(initialState$1);
   }
 }));
 const useOverview = () => useMetricsStore((s) => s.overview);
@@ -27431,6 +27450,294 @@ function useThemeEffect() {
     };
   }, [theme]);
 }
+const initialState = {
+  stage: "welcome",
+  messages: [],
+  requirements: [],
+  isInterviewing: false,
+  projectName: null,
+  interviewStartTime: null,
+  sessionId: null
+};
+function emitEvent(method, payload) {
+  if (window.nexusAPI) {
+    try {
+      const fn = window.nexusAPI[method];
+      void fn(payload);
+    } catch {
+    }
+  }
+}
+const useInterviewStore = create()((set, get) => ({
+  ...initialState,
+  setStage: (stage) => {
+    set({ stage });
+  },
+  addMessage: (message) => {
+    set((state) => ({
+      messages: [...state.messages, message]
+    }));
+    emitEvent("emitInterviewMessage", {
+      messageId: message.id,
+      role: message.role,
+      content: message.content
+    });
+  },
+  updateMessage: (id, updates) => {
+    set((state) => ({
+      messages: state.messages.map((m) => m.id === id ? { ...m, ...updates } : m)
+    }));
+  },
+  addRequirement: (requirement) => {
+    set((state) => ({
+      requirements: [...state.requirements, requirement]
+    }));
+    emitEvent("emitInterviewRequirement", {
+      requirementId: requirement.id,
+      category: requirement.category,
+      text: requirement.text,
+      priority: requirement.priority
+    });
+  },
+  updateRequirement: (id, updates) => {
+    set((state) => ({
+      requirements: state.requirements.map((r2) => r2.id === id ? { ...r2, ...updates } : r2)
+    }));
+  },
+  removeRequirement: (id) => {
+    set((state) => ({
+      requirements: state.requirements.filter((r2) => r2.id !== id)
+    }));
+  },
+  setProjectName: (name) => {
+    set({ projectName: name });
+  },
+  setSessionId: (sessionId) => {
+    set({ sessionId });
+  },
+  startInterview: () => {
+    const state = get();
+    set({
+      isInterviewing: true,
+      stage: "welcome",
+      interviewStartTime: Date.now()
+    });
+    emitEvent("emitInterviewStarted", {
+      projectName: state.projectName,
+      mode: "genesis"
+    });
+  },
+  completeInterview: () => {
+    const state = get();
+    const duration = state.interviewStartTime ? Math.round((Date.now() - state.interviewStartTime) / 1e3) : 0;
+    const categories = [...new Set(state.requirements.map((r2) => r2.category))];
+    set({
+      isInterviewing: false,
+      stage: "complete"
+    });
+    emitEvent("emitInterviewCompleted", {
+      requirementCount: state.requirements.length,
+      categories,
+      duration
+    });
+  },
+  reset: () => {
+    set({
+      ...initialState,
+      messages: [],
+      requirements: [],
+      interviewStartTime: null,
+      sessionId: null
+    });
+  }
+}));
+const useInterviewStage = () => useInterviewStore((s) => s.stage);
+const useMessages = () => useInterviewStore((s) => s.messages);
+const useRequirements = () => useInterviewStore((s) => s.requirements);
+const useIsInterviewing = () => useInterviewStore((s) => s.isInterviewing);
+const useSessionId = () => useInterviewStore((s) => s.sessionId);
+function useNexusEvents() {
+  const isSubscribed = reactExports.useRef(false);
+  const updateTask = useTaskStore((s) => s.updateTask);
+  const addTask = useTaskStore((s) => s.addTask);
+  const setProject = useProjectStore((s) => s.setProject);
+  const updateAgent = useAgentStore((s) => s.updateAgent);
+  const setStage = useInterviewStore((s) => s.setStage);
+  const addRequirement = useInterviewStore((s) => s.addRequirement);
+  const refreshMetrics = useMetricsStore((s) => s.loadMetrics);
+  const addToast = useUIStore((s) => s.addToast);
+  reactExports.useEffect(() => {
+    if (isSubscribed.current) return;
+    if (typeof window.nexusAPI === "undefined") {
+      console.warn("[useNexusEvents] nexusAPI not available, skipping event subscription");
+      return;
+    }
+    if (typeof window.nexusAPI.onNexusEvent !== "function") {
+      console.warn("[useNexusEvents] onNexusEvent not available, skipping event subscription");
+      return;
+    }
+    console.log("[useNexusEvents] Subscribing to Nexus backend events");
+    isSubscribed.current = true;
+    const handleNexusEvent = (event) => {
+      const { type, payload } = event;
+      console.log(`[useNexusEvents] Received: ${type}`, payload);
+      try {
+        switch (type) {
+          case "task:assigned": {
+            const p = payload;
+            updateTask(p.taskId, {
+              status: "pending",
+              assignedAgent: p.agentId
+            });
+            break;
+          }
+          case "task:started": {
+            const p = payload;
+            updateTask(p.taskId, { status: "in_progress" });
+            if (p.agentId) {
+              updateAgent(p.agentId, { status: "working" });
+            }
+            break;
+          }
+          case "task:completed": {
+            const p = payload;
+            updateTask(p.taskId, { status: "completed" });
+            void refreshMetrics();
+            break;
+          }
+          case "task:failed": {
+            const p = payload;
+            updateTask(p.taskId, { status: "failed" });
+            addToast({
+              id: `task-failed-${p.taskId}`,
+              type: "error",
+              message: `Task failed: ${p.error || "Unknown error"}`
+            });
+            break;
+          }
+          case "task:escalated": {
+            const p = payload;
+            updateTask(p.taskId, { status: "failed" });
+            addToast({
+              id: `task-escalated-${p.taskId}`,
+              type: "info",
+              // Use 'info' as warning is not supported
+              message: `Task escalated for human review: ${p.reason || "Max iterations exceeded"}`
+            });
+            break;
+          }
+          case "project:status-changed": {
+            const p = payload;
+            console.log(`[useNexusEvents] Project ${p.projectId} status: ${p.previousStatus} -> ${p.newStatus}`);
+            break;
+          }
+          case "project:completed": {
+            const p = payload;
+            addToast({
+              id: `project-completed-${p.projectId}`,
+              type: "success",
+              message: "Project completed successfully!"
+            });
+            break;
+          }
+          case "project:failed": {
+            const p = payload;
+            addToast({
+              id: `project-failed-${p.projectId}`,
+              type: "error",
+              message: `Project failed: ${p.error || "Unknown error"}`
+            });
+            break;
+          }
+          case "interview:started": {
+            setStage("functional");
+            break;
+          }
+          case "interview:completed": {
+            const p = payload;
+            setStage("complete");
+            addToast({
+              id: `interview-completed-${p.projectId}`,
+              type: "success",
+              message: `Interview completed with ${p.totalRequirements || 0} requirements captured`
+            });
+            break;
+          }
+          case "interview:requirement-captured": {
+            const p = payload;
+            if (p.requirementId && p.text) {
+              const now2 = Date.now();
+              addRequirement({
+                id: p.requirementId,
+                text: p.text,
+                category: p.category || "functional",
+                priority: p.priority || "should",
+                source: "interview",
+                createdAt: now2,
+                updatedAt: now2,
+                confirmed: false
+              });
+            }
+            break;
+          }
+          case "qa:build-completed":
+          case "qa:lint-completed":
+          case "qa:test-completed":
+          case "qa:review-completed": {
+            const p = payload;
+            const stepType = type.split(":")[1]?.replace("-completed", "") || "unknown";
+            if (!p.success) {
+              addToast({
+                id: `qa-${stepType}-failed-${p.taskId}`,
+                type: "error",
+                // Use 'error' for QA failures
+                message: `QA ${stepType} failed for task`
+              });
+            }
+            break;
+          }
+          case "system:checkpoint-created": {
+            const p = payload;
+            addToast({
+              id: `checkpoint-created-${p.checkpointId}`,
+              type: "info",
+              message: `Checkpoint created: ${p.reason || "Manual checkpoint"}`
+            });
+            break;
+          }
+          case "system:error": {
+            const p = payload;
+            addToast({
+              id: `system-error-${Date.now()}`,
+              type: "error",
+              message: `System error: ${p.error || "Unknown error"}`
+            });
+            break;
+          }
+          default:
+            console.log(`[useNexusEvents] Unhandled event: ${type}`);
+        }
+      } catch (error) {
+        console.error(`[useNexusEvents] Error handling event ${type}:`, error);
+      }
+    };
+    const unsubscribe = window.nexusAPI.onNexusEvent(handleNexusEvent);
+    return () => {
+      console.log("[useNexusEvents] Unsubscribing from Nexus backend events");
+      isSubscribed.current = false;
+      unsubscribe();
+    };
+  }, [
+    updateTask,
+    addTask,
+    setProject,
+    updateAgent,
+    setStage,
+    addRequirement,
+    refreshMetrics,
+    addToast
+  ]);
+}
 function KeyboardShortcutsModal() {
   const showShortcuts = useUIStore((s) => s.showShortcuts);
   const setShowShortcuts = useUIStore((s) => s.setShowShortcuts);
@@ -27456,12 +27763,12 @@ function KeyboardShortcutsModal() {
     )) })
   ] }) });
 }
-const InterviewPage = reactExports.lazy(() => __vitePreload(() => import("./InterviewPage-nfViep8k.js"), true ? __vite__mapDeps([0,1,2,3,4,5,6,7,8,9,10]) : void 0, import.meta.url));
-const KanbanPage = reactExports.lazy(() => __vitePreload(() => import("./KanbanPage-QhlEPfzK.js"), true ? __vite__mapDeps([11,12,7,13,8,14,6,5,15,2,16]) : void 0, import.meta.url));
-const DashboardPage = reactExports.lazy(() => __vitePreload(() => import("./DashboardPage-CibDvY7e.js"), true ? __vite__mapDeps([17,3,18,16,7,6,14,2,15,12,1,13]) : void 0, import.meta.url));
-const SettingsPage = reactExports.lazy(() => __vitePreload(() => import("./SettingsPage-DBSM9-u9.js"), true ? __vite__mapDeps([19,20,10,1,12,2,4,21,22,16]) : void 0, import.meta.url));
-const AgentsPage = reactExports.lazy(() => __vitePreload(() => import("./AgentsPage-DNPIr-vg.js"), true ? __vite__mapDeps([23,20,10,22,2,6,3,18,16,13,8,14]) : void 0, import.meta.url));
-const ExecutionPage = reactExports.lazy(() => __vitePreload(() => import("./ExecutionPage-AE1KwzBA.js"), true ? __vite__mapDeps([24,20,10,9,8,14,21]) : void 0, import.meta.url));
+const InterviewPage = reactExports.lazy(() => __vitePreload(() => import("./InterviewPage-Wbm8JgPt.js"), true ? __vite__mapDeps([0,1,2,3,4,5,6,7,8,9]) : void 0, import.meta.url));
+const KanbanPage = reactExports.lazy(() => __vitePreload(() => import("./KanbanPage-DTbVgvlS.js"), true ? __vite__mapDeps([10,11,6,12,7,13,5,4,14,1,15]) : void 0, import.meta.url));
+const DashboardPage = reactExports.lazy(() => __vitePreload(() => import("./DashboardPage-CnFFqKBs.js"), true ? __vite__mapDeps([16,2,17,15,6,5,13,1,14,11,12]) : void 0, import.meta.url));
+const SettingsPage = reactExports.lazy(() => __vitePreload(() => import("./SettingsPage-C63ZMQeI.js"), true ? __vite__mapDeps([18,19,9,11,1,3,20,21,15]) : void 0, import.meta.url));
+const AgentsPage = reactExports.lazy(() => __vitePreload(() => import("./AgentsPage-COR1i5mN.js"), true ? __vite__mapDeps([22,19,9,21,1,5,2,17,15,12,7,13]) : void 0, import.meta.url));
+const ExecutionPage = reactExports.lazy(() => __vitePreload(() => import("./ExecutionPage-Ch7s4tNc.js"), true ? __vite__mapDeps([23,19,9,8,7,13,20]) : void 0, import.meta.url));
 function PageLoader() {
   return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex items-center justify-center min-h-screen bg-bg-dark", "data-testid": "page-loader", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col items-center gap-3", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-8 h-8 rounded-full border-2 border-accent-primary border-t-transparent animate-spin" }),
@@ -27512,6 +27819,7 @@ function SettingsInitializer({ children }) {
     }
   }, [loadSettings]);
   useThemeEffect();
+  useNexusEvents();
   return /* @__PURE__ */ jsxRuntimeExports.jsx(jsxRuntimeExports.Fragment, { children });
 }
 function App() {
@@ -27540,55 +27848,61 @@ root.render(
   /* @__PURE__ */ jsxRuntimeExports.jsx(reactExports.StrictMode, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(App, {}) })
 );
 export {
-  useIsMetricsLoading as A,
+  Terminal as $,
+  getDefaultExportFromCjs as A,
   Bot as B,
   ChevronDown as C,
   Dialog as D,
-  useOverview as E,
-  useMetricsStore as F,
-  FolderOpen as G,
-  Link as H,
-  ChevronRight as I,
-  cva as J,
-  useSettings as K,
+  React$3 as E,
+  useAgentMetrics as F,
+  fo as G,
+  RefreshCw as H,
+  useTimeline as I,
+  useIsMetricsLoading as J,
+  useOverview as K,
   LoaderCircle as L,
   MessageSquare as M,
-  useSettingsLoading as N,
-  useSettingsDirty as O,
+  useMetricsStore as N,
+  FolderOpen as O,
   Plus as P,
-  useSettingsStore as Q,
+  Link as Q,
   React$2 as R,
   Sparkles as S,
   TriangleAlert as T,
-  Terminal as U,
-  CardDescription as V,
-  useHasApiKey as W,
+  ChevronRight as U,
+  cva as V,
+  useSettings as W,
   X$1 as X,
-  create as Y,
+  useSettingsLoading as Y,
+  useSettingsDirty as Z,
+  useSettingsStore as _,
   cn as a,
-  useNavigate as b,
+  CardDescription as a0,
+  useHasApiKey as a1,
+  create as a2,
+  useIsInterviewing as b,
   createLucideIcon as c,
-  reactDomExports as d,
-  Card as e,
-  CardHeader as f,
-  CardTitle as g,
-  CardContent as h,
-  DialogContent as i,
+  useInterviewStore as d,
+  useSessionId as e,
+  useProjectStore as f,
+  useRequirements as g,
+  useInterviewStage as h,
+  useNavigate as i,
   jsxRuntimeExports as j,
-  DialogHeader as k,
-  DialogTitle as l,
-  DialogDescription as m,
-  DialogFooter as n,
-  Button as o,
-  useCosts as p,
-  clsx as q,
+  reactDomExports as k,
+  Card as l,
+  CardHeader as m,
+  CardTitle as n,
+  CardContent as o,
+  DialogContent as p,
+  DialogHeader as q,
   reactExports as r,
-  getDefaultExportFromCjs as s,
+  DialogTitle as s,
   toast as t,
-  useProjectStore as u,
-  React$3 as v,
-  useAgentMetrics as w,
-  fo as x,
-  RefreshCw as y,
-  useTimeline as z
+  useMessages as u,
+  DialogDescription as v,
+  DialogFooter as w,
+  Button as x,
+  useCosts as y,
+  clsx as z
 };

@@ -8,6 +8,16 @@
 - [x] TypeScript compiles: PASS
 - [x] `npm run build`: SUCCESS (dist/main.cjs 847.19 KB)
 - [x] Integration tests: 41/42 passed (1 timeout - API dependent, acceptable)
+- [x] `npm run build:electron`: SUCCESS (FIXED!)
+  - Main: out/main/index.js (361.77 KB)
+  - Preload: out/preload/index.js (23.17 KB)
+  - Renderer: Complete with all assets
+
+**Note on electron-vite build fix:**
+The electron-vite build previously failed due to a bug in electron-vite's esmShimPlugin that
+incorrectly inserted CJS shims into the middle of string literals. This was fixed by adding
+a custom plugin (`overrideEsmShimPlugin`) to electron.vite.config.ts that detects and repairs
+the corrupted output by removing misplaced shims and reinserting them at the correct position.
 
 ### Wiring Status (From Phase B)
 - [x] NexusBootstrap.ts created - central wiring layer

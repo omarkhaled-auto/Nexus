@@ -1,9 +1,20 @@
 import { app, session, ipcMain, BrowserWindow, safeStorage, shell } from "electron";
-import { join } from "path";
-import { nanoid } from "nanoid";
+import { join as join$1 } from "path";
+import { webcrypto, randomFillSync, randomUUID } from "node:crypto";
 import Store from "electron-store";
 import { spawn } from "child_process";
-import "@anthropic-ai/sdk";
+import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenAI } from "@google/genai";
+import OpenAI from "openai";
+import { simpleGit } from "simple-git";
+import { normalize, join, dirname } from "pathe";
+import fse, { ensureDirSync } from "fs-extra";
+import { execaCommand } from "execa";
+import { relations, eq, and, desc } from "drizzle-orm";
+import { sqliteTable, integer, text, real, blob } from "drizzle-orm/sqlite-core";
+import Database from "better-sqlite3";
+import { drizzle } from "drizzle-orm/better-sqlite3";
+import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import __cjs_mod__ from "node:module";
 const __filename = import.meta.filename;
 const __dirname = import.meta.dirname;
@@ -101,6 +112,28 @@ const optimizer = {
     });
   }
 };
+const urlAlphabet = "useandom-26T198340PX75pxJACKVERYMINDBUSHWOLF_GQZbfghjklqvwyzrict";
+const POOL_SIZE_MULTIPLIER = 128;
+let pool, poolOffset;
+function fillPool(bytes) {
+  if (!pool || pool.length < bytes) {
+    pool = Buffer.allocUnsafe(bytes * POOL_SIZE_MULTIPLIER);
+    webcrypto.getRandomValues(pool);
+    poolOffset = 0;
+  } else if (poolOffset + bytes > pool.length) {
+    webcrypto.getRandomValues(pool);
+    poolOffset = 0;
+  }
+  poolOffset += bytes;
+}
+function nanoid(size = 21) {
+  fillPool(size |= 0);
+  let id = "";
+  for (let i = poolOffset - size; i < poolOffset; i++) {
+    id += urlAlphabet[pool[i] & 63];
+  }
+  return id;
+}
 class EventBus {
   /** Singleton instance for static getInstance() */
   static instance = null;
@@ -351,7 +384,14 @@ class EventBus {
     }
   }
 }
-function validateSender$1(event) {
+let globalEventBus = null;
+function getEventBus() {
+  if (!globalEventBus) {
+    globalEventBus = new EventBus();
+  }
+  return globalEventBus;
+}
+function validateSender$2(event) {
   const url = event.sender.getURL();
   return url.startsWith("http://localhost:") || url.startsWith("file://");
 }
@@ -365,7 +405,7 @@ const state = {
 };
 function registerIpcHandlers() {
   ipcMain.handle("mode:genesis", (event) => {
-    if (!validateSender$1(event)) {
+    if (!validateSender$2(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     state.mode = "genesis";
@@ -379,7 +419,7 @@ function registerIpcHandlers() {
     return { success: true, projectId };
   });
   ipcMain.handle("mode:evolution", (event, projectId) => {
-    if (!validateSender$1(event)) {
+    if (!validateSender$2(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     if (typeof projectId !== "string" || !projectId) {
@@ -393,7 +433,7 @@ function registerIpcHandlers() {
     return { success: true };
   });
   ipcMain.handle("project:get", (event, id) => {
-    if (!validateSender$1(event)) {
+    if (!validateSender$2(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     if (typeof id !== "string" || !id) {
@@ -406,40 +446,40 @@ function registerIpcHandlers() {
     return project;
   });
   ipcMain.handle("projects:list", (event) => {
-    if (!validateSender$1(event)) {
+    if (!validateSender$2(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     return Array.from(state.projects.values());
   });
   ipcMain.handle("dashboard:getMetrics", (event) => {
-    if (!validateSender$1(event)) {
+    if (!validateSender$2(event)) {
       throw new Error("Unauthorized IPC sender");
     }
-    const projects = Array.from(state.projects.values());
-    const tasks = Array.from(state.tasks.values());
-    const agents = Array.from(state.agents.values());
-    const completedTasks = tasks.filter((t) => t.status === "completed").length;
-    const failedTasks = tasks.filter((t) => t.status === "failed").length;
-    const activeAgents = agents.filter((a) => a.status === "working").length;
+    const projects2 = Array.from(state.projects.values());
+    const tasks2 = Array.from(state.tasks.values());
+    const agents2 = Array.from(state.agents.values());
+    const completedTasks = tasks2.filter((t) => t.status === "completed").length;
+    const failedTasks = tasks2.filter((t) => t.status === "failed").length;
+    const activeAgents = agents2.filter((a) => a.status === "working").length;
     return {
       projectId: state.projectId || "no-project",
-      projectName: projects.length > 0 ? projects[0].name : "No Active Project",
-      totalFeatures: Math.ceil(tasks.length / 3),
+      projectName: projects2.length > 0 ? projects2[0].name : "No Active Project",
+      totalFeatures: Math.ceil(tasks2.length / 3),
       // Approximate features from tasks
       completedFeatures: Math.floor(completedTasks / 3),
       completedTasks,
-      totalTasks: tasks.length,
+      totalTasks: tasks2.length,
       failedTasks,
       activeAgents,
-      estimatedRemainingMinutes: Math.max(0, (tasks.length - completedTasks) * 5),
-      estimatedCompletion: new Date(Date.now() + Math.max(0, (tasks.length - completedTasks) * 5) * 6e4),
+      estimatedRemainingMinutes: Math.max(0, (tasks2.length - completedTasks) * 5),
+      estimatedCompletion: new Date(Date.now() + Math.max(0, (tasks2.length - completedTasks) * 5) * 6e4),
       startedAt: new Date(Date.now() - 2 * 60 * 60 * 1e3),
       // 2 hours ago
       updatedAt: /* @__PURE__ */ new Date()
     };
   });
   ipcMain.handle("dashboard:getCosts", (event) => {
-    if (!validateSender$1(event)) {
+    if (!validateSender$2(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     return {
@@ -454,12 +494,12 @@ function registerIpcHandlers() {
     };
   });
   ipcMain.handle("dashboard:getHistoricalProgress", (event) => {
-    if (!validateSender$1(event)) {
+    if (!validateSender$2(event)) {
       throw new Error("Unauthorized IPC sender");
     }
-    const tasks = Array.from(state.tasks.values());
-    const totalTasks = tasks.length;
-    const completedTasks = tasks.filter((t) => t.status === "completed").length;
+    const tasks2 = Array.from(state.tasks.values());
+    const totalTasks = tasks2.length;
+    const completedTasks = tasks2.filter((t) => t.status === "completed").length;
     if (totalTasks === 0) {
       return [];
     }
@@ -480,7 +520,7 @@ function registerIpcHandlers() {
   ipcMain.handle(
     "project:create",
     (event, input) => {
-      if (!validateSender$1(event)) {
+      if (!validateSender$2(event)) {
         throw new Error("Unauthorized IPC sender");
       }
       if (typeof input.name !== "string" || !input.name) {
@@ -496,7 +536,7 @@ function registerIpcHandlers() {
     }
   );
   ipcMain.handle("tasks:list", (event) => {
-    if (!validateSender$1(event)) {
+    if (!validateSender$2(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     return Array.from(state.tasks.values());
@@ -504,7 +544,7 @@ function registerIpcHandlers() {
   ipcMain.handle(
     "task:update",
     (event, id, update) => {
-      if (!validateSender$1(event)) {
+      if (!validateSender$2(event)) {
         throw new Error("Unauthorized IPC sender");
       }
       if (typeof id !== "string" || !id) {
@@ -525,16 +565,16 @@ function registerIpcHandlers() {
     }
   );
   ipcMain.handle("agents:status", (event) => {
-    if (!validateSender$1(event)) {
+    if (!validateSender$2(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     return Array.from(state.agents.values());
   });
   ipcMain.handle("agents:list", (event) => {
-    if (!validateSender$1(event)) {
+    if (!validateSender$2(event)) {
       throw new Error("Unauthorized IPC sender");
     }
-    const agents = Array.from(state.agents.values()).map((agent) => ({
+    const agents2 = Array.from(state.agents.values()).map((agent) => ({
       id: agent.id,
       type: agent.type || "coder",
       status: agent.status || "idle",
@@ -544,10 +584,10 @@ function registerIpcHandlers() {
       metrics: void 0,
       currentFile: void 0
     }));
-    return agents;
+    return agents2;
   });
   ipcMain.handle("agents:get", (event, id) => {
-    if (!validateSender$1(event)) {
+    if (!validateSender$2(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     if (typeof id !== "string" || !id) {
@@ -569,14 +609,14 @@ function registerIpcHandlers() {
     };
   });
   ipcMain.handle("agents:getPoolStatus", (event) => {
-    if (!validateSender$1(event)) {
+    if (!validateSender$2(event)) {
       throw new Error("Unauthorized IPC sender");
     }
-    const agents = Array.from(state.agents.values());
-    const working = agents.filter((a) => a.status === "working").length;
-    const idle = agents.filter((a) => a.status === "idle" || !a.status).length;
-    const error = agents.filter((a) => a.status === "error").length;
-    const complete = agents.filter((a) => a.status === "complete").length;
+    const agents2 = Array.from(state.agents.values());
+    const working = agents2.filter((a) => a.status === "working").length;
+    const idle = agents2.filter((a) => a.status === "idle" || !a.status).length;
+    const error = agents2.filter((a) => a.status === "error").length;
+    const complete = agents2.filter((a) => a.status === "complete").length;
     const byType = {
       planner: { total: 0, active: 0, idle: 0, max: 1 },
       coder: { total: 0, active: 0, idle: 0, max: 4 },
@@ -584,7 +624,7 @@ function registerIpcHandlers() {
       reviewer: { total: 0, active: 0, idle: 0, max: 2 },
       merger: { total: 0, active: 0, idle: 0, max: 1 }
     };
-    for (const agent of agents) {
+    for (const agent of agents2) {
       const agentType = agent.type || "coder";
       if (byType[agentType]) {
         byType[agentType].total++;
@@ -596,7 +636,7 @@ function registerIpcHandlers() {
       }
     }
     return {
-      totalAgents: agents.length,
+      totalAgents: agents2.length,
       maxAgents: 10,
       // Default maximum
       working,
@@ -608,7 +648,7 @@ function registerIpcHandlers() {
     };
   });
   ipcMain.handle("agents:getOutput", (event, id) => {
-    if (!validateSender$1(event)) {
+    if (!validateSender$2(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     if (typeof id !== "string" || !id) {
@@ -617,7 +657,7 @@ function registerIpcHandlers() {
     return [];
   });
   ipcMain.handle("agents:getQAStatus", (event) => {
-    if (!validateSender$1(event)) {
+    if (!validateSender$2(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     return {
@@ -648,7 +688,7 @@ function registerIpcHandlers() {
   let currentExecutionTaskId = null;
   let currentExecutionTaskName = null;
   ipcMain.handle("execution:getLogs", (event, stepType) => {
-    if (!validateSender$1(event)) {
+    if (!validateSender$2(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     if (!["build", "lint", "test", "review"].includes(stepType)) {
@@ -657,7 +697,7 @@ function registerIpcHandlers() {
     return executionLogs.get(stepType) || [];
   });
   ipcMain.handle("execution:getStatus", (event) => {
-    if (!validateSender$1(event)) {
+    if (!validateSender$2(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     const steps = ["build", "lint", "test", "review"].map((type) => ({
@@ -675,7 +715,7 @@ function registerIpcHandlers() {
     };
   });
   ipcMain.handle("execution:clearLogs", (event) => {
-    if (!validateSender$1(event)) {
+    if (!validateSender$2(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     for (const type of ["build", "lint", "test", "review"]) {
@@ -689,7 +729,7 @@ function registerIpcHandlers() {
     return { success: true };
   });
   ipcMain.handle("execution:exportLogs", (event) => {
-    if (!validateSender$1(event)) {
+    if (!validateSender$2(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     let output = `Nexus Execution Logs
@@ -746,13 +786,13 @@ ${"-".repeat(40)}
     currentExecutionTaskName = name;
   };
   ipcMain.handle("features:list", (event) => {
-    if (!validateSender$1(event)) {
+    if (!validateSender$2(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     return Array.from(state.features.values());
   });
   ipcMain.handle("feature:get", (event, id) => {
-    if (!validateSender$1(event)) {
+    if (!validateSender$2(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     if (typeof id !== "string" || !id) {
@@ -761,7 +801,7 @@ ${"-".repeat(40)}
     return state.features.get(id) || null;
   });
   ipcMain.handle("feature:create", (event, input) => {
-    if (!validateSender$1(event)) {
+    if (!validateSender$2(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     if (typeof input.title !== "string" || !input.title) {
@@ -799,7 +839,7 @@ ${"-".repeat(40)}
     return feature;
   });
   ipcMain.handle("feature:update", (event, id, update) => {
-    if (!validateSender$1(event)) {
+    if (!validateSender$2(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     if (typeof id !== "string" || !id) {
@@ -838,7 +878,7 @@ ${"-".repeat(40)}
     return feature;
   });
   ipcMain.handle("feature:delete", (event, id) => {
-    if (!validateSender$1(event)) {
+    if (!validateSender$2(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     if (typeof id !== "string" || !id) {
@@ -856,7 +896,7 @@ ${"-".repeat(40)}
     return { success: true };
   });
   ipcMain.handle("execution:pause", (event, reason) => {
-    if (!validateSender$1(event)) {
+    if (!validateSender$2(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     if (eventForwardingWindow && !eventForwardingWindow.isDestroyed()) {
@@ -867,7 +907,7 @@ ${"-".repeat(40)}
   ipcMain.handle(
     "interview:emit-started",
     (event, payload) => {
-      if (!validateSender$1(event)) {
+      if (!validateSender$2(event)) {
         throw new Error("Unauthorized IPC sender");
       }
       const eventBus = EventBus.getInstance();
@@ -886,7 +926,7 @@ ${"-".repeat(40)}
   ipcMain.handle(
     "interview:emit-message",
     (event, payload) => {
-      if (!validateSender$1(event)) {
+      if (!validateSender$2(event)) {
         throw new Error("Unauthorized IPC sender");
       }
       const eventBus = EventBus.getInstance();
@@ -906,7 +946,7 @@ ${"-".repeat(40)}
   ipcMain.handle(
     "interview:emit-requirement",
     (event, payload) => {
-      if (!validateSender$1(event)) {
+      if (!validateSender$2(event)) {
         throw new Error("Unauthorized IPC sender");
       }
       const eventBus = EventBus.getInstance();
@@ -956,7 +996,7 @@ ${"-".repeat(40)}
   ipcMain.handle(
     "interview:emit-completed",
     (event, payload) => {
-      if (!validateSender$1(event)) {
+      if (!validateSender$2(event)) {
         throw new Error("Unauthorized IPC sender");
       }
       const eventBus = EventBus.getInstance();
@@ -976,7 +1016,7 @@ ${"-".repeat(40)}
   ipcMain.handle(
     "eventbus:emit",
     (event, channel, payload) => {
-      if (!validateSender$1(event)) {
+      if (!validateSender$2(event)) {
         throw new Error("Unauthorized IPC sender");
       }
       if (typeof channel !== "string" || !channel) {
@@ -1167,6 +1207,129 @@ function mapUIStatusToCoreStatus(status) {
   };
   return map[status] || "pending";
 }
+function validateSender$1(event) {
+  const url = event.sender.getURL();
+  return url.startsWith("http://localhost:") || url.startsWith("file://");
+}
+function registerInterviewHandlers(interviewEngine, sessionManager) {
+  ipcMain.handle(
+    "interview:start",
+    (event, projectId) => {
+      if (!validateSender$1(event)) {
+        throw new Error("Unauthorized IPC sender");
+      }
+      if (typeof projectId !== "string" || !projectId) {
+        throw new Error("Invalid projectId");
+      }
+      const session2 = interviewEngine.startSession(projectId);
+      sessionManager.startAutoSave(session2);
+      return session2;
+    }
+  );
+  ipcMain.handle(
+    "interview:sendMessage",
+    async (event, sessionId, message) => {
+      if (!validateSender$1(event)) {
+        throw new Error("Unauthorized IPC sender");
+      }
+      if (typeof sessionId !== "string" || !sessionId) {
+        throw new Error("Invalid sessionId");
+      }
+      if (typeof message !== "string" || !message) {
+        throw new Error("Invalid message");
+      }
+      const result = await interviewEngine.processMessage(sessionId, message);
+      return result;
+    }
+  );
+  ipcMain.handle(
+    "interview:getSession",
+    (event, sessionId) => {
+      if (!validateSender$1(event)) {
+        throw new Error("Unauthorized IPC sender");
+      }
+      if (typeof sessionId !== "string" || !sessionId) {
+        throw new Error("Invalid sessionId");
+      }
+      return interviewEngine.getSession(sessionId);
+    }
+  );
+  ipcMain.handle(
+    "interview:resume",
+    (event, sessionId) => {
+      if (!validateSender$1(event)) {
+        throw new Error("Unauthorized IPC sender");
+      }
+      if (typeof sessionId !== "string" || !sessionId) {
+        throw new Error("Invalid sessionId");
+      }
+      const session2 = sessionManager.load(sessionId);
+      if (session2) {
+        sessionManager.startAutoSave(session2);
+      }
+      return session2;
+    }
+  );
+  ipcMain.handle(
+    "interview:resumeByProject",
+    (event, projectId) => {
+      if (!validateSender$1(event)) {
+        throw new Error("Unauthorized IPC sender");
+      }
+      if (typeof projectId !== "string" || !projectId) {
+        throw new Error("Invalid projectId");
+      }
+      const session2 = sessionManager.loadByProject(projectId);
+      if (session2) {
+        sessionManager.startAutoSave(session2);
+      }
+      return session2;
+    }
+  );
+  ipcMain.handle(
+    "interview:end",
+    (event, sessionId) => {
+      if (!validateSender$1(event)) {
+        throw new Error("Unauthorized IPC sender");
+      }
+      if (typeof sessionId !== "string" || !sessionId) {
+        throw new Error("Invalid sessionId");
+      }
+      interviewEngine.endSession(sessionId);
+      sessionManager.stopAutoSave();
+      const session2 = interviewEngine.getSession(sessionId);
+      if (session2) {
+        sessionManager.save(session2);
+      }
+    }
+  );
+  ipcMain.handle(
+    "interview:pause",
+    (event, sessionId) => {
+      if (!validateSender$1(event)) {
+        throw new Error("Unauthorized IPC sender");
+      }
+      if (typeof sessionId !== "string" || !sessionId) {
+        throw new Error("Invalid sessionId");
+      }
+      interviewEngine.pauseSession(sessionId);
+      sessionManager.stopAutoSave();
+      const session2 = interviewEngine.getSession(sessionId);
+      if (session2) {
+        sessionManager.save(session2);
+      }
+    }
+  );
+  ipcMain.handle(
+    "interview:getGreeting",
+    (event) => {
+      if (!validateSender$1(event)) {
+        throw new Error("Unauthorized IPC sender");
+      }
+      return interviewEngine.getInitialGreeting();
+    }
+  );
+}
 const DEFAULT_CLAUDE_MODEL = "claude-sonnet-4-5-20250929";
 const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";
 const LOCAL_EMBEDDING_MODELS = {
@@ -1266,7 +1429,7 @@ const defaults = {
     outputDirectory: ".nexus"
   }
 };
-const schema = {
+const schema$1 = {
   llm: {
     type: "object",
     properties: {
@@ -1380,7 +1543,7 @@ class SettingsService {
   constructor() {
     this.store = new Store({
       name: "nexus-settings",
-      schema,
+      schema: schema$1,
       defaults,
       clearInvalidConfig: true
     });
@@ -1392,8 +1555,8 @@ class SettingsService {
    */
   getAll() {
     const llm = this.store.get("llm");
-    const agents = this.store.get("agents");
-    const checkpoints = this.store.get("checkpoints");
+    const agents2 = this.store.get("agents");
+    const checkpoints2 = this.store.get("checkpoints");
     const ui = this.store.get("ui");
     const project = this.store.get("project");
     const claude = llm.claude ?? defaults.llm.claude;
@@ -1435,8 +1598,8 @@ class SettingsService {
         hasGeminiKey: !!gemini.apiKeyEncrypted || !!llm.geminiApiKeyEncrypted,
         hasOpenaiKey: !!embeddings.apiKeyEncrypted || !!llm.openaiApiKeyEncrypted
       },
-      agents,
-      checkpoints,
+      agents: agents2,
+      checkpoints: checkpoints2,
       ui,
       project
     };
@@ -1547,11 +1710,287 @@ class LLMError extends Error {
     Object.setPrototypeOf(this, LLMError.prototype);
   }
 }
+class APIError extends LLMError {
+  statusCode;
+  constructor(message, statusCode) {
+    super(message);
+    this.name = "APIError";
+    this.statusCode = statusCode;
+    Object.setPrototypeOf(this, APIError.prototype);
+  }
+}
+class RateLimitError extends APIError {
+  retryAfter;
+  constructor(message = "Rate limit exceeded", retryAfter) {
+    super(message, 429);
+    this.name = "RateLimitError";
+    this.retryAfter = retryAfter;
+    Object.setPrototypeOf(this, RateLimitError.prototype);
+  }
+}
+class AuthenticationError extends APIError {
+  constructor(message = "Authentication failed") {
+    super(message, 401);
+    this.name = "AuthenticationError";
+    Object.setPrototypeOf(this, AuthenticationError.prototype);
+  }
+}
 class TimeoutError extends LLMError {
   constructor(message = "Request timed out") {
     super(message);
     this.name = "TimeoutError";
     Object.setPrototypeOf(this, TimeoutError.prototype);
+  }
+}
+const DEFAULT_TIMEOUT$2 = 12e4;
+const DEFAULT_MAX_RETRIES$2 = 3;
+class ClaudeClient {
+  client;
+  logger;
+  timeout;
+  maxRetries;
+  constructor(options) {
+    this.client = new Anthropic({
+      apiKey: options.apiKey,
+      baseURL: options.baseUrl,
+      timeout: options.timeout ?? DEFAULT_TIMEOUT$2,
+      maxRetries: options.maxRetries ?? DEFAULT_MAX_RETRIES$2
+    });
+    this.logger = options.logger;
+    this.timeout = options.timeout ?? DEFAULT_TIMEOUT$2;
+    this.maxRetries = options.maxRetries ?? DEFAULT_MAX_RETRIES$2;
+  }
+  /**
+   * Send a chat completion request to Claude
+   */
+  async chat(messages, options) {
+    const systemPrompt = this.extractSystemPrompt(messages);
+    const conversationMessages = this.convertMessages(messages);
+    const tools = options?.tools ? this.convertTools(options.tools) : void 0;
+    try {
+      this.logger?.debug("Sending chat request to Claude", {
+        messageCount: messages.length,
+        hasTools: !!tools,
+        thinking: options?.thinking?.enabled
+      });
+      const response = await this.client.messages.create({
+        model: DEFAULT_CLAUDE_MODEL,
+        max_tokens: options?.maxTokens ?? 4096,
+        temperature: options?.temperature,
+        system: systemPrompt,
+        messages: conversationMessages,
+        tools,
+        stop_sequences: options?.stopSequences,
+        // Extended thinking configuration
+        ...options?.thinking?.enabled && {
+          thinking: {
+            type: "enabled",
+            budget_tokens: options.thinking.budgetTokens
+          }
+        }
+      });
+      return this.parseResponse(response);
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+  /**
+   * Stream a chat completion from Claude
+   */
+  async *chatStream(messages, options) {
+    const systemPrompt = this.extractSystemPrompt(messages);
+    const conversationMessages = this.convertMessages(messages);
+    const tools = options?.tools ? this.convertTools(options.tools) : void 0;
+    try {
+      this.logger?.debug("Starting streaming chat with Claude");
+      const stream = this.client.messages.stream({
+        model: DEFAULT_CLAUDE_MODEL,
+        max_tokens: options?.maxTokens ?? 4096,
+        temperature: options?.temperature,
+        system: systemPrompt,
+        messages: conversationMessages,
+        tools,
+        stop_sequences: options?.stopSequences,
+        ...options?.thinking?.enabled && {
+          thinking: {
+            type: "enabled",
+            budget_tokens: options.thinking.budgetTokens
+          }
+        }
+      });
+      for await (const event of stream) {
+        const chunk = this.parseStreamEvent(event);
+        if (chunk) {
+          yield chunk;
+        }
+      }
+      yield { type: "done" };
+    } catch (error) {
+      yield { type: "error", error: String(error) };
+      throw this.handleError(error);
+    }
+  }
+  /**
+   * Count tokens in content using Claude's tokenizer
+   * Approximation: ~4 characters per token
+   */
+  countTokens(content) {
+    if (!content || content.length === 0) return 0;
+    return Math.ceil(content.length / 4);
+  }
+  // ============================================================================
+  // Private Methods
+  // ============================================================================
+  /**
+   * Extract system prompt from messages
+   */
+  extractSystemPrompt(messages) {
+    const systemMsg = messages.find((msg) => msg.role === "system");
+    return systemMsg?.content;
+  }
+  /**
+   * Convert internal message format to Anthropic format
+   */
+  convertMessages(messages) {
+    return messages.filter((msg) => msg.role !== "system").map((msg) => {
+      if (msg.role === "tool" && msg.toolResults) {
+        return {
+          role: "user",
+          content: msg.toolResults.map((result) => ({
+            type: "tool_result",
+            tool_use_id: result.toolCallId,
+            content: typeof result.result === "string" ? result.result : JSON.stringify(result.result),
+            is_error: result.isError
+          }))
+        };
+      }
+      if (msg.role === "assistant" && msg.toolCalls) {
+        return {
+          role: "assistant",
+          content: [
+            ...msg.content ? [{ type: "text", text: msg.content }] : [],
+            ...msg.toolCalls.map((tc) => ({
+              type: "tool_use",
+              id: tc.id,
+              name: tc.name,
+              input: tc.arguments
+            }))
+          ]
+        };
+      }
+      return {
+        role: msg.role,
+        content: msg.content
+      };
+    });
+  }
+  /**
+   * Convert tool definitions to Anthropic format
+   */
+  convertTools(tools) {
+    return tools.map((tool) => ({
+      name: tool.name,
+      description: tool.description,
+      input_schema: tool.inputSchema
+    }));
+  }
+  /**
+   * Parse Anthropic response to internal format
+   */
+  parseResponse(response) {
+    let content = "";
+    let thinking = "";
+    const toolCalls = [];
+    if (!response.content || !Array.isArray(response.content)) {
+      throw new LLMError(
+        `Invalid API response: expected content array, got ${typeof response.content}. Response: ${JSON.stringify(response).substring(0, 200)}`
+      );
+    }
+    for (const block of response.content) {
+      if (block.type === "text") {
+        content += block.text;
+      } else if (block.type === "thinking") {
+        thinking += block.thinking;
+      } else if (block.type === "tool_use") {
+        toolCalls.push({
+          id: block.id,
+          name: block.name,
+          arguments: block.input
+        });
+      }
+    }
+    const usage = {
+      inputTokens: response.usage.input_tokens,
+      outputTokens: response.usage.output_tokens,
+      totalTokens: response.usage.input_tokens + response.usage.output_tokens
+    };
+    let finishReason = "stop";
+    if (response.stop_reason === "tool_use") {
+      finishReason = "tool_use";
+    } else if (response.stop_reason === "max_tokens") {
+      finishReason = "max_tokens";
+    }
+    return {
+      content,
+      toolCalls: toolCalls.length > 0 ? toolCalls : void 0,
+      usage,
+      finishReason,
+      thinking: thinking || void 0
+    };
+  }
+  /**
+   * Parse stream event to chunk
+   */
+  parseStreamEvent(event) {
+    switch (event.type) {
+      case "content_block_delta":
+        if (event.delta.type === "text_delta") {
+          return { type: "text", content: event.delta.text };
+        }
+        if (event.delta.type === "thinking_delta") {
+          return { type: "thinking", content: event.delta.thinking };
+        }
+        break;
+      case "content_block_start":
+        if (event.content_block.type === "tool_use") {
+          return {
+            type: "tool_use",
+            toolCall: {
+              id: event.content_block.id,
+              name: event.content_block.name,
+              arguments: {}
+            }
+          };
+        }
+        break;
+    }
+    return null;
+  }
+  /**
+   * Handle and convert API errors
+   */
+  handleError(error) {
+    if (error instanceof Anthropic.APIError) {
+      if (error.status === 401) {
+        return new AuthenticationError(error.message);
+      }
+      if (error.status === 429) {
+        const headers = error.headers;
+        const retryAfter = headers?.["retry-after"];
+        return new RateLimitError(
+          error.message,
+          retryAfter ? parseInt(retryAfter, 10) : void 0
+        );
+      }
+      return new APIError(error.message, error.status);
+    }
+    if (error instanceof Error) {
+      if (error.name === "AbortError" || error.message.includes("timeout")) {
+        return new TimeoutError(error.message);
+      }
+      return new LLMError(error.message);
+    }
+    return new LLMError(String(error));
   }
 }
 class CLIError extends LLMError {
@@ -1590,16 +2029,16 @@ You have two options:
   }
 }
 const DEFAULT_CLAUDE_PATH = "claude";
-const DEFAULT_TIMEOUT = 3e5;
-const DEFAULT_MAX_RETRIES = 2;
+const DEFAULT_TIMEOUT$1 = 3e5;
+const DEFAULT_MAX_RETRIES$1 = 2;
 class ClaudeCodeCLIClient {
   config;
   constructor(config = {}) {
     this.config = {
       claudePath: config.claudePath ?? DEFAULT_CLAUDE_PATH,
       workingDirectory: config.workingDirectory ?? process.cwd(),
-      timeout: config.timeout ?? DEFAULT_TIMEOUT,
-      maxRetries: config.maxRetries ?? DEFAULT_MAX_RETRIES,
+      timeout: config.timeout ?? DEFAULT_TIMEOUT$1,
+      maxRetries: config.maxRetries ?? DEFAULT_MAX_RETRIES$1,
       logger: config.logger
     };
   }
@@ -2428,7 +2867,8648 @@ function registerSettingsHandlers() {
     }
   });
 }
+class GeminiAPIError extends Error {
+  statusCode;
+  constructor(message, statusCode) {
+    super(message);
+    this.name = "GeminiAPIError";
+    this.statusCode = statusCode;
+    Object.setPrototypeOf(this, GeminiAPIError.prototype);
+  }
+}
+class GeminiRateLimitError extends GeminiAPIError {
+  retryAfter;
+  constructor(message = "Rate limit exceeded", retryAfter) {
+    super(message, 429);
+    this.name = "GeminiRateLimitError";
+    this.retryAfter = retryAfter;
+    Object.setPrototypeOf(this, GeminiRateLimitError.prototype);
+  }
+}
+class GeminiTimeoutError extends GeminiAPIError {
+  constructor(message = "Request timed out") {
+    super(message);
+    this.name = "GeminiTimeoutError";
+    Object.setPrototypeOf(this, GeminiTimeoutError.prototype);
+  }
+}
+const DEFAULT_TIMEOUT = 12e4;
+class GeminiClient {
+  client;
+  modelName;
+  logger;
+  timeout;
+  constructor(options) {
+    this.client = new GoogleGenAI({ apiKey: options.apiKey });
+    this.modelName = options.model ?? DEFAULT_GEMINI_MODEL;
+    this.logger = options.logger;
+    this.timeout = options.timeout ?? DEFAULT_TIMEOUT;
+  }
+  /**
+   * Send a chat completion request to Gemini
+   */
+  async chat(messages, options) {
+    const contents = this.convertMessages(messages);
+    const systemPrompt = this.extractSystemPrompt(messages);
+    try {
+      this.logger?.debug("Sending chat request to Gemini", {
+        messageCount: messages.length,
+        model: this.modelName
+      });
+      const response = await this.client.models.generateContent({
+        model: this.modelName,
+        contents,
+        config: {
+          systemInstruction: systemPrompt,
+          maxOutputTokens: options?.maxTokens,
+          temperature: options?.temperature,
+          stopSequences: options?.stopSequences,
+          tools: options?.tools ? this.convertTools(options.tools) : void 0
+        }
+      });
+      return this.parseResponse(response);
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+  /**
+   * Stream a chat completion from Gemini
+   */
+  async *chatStream(messages, options) {
+    const contents = this.convertMessages(messages);
+    const systemPrompt = this.extractSystemPrompt(messages);
+    try {
+      this.logger?.debug("Starting streaming chat with Gemini");
+      const response = await this.client.models.generateContentStream({
+        model: this.modelName,
+        contents,
+        config: {
+          systemInstruction: systemPrompt,
+          maxOutputTokens: options?.maxTokens,
+          temperature: options?.temperature,
+          stopSequences: options?.stopSequences,
+          tools: options?.tools ? this.convertTools(options.tools) : void 0
+        }
+      });
+      for await (const chunk of response) {
+        const text2 = chunk.text;
+        if (text2) {
+          yield { type: "text", content: text2 };
+        }
+      }
+      yield { type: "done" };
+    } catch (error) {
+      yield { type: "error", error: String(error) };
+      throw this.handleError(error);
+    }
+  }
+  /**
+   * Count tokens in content
+   * Approximation: ~4 characters per token
+   */
+  countTokens(content) {
+    if (!content || content.length === 0) return 0;
+    return Math.ceil(content.length / 4);
+  }
+  // ============================================================================
+  // Private Methods
+  // ============================================================================
+  /**
+   * Extract system prompt from messages
+   */
+  extractSystemPrompt(messages) {
+    const systemMsg = messages.find((msg) => msg.role === "system");
+    return systemMsg?.content;
+  }
+  /**
+   * Convert internal message format to Gemini format
+   */
+  convertMessages(messages) {
+    return messages.filter((msg) => msg.role !== "system").map((msg) => ({
+      role: msg.role === "assistant" ? "model" : "user",
+      parts: [{ text: msg.content }]
+    }));
+  }
+  /**
+   * Convert tool definitions to Gemini format
+   */
+  convertTools(tools) {
+    return [{
+      functionDeclarations: tools.map((tool) => ({
+        name: tool.name,
+        description: tool.description,
+        parameters: tool.inputSchema
+      }))
+    }];
+  }
+  /**
+   * Parse Gemini response to internal format
+   */
+  parseResponse(response) {
+    const content = response.text ?? "";
+    const usage = {
+      inputTokens: response.usageMetadata?.promptTokenCount ?? 0,
+      outputTokens: response.usageMetadata?.candidatesTokenCount ?? 0,
+      totalTokens: (response.usageMetadata?.promptTokenCount ?? 0) + (response.usageMetadata?.candidatesTokenCount ?? 0)
+    };
+    const finishReason = "stop";
+    return {
+      content,
+      usage,
+      finishReason
+    };
+  }
+  /**
+   * Handle and convert API errors
+   */
+  handleError(error) {
+    if (error instanceof Error) {
+      const message = error.message.toLowerCase();
+      if (message.includes("quota") || message.includes("rate")) {
+        return new GeminiRateLimitError(error.message);
+      }
+      if (message.includes("timeout") || message.includes("timed out")) {
+        return new GeminiTimeoutError(error.message);
+      }
+      return new GeminiAPIError(error.message);
+    }
+    return new GeminiAPIError(String(error));
+  }
+}
+const MODEL_DIMENSIONS = {
+  // Transformers.js models
+  "Xenova/all-MiniLM-L6-v2": 384,
+  "Xenova/all-MiniLM-L12-v2": 384,
+  "Xenova/all-mpnet-base-v2": 768,
+  "Xenova/paraphrase-MiniLM-L6-v2": 384,
+  "Xenova/bge-small-en-v1.5": 384,
+  "Xenova/bge-base-en-v1.5": 768,
+  "Xenova/gte-small": 384,
+  "Xenova/gte-base": 768,
+  "Xenova/e5-small-v2": 384,
+  "Xenova/e5-base-v2": 768,
+  // Short aliases (for convenience)
+  "all-MiniLM-L6-v2": 384,
+  "all-MiniLM-L12-v2": 384,
+  "all-mpnet-base-v2": 768,
+  "bge-small-en-v1.5": 384,
+  "bge-base-en-v1.5": 768,
+  "gte-small": 384,
+  "gte-base": 768,
+  // OpenAI (for reference in fallback scenarios)
+  "text-embedding-3-small": 1536,
+  "text-embedding-3-large": 3072,
+  "text-embedding-ada-002": 1536
+};
+const DEFAULT_LOCAL_MODEL = "Xenova/all-MiniLM-L6-v2";
+const DEFAULT_LOCAL_EMBEDDINGS_CONFIG = {
+  model: DEFAULT_LOCAL_MODEL,
+  dimensions: MODEL_DIMENSIONS[DEFAULT_LOCAL_MODEL],
+  cacheEnabled: true,
+  maxCacheSize: 1e4,
+  batchSize: 32,
+  mockMode: false
+};
+var LocalEmbeddingsErrorCode = /* @__PURE__ */ ((LocalEmbeddingsErrorCode2) => {
+  LocalEmbeddingsErrorCode2["INIT_FAILED"] = "INIT_FAILED";
+  LocalEmbeddingsErrorCode2["MODEL_NOT_FOUND"] = "MODEL_NOT_FOUND";
+  LocalEmbeddingsErrorCode2["DOWNLOAD_FAILED"] = "DOWNLOAD_FAILED";
+  LocalEmbeddingsErrorCode2["INFERENCE_FAILED"] = "INFERENCE_FAILED";
+  LocalEmbeddingsErrorCode2["INPUT_TOO_LONG"] = "INPUT_TOO_LONG";
+  LocalEmbeddingsErrorCode2["NOT_INITIALIZED"] = "NOT_INITIALIZED";
+  LocalEmbeddingsErrorCode2["UNKNOWN"] = "UNKNOWN";
+  return LocalEmbeddingsErrorCode2;
+})(LocalEmbeddingsErrorCode || {});
+class LocalEmbeddingsError extends Error {
+  code;
+  suggestion;
+  cause;
+  constructor(code, message, suggestion, cause) {
+    super(message, { cause });
+    this.name = "LocalEmbeddingsError";
+    this.code = code;
+    this.suggestion = suggestion;
+    this.cause = cause;
+  }
+}
+class LocalEmbeddingsInitError extends LocalEmbeddingsError {
+  constructor(model, cause) {
+    super(
+      LocalEmbeddingsErrorCode.INIT_FAILED,
+      `Failed to initialize local embeddings model '${model}'.
+
+Options:
+1. Check your internet connection (model downloads on first use)
+2. Use a different model in Settings > Embeddings > Model
+3. Use OpenAI API for embeddings:
+   Set OPENAI_API_KEY in your .env file
+`,
+      "Try using OpenAI API as a fallback",
+      cause
+    );
+    this.name = "LocalEmbeddingsInitError";
+  }
+}
+class LocalEmbeddingsNotInitializedError extends LocalEmbeddingsError {
+  constructor() {
+    super(
+      LocalEmbeddingsErrorCode.NOT_INITIALIZED,
+      "LocalEmbeddingsService not initialized. Call initialize() first.",
+      "Call await service.initialize() before using embed()"
+    );
+    this.name = "LocalEmbeddingsNotInitializedError";
+  }
+}
+class LocalEmbeddingsInferenceError extends LocalEmbeddingsError {
+  constructor(message, cause) {
+    super(
+      LocalEmbeddingsErrorCode.INFERENCE_FAILED,
+      `Embedding inference failed: ${message}`,
+      "Try with shorter input text or different model",
+      cause
+    );
+    this.name = "LocalEmbeddingsInferenceError";
+  }
+}
+class LocalEmbeddingsService {
+  // Configuration
+  model;
+  dimensions;
+  cacheEnabled;
+  maxCacheSize;
+  batchSize;
+  mockMode;
+  progressCallback;
+  logger;
+  // State
+  initialized = false;
+  pipeline = null;
+  cache = /* @__PURE__ */ new Map();
+  // Statistics
+  totalEmbeddings = 0;
+  cacheHits = 0;
+  totalLatencyMs = 0;
+  constructor(config = {}) {
+    const merged = { ...DEFAULT_LOCAL_EMBEDDINGS_CONFIG, ...config };
+    this.model = merged.model;
+    this.cacheEnabled = merged.cacheEnabled;
+    this.maxCacheSize = merged.maxCacheSize;
+    this.batchSize = merged.batchSize;
+    this.mockMode = merged.mockMode;
+    this.progressCallback = config.progressCallback;
+    this.logger = config.logger ?? {};
+    this.dimensions = config.dimensions ?? MODEL_DIMENSIONS[this.model] ?? merged.dimensions;
+    this.logger.debug?.("LocalEmbeddingsService created", {
+      model: this.model,
+      dimensions: this.dimensions,
+      mockMode: this.mockMode
+    });
+  }
+  // ==========================================================================
+  // Public API
+  // ==========================================================================
+  /**
+   * Initialize the embeddings pipeline
+   *
+   * Downloads the model on first use if not cached locally.
+   * Safe to call multiple times - subsequent calls are no-ops.
+   *
+   * @throws LocalEmbeddingsInitError if initialization fails
+   */
+  async initialize() {
+    if (this.initialized) {
+      return;
+    }
+    if (this.mockMode) {
+      this.initialized = true;
+      this.logger.info?.("LocalEmbeddingsService initialized in mock mode");
+      return;
+    }
+    try {
+      this.logger.info?.(`Loading model: ${this.model}`, { model: this.model });
+      const { pipeline } = await import("@huggingface/transformers");
+      let lastProgress = 0;
+      const progressHandler = (progress) => {
+        if (progress?.progress !== void 0) {
+          const pct = Math.round(progress.progress);
+          if (pct !== lastProgress) {
+            lastProgress = pct;
+            this.progressCallback?.(pct);
+            this.logger.debug?.(`Model loading: ${pct}%`);
+          }
+        }
+      };
+      this.pipeline = await pipeline("feature-extraction", this.model, {
+        progress_callback: progressHandler
+      });
+      this.initialized = true;
+      this.progressCallback?.(100);
+      this.logger.info?.("LocalEmbeddingsService initialized successfully", {
+        model: this.model,
+        dimensions: this.dimensions
+      });
+    } catch (error) {
+      this.logger.error?.("Failed to initialize LocalEmbeddingsService", {
+        model: this.model,
+        error: String(error)
+      });
+      throw new LocalEmbeddingsInitError(
+        this.model,
+        error instanceof Error ? error : new Error(String(error))
+      );
+    }
+  }
+  /**
+   * Check if local embeddings are available
+   *
+   * Attempts to initialize the service and returns true if successful.
+   * Returns false if initialization fails (e.g., model unavailable).
+   */
+  async isAvailable() {
+    try {
+      await this.initialize();
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  /**
+   * Generate embedding for a single text
+   *
+   * @param text - Input text to embed
+   * @returns Embedding result with vector and metadata
+   * @throws LocalEmbeddingsNotInitializedError if not initialized
+   * @throws LocalEmbeddingsInferenceError if inference fails
+   */
+  async embed(text2) {
+    const startTime = Date.now();
+    if (this.cacheEnabled) {
+      const cached = this.getFromCache(text2);
+      if (cached) {
+        this.cacheHits++;
+        this.totalEmbeddings++;
+        return {
+          embedding: cached,
+          tokenCount: this.estimateTokens(text2),
+          cached: true,
+          model: this.model,
+          latencyMs: Date.now() - startTime
+        };
+      }
+    }
+    let embedding;
+    if (this.mockMode) {
+      embedding = this.generateMockEmbedding(text2);
+    } else {
+      if (!this.initialized) {
+        await this.initialize();
+      }
+      if (!this.pipeline) {
+        throw new LocalEmbeddingsNotInitializedError();
+      }
+      try {
+        const output = await this.pipeline(text2, {
+          pooling: "mean",
+          normalize: true
+        });
+        embedding = Array.from(output.data);
+      } catch (error) {
+        throw new LocalEmbeddingsInferenceError(
+          String(error),
+          error instanceof Error ? error : void 0
+        );
+      }
+    }
+    const latencyMs = Date.now() - startTime;
+    if (this.cacheEnabled) {
+      this.addToCache(text2, embedding);
+    }
+    this.totalEmbeddings++;
+    this.totalLatencyMs += latencyMs;
+    return {
+      embedding,
+      tokenCount: this.estimateTokens(text2),
+      cached: false,
+      model: this.model,
+      latencyMs
+    };
+  }
+  /**
+   * Generate embeddings for multiple texts
+   *
+   * Processes texts in batches for efficiency.
+   * Uses cache when available to skip already-embedded texts.
+   *
+   * @param texts - Array of input texts
+   * @returns Array of embedding results
+   */
+  async embedBatch(texts) {
+    const results = new Array(texts.length);
+    const uncached = [];
+    for (let i = 0; i < texts.length; i++) {
+      const text2 = texts[i];
+      if (this.cacheEnabled) {
+        const cached = this.getFromCache(text2);
+        if (cached) {
+          this.cacheHits++;
+          this.totalEmbeddings++;
+          results[i] = {
+            embedding: cached,
+            tokenCount: this.estimateTokens(text2),
+            cached: true,
+            model: this.model,
+            latencyMs: 0
+          };
+          continue;
+        }
+      }
+      uncached.push({ index: i, text: text2 });
+    }
+    if (uncached.length > 0) {
+      for (let i = 0; i < uncached.length; i += this.batchSize) {
+        const batch = uncached.slice(i, i + this.batchSize);
+        const batchResults = await Promise.all(
+          batch.map(({ text: text2 }) => this.embed(text2))
+        );
+        for (let j = 0; j < batch.length; j++) {
+          results[batch[j].index] = batchResults[j];
+        }
+      }
+    }
+    return results;
+  }
+  /**
+   * Calculate cosine similarity between two embeddings
+   *
+   * @param a - First embedding vector
+   * @param b - Second embedding vector
+   * @returns Similarity score (-1 to 1, higher = more similar)
+   * @throws Error if dimensions don't match
+   */
+  cosineSimilarity(a, b) {
+    if (a.length !== b.length) {
+      throw new Error(
+        `Embedding dimensions must match: got ${a.length} and ${b.length}`
+      );
+    }
+    let dotProduct = 0;
+    let normA = 0;
+    let normB = 0;
+    for (let i = 0; i < a.length; i++) {
+      dotProduct += a[i] * b[i];
+      normA += a[i] * a[i];
+      normB += b[i] * b[i];
+    }
+    const denominator = Math.sqrt(normA) * Math.sqrt(normB);
+    if (denominator === 0) return 0;
+    return dotProduct / denominator;
+  }
+  /**
+   * Find most similar embeddings from a collection
+   *
+   * @param query - Query embedding vector
+   * @param candidates - Array of candidate embedding vectors
+   * @param topK - Number of results to return (default: 10)
+   * @returns Sorted array of indices and similarity scores
+   */
+  findMostSimilar(query, candidates, topK = 10) {
+    const similarities = candidates.map((candidate, index) => ({
+      index,
+      similarity: this.cosineSimilarity(query, candidate)
+    }));
+    similarities.sort((a, b) => b.similarity - a.similarity);
+    return similarities.slice(0, topK);
+  }
+  /**
+   * Get embedding dimension for current model
+   */
+  getDimension() {
+    return this.dimensions;
+  }
+  /**
+   * Clear the embedding cache
+   */
+  clearCache() {
+    this.cache.clear();
+    this.logger.debug?.("Cache cleared");
+  }
+  /**
+   * Get current cache size
+   */
+  getCacheSize() {
+    return this.cache.size;
+  }
+  /**
+   * Get service statistics
+   */
+  getStats() {
+    return {
+      initialized: this.initialized,
+      model: this.model,
+      dimensions: this.dimensions,
+      cacheSize: this.cache.size,
+      cacheHitRate: this.totalEmbeddings > 0 ? this.cacheHits / this.totalEmbeddings : 0,
+      totalEmbeddings: this.totalEmbeddings,
+      cacheHits: this.cacheHits,
+      averageLatencyMs: this.totalEmbeddings > 0 ? this.totalLatencyMs / this.totalEmbeddings : 0
+    };
+  }
+  /**
+   * Get the model name
+   */
+  getModel() {
+    return this.model;
+  }
+  /**
+   * Check if service is initialized
+   */
+  isInitialized() {
+    return this.initialized;
+  }
+  // ==========================================================================
+  // Private Methods
+  // ==========================================================================
+  /**
+   * Generate a deterministic mock embedding for testing
+   * Uses a hash-based approach to ensure same input = same output
+   */
+  generateMockEmbedding(text2) {
+    const embedding = new Array(this.dimensions);
+    let hash = 0;
+    for (let i = 0; i < text2.length; i++) {
+      const char = text2.charCodeAt(i);
+      hash = (hash << 5) - hash + char;
+      hash = hash & hash;
+    }
+    for (let i = 0; i < this.dimensions; i++) {
+      const seed = hash + i * 1234;
+      embedding[i] = Math.sin(seed * 1e-3) * 0.1;
+    }
+    let norm = 0;
+    for (let i = 0; i < this.dimensions; i++) {
+      norm += embedding[i] * embedding[i];
+    }
+    norm = Math.sqrt(norm);
+    if (norm > 0) {
+      for (let i = 0; i < this.dimensions; i++) {
+        embedding[i] = embedding[i] / norm;
+      }
+    }
+    return embedding;
+  }
+  /**
+   * Generate cache key for text
+   */
+  getCacheKey(text2) {
+    let hash = 0;
+    for (let i = 0; i < text2.length; i++) {
+      const char = text2.charCodeAt(i);
+      hash = (hash << 5) - hash + char;
+      hash = hash & hash;
+    }
+    return `${this.model}:${hash}`;
+  }
+  /**
+   * Add embedding to cache with LRU eviction
+   * FIX: Implement true LRU - delete and re-add on existing entry to maintain order
+   */
+  addToCache(text2, embedding) {
+    const cacheKey = this.getCacheKey(text2);
+    if (this.cache.has(cacheKey)) {
+      this.cache.delete(cacheKey);
+    }
+    if (this.cache.size >= this.maxCacheSize) {
+      const firstKey = this.cache.keys().next().value;
+      if (firstKey) {
+        this.cache.delete(firstKey);
+      }
+    }
+    this.cache.set(cacheKey, embedding);
+  }
+  /**
+   * Get embedding from cache with LRU refresh
+   * FIX: Move to end (most recently used) on access
+   */
+  getFromCache(text2) {
+    const cacheKey = this.getCacheKey(text2);
+    const embedding = this.cache.get(cacheKey);
+    if (embedding) {
+      this.cache.delete(cacheKey);
+      this.cache.set(cacheKey, embedding);
+    }
+    return embedding;
+  }
+  /**
+   * Estimate token count for text
+   * Rough approximation: ~4 characters per token
+   */
+  estimateTokens(text2) {
+    return Math.ceil(text2.length / 4);
+  }
+}
+const DEFAULT_MODEL = "text-embedding-3-small";
+const DEFAULT_BATCH_SIZE = 100;
+const DEFAULT_MAX_RETRIES = 3;
+const EMBEDDING_DIMENSION = 1536;
+class EmbeddingsService {
+  client = null;
+  model;
+  mockMode;
+  maxRetries;
+  batchSize;
+  cache;
+  constructor(options) {
+    this.model = options.model ?? DEFAULT_MODEL;
+    this.mockMode = options.mockMode ?? false;
+    this.maxRetries = options.maxRetries ?? DEFAULT_MAX_RETRIES;
+    this.batchSize = options.batchSize ?? DEFAULT_BATCH_SIZE;
+    this.cache = /* @__PURE__ */ new Map();
+    if (!this.mockMode) {
+      this.client = new OpenAI({
+        apiKey: options.apiKey,
+        maxRetries: this.maxRetries
+      });
+    }
+  }
+  /**
+   * Generate embedding for a single text
+   */
+  async embed(text2) {
+    const cacheKey = this.getCacheKey(text2);
+    const cached = this.cache.get(cacheKey);
+    if (cached) {
+      return {
+        embedding: cached,
+        tokenCount: this.estimateTokens(text2)
+      };
+    }
+    let embedding;
+    if (this.mockMode) {
+      embedding = this.generateMockEmbedding(text2);
+    } else {
+      embedding = await this.callAPI(text2);
+    }
+    this.cache.set(cacheKey, embedding);
+    return {
+      embedding,
+      tokenCount: this.estimateTokens(text2)
+    };
+  }
+  /**
+   * Generate embeddings for multiple texts
+   */
+  async embedBatch(texts) {
+    const results = [];
+    const uncached = [];
+    for (let i = 0; i < texts.length; i++) {
+      const text2 = texts[i];
+      const cacheKey = this.getCacheKey(text2);
+      const cached = this.cache.get(cacheKey);
+      if (cached) {
+        results[i] = {
+          embedding: cached,
+          tokenCount: this.estimateTokens(text2)
+        };
+      } else {
+        uncached.push({ index: i, text: text2 });
+      }
+    }
+    if (uncached.length > 0) {
+      for (let i = 0; i < uncached.length; i += this.batchSize) {
+        const batch = uncached.slice(i, i + this.batchSize);
+        const batchTexts = batch.map((b) => b.text);
+        let embeddings;
+        if (this.mockMode) {
+          embeddings = batchTexts.map((t) => this.generateMockEmbedding(t));
+        } else {
+          embeddings = await this.callBatchAPI(batchTexts);
+        }
+        for (let j = 0; j < batch.length; j++) {
+          const { index, text: text2 } = batch[j];
+          const embedding = embeddings[j];
+          this.cache.set(this.getCacheKey(text2), embedding);
+          results[index] = {
+            embedding,
+            tokenCount: this.estimateTokens(text2)
+          };
+        }
+      }
+    }
+    return results;
+  }
+  /**
+   * Calculate cosine similarity between two embeddings
+   */
+  cosineSimilarity(a, b) {
+    if (a.length !== b.length) {
+      throw new Error("Embedding dimensions must match");
+    }
+    let dotProduct = 0;
+    let normA = 0;
+    let normB = 0;
+    for (let i = 0; i < a.length; i++) {
+      dotProduct += a[i] * b[i];
+      normA += a[i] * a[i];
+      normB += b[i] * b[i];
+    }
+    const denominator = Math.sqrt(normA) * Math.sqrt(normB);
+    if (denominator === 0) return 0;
+    return dotProduct / denominator;
+  }
+  /**
+   * Find most similar embeddings from a collection
+   */
+  findMostSimilar(query, candidates, topK = 10) {
+    const similarities = candidates.map((candidate, index) => ({
+      index,
+      similarity: this.cosineSimilarity(query, candidate)
+    }));
+    similarities.sort((a, b) => b.similarity - a.similarity);
+    return similarities.slice(0, topK);
+  }
+  /**
+   * Get embedding dimension
+   */
+  getDimension() {
+    return EMBEDDING_DIMENSION;
+  }
+  /**
+   * Clear the embedding cache
+   */
+  clearCache() {
+    this.cache.clear();
+  }
+  /**
+   * Get cache size
+   */
+  getCacheSize() {
+    return this.cache.size;
+  }
+  // ============================================================================
+  // Private Methods
+  // ============================================================================
+  /**
+   * Call OpenAI API for single embedding
+   */
+  async callAPI(text2) {
+    if (!this.client) {
+      throw new Error("OpenAI client not initialized");
+    }
+    const response = await this.client.embeddings.create({
+      model: this.model,
+      input: text2
+    });
+    return response.data[0].embedding;
+  }
+  /**
+   * Call OpenAI API for batch embeddings
+   */
+  async callBatchAPI(texts) {
+    if (!this.client) {
+      throw new Error("OpenAI client not initialized");
+    }
+    const response = await this.client.embeddings.create({
+      model: this.model,
+      input: texts
+    });
+    return response.data.map((d) => d.embedding);
+  }
+  /**
+   * Generate a deterministic mock embedding for testing
+   * Uses a hash-based approach to ensure same input = same output
+   */
+  generateMockEmbedding(text2) {
+    const embedding = new Array(EMBEDDING_DIMENSION);
+    let hash = 0;
+    for (let i = 0; i < text2.length; i++) {
+      const char = text2.charCodeAt(i);
+      hash = (hash << 5) - hash + char;
+      hash = hash & hash;
+    }
+    for (let i = 0; i < EMBEDDING_DIMENSION; i++) {
+      const seed = hash + i * 1234;
+      embedding[i] = Math.sin(seed * 1e-3) * 0.1;
+    }
+    let norm = 0;
+    for (let i = 0; i < EMBEDDING_DIMENSION; i++) {
+      norm += embedding[i] * embedding[i];
+    }
+    norm = Math.sqrt(norm);
+    if (norm > 0) {
+      for (let i = 0; i < EMBEDDING_DIMENSION; i++) {
+        embedding[i] = embedding[i] / norm;
+      }
+    }
+    return embedding;
+  }
+  /**
+   * Generate cache key for text
+   */
+  getCacheKey(text2) {
+    let hash = 0;
+    for (let i = 0; i < text2.length; i++) {
+      const char = text2.charCodeAt(i);
+      hash = (hash << 5) - hash + char;
+      hash = hash & hash;
+    }
+    return `${this.model}:${hash}`;
+  }
+  /**
+   * Estimate token count for text
+   * Rough approximation: ~4 characters per token
+   */
+  estimateTokens(text2) {
+    return Math.ceil(text2.length / 4);
+  }
+}
+class LLMBackendError extends LLMError {
+  /** The provider that failed: 'claude', 'gemini', or 'embeddings' */
+  provider;
+  /** Whether the error is recoverable (can fall back to another backend) */
+  recoverable;
+  constructor(message, provider, recoverable = false) {
+    super(message);
+    this.name = "LLMBackendError";
+    this.provider = provider;
+    this.recoverable = recoverable;
+    Object.setPrototypeOf(this, LLMBackendError.prototype);
+  }
+}
+const API_KEY_DETAILS = {
+  claude: {
+    name: "Claude",
+    envVariable: "ANTHROPIC_API_KEY",
+    getKeyUrl: "https://console.anthropic.com/settings/keys",
+    cliSettingsPath: "Settings → LLM Providers → Claude → Use CLI"
+  },
+  gemini: {
+    name: "Gemini",
+    envVariable: "GOOGLE_API_KEY",
+    getKeyUrl: "https://aistudio.google.com/apikey",
+    cliSettingsPath: "Settings → LLM Providers → Gemini → Use CLI"
+  },
+  embeddings: {
+    name: "OpenAI Embeddings",
+    envVariable: "OPENAI_API_KEY",
+    getKeyUrl: "https://platform.openai.com/api-keys",
+    cliSettingsPath: "Settings → Embeddings → Use Local"
+  }
+};
+class APIKeyMissingError extends LLMBackendError {
+  /** Environment variable that should contain the API key */
+  envVariable;
+  /** URL to get an API key */
+  getKeyUrl;
+  /** Path in Settings UI to switch to CLI backend */
+  cliSettingsPath;
+  constructor(provider) {
+    const details = API_KEY_DETAILS[provider];
+    const message = `${details.name} API key required.
+
+You have two options:
+
+━━━ OPTION 1: Set API Key ━━━
+  Set ${details.envVariable} in your .env file
+  Get key: ${details.getKeyUrl}
+
+━━━ OPTION 2: Use CLI/Local ━━━
+  ${details.cliSettingsPath}
+  (No API key required)
+`;
+    super(message, provider, true);
+    this.name = "APIKeyMissingError";
+    this.envVariable = details.envVariable;
+    this.getKeyUrl = details.getKeyUrl;
+    this.cliSettingsPath = details.cliSettingsPath;
+    Object.setPrototypeOf(this, APIKeyMissingError.prototype);
+  }
+}
+const byteToHex = [];
+for (let i = 0; i < 256; ++i) {
+  byteToHex.push((i + 256).toString(16).slice(1));
+}
+function unsafeStringify(arr, offset = 0) {
+  return (byteToHex[arr[offset + 0]] + byteToHex[arr[offset + 1]] + byteToHex[arr[offset + 2]] + byteToHex[arr[offset + 3]] + "-" + byteToHex[arr[offset + 4]] + byteToHex[arr[offset + 5]] + "-" + byteToHex[arr[offset + 6]] + byteToHex[arr[offset + 7]] + "-" + byteToHex[arr[offset + 8]] + byteToHex[arr[offset + 9]] + "-" + byteToHex[arr[offset + 10]] + byteToHex[arr[offset + 11]] + byteToHex[arr[offset + 12]] + byteToHex[arr[offset + 13]] + byteToHex[arr[offset + 14]] + byteToHex[arr[offset + 15]]).toLowerCase();
+}
+const rnds8Pool = new Uint8Array(256);
+let poolPtr = rnds8Pool.length;
+function rng() {
+  if (poolPtr > rnds8Pool.length - 16) {
+    randomFillSync(rnds8Pool);
+    poolPtr = 0;
+  }
+  return rnds8Pool.slice(poolPtr, poolPtr += 16);
+}
+const native = { randomUUID };
+function _v4(options, buf, offset) {
+  options = options || {};
+  const rnds = options.random ?? options.rng?.() ?? rng();
+  if (rnds.length < 16) {
+    throw new Error("Random bytes length must be >= 16");
+  }
+  rnds[6] = rnds[6] & 15 | 64;
+  rnds[8] = rnds[8] & 63 | 128;
+  return unsafeStringify(rnds);
+}
+function v4(options, buf, offset) {
+  if (native.randomUUID && true && !options) {
+    return native.randomUUID();
+  }
+  return _v4(options);
+}
+const DECOMPOSITION_SYSTEM_PROMPT = `You are a senior technical architect. Your job is to decompose features into atomic, implementable tasks.
+
+## CRITICAL CONSTRAINTS
+1. **30-MINUTE RULE**: Every task MUST be completable in 30 minutes or less. This is NON-NEGOTIABLE.
+2. **5-FILE LIMIT**: Each task should modify at most 5 files.
+3. **ATOMIC**: Each task must be independently testable and verifiable.
+4. **DEPENDENCIES**: Explicitly declare dependencies between tasks using task names.
+
+## OUTPUT FORMAT
+Respond with ONLY a valid JSON array (no markdown code blocks, no explanation):
+[
+  {
+    "name": "Short task name",
+    "description": "Detailed description of what to implement",
+    "files": ["src/path/to/file.ts"],
+    "testCriteria": ["Criterion 1", "Criterion 2"],
+    "dependsOn": [],
+    "estimatedMinutes": 20
+  }
+]
+
+## DECOMPOSITION STRATEGY
+1. Start with types/interfaces (foundation)
+2. Then infrastructure/utilities
+3. Then core implementation
+4. Then integration/wiring
+5. Finally tests if not included in each task
+
+## SIZE GUIDELINES
+- atomic: 1-10 minutes (single function, small fix)
+- small: 10-20 minutes (single file, simple feature)
+- medium: 20-30 minutes (multi-file, moderate complexity)
+- Never create tasks over 30 minutes - split them instead`;
+const SPLIT_SYSTEM_PROMPT = `You are splitting an oversized task into smaller, atomic tasks.
+
+## RULES
+1. Each resulting task must be under 30 minutes
+2. Maintain logical dependencies between split tasks
+3. Preserve all functionality from the original task
+4. Keep file changes focused per task
+
+## OUTPUT FORMAT
+Respond with ONLY a valid JSON array (no markdown code blocks, no explanation):
+[
+  {
+    "name": "Short task name",
+    "description": "Detailed description",
+    "files": ["src/path/to/file.ts"],
+    "testCriteria": ["Criterion 1"],
+    "dependsOn": [],
+    "estimatedMinutes": 20
+  }
+]`;
+class TaskDecomposer {
+  llmClient;
+  config;
+  constructor(llmClient, config) {
+    this.llmClient = llmClient;
+    this.config = {
+      maxTaskMinutes: config?.maxTaskMinutes ?? 30,
+      maxFilesPerTask: config?.maxFilesPerTask ?? 5,
+      verbose: config?.verbose ?? false
+    };
+  }
+  /**
+   * Decompose a feature description into atomic tasks
+   * This is the main method used by NexusCoordinator
+   */
+  async decompose(featureDescription, options) {
+    const prompt = this.buildDecompositionPrompt(featureDescription, options);
+    const response = await this.llmClient.chat(
+      [
+        { role: "system", content: DECOMPOSITION_SYSTEM_PROMPT },
+        { role: "user", content: prompt }
+      ],
+      {
+        maxTokens: 4e3,
+        temperature: 0.3
+        // Lower temperature for more consistent structure
+      }
+    );
+    const rawTasks = this.parseJsonResponse(response.content);
+    const tasks2 = rawTasks.map(
+      (raw, index) => this.createPlanningTask(raw, index, options)
+    );
+    const validatedTasks = await this.validateAndSplitTasks(tasks2);
+    const resolvedTasks = this.resolveInternalDependencies(validatedTasks);
+    if (this.config.verbose) {
+      console.log(`Decomposed feature into ${resolvedTasks.length} tasks`);
+    }
+    return resolvedTasks;
+  }
+  /**
+   * Validate that a task meets size requirements
+   */
+  validateTaskSize(task) {
+    const errors = [];
+    const warnings = [];
+    if (task.estimatedMinutes > this.config.maxTaskMinutes) {
+      errors.push(
+        `Task exceeds ${this.config.maxTaskMinutes}-minute limit (estimated: ${task.estimatedMinutes} min)`
+      );
+    }
+    if (task.files.length > this.config.maxFilesPerTask) {
+      errors.push(
+        `Task modifies too many files (${task.files.length}, max ${this.config.maxFilesPerTask})`
+      );
+    }
+    if (!task.testCriteria || task.testCriteria.length === 0) {
+      warnings.push("Task has no test criteria defined");
+    }
+    if (!task.description || task.description.length < 10) {
+      warnings.push("Task description is too brief");
+    }
+    return {
+      valid: errors.length === 0,
+      errors,
+      warnings
+    };
+  }
+  /**
+   * Split an oversized task into smaller tasks
+   */
+  async splitTask(task) {
+    const prompt = this.buildSplitPrompt(task);
+    const response = await this.llmClient.chat(
+      [
+        { role: "system", content: SPLIT_SYSTEM_PROMPT },
+        { role: "user", content: prompt }
+      ],
+      {
+        maxTokens: 2e3,
+        temperature: 0.3
+      }
+    );
+    const rawTasks = this.parseJsonResponse(response.content);
+    return rawTasks.map(
+      (raw, index) => this.createPlanningTask(raw, index, void 0, task.id)
+    );
+  }
+  /**
+   * Estimate time for a task based on heuristics
+   */
+  estimateTime(task) {
+    let estimate = 10;
+    estimate += task.files.length * 5;
+    const wordCount = task.description.split(/\s+/).length;
+    estimate += Math.min(wordCount / 10, 10);
+    if (task.testCriteria.length > 0) {
+      estimate += task.testCriteria.length * 2;
+    }
+    const complexity = this.assessComplexity(task);
+    if (complexity === "high") {
+      estimate *= 1.5;
+    } else if (complexity === "low") {
+      estimate *= 0.7;
+    }
+    return Math.min(Math.round(estimate), this.config.maxTaskMinutes);
+  }
+  // ============================================================================
+  // Private Methods
+  // ============================================================================
+  /**
+   * Build the decomposition prompt
+   */
+  buildDecompositionPrompt(featureDescription, options) {
+    let prompt = `Decompose this feature into atomic tasks:
+
+`;
+    prompt += `## Feature Description
+${featureDescription}
+
+`;
+    if (options?.contextFiles && options.contextFiles.length > 0) {
+      prompt += `## Context Files
+`;
+      options.contextFiles.forEach((file) => {
+        prompt += `- ${file}
+`;
+      });
+      prompt += "\n";
+    }
+    if (options?.useTDD) {
+      prompt += `## Approach
+Use TDD (Test-Driven Development) - write tests first.
+
+`;
+    }
+    prompt += `Remember: Each task MUST be under ${options?.maxTaskMinutes ?? 30} minutes. Split larger tasks.`;
+    return prompt;
+  }
+  /**
+   * Build the split prompt for oversized tasks
+   */
+  buildSplitPrompt(task) {
+    return `This task is too large (${task.estimatedMinutes} minutes, max 30). Split it into smaller tasks:
+
+Task: ${task.name}
+Description: ${task.description}
+Files: ${task.files.join(", ")}
+Test Criteria: ${task.testCriteria.join("; ")}
+
+Return a JSON array of smaller tasks, each under 30 minutes.`;
+  }
+  /**
+   * Parse JSON response from LLM, handling various formats
+   */
+  parseJsonResponse(response) {
+    try {
+      let jsonString = response.trim();
+      const codeBlockMatch = jsonString.match(/```(?:json)?\s*([\s\S]*?)```/);
+      if (codeBlockMatch) {
+        jsonString = codeBlockMatch[1].trim();
+      }
+      const arrayMatch = jsonString.match(/\[[\s\S]*\]/);
+      if (!arrayMatch) {
+        throw new Error("No JSON array found in response");
+      }
+      return JSON.parse(arrayMatch[0]);
+    } catch (error) {
+      throw new Error(
+        `Failed to parse decomposition response: ${error instanceof Error ? error.message : "Unknown error"}`
+      );
+    }
+  }
+  /**
+   * Create a PlanningTask from raw LLM output
+   */
+  createPlanningTask(raw, index, options, parentId) {
+    const id = v4();
+    const estimatedMinutes = raw.estimatedMinutes ?? this.estimateTimeFromRaw(raw);
+    return {
+      id,
+      name: raw.name || `Task ${index + 1}`,
+      description: raw.description || "",
+      type: options?.useTDD ? "tdd" : "auto",
+      size: this.categorizeSize(estimatedMinutes),
+      estimatedMinutes,
+      dependsOn: raw.dependsOn || [],
+      testCriteria: raw.testCriteria || [],
+      files: raw.files || [],
+      // Store parentId for reference if this was split from another task
+      ...parentId && { parentId }
+    };
+  }
+  /**
+   * Estimate time from raw task data (before full conversion)
+   */
+  estimateTimeFromRaw(raw) {
+    let estimate = 10;
+    estimate += (raw.files?.length || 1) * 5;
+    const wordCount = (raw.description || "").split(/\s+/).length;
+    estimate += Math.min(wordCount / 10, 10);
+    return Math.min(Math.round(estimate), this.config.maxTaskMinutes);
+  }
+  /**
+   * Categorize task size based on estimated minutes
+   */
+  categorizeSize(minutes) {
+    if (minutes <= 10) return "atomic";
+    if (minutes <= 20) return "small";
+    if (minutes <= 30) return "medium";
+    return "large";
+  }
+  /**
+   * Assess task complexity based on keywords
+   */
+  assessComplexity(task) {
+    const text2 = `${task.name} ${task.description}`.toLowerCase();
+    const highIndicators = [
+      "algorithm",
+      "optimize",
+      "refactor",
+      "complex",
+      "integration",
+      "security",
+      "authentication",
+      "encryption",
+      "migration",
+      "state machine",
+      "concurrent",
+      "parallel",
+      "async",
+      "distributed"
+    ];
+    const lowIndicators = [
+      "rename",
+      "move",
+      "delete",
+      "simple",
+      "basic",
+      "typo",
+      "comment",
+      "format",
+      "lint",
+      "config",
+      "update dependency",
+      "add import"
+    ];
+    const highCount = highIndicators.filter((i) => text2.includes(i)).length;
+    const lowCount = lowIndicators.filter((i) => text2.includes(i)).length;
+    if (highCount >= 2) return "high";
+    if (lowCount >= 2) return "low";
+    return "medium";
+  }
+  /**
+   * Validate all tasks and split any that are too large
+   */
+  async validateAndSplitTasks(tasks2) {
+    const result = [];
+    for (const task of tasks2) {
+      const validation = this.validateTaskSize(task);
+      if (validation.valid) {
+        result.push(task);
+      } else if (task.estimatedMinutes > this.config.maxTaskMinutes) {
+        if (this.config.verbose) {
+          console.log(
+            `Splitting oversized task "${task.name}" (${task.estimatedMinutes} min)`
+          );
+        }
+        const splitTasks = await this.splitTask(task);
+        result.push(...splitTasks);
+      } else {
+        if (this.config.verbose) {
+          console.warn(
+            `Task "${task.name}" has issues: ${validation.errors.join(", ")}`
+          );
+        }
+        result.push(task);
+      }
+    }
+    return result;
+  }
+  /**
+   * Resolve internal dependencies (convert task names to IDs)
+   */
+  resolveInternalDependencies(tasks2) {
+    const nameToId = /* @__PURE__ */ new Map();
+    for (const task of tasks2) {
+      nameToId.set(task.name.toLowerCase().trim(), task.id);
+    }
+    return tasks2.map((task) => ({
+      ...task,
+      dependsOn: task.dependsOn.map((dep) => {
+        const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (uuidPattern.test(dep)) return dep;
+        const resolvedId = nameToId.get(dep.toLowerCase().trim());
+        if (resolvedId) return resolvedId;
+        if (this.config.verbose) {
+          console.warn(`Could not resolve dependency "${dep}" for task "${task.name}"`);
+        }
+        return dep;
+      })
+    }));
+  }
+}
+class DependencyResolver {
+  config;
+  constructor(config) {
+    this.config = {
+      verbose: config?.verbose ?? false,
+      maxWaveDepth: config?.maxWaveDepth ?? 100
+    };
+  }
+  /**
+   * Calculate execution waves from tasks
+   * Tasks in the same wave can be executed in parallel
+   */
+  calculateWaves(tasks2) {
+    const waves = [];
+    const completed = /* @__PURE__ */ new Set();
+    const remaining = new Set(tasks2.map((t) => t.id));
+    const taskMap = new Map(tasks2.map((t) => [t.id, t]));
+    let waveNumber = 0;
+    while (remaining.size > 0 && waveNumber < this.config.maxWaveDepth) {
+      const waveTaskIds = [];
+      for (const taskId of Array.from(remaining)) {
+        const task = taskMap.get(taskId);
+        const deps = task.dependsOn || [];
+        const allDepsSatisfied = deps.every(
+          (d) => completed.has(d) || !taskMap.has(d)
+        );
+        if (allDepsSatisfied) {
+          waveTaskIds.push(taskId);
+        }
+      }
+      if (waveTaskIds.length === 0 && remaining.size > 0) {
+        if (this.config.verbose) {
+          console.warn(
+            `Circular dependency detected - breaking cycle with first remaining task`
+          );
+        }
+        const first = remaining.values().next().value;
+        if (first !== void 0) {
+          waveTaskIds.push(first);
+        }
+      }
+      if (waveTaskIds.length === 0) {
+        break;
+      }
+      const waveTasks = waveTaskIds.map((id) => taskMap.get(id));
+      const estimatedMinutes = Math.max(
+        ...waveTasks.map((t) => t.estimatedMinutes || 30)
+      );
+      waves.push({
+        id: waveNumber,
+        tasks: waveTasks,
+        estimatedMinutes
+      });
+      for (const id of waveTaskIds) {
+        completed.add(id);
+        remaining.delete(id);
+      }
+      waveNumber++;
+    }
+    if (this.config.verbose) {
+      console.log(`Calculated ${waves.length} execution waves`);
+    }
+    return waves;
+  }
+  /**
+   * Get topologically sorted task order using Kahn's algorithm
+   * @throws Error if circular dependency is detected
+   */
+  topologicalSort(tasks2) {
+    const graph = /* @__PURE__ */ new Map();
+    const inDegree = /* @__PURE__ */ new Map();
+    const taskMap = /* @__PURE__ */ new Map();
+    for (const task of tasks2) {
+      taskMap.set(task.id, task);
+      graph.set(task.id, []);
+      inDegree.set(task.id, 0);
+    }
+    for (const task of tasks2) {
+      for (const dep of task.dependsOn || []) {
+        if (taskMap.has(dep)) {
+          graph.get(dep).push(task.id);
+          inDegree.set(task.id, (inDegree.get(task.id) || 0) + 1);
+        }
+      }
+    }
+    const queue = [];
+    const result = [];
+    for (const [id, degree] of Array.from(inDegree)) {
+      if (degree === 0) {
+        queue.push(id);
+      }
+    }
+    while (queue.length > 0) {
+      const current = queue.shift();
+      result.push(taskMap.get(current));
+      for (const neighbor of graph.get(current) || []) {
+        const newDegree = (inDegree.get(neighbor) || 1) - 1;
+        inDegree.set(neighbor, newDegree);
+        if (newDegree === 0) {
+          queue.push(neighbor);
+        }
+      }
+    }
+    if (result.length !== tasks2.length) {
+      const remaining = tasks2.filter((t) => !result.find((r) => r.id === t.id));
+      throw new Error(
+        `Circular dependency detected involving: ${remaining.map((t) => t.name).join(", ")}`
+      );
+    }
+    if (this.config.verbose) {
+      console.log(`Topological sort complete: ${result.length} tasks`);
+    }
+    return result;
+  }
+  /**
+   * Check for circular dependencies
+   */
+  hasCircularDependency(tasks2) {
+    try {
+      this.topologicalSort(tasks2);
+      return false;
+    } catch {
+      return true;
+    }
+  }
+  /**
+   * Detect circular dependency cycles using DFS
+   */
+  detectCycles(tasks2) {
+    const cycles = [];
+    const taskMap = /* @__PURE__ */ new Map();
+    const visited = /* @__PURE__ */ new Set();
+    const recursionStack = /* @__PURE__ */ new Set();
+    const path = [];
+    for (const task of tasks2) {
+      taskMap.set(task.id, task);
+    }
+    const dfs = (taskId) => {
+      visited.add(taskId);
+      recursionStack.add(taskId);
+      path.push(taskId);
+      const task = taskMap.get(taskId);
+      for (const dep of task?.dependsOn || []) {
+        if (!taskMap.has(dep)) continue;
+        if (!visited.has(dep)) {
+          dfs(dep);
+        } else if (recursionStack.has(dep)) {
+          const cycleStart = path.indexOf(dep);
+          const cyclePath = path.slice(cycleStart);
+          cycles.push({
+            taskIds: [...cyclePath]
+          });
+        }
+      }
+      path.pop();
+      recursionStack.delete(taskId);
+    };
+    for (const task of tasks2) {
+      if (!visited.has(task.id)) {
+        dfs(task.id);
+      }
+    }
+    if (this.config.verbose && cycles.length > 0) {
+      console.warn(`Detected ${cycles.length} circular dependency cycles`);
+    }
+    return cycles;
+  }
+  /**
+   * Get all dependencies for a task (transitive)
+   * Returns all task IDs that must be completed before this task
+   */
+  getAllDependencies(taskId, tasks2) {
+    const taskMap = new Map(tasks2.map((t) => [t.id, t]));
+    const allDeps = /* @__PURE__ */ new Set();
+    const visited = /* @__PURE__ */ new Set();
+    const collectDeps = (id) => {
+      if (visited.has(id)) return;
+      visited.add(id);
+      const task = taskMap.get(id);
+      if (!task) return;
+      for (const dep of task.dependsOn || []) {
+        if (taskMap.has(dep)) {
+          allDeps.add(dep);
+          collectDeps(dep);
+        }
+      }
+    };
+    collectDeps(taskId);
+    return Array.from(allDeps);
+  }
+  /**
+   * Get direct dependents of a task
+   * Returns tasks that directly depend on the given task
+   */
+  getDependents(taskId, tasks2) {
+    return tasks2.filter((task) => task.dependsOn?.includes(taskId));
+  }
+  /**
+   * Get the critical path (longest chain of dependencies by time)
+   * The critical path determines the minimum total execution time
+   */
+  getCriticalPath(tasks2) {
+    const taskMap = new Map(tasks2.map((t) => [t.id, t]));
+    const memo = /* @__PURE__ */ new Map();
+    const getLongestPath = (taskId) => {
+      if (memo.has(taskId)) return memo.get(taskId);
+      const task = taskMap.get(taskId);
+      if (!task) return { path: [], time: 0 };
+      const deps = task.dependsOn || [];
+      if (deps.length === 0) {
+        const result2 = { path: [task], time: task.estimatedMinutes || 0 };
+        memo.set(taskId, result2);
+        return result2;
+      }
+      let longestDepResult = { path: [], time: 0 };
+      for (const dep of deps) {
+        if (!taskMap.has(dep)) continue;
+        const depResult = getLongestPath(dep);
+        if (depResult.time > longestDepResult.time) {
+          longestDepResult = depResult;
+        }
+      }
+      const result = {
+        path: [...longestDepResult.path, task],
+        time: longestDepResult.time + (task.estimatedMinutes || 0)
+      };
+      memo.set(taskId, result);
+      return result;
+    };
+    let criticalResult = { path: [], time: 0 };
+    for (const task of tasks2) {
+      const result = getLongestPath(task.id);
+      if (result.time > criticalResult.time) {
+        criticalResult = result;
+      }
+    }
+    if (this.config.verbose) {
+      console.log(
+        `Critical path: ${criticalResult.path.length} tasks, ${criticalResult.time} minutes`
+      );
+    }
+    return criticalResult.path;
+  }
+  /**
+   * Get the next available tasks given completed task IDs
+   */
+  getNextAvailable(tasks2, completedIds) {
+    const completed = new Set(completedIds);
+    const taskMap = new Map(tasks2.map((t) => [t.id, t]));
+    const pending = tasks2.filter((t) => !completed.has(t.id));
+    return pending.filter((task) => {
+      const deps = task.dependsOn || [];
+      return deps.every((d) => completed.has(d) || !taskMap.has(d));
+    });
+  }
+  /**
+   * Validate the dependency graph
+   * Returns validation issues found
+   */
+  validate(tasks2) {
+    const issues = [];
+    const taskIds = new Set(tasks2.map((t) => t.id));
+    for (const task of tasks2) {
+      if (task.dependsOn?.includes(task.id)) {
+        issues.push(`Task "${task.name}" depends on itself`);
+      }
+    }
+    for (const task of tasks2) {
+      for (const dep of task.dependsOn || []) {
+        if (!taskIds.has(dep)) {
+          if (this.config.verbose) {
+            console.warn(
+              `Task "${task.name}" depends on unknown task "${dep}" (may be external)`
+            );
+          }
+        }
+      }
+    }
+    const cycles = this.detectCycles(tasks2);
+    if (cycles.length > 0) {
+      for (const cycle of cycles) {
+        const taskNames = cycle.taskIds.map((id) => tasks2.find((t) => t.id === id)?.name || id).join(" -> ");
+        issues.push(`Circular dependency: ${taskNames}`);
+      }
+    }
+    return {
+      valid: issues.length === 0,
+      issues
+    };
+  }
+}
+class TimeEstimator {
+  factors;
+  historicalData;
+  verbose;
+  maxHistoryPerCategory;
+  constructor(config) {
+    this.factors = {
+      fileWeight: config?.factors?.fileWeight ?? 5,
+      complexityMultiplier: config?.factors?.complexityMultiplier ?? 1.5,
+      testWeight: config?.factors?.testWeight ?? 10,
+      baseTime: config?.factors?.baseTime ?? 10,
+      maxTime: config?.factors?.maxTime ?? 30,
+      minTime: config?.factors?.minTime ?? 5
+    };
+    this.historicalData = /* @__PURE__ */ new Map();
+    this.verbose = config?.verbose ?? false;
+    this.maxHistoryPerCategory = config?.maxHistoryPerCategory ?? 100;
+  }
+  /**
+   * Estimate time for a single task
+   */
+  async estimate(task) {
+    const result = this.estimateDetailed(task);
+    return result.estimatedMinutes;
+  }
+  /**
+   * Estimate total time for a set of tasks
+   * Accounts for parallel execution when possible
+   */
+  async estimateTotal(tasks2) {
+    if (tasks2.length === 0) return 0;
+    let total = 0;
+    for (const task of tasks2) {
+      const estimate = await this.estimate(task);
+      total += estimate;
+    }
+    if (this.verbose) {
+      console.log(`Estimated total time for ${tasks2.length} tasks: ${total} minutes`);
+    }
+    return total;
+  }
+  /**
+   * Calibrate estimator with actual data
+   * Records actual time taken for a task to improve future estimates
+   */
+  calibrate(task, actualMinutes) {
+    const category = this.categorizeTask(task);
+    const history = this.historicalData.get(category) || [];
+    history.push(actualMinutes);
+    if (history.length > this.maxHistoryPerCategory) {
+      history.shift();
+    }
+    this.historicalData.set(category, history);
+    if (this.verbose) {
+      console.log(
+        `Calibrated ${category} task: actual=${actualMinutes}min, history size=${history.length}`
+      );
+    }
+  }
+  /**
+   * Get detailed estimation with breakdown
+   */
+  estimateDetailed(task) {
+    let estimate = this.factors.baseTime;
+    const factors = [];
+    const breakdown = {
+      base: this.factors.baseTime,
+      files: 0,
+      complexity: 0,
+      tests: 0
+    };
+    const fileCount = task.files?.length || 1;
+    const fileTime = fileCount * this.factors.fileWeight;
+    estimate += fileTime;
+    breakdown.files = fileTime;
+    if (fileCount > 1) {
+      factors.push(`${fileCount} files`);
+    }
+    const complexity = this.assessComplexity(task);
+    if (complexity === "high") {
+      const complexityTime = estimate * (this.factors.complexityMultiplier - 1);
+      estimate += complexityTime;
+      breakdown.complexity = complexityTime;
+      factors.push("high complexity");
+    } else if (complexity === "medium") {
+      const complexityTime = estimate * 0.2;
+      estimate += complexityTime;
+      breakdown.complexity = complexityTime;
+      factors.push("medium complexity");
+    }
+    if (this.requiresTests(task)) {
+      estimate += this.factors.testWeight;
+      breakdown.tests = this.factors.testWeight;
+      factors.push("includes tests");
+    }
+    const historical = this.getHistoricalAverage(task);
+    if (historical !== null) {
+      const originalEstimate = estimate;
+      estimate = (estimate + historical) / 2;
+      if (this.verbose) {
+        console.log(
+          `Blended estimate: heuristic=${originalEstimate.toFixed(1)}, historical=${historical.toFixed(1)}, final=${estimate.toFixed(1)}`
+        );
+      }
+      factors.push("historical adjustment");
+    }
+    const finalEstimate = Math.min(
+      Math.max(Math.round(estimate), this.factors.minTime),
+      this.factors.maxTime
+    );
+    return {
+      estimatedMinutes: finalEstimate,
+      confidence: this.getConfidence(task, historical),
+      breakdown,
+      factors
+    };
+  }
+  /**
+   * Get average estimation accuracy from historical data
+   * Returns ratio of actual/estimated - values > 1 mean underestimating
+   */
+  getAccuracy(category) {
+    const categories = category ? [category] : Array.from(this.historicalData.keys());
+    let totalActual = 0;
+    let sampleSize = 0;
+    for (const cat of categories) {
+      const history = this.historicalData.get(cat);
+      if (history && history.length > 0) {
+        totalActual += history.reduce((a, b) => a + b, 0);
+        sampleSize += history.length;
+      }
+    }
+    if (sampleSize === 0) return null;
+    const avgActual = totalActual / sampleSize;
+    const baseline = 20;
+    return {
+      ratio: avgActual / baseline,
+      sampleSize
+    };
+  }
+  /**
+   * Reset calibration data
+   */
+  resetCalibration(category) {
+    if (category) {
+      this.historicalData.delete(category);
+    } else {
+      this.historicalData.clear();
+    }
+    if (this.verbose) {
+      console.log(
+        category ? `Reset calibration for ${category}` : "Reset all calibration data"
+      );
+    }
+  }
+  /**
+   * Get current estimation factors
+   */
+  getFactors() {
+    return { ...this.factors };
+  }
+  /**
+   * Update estimation factors
+   */
+  setFactors(factors) {
+    this.factors = {
+      ...this.factors,
+      ...factors
+    };
+  }
+  // ============================================================================
+  // Private Methods
+  // ============================================================================
+  /**
+   * Assess task complexity based on description and requirements
+   */
+  assessComplexity(task) {
+    const description = (task.description || "").toLowerCase();
+    const name = (task.name || "").toLowerCase();
+    const text2 = description + " " + name;
+    const highIndicators = [
+      "algorithm",
+      "optimize",
+      "refactor",
+      "complex",
+      "integration",
+      "security",
+      "authentication",
+      "encryption",
+      "database migration",
+      "state machine",
+      "concurrent",
+      "parallel",
+      "async",
+      "distributed",
+      "architecture",
+      "redesign"
+    ];
+    const lowIndicators = [
+      "rename",
+      "move",
+      "delete",
+      "simple",
+      "basic",
+      "typo",
+      "comment",
+      "format",
+      "lint",
+      "config",
+      "update dependency",
+      "bump version",
+      "add log",
+      "fix import"
+    ];
+    const highCount = highIndicators.filter((i) => text2.includes(i)).length;
+    const lowCount = lowIndicators.filter((i) => text2.includes(i)).length;
+    const fileCount = task.files?.length || 0;
+    const criteriaCount = task.testCriteria?.length || 0;
+    if (highCount >= 2 || fileCount >= 5 || criteriaCount >= 5) {
+      return "high";
+    }
+    if (lowCount >= 2 || fileCount <= 1 && criteriaCount <= 1) {
+      return "low";
+    }
+    return "medium";
+  }
+  /**
+   * Check if task requires test implementation
+   */
+  requiresTests(task) {
+    const description = (task.description || "").toLowerCase();
+    const criteria = (task.testCriteria || []).join(" ").toLowerCase();
+    const text2 = description + " " + criteria;
+    return text2.includes("test") || text2.includes("verify") || text2.includes("coverage") || text2.includes("spec") || task.files?.some(
+      (f) => f.includes(".test.") || f.includes(".spec.") || f.includes("__tests__")
+    ) || false;
+  }
+  /**
+   * Categorize task for historical tracking
+   */
+  categorizeTask(task) {
+    const files = task.files || [];
+    const description = (task.description || "").toLowerCase();
+    if (files.some((f) => f.includes("test") || f.includes("spec")) || description.includes("test")) {
+      return "test";
+    }
+    if (files.some(
+      (f) => f.includes("component") || f.includes("ui") || f.includes(".tsx") || f.includes(".vue") || f.includes(".svelte")
+    )) {
+      return "ui";
+    }
+    if (files.some(
+      (f) => f.includes("api") || f.includes("service") || f.includes("controller") || f.includes("route")
+    )) {
+      return "backend";
+    }
+    if (files.some(
+      (f) => f.includes("config") || f.includes("setup") || f.includes("infrastructure")
+    ) || description.includes("config") || description.includes("setup")) {
+      return "infrastructure";
+    }
+    return "general";
+  }
+  /**
+   * Get historical average for task category
+   */
+  getHistoricalAverage(task) {
+    const category = this.categorizeTask(task);
+    const history = this.historicalData.get(category);
+    if (!history || history.length < 5) {
+      return null;
+    }
+    return history.reduce((a, b) => a + b, 0) / history.length;
+  }
+  /**
+   * Determine confidence level for estimate
+   */
+  getConfidence(task, historical) {
+    if (historical !== null) {
+      return "high";
+    }
+    if (task.files && task.files.length > 0 && task.description && task.description.length > 50) {
+      return "medium";
+    }
+    return "low";
+  }
+}
+class BaseAgentRunner {
+  /** LLM client (API or CLI) */
+  llmClient;
+  /** Event bus for emitting agent events */
+  eventBus;
+  /** Agent configuration */
+  config;
+  /**
+   * Create a new agent runner
+   *
+   * @param llmClient - The LLM client to use for chat (API or CLI)
+   * @param config - Optional configuration overrides
+   */
+  constructor(llmClient, config) {
+    this.llmClient = llmClient;
+    this.eventBus = EventBus.getInstance();
+    this.config = {
+      maxIterations: config?.maxIterations ?? 50,
+      timeout: config?.timeout ?? 18e5
+      // 30 minutes
+    };
+  }
+  // ============================================================================
+  // Protected Methods (for use by subclasses)
+  // ============================================================================
+  /**
+   * Run the agent loop - iteratively interact with LLM until task complete
+   *
+   * This is the core execution method that handles:
+   * - Iteration limits
+   * - Timeouts
+   * - Error recovery
+   * - Event emission
+   *
+   * @param task - The task being executed
+   * @param context - Execution context
+   * @param initialPrompt - The initial prompt to send to the LLM
+   * @returns Task execution result
+   */
+  async runAgentLoop(task, context, initialPrompt) {
+    const startTime = Date.now();
+    let iteration = 0;
+    const messages = [
+      { role: "user", content: initialPrompt }
+    ];
+    this.emitEvent("agent:started", {
+      taskId: task.id,
+      agentType: this.getAgentType()
+    });
+    while (iteration < this.config.maxIterations) {
+      iteration++;
+      if (Date.now() - startTime > this.config.timeout) {
+        return this.createTimeoutResult(task, iteration, startTime);
+      }
+      this.emitEvent("agent:iteration", {
+        taskId: task.id,
+        iteration,
+        agentType: this.getAgentType()
+      });
+      try {
+        const response = await this.llmClient.chat(
+          this.convertToLLMMessages(messages, this.getSystemPrompt())
+        );
+        const content = response.content;
+        if (this.isTaskComplete(content, task)) {
+          this.emitEvent("agent:completed", {
+            taskId: task.id,
+            iterations: iteration,
+            success: true,
+            agentType: this.getAgentType()
+          });
+          return {
+            taskId: task.id,
+            success: true,
+            escalated: false,
+            output: content,
+            iterations: iteration,
+            duration: Date.now() - startTime,
+            metrics: {
+              iterations: iteration,
+              tokensUsed: response.usage?.totalTokens ?? 0,
+              timeMs: Date.now() - startTime
+            }
+          };
+        }
+        messages.push({ role: "assistant", content });
+        messages.push({
+          role: "user",
+          content: this.getContinuationPrompt()
+        });
+      } catch (error) {
+        this.emitEvent("agent:error", {
+          taskId: task.id,
+          error: error instanceof Error ? error.message : "Unknown error",
+          agentType: this.getAgentType(),
+          iteration
+        });
+        messages.push({
+          role: "user",
+          content: this.getErrorRecoveryPrompt(error)
+        });
+      }
+    }
+    return this.createMaxIterationsResult(task, iteration, startTime);
+  }
+  /**
+   * Emit an event through the event bus
+   *
+   * @param type - Internal event type (will be mapped to proper EventType)
+   * @param payload - Event payload
+   */
+  emitEvent(type, payload) {
+    const agentId = payload.agentId ?? payload.taskId ?? "unknown";
+    const taskId = payload.taskId ?? "unknown";
+    if (type === "agent:started") {
+      this.eventBus.emit("agent:started", {
+        agentId,
+        taskId
+      });
+    } else if (type === "agent:iteration") {
+      this.eventBus.emit("agent:progress", {
+        agentId,
+        taskId,
+        action: "iteration",
+        details: `Iteration ${payload.iteration ?? 0}`
+      });
+    } else if (type === "agent:completed") {
+      this.eventBus.emit("task:completed", {
+        taskId,
+        result: {
+          taskId,
+          success: true,
+          files: []
+        }
+      });
+    } else if (type === "agent:error") {
+      this.eventBus.emit("agent:error", {
+        agentId,
+        error: payload.error ?? "Unknown error",
+        recoverable: true
+      });
+    } else if (type === "agent:escalated") {
+      this.eventBus.emit("task:escalated", {
+        taskId,
+        reason: payload.reason ?? "Unknown reason",
+        iterations: payload.iterations ?? 0,
+        lastError: payload.error ?? void 0
+      });
+    } else {
+      this.eventBus.emit("agent:progress", {
+        agentId,
+        taskId,
+        action: type,
+        details: JSON.stringify(payload)
+      });
+    }
+  }
+  /**
+   * Build the context section for prompts
+   *
+   * @param context - Agent context
+   * @returns Formatted context string
+   */
+  buildContextSection(context) {
+    const sections = [];
+    sections.push("## Context");
+    sections.push(`Working Directory: ${context.workingDir}`);
+    if (context.relevantFiles?.length) {
+      sections.push("");
+      sections.push("### Relevant Files");
+      context.relevantFiles.forEach((f) => {
+        sections.push(`- ${f}`);
+      });
+    }
+    if (context.previousAttempts?.length) {
+      sections.push("");
+      sections.push("### Previous Attempts");
+      context.previousAttempts.forEach((a, i) => {
+        sections.push(`${i + 1}. ${a}`);
+      });
+    }
+    return sections.join("\n");
+  }
+  /**
+   * Create a timeout result
+   */
+  createTimeoutResult(task, iteration, startTime) {
+    this.emitEvent("agent:escalated", {
+      taskId: task.id,
+      reason: "timeout",
+      iterations: iteration,
+      agentType: this.getAgentType()
+    });
+    return {
+      taskId: task.id,
+      success: false,
+      escalated: true,
+      reason: "Task timed out",
+      output: "Task execution timed out",
+      iterations: iteration,
+      duration: Date.now() - startTime,
+      escalationReason: `Task timed out after ${Math.round((Date.now() - startTime) / 1e3)} seconds`,
+      metrics: {
+        iterations: iteration,
+        tokensUsed: 0,
+        timeMs: Date.now() - startTime
+      }
+    };
+  }
+  /**
+   * Create a max iterations result
+   */
+  createMaxIterationsResult(task, iteration, startTime) {
+    this.emitEvent("agent:escalated", {
+      taskId: task.id,
+      reason: "max_iterations",
+      iterations: iteration,
+      agentType: this.getAgentType()
+    });
+    return {
+      taskId: task.id,
+      success: false,
+      escalated: true,
+      reason: "Maximum iterations reached",
+      output: "Maximum iterations reached without completion",
+      iterations: iteration,
+      duration: Date.now() - startTime,
+      escalationReason: `Maximum iterations (${this.config.maxIterations}) reached`,
+      metrics: {
+        iterations: iteration,
+        tokensUsed: 0,
+        timeMs: Date.now() - startTime
+      }
+    };
+  }
+  /**
+   * Get the continuation prompt for multi-turn conversations
+   */
+  getContinuationPrompt() {
+    return "Please continue. If you have completed the task, include [TASK_COMPLETE] in your response along with a summary of what you accomplished.";
+  }
+  /**
+   * Get the error recovery prompt
+   */
+  getErrorRecoveryPrompt(error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return `An error occurred: ${message}. Please address this issue and continue with the task.`;
+  }
+  /**
+   * Convert internal messages to LLM-compatible format
+   * Includes system prompt as a system message at the beginning
+   */
+  convertToLLMMessages(messages, systemPrompt) {
+    const result = [];
+    if (systemPrompt) {
+      result.push({
+        role: "system",
+        content: systemPrompt
+      });
+    }
+    for (const m of messages) {
+      if (m.role !== "system") {
+        result.push({
+          role: m.role,
+          content: m.content
+        });
+      }
+    }
+    return result;
+  }
+}
+const CODER_SYSTEM_PROMPT = `You are an expert software engineer. Your job is to implement code changes for the given task.
+
+## Guidelines
+1. Write clean, maintainable, well-documented code
+2. Follow existing code patterns in the project
+3. Include appropriate error handling
+4. Keep changes focused and minimal
+5. Consider edge cases
+6. Add JSDoc comments for public APIs
+7. Follow TypeScript best practices
+
+## Process
+1. Understand the task requirements and acceptance criteria
+2. Plan your approach - identify files to create or modify
+3. Implement the solution step by step
+4. Verify your implementation meets all acceptance criteria
+
+## Code Quality Standards
+- Use meaningful variable and function names
+- Keep functions small and focused (single responsibility)
+- Handle errors appropriately with try/catch blocks
+- Add type annotations for all function parameters and returns
+- Avoid any type - use proper typing
+- Use async/await for asynchronous operations
+
+## Output Format
+For each file change, use this format:
+
+### File: path/to/file.ts
+\`\`\`typescript
+// Your code here
+\`\`\`
+
+Explanation: Brief explanation of the changes and why they were made.
+
+## Completion
+When you have completed the implementation, include [TASK_COMPLETE] in your response along with:
+1. A summary of all changes made
+2. List of files created/modified
+3. How the acceptance criteria are satisfied`;
+class CoderAgent extends BaseAgentRunner {
+  /**
+   * Get the agent type identifier
+   */
+  getAgentType() {
+    return "coder";
+  }
+  /**
+   * Execute a coding task
+   *
+   * @param task - The task to implement
+   * @param context - Execution context with working directory and files
+   * @returns Task execution result
+   */
+  async execute(task, context) {
+    const prompt = this.buildTaskPrompt(task, context);
+    return this.runAgentLoop(task, context, prompt);
+  }
+  /**
+   * Get the system prompt for the coder agent
+   */
+  getSystemPrompt() {
+    return CODER_SYSTEM_PROMPT;
+  }
+  /**
+   * Build the task prompt for the LLM
+   *
+   * @param task - The task to implement
+   * @param context - Execution context
+   * @returns Formatted prompt string
+   */
+  buildTaskPrompt(task, context) {
+    const sections = [];
+    sections.push(`# Task: ${task.name}`);
+    sections.push("");
+    sections.push("## Description");
+    sections.push(task.description || "No description provided.");
+    sections.push("");
+    if (task.files && task.files.length > 0) {
+      sections.push("## Files to Modify");
+      task.files.forEach((f) => {
+        sections.push(`- ${f}`);
+      });
+      sections.push("");
+    }
+    if (task.dependencies && task.dependencies.length > 0) {
+      sections.push("## Dependencies");
+      sections.push("This task depends on the following tasks being completed:");
+      task.dependencies.forEach((d) => {
+        sections.push(`- ${d}`);
+      });
+      sections.push("");
+    }
+    if (task.testCriteria && task.testCriteria.length > 0) {
+      sections.push("## Acceptance Criteria");
+      task.testCriteria.forEach((c, i) => {
+        sections.push(`${i + 1}. ${c}`);
+      });
+      sections.push("");
+    }
+    if (task.estimatedMinutes) {
+      sections.push(`## Time Estimate`);
+      sections.push(`This task should take approximately ${task.estimatedMinutes} minutes.`);
+      sections.push("");
+    }
+    sections.push(this.buildContextSection(context));
+    sections.push("");
+    sections.push("## Instructions");
+    sections.push("Please implement this task following the guidelines in the system prompt.");
+    sections.push("When complete, include [TASK_COMPLETE] in your response with a summary.");
+    return sections.join("\n");
+  }
+  /**
+   * Check if the task is complete based on the LLM response
+   *
+   * @param response - The LLM response content
+   * @param _task - The task being executed (unused but required by interface)
+   * @returns True if task is complete
+   */
+  isTaskComplete(response, _task) {
+    const lowerResponse = response.toLowerCase();
+    if (response.includes("[TASK_COMPLETE]")) {
+      return true;
+    }
+    const completionPhrases = [
+      "implementation complete",
+      "task completed successfully",
+      "all acceptance criteria satisfied",
+      "implementation is complete",
+      "changes have been completed",
+      "task has been completed"
+    ];
+    return completionPhrases.some((phrase) => lowerResponse.includes(phrase));
+  }
+  /**
+   * Override continuation prompt for coder-specific guidance
+   */
+  getContinuationPrompt() {
+    return `Please continue with the implementation.
+If you need to modify more files, provide them in the same format.
+If you have completed all changes, include [TASK_COMPLETE] with a summary of:
+1. All files created or modified
+2. How each acceptance criterion was addressed
+3. Any important notes or caveats`;
+  }
+}
+const TESTER_SYSTEM_PROMPT = `You are an expert test engineer specializing in comprehensive test coverage. Your job is to write high-quality tests for the given code.
+
+## Guidelines
+1. Write thorough tests that cover happy paths and edge cases
+2. Follow existing test patterns in the project
+3. Use descriptive test names that explain what is being tested
+4. Include setup/teardown when needed (beforeEach, afterEach)
+5. Test both positive and negative scenarios
+6. Mock external dependencies appropriately
+7. Aim for high code coverage without redundant tests
+
+## Testing Best Practices
+- Use AAA pattern: Arrange, Act, Assert
+- One assertion per test when possible (multiple related assertions are OK)
+- Test behavior, not implementation details
+- Use meaningful test data (not just "test" or "123")
+- Group related tests using describe blocks
+- Clean up any side effects in afterEach/afterAll
+- Test error conditions and edge cases
+
+## Test Categories to Consider
+1. **Unit Tests**: Test individual functions/methods in isolation
+2. **Integration Tests**: Test interactions between components
+3. **Edge Cases**: Boundary conditions, empty inputs, null values
+4. **Error Handling**: Verify proper error throwing and handling
+5. **Async Operations**: Test promises, async/await, callbacks
+6. **State Management**: Test state transitions and side effects
+
+## Test Naming Convention
+Use descriptive names that explain:
+- What is being tested
+- Under what conditions
+- What the expected outcome is
+
+Example: "should return empty array when input is empty"
+
+## Output Format
+For each test file, use this format:
+
+### File: path/to/file.test.ts
+\`\`\`typescript
+// Your test code here
+\`\`\`
+
+Explanation: Brief explanation of what tests were added and why.
+
+## Completion
+When you have completed writing tests, include [TASK_COMPLETE] in your response along with:
+1. Summary of all test files created
+2. Total number of test cases
+3. Categories of tests covered (unit, integration, edge cases, etc.)
+4. Coverage goals achieved`;
+class TesterAgent extends BaseAgentRunner {
+  /**
+   * Get the agent type identifier
+   */
+  getAgentType() {
+    return "tester";
+  }
+  /**
+   * Execute a testing task
+   *
+   * @param task - The task to implement tests for
+   * @param context - Execution context with working directory and files
+   * @returns Task execution result
+   */
+  async execute(task, context) {
+    const prompt = this.buildTaskPrompt(task, context);
+    return this.runAgentLoop(task, context, prompt);
+  }
+  /**
+   * Get the system prompt for the tester agent
+   */
+  getSystemPrompt() {
+    return TESTER_SYSTEM_PROMPT;
+  }
+  /**
+   * Build the task prompt for the LLM
+   *
+   * @param task - The task to implement tests for
+   * @param context - Execution context
+   * @returns Formatted prompt string
+   */
+  buildTaskPrompt(task, context) {
+    const sections = [];
+    sections.push(`# Testing Task: ${task.name}`);
+    sections.push("");
+    sections.push("## Description");
+    sections.push(task.description || "Write comprehensive tests for the implementation.");
+    sections.push("");
+    if (task.files && task.files.length > 0) {
+      sections.push("## Files to Test");
+      task.files.forEach((f) => {
+        sections.push(`- ${f}`);
+        const testFile = this.suggestTestFileName(f);
+        sections.push(`  - Test file: ${testFile}`);
+      });
+      sections.push("");
+    }
+    if (task.testCriteria && task.testCriteria.length > 0) {
+      sections.push("## Test Requirements");
+      task.testCriteria.forEach((c, i) => {
+        sections.push(`${i + 1}. ${c}`);
+      });
+      sections.push("");
+    }
+    if (task.dependencies && task.dependencies.length > 0) {
+      sections.push("## Dependencies");
+      sections.push("This task depends on the following tasks being completed:");
+      task.dependencies.forEach((d) => {
+        sections.push(`- ${d}`);
+      });
+      sections.push("");
+    }
+    if (task.estimatedMinutes) {
+      sections.push(`## Time Estimate`);
+      sections.push(`This task should take approximately ${task.estimatedMinutes} minutes.`);
+      sections.push("");
+    }
+    sections.push(this.buildContextSection(context));
+    sections.push("");
+    sections.push("## Testing Instructions");
+    sections.push("1. Analyze the code to understand its functionality");
+    sections.push("2. Identify key scenarios to test (happy path, edge cases, errors)");
+    sections.push("3. Write comprehensive tests using the project's test framework");
+    sections.push("4. Include mocks/stubs for external dependencies");
+    sections.push("5. Ensure all test criteria are covered");
+    sections.push("");
+    sections.push("When complete, include [TASK_COMPLETE] in your response with a test summary.");
+    return sections.join("\n");
+  }
+  /**
+   * Check if the task is complete based on the LLM response
+   *
+   * @param response - The LLM response content
+   * @param _task - The task being executed (unused but required by interface)
+   * @returns True if task is complete
+   */
+  isTaskComplete(response, _task) {
+    const lowerResponse = response.toLowerCase();
+    if (response.includes("[TASK_COMPLETE]")) {
+      return true;
+    }
+    const completionPhrases = [
+      "tests complete",
+      "test implementation complete",
+      "all tests have been written",
+      "testing is complete",
+      "test coverage complete",
+      "tests are ready",
+      "test suite is complete"
+    ];
+    return completionPhrases.some((phrase) => lowerResponse.includes(phrase));
+  }
+  /**
+   * Override continuation prompt for tester-specific guidance
+   */
+  getContinuationPrompt() {
+    return `Please continue writing tests.
+If you need to add more test cases, provide them in the same format.
+If you have completed all tests, include [TASK_COMPLETE] with a summary of:
+1. All test files created
+2. Number of test cases per file
+3. Test categories covered (unit, integration, edge cases)
+4. Any test scenarios that still need coverage`;
+  }
+  /**
+   * Suggest a test file name based on the source file
+   *
+   * @param sourceFile - The source file path
+   * @returns Suggested test file path
+   */
+  suggestTestFileName(sourceFile) {
+    if (sourceFile.endsWith(".ts") && !sourceFile.endsWith(".test.ts")) {
+      return sourceFile.replace(/\.ts$/, ".test.ts");
+    }
+    if (sourceFile.endsWith(".tsx") && !sourceFile.endsWith(".test.tsx")) {
+      return sourceFile.replace(/\.tsx$/, ".test.tsx");
+    }
+    if (sourceFile.endsWith(".js") && !sourceFile.endsWith(".test.js")) {
+      return sourceFile.replace(/\.js$/, ".test.js");
+    }
+    if (sourceFile.endsWith(".jsx") && !sourceFile.endsWith(".test.jsx")) {
+      return sourceFile.replace(/\.jsx$/, ".test.jsx");
+    }
+    const lastDotIndex = sourceFile.lastIndexOf(".");
+    if (lastDotIndex > 0) {
+      return `${sourceFile.slice(0, lastDotIndex)}.test${sourceFile.slice(lastDotIndex)}`;
+    }
+    return `${sourceFile}.test`;
+  }
+}
+const REVIEWER_SYSTEM_PROMPT = `You are a senior code reviewer with expertise in security, performance, and software architecture. Your job is to thoroughly review code changes and provide actionable feedback.
+
+## Review Criteria
+
+### 1. Security (Priority: Critical)
+- Injection vulnerabilities (SQL, XSS, command injection)
+- Authentication and authorization issues
+- Sensitive data exposure
+- Insecure configurations
+- Input validation gaps
+
+### 2. Correctness (Priority: Major)
+- Logic errors and edge cases
+- Off-by-one errors
+- Null/undefined handling
+- Type safety issues
+- Race conditions
+
+### 3. Performance (Priority: Major)
+- N+1 query patterns
+- Memory leaks
+- Unnecessary computations
+- Missing caching opportunities
+- Inefficient algorithms
+
+### 4. Maintainability (Priority: Minor)
+- Code complexity (functions too long, nested too deep)
+- Naming clarity
+- Code duplication
+- Missing documentation
+- Inconsistent patterns
+
+### 5. Style (Priority: Suggestion)
+- Code formatting
+- Import organization
+- Consistent conventions
+
+## Review Process
+1. Analyze the code changes in context
+2. Identify issues by category
+3. Prioritize by severity
+4. Provide specific, actionable suggestions
+5. Note positive patterns worth keeping
+
+## Output Format
+Provide your review in JSON format:
+\`\`\`json
+{
+  "approved": true/false,
+  "issues": [
+    {
+      "severity": "critical|major|minor|suggestion",
+      "category": "security|performance|maintainability|correctness|style",
+      "file": "path/to/file.ts",
+      "line": 42,
+      "message": "Clear description of the issue",
+      "suggestion": "How to fix it"
+    }
+  ],
+  "suggestions": ["General improvement suggestions"],
+  "summary": "Brief summary of the review"
+}
+\`\`\`
+
+## Approval Rules
+- Set approved=false if there are ANY critical issues
+- Set approved=false if there are more than 2 major issues
+- Set approved=true only if the code is production-ready
+- Include [TASK_COMPLETE] when review is finished
+
+## Best Practices
+- Be specific and cite line numbers when possible
+- Explain WHY something is an issue, not just WHAT
+- Provide concrete code examples for fixes
+- Acknowledge good patterns and clean code
+- Focus on issues that matter most first`;
+class ReviewerAgent extends BaseAgentRunner {
+  /**
+   * Get the agent type identifier
+   */
+  getAgentType() {
+    return "reviewer";
+  }
+  /**
+   * Execute a code review task
+   *
+   * @param task - The task containing code to review
+   * @param context - Execution context with working directory and files
+   * @returns Task execution result with review output
+   */
+  async execute(task, context) {
+    const prompt = this.buildTaskPrompt(task, context);
+    return this.runAgentLoop(task, context, prompt);
+  }
+  /**
+   * Get the system prompt for the reviewer agent
+   */
+  getSystemPrompt() {
+    return REVIEWER_SYSTEM_PROMPT;
+  }
+  /**
+   * Build the task prompt for the LLM
+   *
+   * @param task - The task containing code to review
+   * @param context - Execution context
+   * @returns Formatted prompt string
+   */
+  buildTaskPrompt(task, context) {
+    const sections = [];
+    sections.push(`# Code Review Task: ${task.name}`);
+    sections.push("");
+    sections.push("## Review Objective");
+    sections.push(task.description || "Review the code changes for issues and improvements.");
+    sections.push("");
+    if (task.files && task.files.length > 0) {
+      sections.push("## Files to Review");
+      task.files.forEach((f) => {
+        sections.push(`- ${f}`);
+      });
+      sections.push("");
+    }
+    if (task.testCriteria && task.testCriteria.length > 0) {
+      sections.push("## Review Criteria");
+      task.testCriteria.forEach((c, i) => {
+        sections.push(`${i + 1}. ${c}`);
+      });
+      sections.push("");
+    }
+    if (task.dependencies && task.dependencies.length > 0) {
+      sections.push("## Related Tasks");
+      sections.push("This review is related to the following tasks:");
+      task.dependencies.forEach((d) => {
+        sections.push(`- ${d}`);
+      });
+      sections.push("");
+    }
+    sections.push(this.buildContextSection(context));
+    sections.push("");
+    sections.push("## Review Instructions");
+    sections.push("1. Analyze the code changes thoroughly");
+    sections.push("2. Check for security vulnerabilities");
+    sections.push("3. Evaluate performance implications");
+    sections.push("4. Assess code maintainability");
+    sections.push("5. Verify correctness and edge case handling");
+    sections.push("6. Check for style consistency");
+    sections.push("");
+    sections.push("Provide your review in the JSON format specified in the system prompt.");
+    sections.push("When complete, include [TASK_COMPLETE] with your review summary.");
+    return sections.join("\n");
+  }
+  /**
+   * Check if the task is complete based on the LLM response
+   *
+   * @param response - The LLM response content
+   * @param _task - The task being executed (unused but required by interface)
+   * @returns True if task is complete
+   */
+  isTaskComplete(response, _task) {
+    const lowerResponse = response.toLowerCase();
+    if (response.includes("[TASK_COMPLETE]")) {
+      return true;
+    }
+    const completionPhrases = [
+      "review complete",
+      "code review complete",
+      "review is complete",
+      "review has been completed",
+      "finished reviewing",
+      "review summary:"
+    ];
+    const hasJsonReview = response.includes('"approved"') && response.includes('"summary"');
+    return hasJsonReview || completionPhrases.some((phrase) => lowerResponse.includes(phrase));
+  }
+  /**
+   * Override continuation prompt for reviewer-specific guidance
+   */
+  getContinuationPrompt() {
+    return `Please continue with your review analysis.
+If you need to examine more files or details, describe what you're looking at.
+If you have completed the review, provide the JSON output and include [TASK_COMPLETE] with:
+1. Your approval decision (approved: true/false)
+2. All identified issues with severity levels
+3. A summary of your findings`;
+  }
+  /**
+   * Parse the review output from the LLM response
+   *
+   * @param output - Raw LLM output containing review JSON
+   * @returns Parsed review output or null if parsing fails
+   */
+  parseReviewOutput(output) {
+    if (!output) {
+      return null;
+    }
+    try {
+      const jsonMatch = output.match(/```json\s*([\s\S]*?)\s*```/) || output.match(/```\s*([\s\S]*?)\s*```/) || output.match(/(\{[\s\S]*\})/);
+      if (!jsonMatch) {
+        return null;
+      }
+      const parsed = JSON.parse(jsonMatch[1]);
+      return {
+        approved: parsed.approved === true,
+        issues: Array.isArray(parsed.issues) ? parsed.issues.map((i) => ({
+          severity: i.severity || "minor",
+          category: i.category || "maintainability",
+          file: i.file || "unknown",
+          line: i.line,
+          message: i.message || "No message",
+          suggestion: i.suggestion
+        })) : [],
+        suggestions: Array.isArray(parsed.suggestions) ? parsed.suggestions : [],
+        summary: parsed.summary || "No summary provided"
+      };
+    } catch {
+      return null;
+    }
+  }
+  /**
+   * Get the count of issues by severity
+   *
+   * @param issues - Array of review issues
+   * @returns Object with counts by severity
+   */
+  getIssueCounts(issues) {
+    const counts = {
+      critical: 0,
+      major: 0,
+      minor: 0,
+      suggestion: 0
+    };
+    for (const issue of issues) {
+      counts[issue.severity]++;
+    }
+    return counts;
+  }
+  /**
+   * Determine if review should approve based on issue counts
+   * Uses stricter criteria than LLM might apply
+   *
+   * @param issues - Array of review issues
+   * @returns True if should approve, false otherwise
+   */
+  shouldApprove(issues) {
+    const counts = this.getIssueCounts(issues);
+    if (counts.critical > 0) {
+      return false;
+    }
+    if (counts.major > 2) {
+      return false;
+    }
+    return true;
+  }
+}
+const MERGER_SYSTEM_PROMPT = `You are an expert software engineer specializing in merge conflict resolution. Your job is to analyze merge conflicts, understand the intent of both sets of changes, and propose safe resolutions.
+
+## Analysis Approach
+
+### 1. Understand Context
+- Identify what each branch was trying to accomplish
+- Look at commit messages and related changes
+- Consider the broader feature or fix being implemented
+
+### 2. Conflict Classification
+Classify each conflict by type and severity:
+
+**Conflict Types:**
+- content: Same lines modified differently
+- rename: File renamed in different ways
+- delete-modify: Deleted in one branch, modified in another
+- semantic: Logic conflicts without git markers
+- dependency: Package or import conflicts
+
+**Severity Levels:**
+- simple: Straightforward resolution (formatting, imports, non-overlapping logic)
+- moderate: Requires careful analysis but clear resolution path
+- complex: Multiple valid resolutions, needs deep understanding
+- critical: Potential for breaking changes, needs human review
+
+### 3. Resolution Strategies
+- **ours**: Keep the current branch's version
+- **theirs**: Accept the incoming branch's version
+- **merge**: Combine both changes intelligently
+- **manual**: Escalate to human for review
+
+## Safety Rules
+
+1. **NEVER** automatically resolve critical conflicts
+2. **NEVER** resolve semantic conflicts without thorough analysis
+3. **ALWAYS** flag delete-modify conflicts for review
+4. **ALWAYS** preserve both sets of tests when merging test files
+5. When in doubt, flag for human review
+
+## Output Format
+Provide your analysis in JSON format:
+\`\`\`json
+{
+  "success": true/false,
+  "conflicts": [
+    {
+      "file": "path/to/file.ts",
+      "type": "content|rename|delete-modify|semantic|dependency",
+      "severity": "simple|moderate|complex|critical",
+      "description": "Clear description of the conflict",
+      "ourChanges": "Summary of our changes",
+      "theirChanges": "Summary of their changes",
+      "suggestedResolution": "How to resolve this",
+      "needsManualReview": true/false
+    }
+  ],
+  "resolutions": [
+    {
+      "file": "path/to/file.ts",
+      "strategy": "ours|theirs|merge|manual",
+      "resolvedContent": "The merged content (if applicable)",
+      "explanation": "Why this resolution was chosen"
+    }
+  ],
+  "unresolvedCount": 0,
+  "summary": "Overall merge analysis summary",
+  "requiresHumanReview": true/false
+}
+\`\`\`
+
+## Process
+1. Parse all conflict markers in affected files
+2. Classify each conflict by type and severity
+3. Analyze the intent of both change sets
+4. Propose resolutions for simple/moderate conflicts
+5. Flag complex/critical conflicts for human review
+6. Verify the merged result makes sense as a whole
+7. Include [TASK_COMPLETE] when analysis is done
+
+## Best Practices
+- Consider the overall coherence of the merged code
+- Check for semantic conflicts even where git didn't flag markers
+- Preserve important changes from both branches when possible
+- Be conservative - it's better to ask for human review than to break code
+- Document your reasoning for each resolution`;
+class MergerAgent extends BaseAgentRunner {
+  /**
+   * Get the agent type identifier
+   */
+  getAgentType() {
+    return "merger";
+  }
+  /**
+   * Execute a merge conflict resolution task
+   *
+   * @param task - The task containing merge conflict information
+   * @param context - Execution context with working directory and files
+   * @returns Task execution result with merge output
+   */
+  async execute(task, context) {
+    const prompt = this.buildTaskPrompt(task, context);
+    return this.runAgentLoop(task, context, prompt);
+  }
+  /**
+   * Get the system prompt for the merger agent
+   */
+  getSystemPrompt() {
+    return MERGER_SYSTEM_PROMPT;
+  }
+  /**
+   * Build the task prompt for the LLM
+   *
+   * @param task - The task containing merge information
+   * @param context - Execution context
+   * @returns Formatted prompt string
+   */
+  buildTaskPrompt(task, context) {
+    const sections = [];
+    sections.push(`# Merge Conflict Resolution: ${task.name}`);
+    sections.push("");
+    sections.push("## Merge Context");
+    sections.push(task.description || "Resolve merge conflicts between branches.");
+    sections.push("");
+    if (task.files && task.files.length > 0) {
+      sections.push("## Files with Conflicts");
+      task.files.forEach((f) => {
+        sections.push(`- ${f}`);
+      });
+      sections.push("");
+    }
+    if (task.testCriteria && task.testCriteria.length > 0) {
+      sections.push("## Merge Requirements");
+      task.testCriteria.forEach((c, i) => {
+        sections.push(`${i + 1}. ${c}`);
+      });
+      sections.push("");
+    }
+    if (task.dependencies && task.dependencies.length > 0) {
+      sections.push("## Related Tasks");
+      sections.push("These tasks may provide context for the merge:");
+      task.dependencies.forEach((d) => {
+        sections.push(`- ${d}`);
+      });
+      sections.push("");
+    }
+    sections.push(this.buildContextSection(context));
+    sections.push("");
+    sections.push("## Resolution Instructions");
+    sections.push("1. Analyze all conflict markers in the affected files");
+    sections.push("2. Classify each conflict by type and severity");
+    sections.push("3. Understand the intent of both sets of changes");
+    sections.push("4. Propose safe resolutions for simple/moderate conflicts");
+    sections.push("5. Flag complex/critical conflicts for human review");
+    sections.push("6. Verify the merged result maintains code coherence");
+    sections.push("");
+    sections.push("Provide your analysis in the JSON format specified in the system prompt.");
+    sections.push("When complete, include [TASK_COMPLETE] with your merge summary.");
+    return sections.join("\n");
+  }
+  /**
+   * Check if the task is complete based on the LLM response
+   *
+   * @param response - The LLM response content
+   * @param _task - The task being executed (unused but required by interface)
+   * @returns True if task is complete
+   */
+  isTaskComplete(response, _task) {
+    const lowerResponse = response.toLowerCase();
+    if (response.includes("[TASK_COMPLETE]")) {
+      return true;
+    }
+    const completionPhrases = [
+      "merge complete",
+      "merge analysis complete",
+      "conflict resolution complete",
+      "resolution complete",
+      "merge is complete",
+      "finished resolving",
+      "conflicts resolved"
+    ];
+    const hasJsonMerge = response.includes('"success"') && response.includes('"conflicts"');
+    return hasJsonMerge || completionPhrases.some((phrase) => lowerResponse.includes(phrase));
+  }
+  /**
+   * Override continuation prompt for merger-specific guidance
+   */
+  getContinuationPrompt() {
+    return `Please continue with your merge analysis.
+If you need to examine more files or conflict details, describe what you're analyzing.
+If you have completed the analysis, provide the JSON output and include [TASK_COMPLETE] with:
+1. All identified conflicts with classifications
+2. Proposed resolutions for each
+3. Which conflicts require human review
+4. A summary of the merge state`;
+  }
+  /**
+   * Parse the merge output from the LLM response
+   *
+   * @param output - Raw LLM output containing merge JSON
+   * @returns Parsed merge output or null if parsing fails
+   */
+  parseMergeOutput(output) {
+    if (!output) {
+      return null;
+    }
+    try {
+      const jsonMatch = output.match(/```json\s*([\s\S]*?)\s*```/) || output.match(/```\s*([\s\S]*?)\s*```/) || output.match(/(\{[\s\S]*\})/);
+      if (!jsonMatch) {
+        return null;
+      }
+      const parsed = JSON.parse(jsonMatch[1]);
+      return {
+        success: parsed.success === true,
+        conflicts: Array.isArray(parsed.conflicts) ? parsed.conflicts.map((c) => ({
+          file: c.file || "unknown",
+          type: c.type || "content",
+          severity: c.severity || "moderate",
+          description: c.description || "No description",
+          ourChanges: c.ourChanges || "",
+          theirChanges: c.theirChanges || "",
+          suggestedResolution: c.suggestedResolution,
+          needsManualReview: c.needsManualReview ?? false
+        })) : [],
+        resolutions: Array.isArray(parsed.resolutions) ? parsed.resolutions.map((r) => ({
+          file: r.file || "unknown",
+          strategy: r.strategy || "manual",
+          resolvedContent: r.resolvedContent,
+          explanation: r.explanation || "No explanation"
+        })) : [],
+        unresolvedCount: parsed.unresolvedCount ?? 0,
+        summary: parsed.summary || "No summary provided",
+        requiresHumanReview: parsed.requiresHumanReview ?? false
+      };
+    } catch {
+      return null;
+    }
+  }
+  /**
+   * Get the count of conflicts by severity
+   *
+   * @param conflicts - Array of merge conflicts
+   * @returns Object with counts by severity
+   */
+  getConflictCounts(conflicts) {
+    const counts = {
+      simple: 0,
+      moderate: 0,
+      complex: 0,
+      critical: 0
+    };
+    for (const conflict of conflicts) {
+      counts[conflict.severity]++;
+    }
+    return counts;
+  }
+  /**
+   * Get the count of conflicts by type
+   *
+   * @param conflicts - Array of merge conflicts
+   * @returns Object with counts by type
+   */
+  getConflictsByType(conflicts) {
+    const counts = {
+      content: 0,
+      rename: 0,
+      "delete-modify": 0,
+      semantic: 0,
+      dependency: 0
+    };
+    for (const conflict of conflicts) {
+      counts[conflict.type]++;
+    }
+    return counts;
+  }
+  /**
+   * Determine if merge can be auto-completed based on conflicts
+   *
+   * @param conflicts - Array of merge conflicts
+   * @returns True if merge can be auto-completed, false if human review needed
+   */
+  canAutoComplete(conflicts) {
+    const counts = this.getConflictCounts(conflicts);
+    if (counts.critical > 0 || counts.complex > 0) {
+      return false;
+    }
+    if (conflicts.some((c) => c.needsManualReview)) {
+      return false;
+    }
+    if (conflicts.some((c) => c.type === "delete-modify")) {
+      return false;
+    }
+    return true;
+  }
+  /**
+   * Get files that need human review
+   *
+   * @param conflicts - Array of merge conflicts
+   * @returns Array of file paths needing human review
+   */
+  getFilesNeedingReview(conflicts) {
+    return conflicts.filter((c) => c.needsManualReview || c.severity === "critical" || c.severity === "complex").map((c) => c.file);
+  }
+  /**
+   * Summarize the merge state for human review
+   *
+   * @param output - Parsed merge output
+   * @returns Human-readable summary
+   */
+  summarizeMerge(output) {
+    const lines = [];
+    lines.push(`Merge Status: ${output.success ? "Success" : "Needs Attention"}`);
+    lines.push(`Total Conflicts: ${output.conflicts.length}`);
+    lines.push(`Unresolved: ${output.unresolvedCount}`);
+    if (output.requiresHumanReview) {
+      lines.push("");
+      lines.push("HUMAN REVIEW REQUIRED:");
+      const reviewFiles = this.getFilesNeedingReview(output.conflicts);
+      reviewFiles.forEach((f) => {
+        lines.push(`  - ${f}`);
+      });
+    }
+    const counts = this.getConflictCounts(output.conflicts);
+    lines.push("");
+    lines.push("Conflict Breakdown:");
+    lines.push(`  Simple: ${counts.simple}`);
+    lines.push(`  Moderate: ${counts.moderate}`);
+    lines.push(`  Complex: ${counts.complex}`);
+    lines.push(`  Critical: ${counts.critical}`);
+    lines.push("");
+    lines.push(`Summary: ${output.summary}`);
+    return lines.join("\n");
+  }
+}
+class PoolCapacityError extends Error {
+  constructor(agentType, max) {
+    super(`Agent pool at capacity for type '${agentType}' (max: ${max})`);
+    this.name = "PoolCapacityError";
+    Object.setPrototypeOf(this, PoolCapacityError.prototype);
+  }
+}
+class AgentNotFoundError extends Error {
+  constructor(agentId) {
+    super(`Agent not found: ${agentId}`);
+    this.name = "AgentNotFoundError";
+    Object.setPrototypeOf(this, AgentNotFoundError.prototype);
+  }
+}
+class NoRunnerError extends Error {
+  constructor(agentType) {
+    super(`No runner available for agent type: ${agentType}`);
+    this.name = "NoRunnerError";
+    Object.setPrototypeOf(this, NoRunnerError.prototype);
+  }
+}
+const DEFAULT_MAX_AGENTS = {
+  planner: 1,
+  coder: 4,
+  tester: 2,
+  reviewer: 2,
+  merger: 1
+};
+const DEFAULT_MODEL_CONFIG = {
+  provider: "anthropic",
+  model: DEFAULT_CLAUDE_MODEL,
+  // claude-sonnet-4-5-20250929
+  maxTokens: 8192,
+  temperature: 0.3
+};
+class AgentPool {
+  /** Active agents in the pool */
+  agents = /* @__PURE__ */ new Map();
+  /** Agent runners by type */
+  runners;
+  /** Maximum agents by type */
+  maxAgentsByType;
+  /** Default model configuration */
+  defaultModelConfig;
+  /** Event bus for observability */
+  eventBus;
+  /** LLM clients (API or CLI) */
+  claudeClient;
+  geminiClient;
+  /**
+   * Create a new AgentPool
+   *
+   * @param config - Pool configuration including LLM clients
+   */
+  constructor(config) {
+    this.claudeClient = config.claudeClient;
+    this.geminiClient = config.geminiClient;
+    this.eventBus = EventBus.getInstance();
+    this.defaultModelConfig = {
+      ...DEFAULT_MODEL_CONFIG,
+      ...config.defaultModelConfig
+    };
+    this.runners = /* @__PURE__ */ new Map([
+      ["coder", new CoderAgent(this.claudeClient)],
+      ["tester", new TesterAgent(this.claudeClient)],
+      ["reviewer", new ReviewerAgent(this.geminiClient)],
+      ["merger", new MergerAgent(this.claudeClient)]
+    ]);
+    this.maxAgentsByType = new Map(
+      Object.entries({
+        ...DEFAULT_MAX_AGENTS,
+        ...config.maxAgentsByType
+      })
+    );
+  }
+  // ============================================================================
+  // IAgentPool Interface Implementation
+  // ============================================================================
+  /**
+   * Spawn a new agent of the given type
+   *
+   * @param type - Type of agent to spawn
+   * @returns The spawned agent
+   * @throws PoolCapacityError if pool is at capacity for this type
+   */
+  spawn(type) {
+    const currentCount = this.getAgentCountByType(type);
+    const maxCount = this.maxAgentsByType.get(type) ?? DEFAULT_MAX_AGENTS[type];
+    if (currentCount >= maxCount) {
+      throw new PoolCapacityError(type, maxCount);
+    }
+    const now = /* @__PURE__ */ new Date();
+    const agent = {
+      id: nanoid(),
+      type,
+      status: "idle",
+      modelConfig: { ...this.defaultModelConfig },
+      metrics: this.createEmptyMetrics(),
+      spawnedAt: now,
+      lastActiveAt: now
+    };
+    this.agents.set(agent.id, agent);
+    this.eventBus.emit("agent:started", {
+      agentId: agent.id,
+      taskId: ""
+    });
+    return agent;
+  }
+  /**
+   * Terminate an agent and remove from pool
+   *
+   * @param agentId - ID of agent to terminate
+   */
+  terminate(agentId) {
+    const agent = this.agents.get(agentId);
+    if (!agent) {
+      throw new AgentNotFoundError(agentId);
+    }
+    agent.status = "terminated";
+    this.agents.delete(agentId);
+    this.eventBus.emit("agent:terminated", {
+      agentId,
+      reason: "manual",
+      metrics: agent.metrics
+    });
+  }
+  /**
+   * Assign an agent to a task
+   *
+   * @param agentId - ID of agent to assign
+   * @param taskId - ID of task to assign
+   * @param worktreePath - Optional worktree path for the agent
+   */
+  assign(agentId, taskId, worktreePath) {
+    const agent = this.agents.get(agentId);
+    if (!agent) {
+      throw new AgentNotFoundError(agentId);
+    }
+    agent.status = "assigned";
+    agent.currentTaskId = taskId;
+    agent.worktreePath = worktreePath;
+    agent.lastActiveAt = /* @__PURE__ */ new Date();
+  }
+  /**
+   * Release an agent from its current task
+   *
+   * @param agentId - ID of agent to release
+   */
+  release(agentId) {
+    const agent = this.agents.get(agentId);
+    if (!agent) {
+      throw new AgentNotFoundError(agentId);
+    }
+    agent.status = "idle";
+    agent.currentTaskId = void 0;
+    agent.worktreePath = void 0;
+    agent.lastActiveAt = /* @__PURE__ */ new Date();
+    this.eventBus.emit("agent:idle", {
+      agentId,
+      idleSince: /* @__PURE__ */ new Date()
+    });
+  }
+  /**
+   * Get all agents in the pool
+   */
+  getAll() {
+    return Array.from(this.agents.values());
+  }
+  /**
+   * Get all active (non-idle) agents
+   */
+  getActive() {
+    return this.getAll().filter(
+      (agent) => agent.status === "assigned" || agent.status === "working"
+    );
+  }
+  /**
+   * Get an available (idle) agent of any type
+   */
+  getAvailable() {
+    return this.getAll().find((agent) => agent.status === "idle");
+  }
+  /**
+   * Get an agent by ID
+   *
+   * @param agentId - ID of agent to get
+   */
+  getById(agentId) {
+    return this.agents.get(agentId);
+  }
+  /**
+   * Get current pool size
+   */
+  size() {
+    return this.agents.size;
+  }
+  // ============================================================================
+  // Extended Methods
+  // ============================================================================
+  /**
+   * Get an available agent of a specific type
+   *
+   * @param type - Type of agent to get
+   * @returns Available agent or undefined
+   */
+  getAvailableByType(type) {
+    return this.getAll().find(
+      (agent) => agent.type === type && agent.status === "idle"
+    );
+  }
+  /**
+   * Run a task with a specific agent
+   *
+   * @param agent - The agent to use
+   * @param task - The task to execute
+   * @param context - Execution context
+   * @returns Task execution result
+   */
+  async runTask(agent, task, context) {
+    const runner = this.runners.get(agent.type);
+    if (!runner) {
+      throw new NoRunnerError(agent.type);
+    }
+    const existingAgent = this.agents.get(agent.id);
+    if (!existingAgent) {
+      throw new AgentNotFoundError(agent.id);
+    }
+    existingAgent.status = "working";
+    existingAgent.currentTaskId = task.id;
+    existingAgent.lastActiveAt = /* @__PURE__ */ new Date();
+    const startTime = Date.now();
+    try {
+      const result = await runner.execute(task, {
+        taskId: task.id,
+        featureId: task.featureId ?? "",
+        projectId: task.projectId ?? "",
+        workingDir: context.workingDir,
+        relevantFiles: context.relevantFiles,
+        previousAttempts: context.previousAttempts
+      });
+      this.updateAgentMetrics(existingAgent, result, startTime);
+      return result;
+    } catch (error) {
+      existingAgent.metrics.tasksFailed++;
+      existingAgent.metrics.totalTimeActive += Date.now() - startTime;
+      this.eventBus.emit("agent:error", {
+        agentId: agent.id,
+        error: error instanceof Error ? error.message : "Unknown error",
+        recoverable: false
+      });
+      throw error;
+    } finally {
+      existingAgent.status = "idle";
+      existingAgent.currentTaskId = void 0;
+      existingAgent.lastActiveAt = /* @__PURE__ */ new Date();
+    }
+  }
+  /**
+   * Get the pool status
+   */
+  getPoolStatus() {
+    const byType = {
+      planner: { total: 0, active: 0, idle: 0, max: this.maxAgentsByType.get("planner") ?? 1 },
+      coder: { total: 0, active: 0, idle: 0, max: this.maxAgentsByType.get("coder") ?? 4 },
+      tester: { total: 0, active: 0, idle: 0, max: this.maxAgentsByType.get("tester") ?? 2 },
+      reviewer: { total: 0, active: 0, idle: 0, max: this.maxAgentsByType.get("reviewer") ?? 2 },
+      merger: { total: 0, active: 0, idle: 0, max: this.maxAgentsByType.get("merger") ?? 1 }
+    };
+    let tasksInProgress = 0;
+    for (const agent of this.agents.values()) {
+      byType[agent.type].total++;
+      if (agent.status === "working" || agent.status === "assigned") {
+        byType[agent.type].active++;
+        if (agent.currentTaskId) {
+          tasksInProgress++;
+        }
+      } else if (agent.status === "idle") {
+        byType[agent.type].idle++;
+      }
+    }
+    return {
+      totalAgents: this.agents.size,
+      byType,
+      tasksInProgress
+    };
+  }
+  /**
+   * Terminate all agents in the pool
+   */
+  async terminateAll() {
+    const agentIds = Array.from(this.agents.keys());
+    for (const agentId of agentIds) {
+      this.terminate(agentId);
+    }
+  }
+  /**
+   * Get aggregated metrics for all agents
+   */
+  getAggregatedMetrics() {
+    const metrics2 = this.createEmptyMetrics();
+    for (const agent of this.agents.values()) {
+      metrics2.tasksCompleted += agent.metrics.tasksCompleted;
+      metrics2.tasksFailed += agent.metrics.tasksFailed;
+      metrics2.totalIterations += agent.metrics.totalIterations;
+      metrics2.totalTokensUsed += agent.metrics.totalTokensUsed;
+      metrics2.totalTimeActive += agent.metrics.totalTimeActive;
+    }
+    const totalTasks = metrics2.tasksCompleted + metrics2.tasksFailed;
+    metrics2.averageIterationsPerTask = totalTasks > 0 ? metrics2.totalIterations / totalTasks : 0;
+    return metrics2;
+  }
+  /**
+   * Check if pool has capacity for a specific agent type
+   *
+   * @param type - Agent type to check
+   */
+  hasCapacity(type) {
+    const current = this.getAgentCountByType(type);
+    const max = this.maxAgentsByType.get(type) ?? DEFAULT_MAX_AGENTS[type];
+    return current < max;
+  }
+  /**
+   * Get the runner for a specific agent type
+   *
+   * @param type - Agent type
+   * @returns The runner or undefined
+   */
+  getRunner(type) {
+    return this.runners.get(type);
+  }
+  // ============================================================================
+  // Private Helpers
+  // ============================================================================
+  /**
+   * Get count of agents by type
+   */
+  getAgentCountByType(type) {
+    let count = 0;
+    for (const agent of this.agents.values()) {
+      if (agent.type === type) {
+        count++;
+      }
+    }
+    return count;
+  }
+  /**
+   * Create empty metrics object
+   */
+  createEmptyMetrics() {
+    return {
+      tasksCompleted: 0,
+      tasksFailed: 0,
+      totalIterations: 0,
+      averageIterationsPerTask: 0,
+      totalTokensUsed: 0,
+      totalTimeActive: 0
+    };
+  }
+  /**
+   * Update agent metrics after task execution
+   */
+  updateAgentMetrics(agent, result, startTime) {
+    const duration = Date.now() - startTime;
+    if (result.success) {
+      agent.metrics.tasksCompleted++;
+    } else {
+      agent.metrics.tasksFailed++;
+    }
+    const iterations = result.metrics?.iterations ?? 1;
+    agent.metrics.totalIterations += iterations;
+    const tokens = result.metrics?.tokensUsed ?? 0;
+    agent.metrics.totalTokensUsed += tokens;
+    agent.metrics.totalTimeActive += duration;
+    const totalTasks = agent.metrics.tasksCompleted + agent.metrics.tasksFailed;
+    agent.metrics.averageIterationsPerTask = totalTasks > 0 ? agent.metrics.totalIterations / totalTasks : 0;
+  }
+}
+const DEFAULT_BUILD_CONFIG = {
+  timeout: 6e4,
+  tsconfigPath: "tsconfig.json",
+  useProjectReferences: false,
+  additionalArgs: []
+};
+class BuildRunner {
+  config;
+  currentIteration = 0;
+  constructor(config = {}) {
+    this.config = {
+      ...DEFAULT_BUILD_CONFIG,
+      ...config
+    };
+  }
+  /**
+   * Set the current iteration number for error tracking
+   */
+  setIteration(iteration) {
+    this.currentIteration = iteration;
+  }
+  /**
+   * Run TypeScript compilation check
+   *
+   * Spawns tsc with --noEmit to perform type checking without emitting files.
+   * Parses the output to extract errors and warnings in structured format.
+   *
+   * @param workingDir - Directory containing the TypeScript project
+   * @returns BuildResult with success status and parsed errors/warnings
+   */
+  async run(workingDir) {
+    const startTime = Date.now();
+    return new Promise((resolve) => {
+      const args = this.buildTscArgs();
+      const proc = spawn("npx", args, {
+        cwd: workingDir,
+        shell: true,
+        timeout: this.config.timeout
+      });
+      let stdout = "";
+      let stderr = "";
+      proc.stdout?.on("data", (data) => {
+        stdout += data.toString();
+      });
+      proc.stderr?.on("data", (data) => {
+        stderr += data.toString();
+      });
+      proc.on("close", (code) => {
+        const output = stdout + stderr;
+        const errors = this.parseErrors(output);
+        const warnings = this.parseWarnings(output);
+        resolve({
+          success: code === 0,
+          errors,
+          warnings,
+          duration: Date.now() - startTime
+        });
+      });
+      proc.on("error", (err) => {
+        resolve({
+          success: false,
+          errors: [
+            this.createErrorEntry(
+              `Failed to spawn TypeScript compiler: ${err.message}`,
+              "error",
+              "SPAWN_ERROR"
+            )
+          ],
+          warnings: [],
+          duration: Date.now() - startTime
+        });
+      });
+    });
+  }
+  /**
+   * Create a callback function compatible with RalphStyleIterator's QARunner interface.
+   *
+   * The callback captures the working directory in a closure, allowing
+   * RalphStyleIterator to call it with just the taskId parameter.
+   *
+   * @param workingDir - Directory containing the TypeScript project
+   * @returns Function that takes taskId and returns Promise<BuildResult>
+   */
+  createCallback(workingDir) {
+    return async (_taskId) => {
+      return this.run(workingDir);
+    };
+  }
+  /**
+   * Build the tsc command arguments
+   */
+  buildTscArgs() {
+    const args = [
+      "tsc",
+      "--noEmit",
+      "--pretty",
+      "false",
+      "-p",
+      this.config.tsconfigPath
+    ];
+    if (this.config.useProjectReferences) {
+      args.push("--build");
+    }
+    if (this.config.additionalArgs.length > 0) {
+      args.push(...this.config.additionalArgs);
+    }
+    return args;
+  }
+  /**
+   * Parse TypeScript error output into structured ErrorEntry array
+   *
+   * TypeScript error format:
+   * - Pretty=false: src/file.ts(10,5): error TS2322: Type 'string' is not assignable to type 'number'.
+   * - Also handles: file(line,col): error TSxxxx: message
+   *
+   * @param output - Raw output from tsc process
+   * @returns Array of parsed ErrorEntry objects
+   */
+  parseErrors(output) {
+    const errors = [];
+    const errorRegex = /^(.+?)\((\d+),(\d+)\):\s*error\s+(TS\d+):\s*(.+)$/gm;
+    let match;
+    while ((match = errorRegex.exec(output)) !== null) {
+      errors.push(
+        this.createErrorEntry(
+          match[5],
+          // message
+          "error",
+          match[4],
+          // TS error code
+          match[1],
+          // file
+          parseInt(match[2], 10),
+          // line
+          parseInt(match[3], 10)
+          // column
+        )
+      );
+    }
+    return errors;
+  }
+  /**
+   * Parse TypeScript warning output into structured ErrorEntry array
+   *
+   * TypeScript typically doesn't emit warnings (uses strict mode errors instead),
+   * but we check for them in case of custom configurations.
+   *
+   * @param output - Raw output from tsc process
+   * @returns Array of parsed ErrorEntry objects with 'warning' severity
+   */
+  parseWarnings(output) {
+    const warnings = [];
+    const warningRegex = /^(.+?)\((\d+),(\d+)\):\s*warning\s+(TS\d+):\s*(.+)$/gm;
+    let match;
+    while ((match = warningRegex.exec(output)) !== null) {
+      warnings.push(
+        this.createErrorEntry(
+          match[5],
+          "warning",
+          match[4],
+          match[1],
+          parseInt(match[2], 10),
+          parseInt(match[3], 10)
+        )
+      );
+    }
+    return warnings;
+  }
+  /**
+   * Create a structured ErrorEntry object
+   */
+  createErrorEntry(message, severity, code, file, line, column) {
+    return {
+      type: "build",
+      severity,
+      message,
+      file,
+      line,
+      column,
+      code,
+      iteration: this.currentIteration
+    };
+  }
+}
+const DEFAULT_LINT_CONFIG = {
+  timeout: 12e4,
+  autoFix: false,
+  extensions: [".ts", ".tsx"],
+  additionalArgs: [],
+  maxWarnings: -1
+};
+class LintRunner {
+  config;
+  currentIteration = 0;
+  constructor(config = {}) {
+    this.config = {
+      ...DEFAULT_LINT_CONFIG,
+      ...config
+    };
+  }
+  /**
+   * Set the current iteration number for error tracking
+   */
+  setIteration(iteration) {
+    this.currentIteration = iteration;
+  }
+  /**
+   * Run ESLint check
+   *
+   * Spawns eslint with JSON output format to get structured results.
+   * Parses the output to extract errors and warnings in structured format.
+   *
+   * @param workingDir - Directory containing the project to lint
+   * @param fix - Whether to apply fixes (overrides config)
+   * @returns LintResult with success status and parsed errors/warnings
+   */
+  async run(workingDir, fix) {
+    const shouldFix = fix ?? this.config.autoFix;
+    return new Promise((resolve) => {
+      const args = this.buildEslintArgs(shouldFix);
+      const proc = spawn("npx", args, {
+        cwd: workingDir,
+        shell: true,
+        timeout: this.config.timeout
+      });
+      let stdout = "";
+      let stderr = "";
+      proc.stdout?.on("data", (data) => {
+        stdout += data.toString();
+      });
+      proc.stderr?.on("data", (data) => {
+        stderr += data.toString();
+      });
+      proc.on("close", (code) => {
+        const parsed = this.parseJsonOutput(stdout);
+        const fixable = parsed.fixableErrors + parsed.fixableWarnings;
+        resolve({
+          success: parsed.errors.length === 0,
+          errors: parsed.errors,
+          warnings: parsed.warnings,
+          fixable
+        });
+      });
+      proc.on("error", (err) => {
+        resolve({
+          success: false,
+          errors: [
+            this.createErrorEntry(
+              `Failed to spawn ESLint: ${err.message}`,
+              "error",
+              "SPAWN_ERROR"
+            )
+          ],
+          warnings: [],
+          fixable: 0
+        });
+      });
+    });
+  }
+  /**
+   * Run ESLint with auto-fix enabled
+   *
+   * @param workingDir - Directory containing the project to lint
+   * @returns LintResult with success status and parsed errors/warnings
+   */
+  async runWithFix(workingDir) {
+    return this.run(workingDir, true);
+  }
+  /**
+   * Create a callback function compatible with RalphStyleIterator's QARunner interface.
+   *
+   * The callback captures the working directory in a closure, allowing
+   * RalphStyleIterator to call it with just the taskId parameter.
+   *
+   * @param workingDir - Directory containing the project to lint
+   * @returns Function that takes taskId and returns Promise<LintResult>
+   */
+  createCallback(workingDir) {
+    return async (_taskId) => {
+      return this.run(workingDir);
+    };
+  }
+  /**
+   * Build the eslint command arguments
+   */
+  buildEslintArgs(fix) {
+    const args = ["eslint", "."];
+    for (const ext of this.config.extensions) {
+      args.push("--ext", ext);
+    }
+    if (fix) {
+      args.push("--fix");
+    }
+    if (this.config.maxWarnings >= 0) {
+      args.push("--max-warnings", String(this.config.maxWarnings));
+    }
+    args.push("--format", "json");
+    if (this.config.additionalArgs.length > 0) {
+      args.push(...this.config.additionalArgs);
+    }
+    return args;
+  }
+  /**
+   * Parse ESLint JSON output into structured format
+   *
+   * ESLint JSON format is an array of file results, each containing
+   * messages with severity (1 = warning, 2 = error).
+   *
+   * @param output - Raw JSON output from eslint
+   * @returns Parsed errors, warnings, and fixable counts
+   */
+  parseJsonOutput(output) {
+    const errors = [];
+    const warnings = [];
+    let fixableErrors = 0;
+    let fixableWarnings = 0;
+    let fixedCount = 0;
+    try {
+      const results = JSON.parse(output || "[]");
+      for (const file of results) {
+        if (file.output !== void 0) {
+          fixedCount++;
+        }
+        fixableErrors += file.fixableErrorCount || 0;
+        fixableWarnings += file.fixableWarningCount || 0;
+        for (const msg of file.messages || []) {
+          const entry = this.createErrorEntry(
+            msg.message,
+            msg.severity === 2 ? "error" : "warning",
+            msg.ruleId || void 0,
+            file.filePath,
+            msg.line,
+            msg.column,
+            msg.fix !== void 0
+          );
+          if (msg.severity === 2) {
+            errors.push(entry);
+          } else {
+            warnings.push(entry);
+          }
+        }
+      }
+    } catch {
+      if (output.trim()) {
+        errors.push(
+          this.createErrorEntry(
+            `ESLint output parse error: ${output.substring(0, 200)}`,
+            "error",
+            "PARSE_ERROR"
+          )
+        );
+      }
+    }
+    return { errors, warnings, fixableErrors, fixableWarnings, fixedCount };
+  }
+  /**
+   * Create a structured ErrorEntry object
+   */
+  createErrorEntry(message, severity, code, file, line, column, isFixable) {
+    return {
+      type: "lint",
+      severity,
+      message,
+      file,
+      line,
+      column,
+      code,
+      suggestion: isFixable ? "This issue can be auto-fixed with --fix" : void 0,
+      iteration: this.currentIteration
+    };
+  }
+}
+const DEFAULT_TEST_CONFIG = {
+  timeout: 3e5,
+  // 5 minutes
+  coverage: false,
+  testPattern: "",
+  watch: false,
+  reporter: "json",
+  additionalArgs: []
+};
+class TestRunner {
+  config;
+  currentIteration = 0;
+  constructor(config = {}) {
+    this.config = {
+      ...DEFAULT_TEST_CONFIG,
+      ...config
+    };
+  }
+  /**
+   * Set the current iteration number for error tracking
+   */
+  setIteration(iteration) {
+    this.currentIteration = iteration;
+  }
+  /**
+   * Run all tests
+   *
+   * Spawns vitest run, captures output, and parses results.
+   *
+   * @param workingDir - Directory containing the test project
+   * @returns TestResult with success status and parsed errors
+   */
+  async run(workingDir) {
+    return this.executeVitest(workingDir, []);
+  }
+  /**
+   * Run specific test files
+   *
+   * @param workingDir - Directory containing the test project
+   * @param files - Array of file paths to test
+   * @returns TestResult with success status and parsed errors
+   */
+  async runFiles(workingDir, files) {
+    return this.executeVitest(workingDir, files);
+  }
+  /**
+   * Run tests with coverage enabled
+   *
+   * @param workingDir - Directory containing the test project
+   * @returns TestResult with coverage information
+   */
+  async runWithCoverage(workingDir) {
+    const originalCoverage = this.config.coverage;
+    this.config.coverage = true;
+    const result = await this.executeVitest(workingDir, []);
+    this.config.coverage = originalCoverage;
+    return result;
+  }
+  /**
+   * Run tests matching a pattern
+   *
+   * @param workingDir - Directory containing the test project
+   * @param pattern - Test name pattern to match
+   * @returns TestResult for matching tests
+   */
+  async runByPattern(workingDir, pattern) {
+    const originalPattern = this.config.testPattern;
+    this.config.testPattern = pattern;
+    const result = await this.executeVitest(workingDir, []);
+    this.config.testPattern = originalPattern;
+    return result;
+  }
+  /**
+   * Create a callback function compatible with RalphStyleIterator's QARunner interface.
+   *
+   * The callback captures the working directory in a closure, allowing
+   * RalphStyleIterator to call it with just the taskId parameter.
+   *
+   * @param workingDir - Directory containing the test project
+   * @returns Function that takes taskId and returns Promise<TestResult>
+   */
+  createCallback(workingDir) {
+    return async (_taskId) => {
+      return this.run(workingDir);
+    };
+  }
+  /**
+   * Execute vitest with specified options
+   */
+  async executeVitest(workingDir, files) {
+    const startTime = Date.now();
+    return new Promise((resolve) => {
+      const args = this.buildVitestArgs(files);
+      const proc = spawn("npx", args, {
+        cwd: workingDir,
+        shell: true,
+        timeout: this.config.timeout
+      });
+      let stdout = "";
+      let stderr = "";
+      proc.stdout?.on("data", (data) => {
+        stdout += data.toString();
+      });
+      proc.stderr?.on("data", (data) => {
+        stderr += data.toString();
+      });
+      proc.on("close", (code) => {
+        const parsed = this.parseOutput(stdout, stderr);
+        const duration = Date.now() - startTime;
+        resolve({
+          success: code === 0 && parsed.failed === 0,
+          passed: parsed.passed,
+          failed: parsed.failed,
+          skipped: parsed.skipped,
+          errors: parsed.errors,
+          duration
+        });
+      });
+      proc.on("error", (err) => {
+        resolve({
+          success: false,
+          passed: 0,
+          failed: 1,
+          skipped: 0,
+          errors: [
+            this.createErrorEntry(
+              `Failed to spawn Vitest: ${err.message}`,
+              "error",
+              "SPAWN_ERROR"
+            )
+          ],
+          duration: Date.now() - startTime
+        });
+      });
+    });
+  }
+  /**
+   * Build the vitest command arguments
+   */
+  buildVitestArgs(files) {
+    const args = ["vitest", "run"];
+    if (this.config.reporter === "json") {
+      args.push("--reporter=json");
+    } else if (this.config.reporter === "verbose") {
+      args.push("--reporter=verbose");
+    }
+    if (this.config.coverage) {
+      args.push("--coverage");
+      args.push("--coverage.reporter=json");
+    }
+    if (this.config.testPattern) {
+      args.push("-t", this.config.testPattern);
+    }
+    if (files.length > 0) {
+      args.push(...files);
+    }
+    if (this.config.additionalArgs.length > 0) {
+      args.push(...this.config.additionalArgs);
+    }
+    return args;
+  }
+  /**
+   * Parse vitest output into structured result
+   *
+   * Attempts JSON parsing first, falls back to regex parsing
+   */
+  parseOutput(stdout, stderr) {
+    let passed = 0;
+    let failed = 0;
+    let skipped = 0;
+    const errors = [];
+    let coverage;
+    try {
+      const jsonResult = this.parseJsonOutput(stdout);
+      if (jsonResult) {
+        return jsonResult;
+      }
+    } catch {
+    }
+    const output = stdout + stderr;
+    const summaryMatch = output.match(
+      /Tests?:\s*(?:(\d+)\s*passed)?[,\s]*(?:(\d+)\s*failed)?[,\s]*(?:(\d+)\s*skipped)?/i
+    );
+    if (summaryMatch) {
+      passed = parseInt(summaryMatch[1] || "0", 10);
+      failed = parseInt(summaryMatch[2] || "0", 10);
+      skipped = parseInt(summaryMatch[3] || "0", 10);
+    } else {
+      const passMatch = output.match(/(\d+)\s*pass(?:ed|ing)?/i);
+      const failMatch = output.match(/(\d+)\s*fail(?:ed|ing|ure)?/i);
+      const skipMatch = output.match(/(\d+)\s*skip(?:ped)?/i);
+      if (passMatch) passed = parseInt(passMatch[1], 10);
+      if (failMatch) failed = parseInt(failMatch[1], 10);
+      if (skipMatch) skipped = parseInt(skipMatch[1], 10);
+    }
+    const failureErrors = this.parseFailureDetails(output);
+    errors.push(...failureErrors);
+    coverage = this.parseCoverage(output);
+    return { passed, failed, skipped, errors, coverage };
+  }
+  /**
+   * Parse JSON reporter output
+   */
+  parseJsonOutput(stdout) {
+    const jsonMatch = stdout.match(/\{[\s\S]*"testResults"[\s\S]*\}/);
+    if (!jsonMatch) {
+      return null;
+    }
+    try {
+      const json = JSON.parse(jsonMatch[0]);
+      let passed = 0;
+      let failed = 0;
+      let skipped = 0;
+      const errors = [];
+      let coverage;
+      for (const file of json.testResults || []) {
+        for (const test of file.assertionResults || []) {
+          switch (test.status) {
+            case "passed":
+              passed++;
+              break;
+            case "failed":
+              failed++;
+              errors.push(
+                this.createErrorEntry(
+                  test.failureMessages?.join("\n") || `Test failed: ${test.fullName || test.title}`,
+                  "error",
+                  void 0,
+                  file.name,
+                  void 0,
+                  void 0,
+                  test.failureMessages?.join("\n")
+                )
+              );
+              break;
+            case "skipped":
+            case "pending":
+            case "todo":
+              skipped++;
+              break;
+          }
+        }
+      }
+      if (json.coverageMap || json.coverage) {
+        const coverageData = json.coverageMap || json.coverage;
+        coverage = {
+          lines: coverageData.lines?.pct || coverageData.total?.lines?.pct || 0,
+          branches: coverageData.branches?.pct || coverageData.total?.branches?.pct || 0,
+          functions: coverageData.functions?.pct || coverageData.total?.functions?.pct || 0,
+          statements: coverageData.statements?.pct || coverageData.total?.statements?.pct || 0
+        };
+      }
+      return { passed, failed, skipped, errors, coverage };
+    } catch {
+      return null;
+    }
+  }
+  /**
+   * Parse failure details from output
+   */
+  parseFailureDetails(output) {
+    const errors = [];
+    const failFileRegex = /FAIL\s+(.+\.(?:test|spec)\.[jt]sx?)/g;
+    let fileMatch;
+    while ((fileMatch = failFileRegex.exec(output)) !== null) {
+      const filePath = fileMatch[1];
+      const errorDetailRegex = /[×✕]\s+(.+?)(?:\s+\((\d+)\s*ms\))?$/gm;
+      let errorMatch;
+      while ((errorMatch = errorDetailRegex.exec(output)) !== null) {
+        const testName = errorMatch[1].trim();
+        if (!errors.some((e) => e.message.includes(testName))) {
+          errors.push(
+            this.createErrorEntry(
+              `Test failed: ${testName}`,
+              "error",
+              void 0,
+              filePath
+            )
+          );
+        }
+      }
+    }
+    const assertionRegex = /AssertionError:\s*(.+?)(?:\n|$)|expected\s+(.+?)\s+to\s+(?:equal|be|have)\s+(.+?)(?:\n|$)/gi;
+    let assertMatch;
+    while ((assertMatch = assertionRegex.exec(output)) !== null) {
+      const message = assertMatch[1] || `Expected ${assertMatch[2]} to equal ${assertMatch[3]}`;
+      if (!errors.some((e) => e.message.includes(message))) {
+        errors.push(this.createErrorEntry(message, "error", "ASSERTION_ERROR"));
+      }
+    }
+    return errors;
+  }
+  /**
+   * Parse coverage information from output
+   */
+  parseCoverage(output) {
+    const coverageRegex = /All\s+files\s*\|\s*([\d.]+)\s*\|\s*([\d.]+)\s*\|\s*([\d.]+)\s*\|\s*([\d.]+)/i;
+    const match = output.match(coverageRegex);
+    if (match) {
+      return {
+        statements: parseFloat(match[1]),
+        branches: parseFloat(match[2]),
+        functions: parseFloat(match[3]),
+        lines: parseFloat(match[4])
+      };
+    }
+    return void 0;
+  }
+  /**
+   * Create a structured ErrorEntry object
+   */
+  createErrorEntry(message, severity, code, file, line, column, stack) {
+    return {
+      type: "test",
+      severity,
+      message,
+      file,
+      line,
+      column,
+      code,
+      suggestion: stack,
+      iteration: this.currentIteration
+    };
+  }
+}
+const DEFAULT_REVIEW_CONFIG = {
+  timeout: 12e4,
+  maxDiffSize: 5e4,
+  includeSuggestions: true,
+  additionalCriteria: []
+};
+const REVIEW_SYSTEM_PROMPT = `You are a senior code reviewer with expertise in TypeScript, software architecture, and best practices.
+Your task is to review code changes and provide constructive feedback.
+
+## Review Criteria
+1. **Correctness**: Does the code do what it's supposed to do?
+2. **Bugs**: Are there any obvious bugs, edge cases not handled, or potential runtime errors?
+3. **Security**: Are there any security vulnerabilities (injection, exposure, etc.)?
+4. **Performance**: Are there any obvious performance issues (N+1 queries, unnecessary loops, etc.)?
+5. **Maintainability**: Is the code clean, well-structured, and maintainable?
+6. **Types**: Are TypeScript types properly used? Any 'any' types that should be avoided?
+7. **Error Handling**: Is error handling appropriate and comprehensive?
+
+## Response Format
+You MUST respond with ONLY a valid JSON object (no markdown code blocks, no explanation before or after):
+{
+  "approved": true,
+  "comments": ["comment1", "comment2"],
+  "suggestions": ["suggestion1", "suggestion2"],
+  "blockers": ["blocker1"]
+}
+
+Rules:
+- Set "approved" to false if there are ANY blockers
+- "comments" are general observations about the code
+- "suggestions" are non-blocking improvements that would be nice to have
+- "blockers" are critical issues that MUST be fixed before the code can be approved
+- All arrays can be empty if not applicable
+- Keep feedback concise and actionable`;
+class ReviewRunner {
+  llmClient;
+  gitService;
+  config;
+  currentIteration = 0;
+  constructor(llmClient, gitService, config = {}) {
+    this.llmClient = llmClient;
+    this.gitService = gitService;
+    this.config = {
+      ...DEFAULT_REVIEW_CONFIG,
+      ...config,
+      additionalCriteria: config.additionalCriteria ?? []
+    };
+  }
+  /**
+   * Set the current iteration number for error tracking
+   */
+  setIteration(iteration) {
+    this.currentIteration = iteration;
+  }
+  /**
+   * Run code review on the current git diff
+   *
+   * Retrieves the diff of uncommitted changes, sends it to Gemini for review,
+   * and returns structured feedback compatible with RalphStyleIterator.
+   *
+   * @param workingDir - Directory containing the git repository
+   * @param context - Optional context about the task being reviewed
+   * @returns ReviewResult with approval status and feedback
+   */
+  async run(workingDir, context) {
+    try {
+      let diff = await this.gitService.diff({ staged: true });
+      const unstagedDiff = await this.gitService.diff();
+      if (unstagedDiff) {
+        diff = diff ? `${diff}
+${unstagedDiff}` : unstagedDiff;
+      }
+      if (!diff || diff.trim().length === 0) {
+        return {
+          approved: true,
+          comments: ["No changes to review"],
+          suggestions: [],
+          blockers: []
+        };
+      }
+      const truncatedDiff = this.truncateDiff(diff);
+      const prompt = this.buildReviewPrompt(truncatedDiff, context);
+      const response = await this.llmClient.chat([
+        { role: "system", content: this.buildSystemPrompt() },
+        { role: "user", content: prompt }
+      ]);
+      return this.parseReviewResponse(response.content);
+    } catch (error) {
+      return {
+        approved: false,
+        comments: [],
+        suggestions: [],
+        blockers: [
+          `Review failed: ${error instanceof Error ? error.message : "Unknown error"}`
+        ]
+      };
+    }
+  }
+  /**
+   * Review specific files instead of the full diff
+   *
+   * @param workingDir - Directory containing the git repository
+   * @param files - Specific files to review
+   * @param context - Optional context about the task
+   * @returns ReviewResult with approval status and feedback
+   */
+  async reviewFiles(workingDir, files, context) {
+    try {
+      const fullDiff = await this.gitService.diff();
+      if (!fullDiff || fullDiff.trim().length === 0) {
+        return {
+          approved: true,
+          comments: ["No changes to review in specified files"],
+          suggestions: [],
+          blockers: []
+        };
+      }
+      const filteredDiff = this.filterDiffByFiles(fullDiff, files);
+      if (!filteredDiff || filteredDiff.trim().length === 0) {
+        return {
+          approved: true,
+          comments: ["No changes to review in specified files"],
+          suggestions: [],
+          blockers: []
+        };
+      }
+      const prompt = this.buildReviewPrompt(filteredDiff, context);
+      const response = await this.llmClient.chat([
+        { role: "system", content: this.buildSystemPrompt() },
+        { role: "user", content: prompt }
+      ]);
+      return this.parseReviewResponse(response.content);
+    } catch (error) {
+      return {
+        approved: false,
+        comments: [],
+        suggestions: [],
+        blockers: [
+          `Review failed: ${error instanceof Error ? error.message : "Unknown error"}`
+        ]
+      };
+    }
+  }
+  /**
+   * Create a callback function compatible with RalphStyleIterator's QARunner interface.
+   *
+   * The callback captures the working directory in a closure, allowing
+   * RalphStyleIterator to call it with just the taskId parameter.
+   *
+   * @param workingDir - Directory containing the git repository
+   * @param context - Optional static context for all reviews
+   * @returns Function that takes taskId and returns Promise<ReviewResult>
+   */
+  createCallback(workingDir, context) {
+    return async (taskId) => {
+      return this.run(workingDir, { ...context, taskId });
+    };
+  }
+  /**
+   * Build the full system prompt including additional criteria
+   */
+  buildSystemPrompt() {
+    if (this.config.additionalCriteria.length === 0) {
+      return REVIEW_SYSTEM_PROMPT;
+    }
+    const additionalCriteriaText = this.config.additionalCriteria.map((c, i) => `${i + 8}. ${c}`).join("\n");
+    return REVIEW_SYSTEM_PROMPT.replace(
+      "7. **Error Handling**: Is error handling appropriate and comprehensive?",
+      `7. **Error Handling**: Is error handling appropriate and comprehensive?
+${additionalCriteriaText}`
+    );
+  }
+  /**
+   * Build the review prompt from diff and context
+   */
+  buildReviewPrompt(diff, context) {
+    let prompt = "## Code Changes to Review\n\n```diff\n" + diff + "\n```\n";
+    if (context?.taskDescription) {
+      prompt += `
+## Task Description
+${context.taskDescription}
+`;
+    }
+    if (context?.acceptanceCriteria?.length) {
+      prompt += `
+## Acceptance Criteria
+`;
+      context.acceptanceCriteria.forEach((c, i) => {
+        prompt += `${i + 1}. ${c}
+`;
+      });
+    }
+    if (context?.expectedFiles?.length) {
+      prompt += `
+## Expected Files to Modify
+`;
+      context.expectedFiles.forEach((f) => {
+        prompt += `- ${f}
+`;
+      });
+    }
+    prompt += "\nPlease review these changes and provide your assessment in JSON format.";
+    return prompt;
+  }
+  /**
+   * Parse Gemini response into ReviewResult
+   */
+  parseReviewResponse(response) {
+    try {
+      let jsonStr = response;
+      const jsonMatch = response.match(/```(?:json)?\s*([\s\S]*?)```/);
+      if (jsonMatch) {
+        jsonStr = jsonMatch[1];
+      }
+      const objectMatch = jsonStr.match(/\{[\s\S]*\}/);
+      if (objectMatch) {
+        jsonStr = objectMatch[0];
+      }
+      const parsed = JSON.parse(jsonStr);
+      return {
+        approved: Boolean(parsed.approved),
+        comments: Array.isArray(parsed.comments) ? parsed.comments.filter((c) => typeof c === "string") : [],
+        suggestions: Array.isArray(parsed.suggestions) ? parsed.suggestions.filter((s) => typeof s === "string") : [],
+        blockers: Array.isArray(parsed.blockers) ? parsed.blockers.filter((b) => typeof b === "string") : []
+      };
+    } catch {
+      return {
+        approved: false,
+        comments: [],
+        suggestions: [],
+        blockers: ["Failed to parse review response. Raw response: " + response.substring(0, 200)]
+      };
+    }
+  }
+  /**
+   * Truncate diff if it exceeds maximum size
+   */
+  truncateDiff(diff) {
+    if (diff.length <= this.config.maxDiffSize) {
+      return diff;
+    }
+    const truncated = diff.substring(0, this.config.maxDiffSize);
+    const lastNewline = truncated.lastIndexOf("\n");
+    return truncated.substring(0, lastNewline) + "\n\n... [DIFF TRUNCATED - showing first " + this.config.maxDiffSize + " characters] ...";
+  }
+  /**
+   * Filter a diff to only include specific files
+   */
+  filterDiffByFiles(diff, files) {
+    const fileChunks = diff.split(/(?=^diff --git)/m);
+    const filteredChunks = fileChunks.filter((chunk) => {
+      return files.some((file) => chunk.includes(file));
+    });
+    return filteredChunks.join("");
+  }
+  /**
+   * Convert blockers to ErrorEntry format for error aggregation
+   */
+  blockersToErrors(blockers) {
+    return blockers.map((blocker) => ({
+      type: "review",
+      severity: "error",
+      message: blocker,
+      iteration: this.currentIteration
+    }));
+  }
+  /**
+   * Convert suggestions to ErrorEntry format for tracking
+   */
+  suggestionsToWarnings(suggestions) {
+    return suggestions.map((suggestion) => ({
+      type: "review",
+      severity: "warning",
+      message: suggestion,
+      iteration: this.currentIteration
+    }));
+  }
+}
+class GitError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "GitError";
+    Object.setPrototypeOf(this, new.target.prototype);
+  }
+}
+class NotARepositoryError extends GitError {
+  path;
+  constructor(path) {
+    super(`Not a git repository: ${path}`);
+    this.name = "NotARepositoryError";
+    this.path = path;
+  }
+}
+class BranchNotFoundError extends GitError {
+  branch;
+  constructor(branch) {
+    super(`Branch not found: ${branch}`);
+    this.name = "BranchNotFoundError";
+    this.branch = branch;
+  }
+}
+class CommitError extends GitError {
+  reason;
+  constructor(reason) {
+    super(`Commit failed: ${reason}`);
+    this.name = "CommitError";
+    this.reason = reason;
+  }
+}
+class GitService {
+  baseDir;
+  binary;
+  logger;
+  git;
+  constructor(options) {
+    this.baseDir = normalize(options.baseDir);
+    this.binary = options.binary;
+    this.logger = options.logger;
+    const gitOptions = {
+      baseDir: this.baseDir,
+      trimmed: true
+    };
+    if (this.binary) {
+      gitOptions.binary = this.binary;
+    }
+    this.git = simpleGit(gitOptions);
+  }
+  /**
+   * Log a message if logger is available
+   */
+  log(level, message, ...args) {
+    if (this.logger) {
+      this.logger[level](message, ...args);
+    }
+  }
+  /**
+   * Ensure path is a git repository before operations
+   */
+  async ensureRepository() {
+    const isRepo = await this.isRepository();
+    if (!isRepo) {
+      throw new NotARepositoryError(this.baseDir);
+    }
+  }
+  // ==========================================================================
+  // Repository Status
+  // ==========================================================================
+  /**
+   * Check if path is inside a git repository
+   */
+  async isRepository() {
+    this.log("debug", `Checking if ${this.baseDir} is a git repository`);
+    try {
+      const result = await this.git.checkIsRepo();
+      return result;
+    } catch {
+      return false;
+    }
+  }
+  /**
+   * Get current repository status
+   * @throws NotARepositoryError if not in a git repository
+   */
+  async status() {
+    this.log("debug", `Getting status for ${this.baseDir}`);
+    await this.ensureRepository();
+    const result = await this.git.status();
+    return {
+      current: result.current || "",
+      tracking: result.tracking || void 0,
+      staged: [...result.staged, ...result.created],
+      modified: result.modified,
+      untracked: result.not_added,
+      conflicted: result.conflicted,
+      ahead: result.ahead,
+      behind: result.behind
+    };
+  }
+  /**
+   * Get name of current branch
+   * @throws NotARepositoryError if not in a git repository
+   */
+  async currentBranch() {
+    this.log("debug", `Getting current branch for ${this.baseDir}`);
+    await this.ensureRepository();
+    const result = await this.git.branch();
+    return result.current;
+  }
+  // ==========================================================================
+  // Branch Operations
+  // ==========================================================================
+  /**
+   * Create new branch from source (default: current)
+   * Does NOT checkout the branch
+   * @throws NotARepositoryError if not in a git repository
+   */
+  async createBranch(name, from) {
+    this.log("debug", `Creating branch ${name}${from ? ` from ${from}` : ""}`);
+    await this.ensureRepository();
+    if (from) {
+      await this.git.branch([name, from]);
+    } else {
+      await this.git.branch([name]);
+    }
+  }
+  /**
+   * Switch to existing branch
+   * @throws NotARepositoryError if not in a git repository
+   * @throws BranchNotFoundError if branch does not exist
+   */
+  async checkoutBranch(name) {
+    this.log("debug", `Checking out branch ${name}`);
+    await this.ensureRepository();
+    const branches = await this.git.branchLocal();
+    if (!branches.all.includes(name)) {
+      throw new BranchNotFoundError(name);
+    }
+    await this.git.checkout(name);
+  }
+  /**
+   * Delete a branch
+   * @param force Force delete unmerged branch
+   * @throws NotARepositoryError if not in a git repository
+   * @throws BranchNotFoundError if branch does not exist
+   */
+  async deleteBranch(name, force) {
+    this.log("debug", `Deleting branch ${name}${force ? " (force)" : ""}`);
+    await this.ensureRepository();
+    const branches = await this.git.branchLocal();
+    if (!branches.all.includes(name)) {
+      throw new BranchNotFoundError(name);
+    }
+    try {
+      await this.git.deleteLocalBranch(name, force ?? false);
+    } catch (error) {
+      if (!force) {
+        throw error;
+      }
+      throw new GitError(`Failed to delete branch ${name}: ${error.message}`);
+    }
+  }
+  /**
+   * List all local branches with metadata
+   * @throws NotARepositoryError if not in a git repository
+   */
+  async listBranches() {
+    this.log("debug", `Listing branches for ${this.baseDir}`);
+    await this.ensureRepository();
+    const result = await this.git.branchLocal();
+    return result.all.map((name) => {
+      const branch = result.branches[name];
+      return {
+        name,
+        current: name === result.current,
+        commit: branch.commit
+      };
+    });
+  }
+  // ==========================================================================
+  // Commit Operations
+  // ==========================================================================
+  /**
+   * Stage specific files or all changes
+   * @param files Array of file paths or 'all' for all changes
+   * @throws NotARepositoryError if not in a git repository
+   */
+  async stageFiles(files) {
+    this.log("debug", `Staging files: ${files === "all" ? "all" : files.join(", ")}`);
+    await this.ensureRepository();
+    if (files === "all") {
+      await this.git.add(".");
+    } else {
+      await this.git.add(files);
+    }
+  }
+  /**
+   * Create commit and return commit hash
+   * @throws NotARepositoryError if not in a git repository
+   * @throws CommitError if nothing to commit
+   */
+  async commit(message) {
+    this.log("debug", `Creating commit: ${message}`);
+    await this.ensureRepository();
+    const status = await this.git.status();
+    if (status.staged.length === 0 && status.created.length === 0) {
+      throw new CommitError("Nothing to commit");
+    }
+    try {
+      const result = await this.git.commit(message);
+      return result.commit;
+    } catch (error) {
+      const errMsg = error.message;
+      throw new CommitError(errMsg);
+    }
+  }
+  /**
+   * Get commit history
+   * @param limit Maximum number of commits to return
+   * @throws NotARepositoryError if not in a git repository
+   */
+  async getLog(limit) {
+    this.log("debug", `Getting log${limit ? ` (limit: ${limit})` : ""}`);
+    await this.ensureRepository();
+    const options = limit ? { maxCount: limit } : {};
+    const result = await this.git.log(options);
+    return result.all.map((commit) => ({
+      hash: commit.hash,
+      message: commit.message,
+      author: commit.author_name,
+      date: new Date(commit.date)
+    }));
+  }
+  // ==========================================================================
+  // Diff Operations
+  // ==========================================================================
+  /**
+   * Get diff of changes
+   * @throws NotARepositoryError if not in a git repository
+   */
+  async diff(options) {
+    this.log("debug", `Getting diff`, options);
+    await this.ensureRepository();
+    const args = [];
+    if (options?.ref1 && options.ref2) {
+      args.push(options.ref1, options.ref2);
+    } else if (options?.staged) {
+      args.push("--cached");
+    }
+    const result = await this.git.diff(args);
+    return result;
+  }
+  /**
+   * Get diff statistics
+   * @throws NotARepositoryError if not in a git repository
+   */
+  async diffStat(options) {
+    this.log("debug", `Getting diff stat`, options);
+    await this.ensureRepository();
+    const args = [];
+    if (options?.ref1 && options.ref2) {
+      args.push(options.ref1, options.ref2);
+    } else if (options?.staged) {
+      args.push("--cached");
+    }
+    const result = await this.git.diffSummary(args);
+    return {
+      filesChanged: result.files.length,
+      insertions: result.insertions,
+      deletions: result.deletions,
+      files: result.files.map((file) => ({
+        path: file.file,
+        insertions: "insertions" in file ? file.insertions : 0,
+        deletions: "deletions" in file ? file.deletions : 0
+      }))
+    };
+  }
+  // ==========================================================================
+  // Merge Operations
+  // ==========================================================================
+  /**
+   * Merge branch into current
+   * Returns conflict info if any
+   * @throws NotARepositoryError if not in a git repository
+   * @throws BranchNotFoundError if branch does not exist
+   */
+  async merge(branch, options) {
+    this.log("debug", `Merging branch ${branch}`, options);
+    await this.ensureRepository();
+    const branches = await this.git.branchLocal();
+    if (!branches.all.includes(branch)) {
+      throw new BranchNotFoundError(branch);
+    }
+    const args = [branch];
+    if (options?.noFf) {
+      args.unshift("--no-ff");
+    }
+    if (options?.message) {
+      args.unshift("-m", options.message);
+    }
+    try {
+      const result = await this.git.merge(args);
+      if (result.failed) {
+        return {
+          success: false,
+          conflicts: result.conflicts.map((c) => typeof c === "string" ? c : c.file ?? JSON.stringify(c))
+        };
+      }
+      return {
+        success: true,
+        mergeCommit: result.merges[0]
+      };
+    } catch (error) {
+      const status = await this.git.status();
+      if (status.conflicted.length > 0) {
+        return {
+          success: false,
+          conflicts: status.conflicted
+        };
+      }
+      throw new GitError(`Merge failed: ${error.message}`);
+    }
+  }
+  /**
+   * Abort in-progress merge
+   * @throws NotARepositoryError if not in a git repository
+   */
+  async abortMerge() {
+    this.log("debug", `Aborting merge`);
+    await this.ensureRepository();
+    try {
+      await this.git.merge(["--abort"]);
+    } catch (error) {
+      throw new GitError(`Failed to abort merge: ${error.message}`);
+    }
+  }
+}
+class QARunnerFactory {
+  /**
+   * Create a complete QARunner with all real implementations
+   *
+   * This is the primary factory method. It creates a QARunner that:
+   * - Runs TypeScript compilation (BuildRunner)
+   * - Runs ESLint (LintRunner)
+   * - Runs Vitest (TestRunner)
+   * - Runs AI code review (ReviewRunner) - requires geminiClient
+   *
+   * @param config - Factory configuration
+   * @returns Complete QARunner instance
+   */
+  static create(config) {
+    const buildRunner = new BuildRunner(config.buildConfig);
+    const lintRunner = new LintRunner(config.lintConfig);
+    const testRunner = new TestRunner(config.testConfig);
+    const qaRunner = {
+      build: buildRunner.createCallback(config.workingDir),
+      lint: lintRunner.createCallback(config.workingDir),
+      test: testRunner.createCallback(config.workingDir)
+    };
+    if (config.geminiClient) {
+      const gitService = config.gitService ?? new GitService({ baseDir: config.workingDir });
+      const reviewRunner = new ReviewRunner(
+        config.geminiClient,
+        gitService,
+        config.reviewConfig
+      );
+      qaRunner.review = reviewRunner.createCallback(
+        config.workingDir,
+        config.reviewContext
+      );
+    }
+    return qaRunner;
+  }
+  /**
+   * Create a QARunner with only build and lint (for quick checks)
+   *
+   * This is useful for fast feedback loops where you don't need
+   * full test or review coverage. Commonly used during development
+   * or when you want quick type checking and linting.
+   *
+   * @param config - Quick QA runner configuration
+   * @returns QARunner with only build and lint
+   */
+  static createQuick(config) {
+    const buildRunner = new BuildRunner(config.buildConfig);
+    const lintRunner = new LintRunner(config.lintConfig);
+    return {
+      build: buildRunner.createCallback(config.workingDir),
+      lint: lintRunner.createCallback(config.workingDir)
+    };
+  }
+  /**
+   * Create a QARunner with mocked implementations (for testing)
+   *
+   * This creates a QARunner where all steps immediately return
+   * successful results without actually running any tools.
+   * Useful for unit testing code that depends on QARunner.
+   *
+   * @returns QARunner with mocked implementations
+   */
+  static createMock() {
+    return {
+      build: async (_taskId) => ({
+        success: true,
+        errors: [],
+        warnings: [],
+        duration: 0
+      }),
+      lint: async (_taskId) => ({
+        success: true,
+        errors: [],
+        warnings: [],
+        fixable: 0
+      }),
+      test: async (_taskId) => ({
+        success: true,
+        passed: 10,
+        failed: 0,
+        skipped: 0,
+        errors: [],
+        duration: 0
+      }),
+      review: async (_taskId) => ({
+        approved: true,
+        comments: [],
+        suggestions: [],
+        blockers: []
+      })
+    };
+  }
+  /**
+   * Create a QARunner with configurable mock results (for testing)
+   *
+   * This allows you to specify exactly what results each step
+   * should return, enabling testing of various failure scenarios.
+   *
+   * @param mockResults - The results to return from each step
+   * @returns QARunner with configurable mock implementations
+   */
+  static createConfigurableMock(mockResults) {
+    const defaultBuild = {
+      success: true,
+      errors: [],
+      warnings: [],
+      duration: 0
+    };
+    const defaultLint = {
+      success: true,
+      errors: [],
+      warnings: [],
+      fixable: 0
+    };
+    const defaultTest = {
+      success: true,
+      passed: 10,
+      failed: 0,
+      skipped: 0,
+      errors: [],
+      duration: 0
+    };
+    const defaultReview = {
+      approved: true,
+      comments: [],
+      suggestions: [],
+      blockers: []
+    };
+    return {
+      build: async () => mockResults.build ?? defaultBuild,
+      lint: async () => mockResults.lint ?? defaultLint,
+      test: async () => mockResults.test ?? defaultTest,
+      review: async () => mockResults.review ?? defaultReview
+    };
+  }
+  /**
+   * Create individual runner instances for custom composition
+   *
+   * Use this when you need fine-grained control over individual
+   * runners or want to use them outside the QARunner interface.
+   *
+   * @param config - Factory configuration
+   * @returns Object containing individual runner instances
+   */
+  static createRunners(config) {
+    const buildRunner = new BuildRunner(config.buildConfig);
+    const lintRunner = new LintRunner(config.lintConfig);
+    const testRunner = new TestRunner(config.testConfig);
+    const result = {
+      buildRunner,
+      lintRunner,
+      testRunner
+    };
+    if (config.geminiClient) {
+      const gitService = config.gitService ?? new GitService({ baseDir: config.workingDir });
+      result.reviewRunner = new ReviewRunner(
+        config.geminiClient,
+        gitService,
+        config.reviewConfig
+      );
+    }
+    return result;
+  }
+}
+class NexusCoordinator {
+  // Dependencies
+  taskQueue;
+  agentPool;
+  decomposer;
+  resolver;
+  estimator;
+  /* eslint-disable @typescript-eslint/no-explicit-any -- External service types to avoid circular dependencies */
+  qaEngine;
+  worktreeManager;
+  checkpointManager;
+  mergerRunner;
+  agentWorktreeBridge;
+  /* eslint-enable @typescript-eslint/no-explicit-any */
+  // State
+  state = "idle";
+  currentPhase = "planning";
+  pauseReason;
+  projectConfig;
+  waves = [];
+  currentWaveIndex = 0;
+  totalTasks = 0;
+  completedTasks = 0;
+  failedTasks = 0;
+  // Control
+  stopRequested = false;
+  pauseRequested = false;
+  orchestrationLoop;
+  eventHandlers = [];
+  constructor(options) {
+    this.taskQueue = options.taskQueue;
+    this.agentPool = options.agentPool;
+    this.decomposer = options.decomposer;
+    this.resolver = options.resolver;
+    this.estimator = options.estimator;
+    this.qaEngine = options.qaEngine;
+    this.worktreeManager = options.worktreeManager;
+    this.checkpointManager = options.checkpointManager;
+    this.mergerRunner = options.mergerRunner;
+    this.agentWorktreeBridge = options.agentWorktreeBridge;
+  }
+  /**
+   * Initialize coordinator with project configuration
+   */
+  initialize(config) {
+    this.projectConfig = config;
+    this.state = "idle";
+    this.currentPhase = "planning";
+    this.pauseReason = void 0;
+    this.waves = [];
+    this.currentWaveIndex = 0;
+    this.totalTasks = 0;
+    this.completedTasks = 0;
+    this.failedTasks = 0;
+    this.stopRequested = false;
+    this.pauseRequested = false;
+  }
+  /**
+   * Start orchestration for a project
+   */
+  start(projectId) {
+    if (!this.projectConfig) {
+      throw new Error("Coordinator not initialized");
+    }
+    this.state = "running";
+    this.currentPhase = "execution";
+    this.stopRequested = false;
+    this.pauseRequested = false;
+    this.emitEvent("coordinator:started", { projectId });
+    this.orchestrationLoop = this.runOrchestrationLoop();
+  }
+  /**
+   * Pause execution gracefully
+   */
+  async pause(reason) {
+    if (this.state !== "running") {
+      return;
+    }
+    this.pauseRequested = true;
+    this.pauseReason = reason;
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    this.state = "paused";
+    this.emitEvent("coordinator:paused", { reason });
+  }
+  /**
+   * Resume from paused state
+   */
+  resume() {
+    if (this.state !== "paused") {
+      return;
+    }
+    this.pauseRequested = false;
+    this.pauseReason = void 0;
+    this.state = "running";
+    this.emitEvent("coordinator:resumed");
+    if (!this.orchestrationLoop) {
+      this.orchestrationLoop = this.runOrchestrationLoop();
+    }
+  }
+  /**
+   * Stop execution and clean up
+   */
+  async stop() {
+    this.stopRequested = true;
+    this.state = "stopping";
+    if (this.orchestrationLoop) {
+      await Promise.race([
+        this.orchestrationLoop,
+        new Promise((resolve) => setTimeout(resolve, 1e3))
+      ]);
+      this.orchestrationLoop = void 0;
+    }
+    for (const agent of this.agentPool.getAll()) {
+      try {
+        this.agentPool.terminate(agent.id);
+      } catch {
+      }
+    }
+    this.state = "idle";
+    this.emitEvent("coordinator:stopped");
+  }
+  /**
+   * Get current coordinator status
+   */
+  getStatus() {
+    return {
+      state: this.state,
+      projectId: this.projectConfig?.projectId,
+      activeAgents: this.agentPool.getActive().length,
+      queuedTasks: this.taskQueue.size(),
+      completedTasks: this.completedTasks,
+      failedTasks: this.failedTasks,
+      currentPhase: this.currentPhase,
+      currentWave: this.currentWaveIndex,
+      totalWaves: this.waves.length,
+      pauseReason: this.pauseReason
+    };
+  }
+  /**
+   * Get project progress metrics
+   */
+  getProgress() {
+    const progressPercent = this.totalTasks > 0 ? Math.round(this.completedTasks / this.totalTasks * 100) : 0;
+    const averageTaskMinutes = 15;
+    const remainingTasks = this.totalTasks - this.completedTasks - this.failedTasks;
+    const estimatedRemainingMinutes = remainingTasks * averageTaskMinutes;
+    return {
+      projectId: this.projectConfig?.projectId ?? "",
+      totalTasks: this.totalTasks,
+      completedTasks: this.completedTasks,
+      failedTasks: this.failedTasks,
+      progressPercent,
+      estimatedRemainingMinutes,
+      currentWave: this.currentWaveIndex,
+      totalWaves: this.waves.length,
+      activeAgents: this.agentPool.getActive().length
+    };
+  }
+  /**
+   * Get all currently active agents
+   */
+  getActiveAgents() {
+    return this.agentPool.getActive();
+  }
+  /**
+   * Get all pending tasks in queue
+   */
+  getPendingTasks() {
+    return this.taskQueue.getReadyTasks();
+  }
+  /**
+   * Register event handler
+   */
+  onEvent(handler) {
+    this.eventHandlers.push(handler);
+  }
+  /**
+   * Create a checkpoint for later resumption
+   */
+  async createCheckpoint(name) {
+    const checkpoint = await this.checkpointManager.create({
+      name,
+      projectId: this.projectConfig?.projectId,
+      waveId: this.currentWaveIndex,
+      completedTaskIds: [],
+      // Would be tracked
+      pendingTaskIds: [],
+      // Would be tracked
+      coordinatorState: this.state
+    });
+    this.emitEvent("checkpoint:created", { checkpointId: checkpoint.id, name });
+    return checkpoint;
+  }
+  /**
+   * Emit an event to all registered handlers
+   */
+  emitEvent(type, data) {
+    const event = {
+      type,
+      timestamp: /* @__PURE__ */ new Date(),
+      projectId: this.projectConfig?.projectId,
+      data
+    };
+    for (const handler of this.eventHandlers) {
+      try {
+        handler(event);
+      } catch {
+      }
+    }
+  }
+  /**
+   * Main orchestration loop
+   * Hotfix #5 - Issue 3: Added per-wave checkpoints
+   * Hotfix #5 - Issue 4: Added Genesis/Evolution mode branching
+   */
+  async runOrchestrationLoop() {
+    try {
+      if (!this.projectConfig) {
+        throw new Error("Project configuration not initialized");
+      }
+      const config = this.projectConfig;
+      const allTasks = await this.decomposeByMode(config);
+      const cycles = this.resolver.detectCycles(allTasks);
+      if (cycles.length > 0) {
+        throw new Error(`Dependency cycles detected: ${cycles.map((c) => c.taskIds.join(" -> ")).join("; ")}`);
+      }
+      this.waves = this.resolver.calculateWaves(allTasks);
+      this.totalTasks = allTasks.length;
+      for (const wave of this.waves) {
+        for (const task of wave.tasks) {
+          const orchestrationTask = {
+            ...task,
+            dependsOn: task.dependsOn,
+            status: "pending",
+            waveId: wave.id,
+            priority: 1,
+            createdAt: /* @__PURE__ */ new Date()
+          };
+          this.taskQueue.enqueue(orchestrationTask, wave.id);
+        }
+      }
+      for (let waveIndex = 0; waveIndex < this.waves.length; waveIndex++) {
+        if (this.stopRequested) break;
+        this.currentWaveIndex = waveIndex;
+        this.emitEvent("wave:started", { waveId: waveIndex });
+        const wave = this.waves[waveIndex];
+        await this.processWave(wave);
+        if (!this.stopRequested) {
+          this.emitEvent("wave:completed", { waveId: waveIndex });
+          await this.createWaveCheckpoint(waveIndex);
+        }
+      }
+    } catch (error) {
+      console.error("Orchestration error:", error);
+    }
+  }
+  /**
+   * Decompose features based on project mode
+   * Hotfix #5 - Issue 4: Genesis vs Evolution mode distinction
+   *
+   * Genesis mode: Full decomposition from requirements (greenfield project)
+   * Evolution mode: Analyze existing code, targeted changes (existing codebase)
+   */
+  async decomposeByMode(config) {
+    const mode = config.mode ?? "genesis";
+    const features2 = config.features ?? [];
+    const allTasks = [];
+    if (mode === "genesis") {
+      this.emitEvent("orchestration:mode", { mode: "genesis", reason: "Full decomposition from requirements" });
+      for (const feature of features2) {
+        const tasks2 = await this.decomposer.decompose(feature);
+        allTasks.push(...tasks2);
+      }
+      if (allTasks.length === 0) {
+        const mockFeature = {
+          id: "mock",
+          name: "Mock",
+          description: "Mock",
+          priority: "must",
+          status: "backlog",
+          complexity: "simple",
+          subFeatures: [],
+          estimatedTasks: 1,
+          completedTasks: 0,
+          createdAt: /* @__PURE__ */ new Date(),
+          updatedAt: /* @__PURE__ */ new Date(),
+          projectId: config.projectId
+        };
+        const tasks2 = await this.decomposer.decompose(mockFeature);
+        allTasks.push(...tasks2);
+      }
+    } else {
+      this.emitEvent("orchestration:mode", { mode: "evolution", reason: "Targeted changes to existing codebase" });
+      for (const feature of features2) {
+        const tasks2 = await this.decomposer.decompose(feature);
+        for (const task of tasks2) {
+          task.testCriteria.push("Evolution: Verify compatibility with existing code");
+        }
+        allTasks.push(...tasks2);
+      }
+    }
+    return allTasks;
+  }
+  /**
+   * Create checkpoint after wave completion
+   * Hotfix #5 - Issue 3: Per-wave checkpoints for recovery
+   */
+  async createWaveCheckpoint(waveIndex) {
+    try {
+      const checkpointName = `Wave ${waveIndex} complete`;
+      await this.checkpointManager.create({
+        name: checkpointName,
+        projectId: this.projectConfig?.projectId,
+        waveId: waveIndex,
+        completedTaskIds: [],
+        // Would be tracked in production
+        pendingTaskIds: [],
+        coordinatorState: this.state
+      });
+      this.emitEvent("checkpoint:created", {
+        waveId: waveIndex,
+        reason: checkpointName
+      });
+    } catch (error) {
+      console.error("Failed to create wave checkpoint:", error);
+      this.emitEvent("checkpoint:failed", {
+        waveId: waveIndex,
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  }
+  /**
+   * Process a single wave of tasks
+   */
+  async processWave(wave) {
+    const runningTasks = /* @__PURE__ */ new Map();
+    while (!this.stopRequested) {
+      if (this.pauseRequested) {
+        await Promise.all(runningTasks.values());
+        while (this.pauseRequested && !this.stopRequested) {
+          await new Promise((resolve) => setTimeout(resolve, 50));
+        }
+        if (this.stopRequested) break;
+      }
+      const waveTasks = this.taskQueue.getByWave(wave.id);
+      if (waveTasks.length === 0 && runningTasks.size === 0) {
+        break;
+      }
+      const readyTasks = this.taskQueue.getReadyTasks();
+      const waveReadyTasks = readyTasks.filter((t) => t.waveId === wave.id);
+      for (const _task of waveReadyTasks) {
+        if (this.stopRequested || this.pauseRequested) break;
+        let agent = this.agentPool.getAvailable();
+        if (!agent && this.agentPool.size() < 4) {
+          try {
+            agent = this.agentPool.spawn("coder");
+          } catch {
+            break;
+          }
+        }
+        if (!agent) {
+          break;
+        }
+        const dequeuedTask = this.taskQueue.dequeue();
+        if (!dequeuedTask) break;
+        let worktreePath;
+        try {
+          const worktree = await this.worktreeManager.createWorktree(dequeuedTask.id);
+          worktreePath = worktree.path;
+        } catch {
+        }
+        this.agentPool.assign(agent.id, dequeuedTask.id, worktreePath);
+        this.emitEvent("task:assigned", { taskId: dequeuedTask.id, agentId: agent.id });
+        const taskPromise = this.executeTask(dequeuedTask, agent.id, worktreePath);
+        runningTasks.set(dequeuedTask.id, taskPromise);
+        void taskPromise.finally(() => {
+          runningTasks.delete(dequeuedTask.id);
+        });
+      }
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    await Promise.all(runningTasks.values());
+  }
+  /**
+   * Execute a single task with per-task merge on success
+   * Hotfix #5 - Issue 2: Added merge step after successful QA loop
+   */
+  async executeTask(task, agentId, worktreePath) {
+    this.emitEvent("task:started", { taskId: task.id, agentId });
+    try {
+      const result = await this.qaEngine.run(
+        {
+          id: task.id,
+          name: task.name,
+          description: task.description,
+          files: task.files ?? [],
+          worktree: worktreePath
+        },
+        null
+        // coder would be passed here
+      );
+      if (result.success) {
+        if (worktreePath && this.mergerRunner) {
+          try {
+            await this.mergerRunner.merge(worktreePath, "main");
+            this.emitEvent("task:merged", { taskId: task.id, branch: "main" });
+          } catch (mergeError) {
+            this.emitEvent("task:merge-failed", {
+              taskId: task.id,
+              error: mergeError instanceof Error ? mergeError.message : String(mergeError)
+            });
+          }
+        }
+        this.taskQueue.markComplete(task.id);
+        this.completedTasks++;
+        this.emitEvent("task:completed", { taskId: task.id, agentId });
+      } else if (result.escalated) {
+        this.taskQueue.markFailed(task.id);
+        this.failedTasks++;
+        this.emitEvent("task:escalated", {
+          taskId: task.id,
+          agentId,
+          reason: result.reason ?? "Max QA iterations exceeded"
+        });
+      } else {
+        this.taskQueue.markFailed(task.id);
+        this.failedTasks++;
+        this.emitEvent("task:failed", {
+          taskId: task.id,
+          agentId,
+          escalated: result.escalated
+        });
+      }
+    } catch (error) {
+      this.taskQueue.markFailed(task.id);
+      this.failedTasks++;
+      this.emitEvent("task:failed", {
+        taskId: task.id,
+        agentId,
+        error: error instanceof Error ? error.message : String(error)
+      });
+    } finally {
+      if (this.agentWorktreeBridge) {
+        try {
+          await this.agentWorktreeBridge.releaseWorktree(agentId);
+        } catch {
+        }
+      }
+      try {
+        this.agentPool.release(agentId);
+        this.emitEvent("agent:released", { agentId });
+      } catch {
+      }
+      if (worktreePath) {
+        try {
+          await this.worktreeManager.removeWorktree(task.id);
+        } catch {
+        }
+      }
+    }
+  }
+}
+class TaskQueue {
+  /** Main task storage: taskId -> task */
+  tasks = /* @__PURE__ */ new Map();
+  /** Tasks by wave: waveId -> Set<taskId> */
+  waveIndex = /* @__PURE__ */ new Map();
+  /** Completed task IDs for dependency resolution */
+  completedTaskIds = /* @__PURE__ */ new Set();
+  /** Failed task IDs */
+  failedTaskIds = /* @__PURE__ */ new Set();
+  /** Current active wave being processed */
+  currentWave = 0;
+  /**
+   * Add task to queue with optional wave assignment
+   */
+  enqueue(task, waveId) {
+    const queuedTask = {
+      ...task,
+      status: "queued",
+      waveId: waveId ?? task.waveId ?? 0
+    };
+    this.tasks.set(queuedTask.id, queuedTask);
+    const wave = queuedTask.waveId ?? 0;
+    if (!this.waveIndex.has(wave)) {
+      this.waveIndex.set(wave, /* @__PURE__ */ new Set());
+    }
+    const waveSet = this.waveIndex.get(wave);
+    if (waveSet) waveSet.add(queuedTask.id);
+  }
+  /**
+   * Get and remove next ready task
+   * Returns undefined if no tasks are ready (dependencies unmet or queue empty)
+   */
+  dequeue() {
+    const readyTask = this.findNextReadyTask();
+    if (!readyTask) {
+      return void 0;
+    }
+    readyTask.status = "assigned";
+    this.tasks.delete(readyTask.id);
+    const waveId = readyTask.waveId ?? 0;
+    this.waveIndex.get(waveId)?.delete(readyTask.id);
+    return readyTask;
+  }
+  /**
+   * View next ready task without removing
+   */
+  peek() {
+    return this.findNextReadyTask();
+  }
+  /**
+   * Mark task as complete, enabling dependent tasks
+   */
+  markComplete(taskId) {
+    this.completedTaskIds.add(taskId);
+    this.updateCurrentWave();
+  }
+  /**
+   * Mark task as failed
+   */
+  markFailed(taskId) {
+    this.failedTaskIds.add(taskId);
+    this.updateCurrentWave();
+  }
+  /**
+   * Get all tasks whose dependencies are satisfied
+   */
+  getReadyTasks() {
+    const ready = [];
+    for (const task of this.tasks.values()) {
+      if (this.isTaskReady(task)) {
+        ready.push(task);
+      }
+    }
+    return this.sortTasks(ready);
+  }
+  /**
+   * Get all tasks in a specific wave
+   */
+  getByWave(waveId) {
+    const taskIds = this.waveIndex.get(waveId);
+    if (!taskIds || taskIds.size === 0) {
+      return [];
+    }
+    const tasks2 = [];
+    for (const id of taskIds) {
+      const task = this.tasks.get(id);
+      if (task) {
+        tasks2.push(task);
+      }
+    }
+    return tasks2;
+  }
+  /**
+   * Get number of tasks in queue
+   */
+  size() {
+    return this.tasks.size;
+  }
+  /**
+   * Check if queue is empty
+   */
+  isEmpty() {
+    return this.tasks.size === 0;
+  }
+  /**
+   * Clear all tasks and reset state
+   */
+  clear() {
+    this.tasks.clear();
+    this.waveIndex.clear();
+    this.completedTaskIds.clear();
+    this.failedTaskIds.clear();
+    this.currentWave = 0;
+  }
+  /**
+   * Get count of completed tasks
+   */
+  getCompletedCount() {
+    return this.completedTaskIds.size;
+  }
+  /**
+   * Get count of failed tasks
+   */
+  getFailedCount() {
+    return this.failedTaskIds.size;
+  }
+  /**
+   * Find the next ready task respecting wave ordering and priorities
+   */
+  findNextReadyTask() {
+    const readyTasks = this.getReadyTasks();
+    if (readyTasks.length === 0) {
+      return null;
+    }
+    return readyTasks[0] ?? null;
+  }
+  /**
+   * Check if a task is ready to be dequeued
+   */
+  isTaskReady(task) {
+    const taskWave = task.waveId ?? 0;
+    if (taskWave > this.currentWave) {
+      return false;
+    }
+    for (const depId of task.dependsOn) {
+      if (!this.completedTaskIds.has(depId)) {
+        return false;
+      }
+    }
+    return true;
+  }
+  /**
+   * Sort tasks by wave, priority, then createdAt
+   */
+  sortTasks(tasks2) {
+    return tasks2.sort((a, b) => {
+      const waveA = a.waveId ?? 0;
+      const waveB = b.waveId ?? 0;
+      if (waveA !== waveB) {
+        return waveA - waveB;
+      }
+      if (a.priority !== b.priority) {
+        return a.priority - b.priority;
+      }
+      return a.createdAt.getTime() - b.createdAt.getTime();
+    });
+  }
+  /**
+   * Update current wave if all tasks in current wave are complete
+   */
+  updateCurrentWave() {
+    const currentWaveTasks = this.waveIndex.get(this.currentWave);
+    if (currentWaveTasks && currentWaveTasks.size > 0) {
+      return;
+    }
+    const waves = Array.from(this.waveIndex.keys()).sort((a, b) => a - b);
+    for (const wave of waves) {
+      if (wave > this.currentWave) {
+        const waveTasks = this.waveIndex.get(wave);
+        if (waveTasks && waveTasks.size > 0) {
+          this.currentWave = wave;
+          return;
+        }
+      }
+    }
+  }
+}
+class WorktreeError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "WorktreeError";
+    Object.setPrototypeOf(this, new.target.prototype);
+  }
+}
+class WorktreeExistsError extends WorktreeError {
+  taskId;
+  constructor(taskId) {
+    super(`Worktree already exists for task: ${taskId}`);
+    this.name = "WorktreeExistsError";
+    this.taskId = taskId;
+  }
+}
+class WorktreeNotFoundError extends WorktreeError {
+  taskId;
+  constructor(taskId) {
+    super(`Worktree not found for task: ${taskId}`);
+    this.name = "WorktreeNotFoundError";
+    this.taskId = taskId;
+  }
+}
+const DEFAULT_MAX_AGE = 1 * 60 * 60 * 1e3;
+const IDLE_THRESHOLD = 15 * 60 * 1e3;
+const STALE_THRESHOLD = 30 * 60 * 1e3;
+const LOCK_TIMEOUT = 5e3;
+const LOCK_RETRY_INTERVAL = 50;
+class WorktreeManager {
+  baseDir;
+  worktreeDir;
+  gitService;
+  registryPath;
+  lockPath;
+  isLocked = false;
+  constructor(options) {
+    this.baseDir = normalize(options.baseDir);
+    this.worktreeDir = normalize(
+      options.worktreeDir || join(this.baseDir, ".nexus", "worktrees")
+    );
+    this.gitService = options.gitService;
+    this.registryPath = join(this.worktreeDir, "registry.json");
+    this.lockPath = join(this.worktreeDir, ".lock");
+  }
+  // ==========================================================================
+  // Lock Management (for concurrent access)
+  // ==========================================================================
+  /**
+   * Acquire file lock for registry access
+   * Uses a simple file-based lock with timeout
+   */
+  async acquireLock() {
+    const startTime = Date.now();
+    await fse.ensureDir(this.worktreeDir);
+    while (true) {
+      try {
+        await fse.writeFile(this.lockPath, String(process.pid), { flag: "wx" });
+        this.isLocked = true;
+        return;
+      } catch {
+        if (Date.now() - startTime > LOCK_TIMEOUT) {
+          try {
+            await fse.remove(this.lockPath);
+            await fse.writeFile(this.lockPath, String(process.pid), { flag: "wx" });
+            this.isLocked = true;
+            return;
+          } catch {
+            throw new WorktreeError("Failed to acquire registry lock");
+          }
+        }
+        await new Promise((resolve) => setTimeout(resolve, LOCK_RETRY_INTERVAL));
+      }
+    }
+  }
+  /**
+   * Release file lock
+   */
+  async releaseLock() {
+    if (this.isLocked) {
+      try {
+        await fse.remove(this.lockPath);
+      } catch {
+      }
+      this.isLocked = false;
+    }
+  }
+  /**
+   * Execute a function with registry lock
+   */
+  async withLock(fn) {
+    await this.acquireLock();
+    try {
+      return await fn();
+    } finally {
+      await this.releaseLock();
+    }
+  }
+  // ==========================================================================
+  // Path Operations
+  // ==========================================================================
+  /**
+   * Get absolute path to worktree directory for a task
+   * @param taskId Task identifier
+   * @returns Absolute path to worktree directory
+   */
+  getWorktreePath(taskId) {
+    return join(this.worktreeDir, taskId);
+  }
+  /**
+   * Generate branch name for a task
+   * @param taskId Task identifier
+   * @returns Branch name following pattern nexus/task/{taskId}/{timestamp}
+   */
+  generateBranchName(taskId) {
+    const timestamp = Date.now();
+    return `nexus/task/${taskId}/${timestamp}`;
+  }
+  // ==========================================================================
+  // Registry Operations
+  // ==========================================================================
+  /**
+   * Internal: Load registry from disk (creates if not exists)
+   * Should only be called when lock is held
+   */
+  async loadRegistryInternal() {
+    await fse.ensureDir(this.worktreeDir);
+    try {
+      if (await fse.pathExists(this.registryPath)) {
+        const content = await fse.readFile(this.registryPath, "utf-8");
+        const raw = JSON.parse(content);
+        const registry2 = {
+          version: 1,
+          baseDir: this.baseDir,
+          lastUpdated: new Date(raw.lastUpdated),
+          worktrees: {}
+        };
+        for (const [taskId, info] of Object.entries(raw.worktrees)) {
+          const worktreeRaw = info;
+          registry2.worktrees[taskId] = {
+            ...worktreeRaw,
+            createdAt: new Date(worktreeRaw.createdAt),
+            lastActivity: worktreeRaw.lastActivity ? new Date(worktreeRaw.lastActivity) : void 0
+          };
+        }
+        return registry2;
+      }
+    } catch {
+    }
+    const registry = {
+      version: 1,
+      baseDir: this.baseDir,
+      worktrees: {},
+      lastUpdated: /* @__PURE__ */ new Date()
+    };
+    await this.saveRegistryInternal(registry);
+    return registry;
+  }
+  /**
+   * Internal: Save registry to disk
+   * Should only be called when lock is held
+   */
+  async saveRegistryInternal(registry) {
+    await fse.ensureDir(this.worktreeDir);
+    registry.lastUpdated = /* @__PURE__ */ new Date();
+    const tempPath = `${this.registryPath}.tmp`;
+    await fse.writeFile(tempPath, JSON.stringify(registry, null, 2), "utf-8");
+    await fse.rename(tempPath, this.registryPath);
+  }
+  /**
+   * Load registry from disk (creates if not exists)
+   * @returns WorktreeRegistry
+   */
+  async loadRegistry() {
+    return this.withLock(() => this.loadRegistryInternal());
+  }
+  /**
+   * Save registry to disk
+   * Uses atomic write (temp file + rename) for safety
+   * @param registry Registry to save
+   */
+  async saveRegistry(registry) {
+    return this.withLock(() => this.saveRegistryInternal(registry));
+  }
+  // ==========================================================================
+  // Worktree Operations
+  // ==========================================================================
+  /**
+   * Create a new worktree for a task
+   * @param taskId Task identifier
+   * @param baseBranch Branch to create worktree from (default: main/master)
+   * @returns WorktreeInfo for the created worktree
+   * @throws WorktreeExistsError if worktree already exists for taskId
+   */
+  async createWorktree(taskId, baseBranch) {
+    return this.withLock(async () => {
+      const registry = await this.loadRegistryInternal();
+      if (registry.worktrees[taskId]) {
+        throw new WorktreeExistsError(taskId);
+      }
+      const actualBaseBranch = baseBranch || await this.gitService.currentBranch();
+      const branchName = this.generateBranchName(taskId);
+      const worktreePath = this.getWorktreePath(taskId);
+      const cmd = `git worktree add "${worktreePath}" -b "${branchName}" "${actualBaseBranch}"`;
+      await execaCommand(cmd, { cwd: this.baseDir, shell: true });
+      const now = /* @__PURE__ */ new Date();
+      const info = {
+        taskId,
+        path: worktreePath,
+        branch: branchName,
+        baseBranch: actualBaseBranch,
+        createdAt: now,
+        lastActivity: now,
+        status: "active"
+      };
+      registry.worktrees[taskId] = info;
+      await this.saveRegistryInternal(registry);
+      return info;
+    });
+  }
+  /**
+   * Get worktree info by task ID
+   * @param taskId Task identifier
+   * @returns WorktreeInfo if exists, null otherwise
+   */
+  async getWorktree(taskId) {
+    const registry = await this.loadRegistry();
+    return registry.worktrees[taskId] || null;
+  }
+  /**
+   * List all active worktrees
+   * @returns Array of WorktreeInfo
+   */
+  async listWorktrees() {
+    const registry = await this.loadRegistry();
+    return Object.values(registry.worktrees).filter((info) => info !== void 0);
+  }
+  /**
+   * Remove a worktree
+   * @param taskId Task identifier
+   * @param options Removal options
+   * @throws WorktreeNotFoundError if worktree doesn't exist
+   */
+  async removeWorktree(taskId, options) {
+    const registry = await this.loadRegistry();
+    const info = registry.worktrees[taskId];
+    if (!info) {
+      throw new WorktreeNotFoundError(taskId);
+    }
+    try {
+      const cmd = `git worktree remove "${info.path}" --force`;
+      await execaCommand(cmd, { cwd: this.baseDir, shell: true });
+    } catch {
+      if (await fse.pathExists(info.path)) {
+        await fse.remove(info.path);
+        await execaCommand("git worktree prune", { cwd: this.baseDir, shell: true });
+      }
+    }
+    if (options?.deleteBranch) {
+      try {
+        await this.gitService.deleteBranch(info.branch, true);
+      } catch {
+      }
+    }
+    delete registry.worktrees[taskId];
+    await this.saveRegistry(registry);
+  }
+  /**
+   * Cleanup stale worktrees
+   * @param options Cleanup options
+   * @returns CleanupResult with removed, failed, and skipped tasks
+   */
+  async cleanup(options) {
+    const maxAge = options?.maxAge ?? DEFAULT_MAX_AGE;
+    const force = options?.force ?? false;
+    const dryRun = options?.dryRun ?? false;
+    const result = {
+      removed: [],
+      failed: [],
+      skipped: []
+    };
+    const registry = await this.loadRegistry();
+    const now = Date.now();
+    for (const [taskId, info] of Object.entries(registry.worktrees)) {
+      if (!info) {
+        continue;
+      }
+      const lastActivityTime = info.lastActivity?.getTime() ?? info.createdAt.getTime();
+      const age = now - lastActivityTime;
+      if (age < maxAge && !force) {
+        result.skipped.push(taskId);
+        continue;
+      }
+      if (info.status !== "stale" && age < maxAge && !force) {
+        result.skipped.push(taskId);
+        continue;
+      }
+      if (dryRun) {
+        result.removed.push(taskId);
+        continue;
+      }
+      try {
+        await this.removeWorktree(taskId, { deleteBranch: true });
+        result.removed.push(taskId);
+      } catch (error) {
+        result.failed.push({
+          taskId,
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
+    }
+    return result;
+  }
+  // ==========================================================================
+  // Activity Tracking
+  // ==========================================================================
+  /**
+   * Update activity timestamp for a worktree
+   * @param taskId Task identifier
+   */
+  async updateActivity(taskId) {
+    const registry = await this.loadRegistry();
+    const info = registry.worktrees[taskId];
+    if (!info) {
+      throw new WorktreeNotFoundError(taskId);
+    }
+    info.lastActivity = /* @__PURE__ */ new Date();
+    info.status = "active";
+    await this.saveRegistry(registry);
+  }
+  /**
+   * Refresh status based on activity
+   * Status transitions:
+   * - active: lastActivity < 15 minutes ago
+   * - idle: lastActivity 15-30 minutes ago
+   * - stale: lastActivity > 30 minutes ago
+   * @param taskId Task identifier
+   */
+  async refreshStatus(taskId) {
+    const registry = await this.loadRegistry();
+    const info = registry.worktrees[taskId];
+    if (!info) {
+      throw new WorktreeNotFoundError(taskId);
+    }
+    const now = Date.now();
+    const lastActivityTime = info.lastActivity?.getTime() ?? info.createdAt.getTime();
+    const age = now - lastActivityTime;
+    if (age < IDLE_THRESHOLD) {
+      info.status = "active";
+    } else if (age < STALE_THRESHOLD) {
+      info.status = "idle";
+    } else {
+      info.status = "stale";
+    }
+    await this.saveRegistry(registry);
+  }
+}
+const DEFAULT_NEXUS_CONFIG = {
+  claudeBackend: "cli",
+  geminiBackend: "cli",
+  embeddingsBackend: "local"
+};
+class NexusFactory {
+  /**
+   * Create a complete Nexus instance with all dependencies wired.
+   *
+   * This is the primary factory method for production use.
+   *
+   * Backend selection (Phase 16 - Task 12):
+   * - CLI-first: Prefers CLI clients over API when available
+   * - Smart fallback: Falls back to API if CLI unavailable and API key exists
+   * - Helpful errors: Throws descriptive errors with install instructions
+   *
+   * @param config - Factory configuration
+   * @returns Promise resolving to fully-wired Nexus instance
+   */
+  static async create(config) {
+    const [claudeResult, geminiResult] = await Promise.all([
+      this.createClaudeClient(config),
+      this.createGeminiClient(config)
+    ]);
+    const claudeClient = claudeResult.client;
+    const geminiClient = geminiResult.client;
+    const claudeBackend = claudeResult.backend;
+    const geminiBackend = geminiResult.backend;
+    let embeddingsResult;
+    let embeddingsBackend = config.embeddingsBackend ?? "local";
+    try {
+      embeddingsResult = await this.createEmbeddingsService(config);
+      embeddingsBackend = embeddingsResult.backend;
+    } catch (error) {
+      console.warn("[NexusFactory] Embeddings service unavailable:", error instanceof Error ? error.message : error);
+    }
+    const taskDecomposer = new TaskDecomposer(claudeClient);
+    const dependencyResolver = new DependencyResolver();
+    const timeEstimator = new TimeEstimator();
+    const agentPool = new AgentPool({
+      claudeClient,
+      geminiClient,
+      maxAgentsByType: config.maxAgentsByType
+    });
+    const gitService = new GitService({ baseDir: config.workingDir });
+    const qaRunner = QARunnerFactory.create({
+      workingDir: config.workingDir,
+      geminiClient,
+      gitService,
+      buildConfig: {
+        timeout: config.qaConfig?.buildTimeout
+      },
+      lintConfig: {
+        timeout: config.qaConfig?.lintTimeout,
+        autoFix: config.qaConfig?.autoFixLint
+      },
+      testConfig: {
+        timeout: config.qaConfig?.testTimeout
+      }
+    });
+    const taskQueue = new TaskQueue();
+    const eventBus = EventBus.getInstance();
+    const worktreeManager = new WorktreeManager({
+      baseDir: config.workingDir,
+      gitService,
+      worktreeDir: `${config.workingDir}/.nexus/worktrees`
+    });
+    const checkpointManager = null;
+    const coordinatorOptions = {
+      taskQueue,
+      agentPool,
+      decomposer: taskDecomposer,
+      resolver: dependencyResolver,
+      estimator: timeEstimator,
+      qaEngine: qaRunner,
+      worktreeManager,
+      checkpointManager
+    };
+    const coordinator = new NexusCoordinator(coordinatorOptions);
+    const shutdown = async () => {
+      try {
+        await coordinator.stop();
+      } catch {
+      }
+      try {
+        await agentPool.terminateAll();
+      } catch {
+      }
+      try {
+        if (worktreeManager && typeof worktreeManager.cleanup === "function") {
+          await worktreeManager.cleanup();
+        }
+      } catch {
+      }
+      try {
+        if (eventBus && typeof eventBus.removeAllListeners === "function") {
+          eventBus.removeAllListeners();
+        }
+      } catch {
+      }
+    };
+    return {
+      coordinator,
+      agentPool,
+      taskQueue,
+      eventBus,
+      llm: {
+        claude: claudeClient,
+        gemini: geminiClient
+      },
+      planning: {
+        decomposer: taskDecomposer,
+        resolver: dependencyResolver,
+        estimator: timeEstimator
+      },
+      embeddings: embeddingsResult?.service,
+      backends: {
+        claude: claudeBackend,
+        gemini: geminiBackend,
+        embeddings: embeddingsBackend
+      },
+      shutdown
+    };
+  }
+  /**
+   * Create a Nexus instance optimized for testing.
+   *
+   * This version:
+   * - Uses mocked QA runners for faster execution
+   * - Reduces iteration limits
+   * - Maintains full functionality for integration testing
+   * - Supports backend selection with fallback (Phase 16 - Task 12)
+   *
+   * @param config - Testing configuration
+   * @returns Promise resolving to Nexus instance optimized for testing
+   */
+  static async createForTesting(config) {
+    const [claudeResult, geminiResult] = await Promise.all([
+      this.createClaudeClient(config),
+      this.createGeminiClient(config)
+    ]);
+    const claudeClient = claudeResult.client;
+    const geminiClient = geminiResult.client;
+    const claudeBackend = claudeResult.backend;
+    const geminiBackend = geminiResult.backend;
+    let embeddingsResult;
+    let embeddingsBackend = config.embeddingsBackend ?? "local";
+    try {
+      embeddingsResult = await this.createEmbeddingsService(config);
+      embeddingsBackend = embeddingsResult.backend;
+    } catch {
+    }
+    const taskDecomposer = new TaskDecomposer(claudeClient);
+    const dependencyResolver = new DependencyResolver();
+    const timeEstimator = new TimeEstimator();
+    const agentPool = new AgentPool({
+      claudeClient,
+      geminiClient,
+      maxAgentsByType: config.maxAgentsByType
+    });
+    const qaRunner = config.mockQA ? QARunnerFactory.createMock() : QARunnerFactory.create({
+      workingDir: config.workingDir,
+      geminiClient
+    });
+    const taskQueue = new TaskQueue();
+    const eventBus = EventBus.getInstance();
+    const gitService = new GitService({ baseDir: config.workingDir });
+    const worktreeManager = new WorktreeManager({
+      baseDir: config.workingDir,
+      gitService,
+      worktreeDir: `${config.workingDir}/.nexus/test-worktrees`
+    });
+    const checkpointManager = null;
+    const coordinator = new NexusCoordinator({
+      taskQueue,
+      agentPool,
+      decomposer: taskDecomposer,
+      resolver: dependencyResolver,
+      estimator: timeEstimator,
+      qaEngine: qaRunner,
+      worktreeManager,
+      checkpointManager
+    });
+    const shutdown = async () => {
+      try {
+        await coordinator.stop();
+      } catch {
+      }
+      try {
+        await agentPool.terminateAll();
+      } catch {
+      }
+      try {
+        if (worktreeManager && typeof worktreeManager.cleanup === "function") {
+          await worktreeManager.cleanup();
+        }
+      } catch {
+      }
+      try {
+        if (eventBus && typeof eventBus.removeAllListeners === "function") {
+          eventBus.removeAllListeners();
+        }
+      } catch {
+      }
+    };
+    return {
+      coordinator,
+      agentPool,
+      taskQueue,
+      eventBus,
+      llm: {
+        claude: claudeClient,
+        gemini: geminiClient
+      },
+      planning: {
+        decomposer: taskDecomposer,
+        resolver: dependencyResolver,
+        estimator: timeEstimator
+      },
+      embeddings: embeddingsResult?.service,
+      backends: {
+        claude: claudeBackend,
+        gemini: geminiBackend,
+        embeddings: embeddingsBackend
+      },
+      shutdown
+    };
+  }
+  /**
+   * Create a minimal Nexus instance with only planning components.
+   *
+   * Useful for scenarios where you only need task decomposition
+   * and dependency resolution without full orchestration.
+   *
+   * @param claudeApiKey - Anthropic API key
+   * @returns Minimal Nexus instance with planning only
+   */
+  static createPlanningOnly(claudeApiKey) {
+    const claudeClient = new ClaudeClient({ apiKey: claudeApiKey });
+    const geminiClient = null;
+    const taskDecomposer = new TaskDecomposer(claudeClient);
+    const dependencyResolver = new DependencyResolver();
+    const timeEstimator = new TimeEstimator();
+    return {
+      llm: {
+        claude: claudeClient,
+        gemini: geminiClient
+      },
+      planning: {
+        decomposer: taskDecomposer,
+        resolver: dependencyResolver,
+        estimator: timeEstimator
+      },
+      shutdown: async () => {
+      }
+    };
+  }
+  // ==========================================================================
+  // Private Backend Selection Methods (Task 12)
+  // ==========================================================================
+  /**
+   * Create a Claude client based on backend preference.
+   *
+   * Order of precedence:
+   * 1. If backend='cli' → try CLI, fallback to API if available
+   * 2. If backend='api' → require API key, throw if not available
+   *
+   * @param config - Factory configuration
+   * @returns Claude client (CLI or API)
+   * @throws CLINotFoundError when CLI unavailable and no API fallback
+   */
+  static async createClaudeClient(config) {
+    const backend = config.claudeBackend ?? DEFAULT_NEXUS_CONFIG.claudeBackend ?? "cli";
+    if (backend === "cli") {
+      const cliClient = new ClaudeCodeCLIClient(config.claudeCliConfig);
+      if (await cliClient.isAvailable()) {
+        return { client: cliClient, backend: "cli" };
+      }
+      if (config.claudeApiKey) {
+        console.warn(
+          "[NexusFactory] Claude CLI not available, falling back to API backend"
+        );
+        return {
+          client: new ClaudeClient({
+            apiKey: config.claudeApiKey,
+            ...config.claudeConfig
+          }),
+          backend: "api"
+        };
+      }
+      throw new CLINotFoundError();
+    }
+    if (!config.claudeApiKey) {
+      throw new APIKeyMissingError("claude");
+    }
+    return {
+      client: new ClaudeClient({
+        apiKey: config.claudeApiKey,
+        ...config.claudeConfig
+      }),
+      backend: "api"
+    };
+  }
+  /**
+   * Create a Gemini client based on backend preference.
+   *
+   * Order of precedence:
+   * 1. If backend='cli' → try CLI, fallback to API if available
+   * 2. If backend='api' → require API key, throw if not available
+   *
+   * @param config - Factory configuration
+   * @returns Gemini client (CLI or API)
+   * @throws GeminiCLINotFoundError when CLI unavailable and no API fallback
+   */
+  static async createGeminiClient(config) {
+    const backend = config.geminiBackend ?? DEFAULT_NEXUS_CONFIG.geminiBackend ?? "cli";
+    if (backend === "cli") {
+      const cliClient = new GeminiCLIClient(config.geminiCliConfig);
+      if (await cliClient.isAvailable()) {
+        return { client: cliClient, backend: "cli" };
+      }
+      if (config.geminiApiKey) {
+        console.warn(
+          "[NexusFactory] Gemini CLI not available, falling back to API backend"
+        );
+        return {
+          client: new GeminiClient({
+            apiKey: config.geminiApiKey,
+            ...config.geminiConfig
+          }),
+          backend: "api"
+        };
+      }
+      throw new GeminiCLINotFoundError();
+    }
+    if (!config.geminiApiKey) {
+      throw new APIKeyMissingError("gemini");
+    }
+    return {
+      client: new GeminiClient({
+        apiKey: config.geminiApiKey,
+        ...config.geminiConfig
+      }),
+      backend: "api"
+    };
+  }
+  /**
+   * Create an embeddings service based on backend preference.
+   *
+   * Order of precedence:
+   * 1. If backend='local' → try local, fallback to API if available
+   * 2. If backend='api' → require OpenAI API key, throw if not available
+   *
+   * @param config - Factory configuration
+   * @returns Embeddings service (local or API)
+   * @throws LocalEmbeddingsInitError when local unavailable and no API fallback
+   */
+  static async createEmbeddingsService(config) {
+    const backend = config.embeddingsBackend ?? DEFAULT_NEXUS_CONFIG.embeddingsBackend ?? "local";
+    if (backend === "local") {
+      const localService = new LocalEmbeddingsService(config.localEmbeddingsConfig);
+      if (await localService.isAvailable()) {
+        return { service: localService, backend: "local" };
+      }
+      if (config.openaiApiKey) {
+        console.warn(
+          "[NexusFactory] Local embeddings not available, falling back to OpenAI API"
+        );
+        return {
+          service: new EmbeddingsService({ apiKey: config.openaiApiKey }),
+          backend: "api"
+        };
+      }
+      throw new LocalEmbeddingsInitError(
+        config.localEmbeddingsConfig?.model ?? "default",
+        new Error("Local embeddings initialization failed and no API key fallback available")
+      );
+    }
+    if (!config.openaiApiKey) {
+      throw new APIKeyMissingError("embeddings");
+    }
+    return {
+      service: new EmbeddingsService({ apiKey: config.openaiApiKey }),
+      backend: "api"
+    };
+  }
+}
+const DEFAULT_CONFIDENCE_THRESHOLD = 0.7;
+const DEFAULT_CONFIDENCE = 0.5;
+const DEFAULT_PRIORITY = "should";
+const CATEGORY_MAP = {
+  functional: "functional",
+  non_functional: "non-functional",
+  "non-functional": "non-functional",
+  technical: "technical",
+  constraint: "constraint",
+  assumption: "assumption"
+};
+const VALID_CATEGORIES = /* @__PURE__ */ new Set([
+  "functional",
+  "non-functional",
+  "technical",
+  "constraint",
+  "assumption"
+]);
+const VALID_PRIORITIES = /* @__PURE__ */ new Set([
+  "must",
+  "should",
+  "could",
+  "wont"
+]);
+class RequirementExtractor {
+  confidenceThreshold;
+  /**
+   * Create a new RequirementExtractor
+   * @param options Configuration options
+   */
+  constructor(options) {
+    this.confidenceThreshold = options?.confidenceThreshold ?? DEFAULT_CONFIDENCE_THRESHOLD;
+  }
+  /**
+   * Extract requirements from LLM response text
+   * @param responseText The full LLM response text
+   * @param sourceMessageId ID of the message this response belongs to
+   * @returns ExtractionResult with requirements, raw count, and filtered count
+   */
+  extract(responseText, sourceMessageId) {
+    const requirements2 = [];
+    const rawRequirements = [];
+    const requirementRegex = /<requirement>([\s\S]*?)<\/requirement>/g;
+    let match;
+    while ((match = requirementRegex.exec(responseText)) !== null) {
+      const block = match[1];
+      if (!block) continue;
+      const parsed = this.parseRequirementBlock(block, sourceMessageId);
+      if (parsed) {
+        rawRequirements.push(parsed);
+        if (parsed.confidence >= this.confidenceThreshold) {
+          requirements2.push(parsed);
+        }
+      }
+    }
+    return {
+      requirements: requirements2,
+      rawCount: rawRequirements.length,
+      filteredCount: requirements2.length
+    };
+  }
+  /**
+   * Set the confidence threshold for filtering
+   * @param threshold New threshold (0.0 to 1.0)
+   */
+  setConfidenceThreshold(threshold) {
+    this.confidenceThreshold = threshold;
+  }
+  /**
+   * Parse a single requirement block into a structured requirement
+   * @param block The content inside <requirement>...</requirement>
+   * @param sourceMessageId Source message ID
+   * @returns ExtractedRequirement or null if invalid
+   */
+  parseRequirementBlock(block, sourceMessageId) {
+    const text2 = this.extractTag(block, "text");
+    const categoryRaw = this.extractTag(block, "category");
+    if (!text2 || !categoryRaw) {
+      return null;
+    }
+    const category = this.mapCategory(categoryRaw);
+    if (!category) {
+      return null;
+    }
+    const priorityRaw = this.extractTag(block, "priority");
+    const priority = this.mapPriority(priorityRaw) ?? DEFAULT_PRIORITY;
+    const confidenceRaw = this.extractTag(block, "confidence");
+    const confidence = confidenceRaw ? parseFloat(confidenceRaw) : DEFAULT_CONFIDENCE;
+    const area = this.extractTag(block, "area") ?? void 0;
+    return {
+      id: nanoid(),
+      text: text2,
+      category,
+      priority,
+      confidence: isNaN(confidence) ? DEFAULT_CONFIDENCE : confidence,
+      area,
+      sourceMessageId
+    };
+  }
+  /**
+   * Extract content from an XML tag
+   * @param content The content to search
+   * @param tag The tag name
+   * @returns Trimmed content or null if not found
+   */
+  extractTag(content, tag) {
+    const regex = new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`);
+    const match = content.match(regex);
+    return match?.[1] ? match[1].trim() : null;
+  }
+  /**
+   * Map LLM category to internal format
+   * @param raw The raw category string from LLM
+   * @returns Mapped category or null if invalid
+   */
+  mapCategory(raw) {
+    const normalized = raw.trim().toLowerCase();
+    const mapped = CATEGORY_MAP[normalized];
+    return mapped && VALID_CATEGORIES.has(mapped) ? mapped : null;
+  }
+  /**
+   * Map LLM priority to internal format
+   * @param raw The raw priority string from LLM
+   * @returns Mapped priority or null if invalid
+   */
+  mapPriority(raw) {
+    if (!raw) return null;
+    const normalized = raw.trim().toLowerCase();
+    return VALID_PRIORITIES.has(normalized) ? normalized : null;
+  }
+}
+const STANDARD_AREAS = [
+  "authentication",
+  "authorization",
+  "data_model",
+  "api",
+  "ui_ux",
+  "performance",
+  "security",
+  "integrations",
+  "deployment"
+];
+const INTERVIEWER_SYSTEM_PROMPT = `You are an expert requirements analyst conducting a discovery interview for a software project.
+
+Your role:
+- Ask clarifying questions to understand the user's vision
+- Extract clear, actionable requirements from their descriptions
+- Identify gaps and suggest areas to explore
+- Maintain a conversational, non-interrogative tone
+
+Behavior:
+- Start broad, then go detailed per area
+- Summarize periodically to confirm understanding
+- Suggest missing areas when appropriate ("You haven't mentioned authentication...")
+- Be adaptive - follow the user's thread of thought
+- Keep responses focused and not too long
+
+Requirement Extraction:
+When the user describes features, needs, or constraints, extract them as requirements.
+For each requirement found, output in this format BEFORE your conversational response:
+
+<requirement>
+  <text>Clear description of the requirement</text>
+  <category>functional|non_functional|technical|constraint|assumption</category>
+  <priority>must|should|could|wont</priority>
+  <confidence>0.0-1.0 (how certain you are this is a real requirement)</confidence>
+  <area>domain area like "authentication", "payments", "ui"</area>
+</requirement>
+
+Category definitions:
+- functional: What the system does (features, behaviors)
+- non_functional: How well the system does it (performance, scalability, reliability)
+- technical: Technology choices, architecture decisions
+- constraint: Limitations, boundaries, rules
+- assumption: Things taken as given but should be validated
+
+Priority definitions (MoSCoW):
+- must: Critical for MVP, cannot ship without
+- should: Important but not critical
+- could: Nice to have
+- wont: Explicitly out of scope for now
+
+Rules for extraction:
+- Only extract requirements the user explicitly stated or clearly implied
+- Do NOT invent requirements or assume features not mentioned
+- Set confidence based on how explicit the user was (0.9+ for explicit, 0.5-0.7 for implied)
+- One requirement per <requirement> block
+- Multiple requirements can be extracted from a single message
+
+After extracting requirements (if any), continue the natural conversation with:
+- A brief acknowledgment of what you understood
+- A follow-up question to explore deeper or a new area
+
+Example response format:
+<requirement>
+  <text>Users must be able to log in with email and password</text>
+  <category>functional</category>
+  <priority>must</priority>
+  <confidence>0.95</confidence>
+  <area>authentication</area>
+</requirement>
+
+Got it! You need email/password authentication. Do you also want to support social logins like Google or GitHub?`;
+const INITIAL_GREETING = `Hello! I'm here to help you define the requirements for your software project.
+
+Let's start with the big picture: What are you building, and what problem does it solve?
+
+Feel free to describe your vision in your own words - I'll ask follow-up questions to make sure I understand everything correctly.`;
+function getGapSuggestionPrompt(gaps) {
+  if (gaps.length === 0) return "";
+  const topGaps = gaps.slice(0, 3);
+  return `
+
+Note: You haven't discussed these areas yet: ${topGaps.join(", ")}. Consider asking about them if relevant to this project.`;
+}
+const MIN_REQUIREMENTS_FOR_GAPS = 3;
+const MIN_EXPLORED_AREAS_FOR_GAPS = 2;
+class QuestionGenerator {
+  llmClient;
+  logger;
+  constructor(options) {
+    this.llmClient = options.llmClient;
+    this.logger = options.logger;
+  }
+  /**
+   * Generate a follow-up question based on context
+   *
+   * @param context The current conversation context
+   * @returns Generated question with metadata
+   */
+  async generate(context) {
+    this.logger?.debug("Generating question", {
+      messageCount: context.conversationHistory.length,
+      requirementCount: context.extractedRequirements.length,
+      exploredAreas: context.exploredAreas
+    });
+    const gaps = this.detectGaps(context.exploredAreas);
+    const shouldSuggestGaps = this.shouldSuggestGap(context);
+    const systemPrompt = this.buildQuestionPrompt(context, shouldSuggestGaps ? gaps : []);
+    const messages = [
+      { role: "system", content: systemPrompt },
+      ...context.conversationHistory.map((msg) => ({
+        role: msg.role,
+        content: msg.content
+      }))
+    ];
+    const options = {
+      maxTokens: 1024,
+      temperature: 0.7
+    };
+    const response = await this.llmClient.chat(messages, options);
+    const question = this.parseQuestionResponse(response.content, context);
+    this.logger?.info("Generated question", {
+      area: question.area,
+      depth: question.depth,
+      gapsFound: gaps.length
+    });
+    return {
+      question,
+      suggestedGaps: gaps,
+      shouldSuggestGaps
+    };
+  }
+  /**
+   * Detect unexplored standard areas
+   *
+   * @param exploredAreas Areas that have been discussed
+   * @returns Array of standard areas not yet explored
+   */
+  detectGaps(exploredAreas) {
+    const explored = new Set(exploredAreas.map((a) => a.toLowerCase()));
+    return STANDARD_AREAS.filter((area) => !explored.has(area));
+  }
+  /**
+   * Determine if gaps should be suggested to the user
+   *
+   * Gaps are only suggested after enough context has been gathered
+   * (minimum requirements and explored areas)
+   *
+   * @param context The generation context
+   * @returns True if gaps should be surfaced
+   */
+  shouldSuggestGap(context) {
+    const hasEnoughRequirements = context.extractedRequirements.length >= MIN_REQUIREMENTS_FOR_GAPS;
+    const hasEnoughExploration = context.exploredAreas.length >= MIN_EXPLORED_AREAS_FOR_GAPS;
+    const hasGaps = this.detectGaps(context.exploredAreas).length > 0;
+    return hasEnoughRequirements && hasEnoughExploration && hasGaps;
+  }
+  /**
+   * Get the interviewer system prompt
+   *
+   * @returns The full system prompt for the interviewer
+   */
+  getSystemPrompt() {
+    return INTERVIEWER_SYSTEM_PROMPT;
+  }
+  /**
+   * Build the question generation prompt
+   */
+  buildQuestionPrompt(context, gaps) {
+    let prompt = INTERVIEWER_SYSTEM_PROMPT;
+    if (context.projectDescription) {
+      prompt += `
+
+Project Context:
+${context.projectDescription}`;
+    }
+    if (context.extractedRequirements.length > 0) {
+      const reqSummary = context.extractedRequirements.slice(-10).map((r) => `- [${r.category}] ${r.text}`).join("\n");
+      prompt += `
+
+Requirements captured so far:
+${reqSummary}`;
+    }
+    if (context.exploredAreas.length > 0) {
+      prompt += `
+
+Areas already discussed: ${context.exploredAreas.join(", ")}`;
+    }
+    if (gaps.length > 0) {
+      prompt += getGapSuggestionPrompt(gaps);
+    }
+    return prompt;
+  }
+  /**
+   * Parse LLM response to extract question metadata
+   */
+  parseQuestionResponse(response, context) {
+    let depth = "broad";
+    if (context.conversationHistory.length === 0) {
+      depth = "broad";
+    } else if (context.extractedRequirements.length > 5) {
+      depth = "detailed";
+    } else if (context.conversationHistory.length > 2) {
+      depth = "clarifying";
+    }
+    const area = this.inferAreaFromResponse(response, context);
+    const lastUserMessage = context.conversationHistory.filter((m) => m.role === "user").pop();
+    return {
+      question: response,
+      area,
+      depth,
+      followsUp: lastUserMessage?.id
+    };
+  }
+  /**
+   * Infer the domain area from response content
+   */
+  inferAreaFromResponse(response, context) {
+    const responseLower = response.toLowerCase();
+    for (const area of STANDARD_AREAS) {
+      if (responseLower.includes(area.replace("_", " "))) {
+        return area;
+      }
+    }
+    const areaKeywords = [
+      // Check security first - has specific keywords that shouldn't be confused with data_model
+      ["security", ["encrypt", "secure", "vulnerability", "protect", "safety", "threat"]],
+      // Authentication - specific keywords
+      ["authentication", ["login", "sign in", "password", "auth", "sso", "oauth", "credential"]],
+      // Authorization - distinct from authentication
+      ["authorization", ["permission", "role", "access control", "admin", "privilege"]],
+      // Performance - specific metrics
+      ["performance", ["speed", "latency", "response time", "load", "throughput", "benchmark"]],
+      // Integrations - external connections
+      ["integrations", ["integrate", "third-party", "external", "connect", "plugin"]],
+      // Deployment - infrastructure
+      ["deployment", ["deploy", "hosting", "cloud", "infrastructure", "server", "container"]],
+      // UI/UX - user interface
+      ["ui_ux", ["interface", "design", "user experience", "layout", "screen", "component"]],
+      // API - endpoints
+      ["api", ["endpoint", "rest", "graphql", "webhook", "route"]],
+      // Data model - last since 'data' is generic
+      ["data_model", ["database", "schema", "entity", "model", "table", "migration"]]
+    ];
+    for (const [area, keywords] of areaKeywords) {
+      for (const keyword of keywords) {
+        if (responseLower.includes(keyword)) {
+          return area;
+        }
+      }
+    }
+    return context.exploredAreas[context.exploredAreas.length - 1] || "general";
+  }
+}
+const CATEGORY_MAPPING$1 = {
+  "functional": "functional",
+  "non-functional": "non-functional",
+  "technical": "technical",
+  "constraint": "technical",
+  // Map to technical as constraint isn't in RequirementsDB
+  "assumption": "functional"
+  // Map assumptions to functional for now
+};
+class InterviewEngine {
+  llmClient;
+  requirementsDB;
+  eventBus;
+  logger;
+  extractor;
+  questionGenerator;
+  /** Active sessions indexed by session ID */
+  sessions = /* @__PURE__ */ new Map();
+  constructor(options) {
+    this.llmClient = options.llmClient;
+    this.requirementsDB = options.requirementsDB;
+    this.eventBus = options.eventBus;
+    this.logger = options.logger;
+    this.extractor = new RequirementExtractor();
+    this.questionGenerator = new QuestionGenerator({
+      llmClient: this.llmClient,
+      logger: this.logger
+    });
+  }
+  /**
+   * Start a new interview session
+   *
+   * @param projectId The project to conduct interview for
+   * @returns The new interview session
+   */
+  startSession(projectId) {
+    const now = /* @__PURE__ */ new Date();
+    const session2 = {
+      id: nanoid(),
+      projectId,
+      status: "active",
+      messages: [],
+      extractedRequirements: [],
+      exploredAreas: [],
+      startedAt: now,
+      lastActivityAt: now
+    };
+    this.sessions.set(session2.id, session2);
+    this.logger?.info("Started interview session", {
+      sessionId: session2.id,
+      projectId
+    });
+    void this.eventBus.emit("interview:started", {
+      projectId,
+      projectName: projectId,
+      // Will be resolved from DB if needed
+      mode: "genesis"
+    });
+    return session2;
+  }
+  /**
+   * Process a user message in the interview
+   *
+   * Flow:
+   * 1. Add user message to session
+   * 2. Build messages array with system prompt + history
+   * 3. Call LLM
+   * 4. Add assistant response to session
+   * 5. Extract requirements
+   * 6. Store requirements in DB
+   * 7. Update explored areas
+   * 8. Check for gaps to suggest
+   * 9. Emit events
+   *
+   * @param sessionId The session ID
+   * @param userMessage The user's message content
+   * @returns Processing result with response, requirements, and gaps
+   */
+  async processMessage(sessionId, userMessage) {
+    const session2 = this.sessions.get(sessionId);
+    if (!session2) {
+      throw new Error(`Session not found: ${sessionId}`);
+    }
+    if (session2.status !== "active") {
+      throw new Error(`Session is not active: ${session2.status}`);
+    }
+    const userMsgId = nanoid();
+    const userMsg = {
+      id: userMsgId,
+      role: "user",
+      content: userMessage,
+      timestamp: /* @__PURE__ */ new Date()
+    };
+    session2.messages.push(userMsg);
+    this.logger?.debug("Processing user message", {
+      sessionId,
+      messageId: userMsgId,
+      contentLength: userMessage.length
+    });
+    this.emitMessageEvent(session2, userMsg);
+    const llmMessages = this.buildLLMMessages(session2);
+    const options = {
+      maxTokens: 2048,
+      temperature: 0.7
+    };
+    const llmResponse = await this.llmClient.chat(llmMessages, options);
+    const responseContent = llmResponse.content;
+    const assistantMsgId = nanoid();
+    const assistantMsg = {
+      id: assistantMsgId,
+      role: "assistant",
+      content: responseContent,
+      timestamp: /* @__PURE__ */ new Date()
+    };
+    session2.messages.push(assistantMsg);
+    this.emitMessageEvent(session2, assistantMsg);
+    const extractionResult = this.extractor.extract(responseContent, assistantMsgId);
+    const newRequirements = extractionResult.requirements;
+    this.logger?.info("Extracted requirements", {
+      sessionId,
+      rawCount: extractionResult.rawCount,
+      filteredCount: extractionResult.filteredCount
+    });
+    for (const req of newRequirements) {
+      try {
+        const dbCategory = CATEGORY_MAPPING$1[req.category] ?? "functional";
+        this.requirementsDB.addRequirement(session2.projectId, {
+          category: dbCategory,
+          description: req.text,
+          priority: req.priority,
+          source: `interview:${session2.id}`,
+          confidence: req.confidence,
+          tags: req.area ? [req.area] : []
+        });
+        session2.extractedRequirements.push(req);
+        this.emitRequirementEvent(session2, req);
+      } catch (error) {
+        this.logger?.warn("Failed to store requirement", {
+          sessionId,
+          requirementId: req.id,
+          error: error instanceof Error ? error.message : "Unknown error"
+        });
+      }
+    }
+    this.updateExploredAreas(session2, newRequirements);
+    const context = {
+      conversationHistory: session2.messages,
+      extractedRequirements: session2.extractedRequirements,
+      exploredAreas: session2.exploredAreas
+    };
+    const gaps = this.questionGenerator.detectGaps(session2.exploredAreas);
+    const suggestedGaps = this.questionGenerator.shouldSuggestGap(context) ? gaps : [];
+    session2.lastActivityAt = /* @__PURE__ */ new Date();
+    return {
+      response: responseContent,
+      extractedRequirements: newRequirements,
+      suggestedGaps
+    };
+  }
+  /**
+   * Get a session by ID
+   *
+   * @param sessionId The session ID
+   * @returns The session or null if not found
+   */
+  getSession(sessionId) {
+    return this.sessions.get(sessionId) ?? null;
+  }
+  /**
+   * End an interview session
+   *
+   * @param sessionId The session ID
+   */
+  endSession(sessionId) {
+    const session2 = this.sessions.get(sessionId);
+    if (!session2) {
+      throw new Error(`Session not found: ${sessionId}`);
+    }
+    session2.status = "completed";
+    session2.completedAt = /* @__PURE__ */ new Date();
+    this.logger?.info("Ended interview session", {
+      sessionId,
+      projectId: session2.projectId,
+      requirementCount: session2.extractedRequirements.length,
+      messageCount: session2.messages.length
+    });
+    void this.eventBus.emit("interview:completed", {
+      projectId: session2.projectId,
+      totalRequirements: session2.extractedRequirements.length,
+      categories: [...new Set(session2.extractedRequirements.map((r) => r.category))],
+      duration: session2.completedAt.getTime() - session2.startedAt.getTime()
+    });
+  }
+  /**
+   * Pause an interview session
+   *
+   * @param sessionId The session ID
+   */
+  pauseSession(sessionId) {
+    const session2 = this.sessions.get(sessionId);
+    if (!session2) {
+      throw new Error(`Session not found: ${sessionId}`);
+    }
+    session2.status = "paused";
+    session2.lastActivityAt = /* @__PURE__ */ new Date();
+    this.logger?.info("Paused interview session", {
+      sessionId,
+      projectId: session2.projectId
+    });
+  }
+  /**
+   * Resume a paused interview session
+   *
+   * @param sessionId The session ID
+   */
+  resumeSession(sessionId) {
+    const session2 = this.sessions.get(sessionId);
+    if (!session2) {
+      throw new Error(`Session not found: ${sessionId}`);
+    }
+    if (session2.status !== "paused") {
+      throw new Error(`Session is not paused: ${session2.status}`);
+    }
+    session2.status = "active";
+    session2.lastActivityAt = /* @__PURE__ */ new Date();
+    this.logger?.info("Resumed interview session", {
+      sessionId,
+      projectId: session2.projectId
+    });
+  }
+  /**
+   * Get the initial greeting for a new session
+   */
+  getInitialGreeting() {
+    return INITIAL_GREETING;
+  }
+  /**
+   * Build messages array for LLM call
+   */
+  buildLLMMessages(session2) {
+    const messages = [
+      { role: "system", content: INTERVIEWER_SYSTEM_PROMPT }
+    ];
+    for (const msg of session2.messages) {
+      messages.push({
+        role: msg.role,
+        content: msg.content
+      });
+    }
+    return messages;
+  }
+  /**
+   * Update explored areas based on extracted requirements
+   */
+  updateExploredAreas(session2, requirements2) {
+    for (const req of requirements2) {
+      if (req.area && !session2.exploredAreas.includes(req.area)) {
+        session2.exploredAreas.push(req.area);
+      }
+    }
+  }
+  /**
+   * Emit message event (fire-and-forget)
+   */
+  emitMessageEvent(session2, message) {
+    void this.eventBus.emit("interview:question-asked", {
+      projectId: session2.projectId,
+      questionId: message.id,
+      question: message.content,
+      category: void 0
+    });
+  }
+  /**
+   * Emit requirement captured event (fire-and-forget)
+   */
+  emitRequirementEvent(session2, requirement) {
+    const mappedCategory = CATEGORY_MAPPING$1[requirement.category] ?? "functional";
+    const now = /* @__PURE__ */ new Date();
+    void this.eventBus.emit("interview:requirement-captured", {
+      projectId: session2.projectId,
+      requirement: {
+        id: requirement.id,
+        projectId: session2.projectId,
+        category: mappedCategory,
+        content: requirement.text,
+        priority: requirement.priority,
+        source: "interview",
+        createdAt: now,
+        updatedAt: now
+      }
+    });
+  }
+}
+const projects = sqliteTable("projects", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  mode: text("mode").$type().notNull(),
+  status: text("status").notNull(),
+  // ProjectStatus
+  rootPath: text("root_path").notNull(),
+  repositoryUrl: text("repository_url"),
+  settings: text("settings"),
+  // JSON: ProjectSettings
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  completedAt: integer("completed_at", { mode: "timestamp" })
+});
+const features = sqliteTable("features", {
+  id: text("id").primaryKey(),
+  projectId: text("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  description: text("description"),
+  priority: text("priority").$type().notNull().default("should"),
+  status: text("status").notNull().default("backlog"),
+  complexity: text("complexity").$type().notNull().default("simple"),
+  estimatedTasks: integer("estimated_tasks").default(0),
+  completedTasks: integer("completed_tasks").default(0),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull()
+});
+const subFeatures = sqliteTable("sub_features", {
+  id: text("id").primaryKey(),
+  featureId: text("feature_id").notNull().references(() => features.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  description: text("description"),
+  status: text("status").notNull().default("backlog"),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull()
+});
+const tasks = sqliteTable("tasks", {
+  id: text("id").primaryKey(),
+  projectId: text("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  featureId: text("feature_id").references(() => features.id),
+  subFeatureId: text("sub_feature_id").references(() => subFeatures.id),
+  name: text("name").notNull(),
+  description: text("description"),
+  type: text("type").$type().notNull().default("auto"),
+  status: text("status").notNull().default("pending"),
+  size: text("size").$type().notNull().default("small"),
+  priority: integer("priority").notNull().default(5),
+  // for sorting (1 = highest)
+  tags: text("tags"),
+  // JSON array for categorization
+  notes: text("notes"),
+  // JSON array of implementation notes
+  assignedAgent: text("assigned_agent"),
+  worktreePath: text("worktree_path"),
+  branchName: text("branch_name"),
+  dependsOn: text("depends_on"),
+  // JSON array of task IDs
+  blockedBy: text("blocked_by"),
+  qaIterations: integer("qa_iterations").default(0),
+  maxIterations: integer("max_iterations").default(50),
+  estimatedMinutes: integer("estimated_minutes").default(15),
+  actualMinutes: integer("actual_minutes"),
+  startedAt: integer("started_at", { mode: "timestamp" }),
+  completedAt: integer("completed_at", { mode: "timestamp" }),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull()
+});
+const agents = sqliteTable("agents", {
+  id: text("id").primaryKey(),
+  type: text("type").$type().notNull(),
+  status: text("status").notNull().default("idle"),
+  // Model configuration
+  modelProvider: text("model_provider").$type().notNull().default("anthropic"),
+  modelName: text("model_name").notNull().default("claude-sonnet-4"),
+  temperature: real("temperature").notNull().default(0.3),
+  maxTokens: integer("max_tokens").notNull().default(8e3),
+  systemPrompt: text("system_prompt"),
+  // path to prompt file or content
+  tools: text("tools"),
+  // JSON array of tool names
+  // Current work
+  currentTaskId: text("current_task_id"),
+  worktreePath: text("worktree_path"),
+  branchName: text("branch_name"),
+  tokensUsed: integer("tokens_used").default(0),
+  tasksCompleted: integer("tasks_completed").default(0),
+  tasksFailed: integer("tasks_failed").default(0),
+  spawnedAt: integer("spawned_at", { mode: "timestamp" }).notNull(),
+  lastActivityAt: integer("last_activity_at", { mode: "timestamp" }).notNull(),
+  terminatedAt: integer("terminated_at", { mode: "timestamp" }),
+  terminationReason: text("termination_reason")
+});
+const checkpoints = sqliteTable("checkpoints", {
+  id: text("id").primaryKey(),
+  projectId: text("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  name: text("name"),
+  reason: text("reason"),
+  state: text("state"),
+  // JSON blob of full state
+  gitCommit: text("git_commit"),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull()
+});
+const requirements = sqliteTable("requirements", {
+  id: text("id").primaryKey(),
+  projectId: text("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  category: text("category").notNull(),
+  description: text("description").notNull(),
+  priority: text("priority").notNull().default("medium"),
+  source: text("source"),
+  userStories: text("user_stories"),
+  // JSON array of user stories
+  acceptanceCriteria: text("acceptance_criteria"),
+  // JSON array of acceptance criteria
+  linkedFeatures: text("linked_features"),
+  // JSON array
+  validated: integer("validated", { mode: "boolean" }).default(false),
+  confidence: real("confidence").default(1),
+  // 0-1, AI confidence in extraction
+  tags: text("tags"),
+  // JSON array for filtering/categorization
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull()
+});
+const metrics = sqliteTable("metrics", {
+  id: text("id").primaryKey(),
+  projectId: text("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  agentId: text("agent_id"),
+  taskId: text("task_id"),
+  type: text("type").notNull(),
+  // 'token_usage', 'task_duration', 'qa_iterations'
+  value: real("value").notNull(),
+  metadata: text("metadata"),
+  // JSON
+  timestamp: integer("timestamp", { mode: "timestamp" }).notNull()
+});
+const sessions = sqliteTable("sessions", {
+  id: text("id").primaryKey(),
+  projectId: text("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  type: text("type").notNull(),
+  // 'interview', 'planning', 'execution'
+  status: text("status").notNull().default("active"),
+  data: text("data"),
+  // JSON blob
+  startedAt: integer("started_at", { mode: "timestamp" }).notNull(),
+  endedAt: integer("ended_at", { mode: "timestamp" })
+});
+const projectsRelations = relations(projects, ({ many }) => ({
+  features: many(features),
+  tasks: many(tasks),
+  checkpoints: many(checkpoints),
+  requirements: many(requirements),
+  metrics: many(metrics),
+  sessions: many(sessions),
+  episodes: many(episodes),
+  continuePoints: many(continuePoints)
+}));
+const featuresRelations = relations(features, ({ one, many }) => ({
+  project: one(projects, {
+    fields: [features.projectId],
+    references: [projects.id]
+  }),
+  subFeatures: many(subFeatures),
+  tasks: many(tasks)
+}));
+const subFeaturesRelations = relations(subFeatures, ({ one, many }) => ({
+  feature: one(features, {
+    fields: [subFeatures.featureId],
+    references: [features.id]
+  }),
+  tasks: many(tasks)
+}));
+const tasksRelations = relations(tasks, ({ one }) => ({
+  project: one(projects, {
+    fields: [tasks.projectId],
+    references: [projects.id]
+  }),
+  feature: one(features, {
+    fields: [tasks.featureId],
+    references: [features.id]
+  }),
+  subFeature: one(subFeatures, {
+    fields: [tasks.subFeatureId],
+    references: [subFeatures.id]
+  })
+}));
+const checkpointsRelations = relations(checkpoints, ({ one }) => ({
+  project: one(projects, {
+    fields: [checkpoints.projectId],
+    references: [projects.id]
+  })
+}));
+const requirementsRelations = relations(requirements, ({ one }) => ({
+  project: one(projects, {
+    fields: [requirements.projectId],
+    references: [projects.id]
+  })
+}));
+const metricsRelations = relations(metrics, ({ one }) => ({
+  project: one(projects, {
+    fields: [metrics.projectId],
+    references: [projects.id]
+  })
+}));
+const sessionsRelations = relations(sessions, ({ one }) => ({
+  project: one(projects, {
+    fields: [sessions.projectId],
+    references: [projects.id]
+  })
+}));
+const episodes = sqliteTable("episodes", {
+  id: text("id").primaryKey(),
+  projectId: text("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  type: text("type").$type().notNull(),
+  content: text("content").notNull(),
+  summary: text("summary"),
+  // Short summary for display
+  embedding: text("embedding"),
+  // JSON array of floats (1536 dimensions)
+  context: text("context"),
+  // JSON metadata
+  taskId: text("task_id"),
+  agentId: text("agent_id"),
+  importance: real("importance").default(1),
+  // For pruning priority
+  accessCount: integer("access_count").default(0),
+  lastAccessedAt: integer("last_accessed_at", { mode: "timestamp" }),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull()
+});
+const episodesRelations = relations(episodes, ({ one }) => ({
+  project: one(projects, {
+    fields: [episodes.projectId],
+    references: [projects.id]
+  })
+}));
+const continuePoints = sqliteTable("continue_points", {
+  id: text("id").primaryKey(),
+  projectId: text("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  taskId: text("task_id").notNull(),
+  lastAction: text("last_action").notNull(),
+  file: text("file"),
+  line: integer("line"),
+  functionName: text("function_name"),
+  nextSteps: text("next_steps"),
+  // JSON array
+  agentId: text("agent_id"),
+  iterationCount: integer("iteration_count").notNull().default(0),
+  savedAt: integer("saved_at", { mode: "timestamp" }).notNull()
+});
+const continuePointsRelations = relations(continuePoints, ({ one }) => ({
+  project: one(projects, {
+    fields: [continuePoints.projectId],
+    references: [projects.id]
+  })
+}));
+const codeChunks = sqliteTable("code_chunks", {
+  id: text("id").primaryKey(),
+  projectId: text("project_id").notNull(),
+  file: text("file").notNull(),
+  startLine: integer("start_line").notNull(),
+  endLine: integer("end_line").notNull(),
+  content: text("content").notNull(),
+  embedding: blob("embedding", { mode: "buffer" }),
+  // Binary blob of Float32Array
+  symbols: text("symbols", { mode: "json" }).$type(),
+  // JSON array of symbol names
+  chunkType: text("chunk_type").notNull(),
+  language: text("language").notNull(),
+  complexity: integer("complexity"),
+  hash: text("hash").notNull(),
+  indexedAt: integer("indexed_at", { mode: "timestamp" }).notNull()
+});
+const schema = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+  __proto__: null,
+  agents,
+  checkpoints,
+  checkpointsRelations,
+  codeChunks,
+  continuePoints,
+  continuePointsRelations,
+  episodes,
+  episodesRelations,
+  features,
+  featuresRelations,
+  metrics,
+  metricsRelations,
+  projects,
+  projectsRelations,
+  requirements,
+  requirementsRelations,
+  sessions,
+  sessionsRelations,
+  subFeatures,
+  subFeaturesRelations,
+  tasks,
+  tasksRelations
+}, Symbol.toStringTag, { value: "Module" }));
+const CATEGORY_MAPPING = {
+  "functional": "functional",
+  "non-functional": "non-functional",
+  "technical": "technical",
+  "constraint": "technical",
+  "assumption": "functional"
+};
+class InterviewSessionManager {
+  db;
+  eventBus;
+  logger;
+  autoSaveIntervalMs;
+  autoSaveTimer = null;
+  currentSession = null;
+  constructor(options) {
+    this.db = options.db;
+    this.eventBus = options.eventBus;
+    this.logger = options.logger;
+    this.autoSaveIntervalMs = options.autoSaveInterval ?? 3e4;
+  }
+  /**
+   * Save an interview session to the database
+   *
+   * @param session The session to save
+   */
+  save(session2) {
+    const serialized = this.serializeSession(session2);
+    const now = /* @__PURE__ */ new Date();
+    const existing = this.db.db.select().from(sessions).where(eq(sessions.id, session2.id)).get();
+    if (existing) {
+      this.db.db.update(sessions).set({
+        status: session2.status,
+        data: JSON.stringify(serialized),
+        endedAt: session2.status === "completed" ? now : null
+      }).where(eq(sessions.id, session2.id)).run();
+      this.logger?.debug("Updated interview session", { sessionId: session2.id });
+    } else {
+      this.db.db.insert(sessions).values({
+        id: session2.id,
+        projectId: session2.projectId,
+        type: "interview",
+        status: session2.status,
+        data: JSON.stringify(serialized),
+        startedAt: session2.startedAt,
+        endedAt: session2.status === "completed" ? now : null
+      }).run();
+      this.logger?.info("Created interview session", { sessionId: session2.id });
+    }
+    void this.eventBus.emit("interview:saved", {
+      projectId: session2.projectId,
+      sessionId: session2.id
+    });
+  }
+  /**
+   * Load an interview session by ID
+   *
+   * @param sessionId The session ID to load
+   * @returns The session or null if not found
+   */
+  load(sessionId) {
+    const row = this.db.db.select().from(sessions).where(
+      and(
+        eq(sessions.id, sessionId),
+        eq(sessions.type, "interview")
+      )
+    ).get();
+    if (!row || !row.data) {
+      return null;
+    }
+    return this.deserializeSession(row.data);
+  }
+  /**
+   * Load the active interview session for a project
+   *
+   * @param projectId The project ID
+   * @returns The active session or null if none found
+   */
+  loadByProject(projectId) {
+    const row = this.db.db.select().from(sessions).where(
+      and(
+        eq(sessions.projectId, projectId),
+        eq(sessions.type, "interview"),
+        eq(sessions.status, "active")
+      )
+    ).orderBy(desc(sessions.startedAt)).get();
+    if (!row || !row.data) {
+      return null;
+    }
+    return this.deserializeSession(row.data);
+  }
+  /**
+   * Delete an interview session
+   *
+   * @param sessionId The session ID to delete
+   */
+  delete(sessionId) {
+    this.db.db.delete(sessions).where(
+      and(
+        eq(sessions.id, sessionId),
+        eq(sessions.type, "interview")
+      )
+    ).run();
+    this.logger?.info("Deleted interview session", { sessionId });
+  }
+  /**
+   * Start auto-save for a session
+   *
+   * @param session The session to auto-save
+   */
+  startAutoSave(session2) {
+    this.stopAutoSave();
+    this.currentSession = session2;
+    this.autoSaveTimer = setInterval(() => {
+      if (this.currentSession) {
+        this.save(this.currentSession);
+        this.logger?.debug("Auto-saved interview session", {
+          sessionId: this.currentSession.id
+        });
+      }
+    }, this.autoSaveIntervalMs);
+    this.logger?.info("Started auto-save for interview session", {
+      sessionId: session2.id,
+      intervalMs: this.autoSaveIntervalMs
+    });
+  }
+  /**
+   * Stop auto-save
+   */
+  stopAutoSave() {
+    if (this.autoSaveTimer) {
+      clearInterval(this.autoSaveTimer);
+      this.autoSaveTimer = null;
+      this.currentSession = null;
+      this.logger?.debug("Stopped auto-save");
+    }
+  }
+  /**
+   * Export session requirements to RequirementsDB
+   *
+   * @param session The session containing requirements
+   * @param requirementsDB The RequirementsDB instance
+   * @returns Number of requirements exported
+   */
+  exportToRequirementsDB(session2, requirementsDB) {
+    let exported = 0;
+    for (const req of session2.extractedRequirements) {
+      try {
+        const dbCategory = CATEGORY_MAPPING[req.category] ?? "functional";
+        requirementsDB.addRequirement(session2.projectId, {
+          category: dbCategory,
+          description: req.text,
+          priority: req.priority,
+          source: `interview:${session2.id}`,
+          confidence: req.confidence,
+          tags: req.area ? [req.area] : []
+        });
+        exported++;
+      } catch (error) {
+        this.logger?.warn("Failed to export requirement", {
+          requirementId: req.id,
+          error: error instanceof Error ? error.message : "Unknown error"
+        });
+      }
+    }
+    this.logger?.info("Exported requirements to RequirementsDB", {
+      sessionId: session2.id,
+      exportedCount: exported,
+      totalCount: session2.extractedRequirements.length
+    });
+    return exported;
+  }
+  /**
+   * Serialize session for database storage
+   */
+  serializeSession(session2) {
+    return {
+      id: session2.id,
+      projectId: session2.projectId,
+      status: session2.status,
+      messages: session2.messages.map((msg) => ({
+        id: msg.id,
+        role: msg.role,
+        content: msg.content,
+        timestamp: msg.timestamp.toISOString()
+      })),
+      extractedRequirements: session2.extractedRequirements,
+      exploredAreas: session2.exploredAreas,
+      startedAt: session2.startedAt.toISOString(),
+      lastActivityAt: session2.lastActivityAt.toISOString(),
+      completedAt: session2.completedAt?.toISOString()
+    };
+  }
+  /**
+   * Deserialize session from database storage
+   */
+  deserializeSession(data) {
+    const parsed = JSON.parse(data);
+    return {
+      id: parsed.id,
+      projectId: parsed.projectId,
+      status: parsed.status,
+      messages: parsed.messages.map((msg) => ({
+        id: msg.id,
+        role: msg.role,
+        content: msg.content,
+        timestamp: new Date(msg.timestamp)
+      })),
+      extractedRequirements: parsed.extractedRequirements,
+      exploredAreas: parsed.exploredAreas,
+      startedAt: new Date(parsed.startedAt),
+      lastActivityAt: new Date(parsed.lastActivityAt),
+      completedAt: parsed.completedAt ? new Date(parsed.completedAt) : void 0
+    };
+  }
+}
+class RequirementsDB {
+  db;
+  /**
+   * In-memory storage for requirements
+   * TODO: Replace with actual database table queries
+   */
+  requirements = /* @__PURE__ */ new Map();
+  constructor(db) {
+    this.db = db;
+  }
+  /**
+   * Add a new requirement to a project
+   *
+   * @param projectId - The project ID
+   * @param input - The requirement data
+   * @returns The created requirement
+   */
+  addRequirement(projectId, input) {
+    const now = /* @__PURE__ */ new Date();
+    const requirement = {
+      id: nanoid(),
+      projectId,
+      category: input.category,
+      description: input.description,
+      priority: input.priority,
+      source: input.source,
+      confidence: input.confidence ?? 0.8,
+      tags: input.tags ?? [],
+      userStories: input.userStories ?? [],
+      acceptanceCriteria: input.acceptanceCriteria ?? [],
+      linkedFeatures: [],
+      validated: false,
+      createdAt: now
+    };
+    const existing = Array.from(this.requirements.values()).find(
+      (r) => r.projectId === projectId && r.description === input.description
+    );
+    if (existing) {
+      throw new Error(`Duplicate requirement: ${input.description.substring(0, 50)}...`);
+    }
+    this.requirements.set(requirement.id, requirement);
+    return requirement;
+  }
+  /**
+   * Get a requirement by ID
+   *
+   * @param id - The requirement ID
+   * @returns The requirement or null if not found
+   */
+  getRequirement(id) {
+    return this.requirements.get(id) ?? null;
+  }
+  /**
+   * Get all requirements for a project
+   *
+   * @param projectId - The project ID
+   * @param options - Query options
+   * @returns Array of requirements
+   */
+  getRequirements(projectId, options = {}) {
+    let results = Array.from(this.requirements.values()).filter((r) => r.projectId === projectId);
+    if (options.category) {
+      results = results.filter((r) => r.category === options.category);
+    }
+    if (options.priority) {
+      results = results.filter((r) => r.priority === options.priority);
+    }
+    if (options.validated !== void 0) {
+      results = results.filter((r) => r.validated === options.validated);
+    }
+    if (options.tags && options.tags.length > 0) {
+      const tagList = options.tags;
+      results = results.filter((r) => tagList.some((tag) => r.tags.includes(tag)));
+    }
+    if (options.offset) {
+      results = results.slice(options.offset);
+    }
+    if (options.limit) {
+      results = results.slice(0, options.limit);
+    }
+    return results;
+  }
+  /**
+   * Update a requirement
+   *
+   * @param id - The requirement ID
+   * @param updates - The fields to update
+   * @returns The updated requirement
+   */
+  updateRequirement(id, updates) {
+    const existing = this.requirements.get(id);
+    if (!existing) {
+      throw new Error(`Requirement not found: ${id}`);
+    }
+    const updated = {
+      ...existing,
+      ...updates,
+      updatedAt: /* @__PURE__ */ new Date()
+    };
+    this.requirements.set(id, updated);
+    return updated;
+  }
+  /**
+   * Delete a requirement
+   *
+   * @param id - The requirement ID
+   * @returns True if deleted, false if not found
+   */
+  deleteRequirement(id) {
+    return this.requirements.delete(id);
+  }
+  /**
+   * Validate a requirement (mark as reviewed and approved)
+   *
+   * @param id - The requirement ID
+   * @returns The updated requirement
+   */
+  validateRequirement(id) {
+    return this.updateRequirement(id, { validated: true });
+  }
+  /**
+   * Link a requirement to a feature
+   *
+   * @param requirementId - The requirement ID
+   * @param featureId - The feature ID
+   * @returns The updated requirement
+   */
+  linkToFeature(requirementId, featureId) {
+    const existing = this.requirements.get(requirementId);
+    if (!existing) {
+      throw new Error(`Requirement not found: ${requirementId}`);
+    }
+    if (!existing.linkedFeatures.includes(featureId)) {
+      existing.linkedFeatures.push(featureId);
+      existing.updatedAt = /* @__PURE__ */ new Date();
+    }
+    return existing;
+  }
+  /**
+   * Get requirements statistics for a project
+   *
+   * @param projectId - The project ID
+   * @returns Statistics about the requirements
+   */
+  getStatistics(projectId) {
+    const requirements2 = this.getRequirements(projectId);
+    const byCategory = {
+      functional: 0,
+      "non-functional": 0,
+      technical: 0
+    };
+    const byPriority = {
+      must: 0,
+      should: 0,
+      could: 0,
+      wont: 0
+    };
+    let validated = 0;
+    for (const req of requirements2) {
+      byCategory[req.category]++;
+      byPriority[req.priority]++;
+      if (req.validated) validated++;
+    }
+    return {
+      total: requirements2.length,
+      byCategory,
+      byPriority,
+      validated,
+      unvalidated: requirements2.length - validated
+    };
+  }
+  /**
+   * Clear all requirements for a project (for testing)
+   *
+   * @param projectId - The project ID
+   */
+  clearProject(projectId) {
+    const toDelete = Array.from(this.requirements.entries()).filter(([, r]) => r.projectId === projectId).map(([id]) => id);
+    for (const id of toDelete) {
+      this.requirements.delete(id);
+    }
+  }
+}
+class DatabaseClient {
+  sqlite;
+  _db;
+  options;
+  constructor(options) {
+    this.options = options;
+    if (options.path !== ":memory:") {
+      ensureDirSync(dirname(options.path));
+    }
+    this.sqlite = new Database(options.path);
+    this.sqlite.pragma("journal_mode = WAL");
+    this.sqlite.pragma("foreign_keys = ON");
+    this.sqlite.pragma("busy_timeout = 5000");
+    this._db = drizzle(this.sqlite, {
+      schema,
+      logger: options.debug
+    });
+  }
+  /**
+   * Create and initialize a DatabaseClient.
+   *
+   * @param options - Configuration options
+   * @returns Initialized DatabaseClient
+   */
+  static create(options) {
+    const client = new DatabaseClient(options);
+    if (options.migrationsDir) {
+      client.migrate(options.migrationsDir);
+    }
+    return client;
+  }
+  /**
+   * Create an in-memory database (useful for testing).
+   *
+   * @param migrationsDir - Optional migrations directory
+   * @returns In-memory DatabaseClient
+   */
+  static createInMemory(migrationsDir) {
+    return DatabaseClient.create({
+      path: ":memory:",
+      migrationsDir,
+      debug: false
+    });
+  }
+  /**
+   * Get the Drizzle database instance for queries.
+   */
+  get db() {
+    return this._db;
+  }
+  /**
+   * Get the raw better-sqlite3 database instance.
+   * Use with caution - prefer Drizzle queries.
+   */
+  get raw() {
+    return this.sqlite;
+  }
+  /**
+   * Run database migrations.
+   *
+   * @param migrationsDir - Path to migrations folder
+   */
+  migrate(migrationsDir) {
+    try {
+      migrate(this._db, { migrationsFolder: migrationsDir });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`Migration failed: ${message}`);
+    }
+  }
+  /**
+   * Get list of all tables in the database.
+   *
+   * @returns Array of table names
+   */
+  tables() {
+    const result = this.sqlite.prepare(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '__%'"
+    ).all();
+    return result.map((r) => r.name);
+  }
+  /**
+   * Check database health status.
+   *
+   * @returns Health status object
+   */
+  health() {
+    try {
+      this.sqlite.prepare("SELECT 1").get();
+      const journalMode = this.sqlite.pragma("journal_mode");
+      const walMode = journalMode[0]?.journal_mode.toLowerCase() === "wal";
+      const foreignKeys = this.sqlite.pragma("foreign_keys");
+      const foreignKeysEnabled = foreignKeys[0]?.foreign_keys === 1;
+      const tables = this.tables();
+      return {
+        healthy: true,
+        walMode,
+        foreignKeys: foreignKeysEnabled,
+        tables
+      };
+    } catch {
+      return {
+        healthy: false,
+        walMode: false,
+        foreignKeys: false,
+        tables: []
+      };
+    }
+  }
+  /**
+   * Simple health check ping.
+   *
+   * @returns true if database is responsive
+   */
+  ping() {
+    try {
+      this.sqlite.prepare("SELECT 1").get();
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  /**
+   * Execute operations within a transaction.
+   *
+   * @param fn - Function to execute within transaction
+   * @returns Result of the function
+   */
+  transaction(fn) {
+    return this.sqlite.transaction(() => {
+      return fn(this._db);
+    })();
+  }
+  /**
+   * Execute raw SQL (use with caution).
+   *
+   * @param sql - SQL statement to execute
+   */
+  exec(sql) {
+    this.sqlite.exec(sql);
+  }
+  /**
+   * Close the database connection.
+   */
+  close() {
+    try {
+      if (this.options.path !== ":memory:") {
+        this.sqlite.pragma("wal_checkpoint(TRUNCATE)");
+      }
+      this.sqlite.close();
+    } catch {
+    }
+  }
+  /**
+   * Get database file path.
+   */
+  get path() {
+    return this.options.path;
+  }
+  /**
+   * Check if this is an in-memory database.
+   */
+  get isInMemory() {
+    return this.options.path === ":memory:";
+  }
+}
+class StateManager {
+  db;
+  autoPersist;
+  states;
+  constructor(options) {
+    this.db = options.db;
+    this.autoPersist = options.autoPersist ?? true;
+    this.states = /* @__PURE__ */ new Map();
+  }
+  /**
+   * Load state for a project
+   * @param projectId Project to load state for
+   * @returns State if found, null otherwise
+   */
+  loadState(projectId) {
+    const cached = this.states.get(projectId);
+    if (cached) {
+      return cached;
+    }
+    return null;
+  }
+  /**
+   * Save state for a project
+   * @param state State to save
+   */
+  saveState(state2) {
+    state2.lastUpdatedAt = /* @__PURE__ */ new Date();
+    this.states.set(state2.projectId, state2);
+  }
+  /**
+   * Update partial state for a project
+   * @param projectId Project to update
+   * @param updates Partial state updates
+   * @returns Updated state
+   */
+  updateState(projectId, updates) {
+    const current = this.loadState(projectId);
+    if (!current) {
+      return null;
+    }
+    const updated = {
+      ...current,
+      ...updates,
+      projectId,
+      // Ensure projectId doesn't change
+      lastUpdatedAt: /* @__PURE__ */ new Date()
+    };
+    this.saveState(updated);
+    return updated;
+  }
+  /**
+   * Delete state for a project
+   * @param projectId Project to delete state for
+   */
+  deleteState(projectId) {
+    return this.states.delete(projectId);
+  }
+  /**
+   * Check if state exists for a project
+   * @param projectId Project to check
+   */
+  hasState(projectId) {
+    return this.states.has(projectId);
+  }
+  /**
+   * Get all project IDs with state
+   */
+  getAllProjectIds() {
+    return Array.from(this.states.keys());
+  }
+  /**
+   * Create a new state for a project
+   * @param projectId Project identifier
+   * @param projectName Human-readable project name
+   * @param mode Genesis or evolution mode
+   * @returns Created state
+   */
+  createState(projectId, projectName, mode) {
+    const now = /* @__PURE__ */ new Date();
+    const state2 = {
+      projectId,
+      projectName,
+      status: "initializing",
+      mode,
+      features: [],
+      currentFeatureIndex: 0,
+      currentTaskIndex: 0,
+      completedTasks: 0,
+      totalTasks: 0,
+      lastUpdatedAt: now,
+      createdAt: now
+    };
+    this.saveState(state2);
+    return state2;
+  }
+  /**
+   * Clear all in-memory state (for testing)
+   */
+  clearAll() {
+    this.states.clear();
+  }
+}
+class CheckpointError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "CheckpointError";
+    Object.setPrototypeOf(this, new.target.prototype);
+  }
+}
+class CheckpointNotFoundError extends CheckpointError {
+  checkpointId;
+  constructor(checkpointId) {
+    super(`Checkpoint not found: ${checkpointId}`);
+    this.name = "CheckpointNotFoundError";
+    this.checkpointId = checkpointId;
+  }
+}
+class RestoreError extends CheckpointError {
+  checkpointId;
+  reason;
+  constructor(checkpointId, reason) {
+    super(`Failed to restore checkpoint ${checkpointId}: ${reason}`);
+    this.name = "RestoreError";
+    this.checkpointId = checkpointId;
+    this.reason = reason;
+  }
+}
+class CheckpointManager {
+  db;
+  stateManager;
+  gitService;
+  eventBus;
+  maxCheckpoints;
+  logger;
+  constructor(options) {
+    this.db = options.db;
+    this.stateManager = options.stateManager;
+    this.gitService = options.gitService;
+    this.eventBus = options.eventBus;
+    this.maxCheckpoints = options.maxCheckpoints ?? 50;
+    this.logger = options.logger;
+  }
+  /**
+   * Log a message if logger is available
+   */
+  log(level, message, ...args) {
+    if (this.logger) {
+      this.logger[level](message, ...args);
+    }
+  }
+  /**
+   * Create a checkpoint for a project.
+   * @param projectId Project to checkpoint
+   * @param reason Human-readable reason for checkpoint
+   * @returns Created checkpoint with id and timestamp
+   */
+  async createCheckpoint(projectId, reason) {
+    this.log("debug", `Creating checkpoint for project ${projectId}: ${reason}`);
+    const state2 = this.stateManager.loadState(projectId);
+    if (!state2) {
+      throw new CheckpointError(`Project not found: ${projectId}`);
+    }
+    let gitCommit = null;
+    try {
+      const log = await this.gitService.getLog(1);
+      if (log.length > 0 && log[0]) {
+        gitCommit = log[0].hash;
+      }
+    } catch {
+      this.log("warn", "Could not get git commit hash");
+    }
+    const stateJson = JSON.stringify(state2);
+    const checkpointId = v4();
+    const now = /* @__PURE__ */ new Date();
+    const newCheckpoint = {
+      id: checkpointId,
+      projectId,
+      name: `Checkpoint: ${reason}`,
+      reason,
+      state: stateJson,
+      gitCommit,
+      createdAt: now
+    };
+    this.db.db.insert(checkpoints).values(newCheckpoint).run();
+    const pruned = this.pruneOldCheckpoints(projectId);
+    if (pruned > 0) {
+      this.log("info", `Pruned ${String(pruned)} old checkpoints for project ${projectId}`);
+    }
+    if (this.eventBus) {
+      void this.eventBus.emit(
+        "system:checkpoint-created",
+        {
+          checkpointId,
+          projectId,
+          reason,
+          gitCommit: gitCommit ?? ""
+        },
+        { source: "CheckpointManager" }
+      );
+    }
+    return {
+      id: checkpointId,
+      projectId,
+      name: `Checkpoint: ${reason}`,
+      reason,
+      state: stateJson,
+      gitCommit,
+      createdAt: now
+    };
+  }
+  /**
+   * Restore state from a checkpoint.
+   * @param checkpointId Checkpoint to restore
+   * @param options Restore options (e.g., restore git state)
+   * @throws CheckpointNotFoundError if checkpoint doesn't exist
+   */
+  async restoreCheckpoint(checkpointId, options) {
+    this.log("debug", `Restoring checkpoint ${checkpointId}`);
+    const checkpoint = this.db.db.select().from(checkpoints).where(eq(checkpoints.id, checkpointId)).get();
+    if (!checkpoint) {
+      throw new CheckpointNotFoundError(checkpointId);
+    }
+    if (!checkpoint.state) {
+      throw new RestoreError(checkpointId, "Checkpoint has no state data");
+    }
+    let state2;
+    try {
+      state2 = JSON.parse(checkpoint.state);
+    } catch {
+      throw new RestoreError(checkpointId, "Invalid state data");
+    }
+    this.stateManager.saveState(state2);
+    if (options?.restoreGit && checkpoint.gitCommit) {
+      try {
+        await this.gitService.checkoutBranch(checkpoint.gitCommit);
+      } catch (err) {
+        this.log(
+          "warn",
+          `Could not restore git state: ${err.message}`
+        );
+      }
+    }
+    if (this.eventBus) {
+      void this.eventBus.emit(
+        "system:checkpoint-restored",
+        {
+          checkpointId,
+          projectId: checkpoint.projectId,
+          gitCommit: checkpoint.gitCommit ?? ""
+        },
+        { source: "CheckpointManager" }
+      );
+    }
+  }
+  /**
+   * List all checkpoints for a project.
+   * @param projectId Project to list checkpoints for
+   * @returns Checkpoints ordered by date descending
+   */
+  listCheckpoints(projectId) {
+    this.log("debug", `Listing checkpoints for project ${projectId}`);
+    const result = this.db.db.select().from(checkpoints).where(eq(checkpoints.projectId, projectId)).orderBy(desc(checkpoints.createdAt)).all();
+    return result;
+  }
+  /**
+   * Delete a checkpoint.
+   * @param checkpointId Checkpoint to delete
+   */
+  deleteCheckpoint(checkpointId) {
+    this.log("debug", `Deleting checkpoint ${checkpointId}`);
+    this.db.db.delete(checkpoints).where(eq(checkpoints.id, checkpointId)).run();
+  }
+  /**
+   * Create automatic checkpoint based on system event.
+   * @param projectId Project to checkpoint
+   * @param trigger System event that triggered checkpoint
+   */
+  async createAutoCheckpoint(projectId, trigger) {
+    const reason = `Auto-checkpoint: ${trigger}`;
+    return this.createCheckpoint(projectId, reason);
+  }
+  /**
+   * Prune old checkpoints beyond maxCheckpoints limit.
+   * Keeps the N most recent checkpoints and deletes the rest.
+   * @param projectId Project to prune checkpoints for
+   * @returns Number of checkpoints deleted
+   */
+  pruneOldCheckpoints(projectId) {
+    const allCheckpoints = this.listCheckpoints(projectId);
+    if (allCheckpoints.length <= this.maxCheckpoints) {
+      return 0;
+    }
+    const toDelete = allCheckpoints.slice(this.maxCheckpoints);
+    for (const cp of toDelete) {
+      this.deleteCheckpoint(cp.id);
+    }
+    this.log(
+      "debug",
+      `Pruned ${String(toDelete.length)} checkpoints for project ${projectId}`
+    );
+    return toDelete.length;
+  }
+}
+let bootstrappedNexus = null;
+let mainWindowRef = null;
+class NexusBootstrap {
+  config;
+  nexus = null;
+  interviewEngine = null;
+  sessionManager = null;
+  eventBus;
+  requirementsDB = null;
+  databaseClient = null;
+  stateManager = null;
+  checkpointManager = null;
+  gitService = null;
+  unsubscribers = [];
+  constructor(config) {
+    this.config = config;
+    this.eventBus = getEventBus();
+  }
+  /**
+   * Initialize all components and wire them together
+   */
+  async initialize() {
+    if (bootstrappedNexus) {
+      return bootstrappedNexus;
+    }
+    console.log("[NexusBootstrap] Initializing components...");
+    const factoryConfig = {
+      workingDir: this.config.workingDir,
+      claudeApiKey: this.config.apiKeys?.anthropic,
+      geminiApiKey: this.config.apiKeys?.google,
+      openaiApiKey: this.config.apiKeys?.openai,
+      claudeBackend: this.config.useCli?.claude ? "cli" : "api",
+      geminiBackend: this.config.useCli?.gemini ? "cli" : "api"
+    };
+    try {
+      this.nexus = await NexusFactory.create(factoryConfig);
+      console.log("[NexusBootstrap] NexusFactory created successfully");
+    } catch (error) {
+      console.error("[NexusBootstrap] Failed to create NexusFactory:", error);
+      throw error;
+    }
+    const dbPath = `${this.config.dataDir}/nexus.db`;
+    this.databaseClient = DatabaseClient.create({
+      path: dbPath
+    });
+    this.requirementsDB = new RequirementsDB(this.databaseClient);
+    this.gitService = new GitService({ baseDir: this.config.workingDir });
+    this.stateManager = new StateManager({ db: this.databaseClient });
+    this.checkpointManager = new CheckpointManager({
+      db: this.databaseClient,
+      stateManager: this.stateManager,
+      gitService: this.gitService,
+      eventBus: this.eventBus
+    });
+    console.log("[NexusBootstrap] CheckpointManager created");
+    const interviewOptions = {
+      llmClient: this.nexus.llm.claude,
+      requirementsDB: this.requirementsDB,
+      eventBus: this.eventBus
+    };
+    this.interviewEngine = new InterviewEngine(interviewOptions);
+    console.log("[NexusBootstrap] InterviewEngine created");
+    const sessionManagerOptions = {
+      db: this.databaseClient,
+      eventBus: this.eventBus
+    };
+    this.sessionManager = new InterviewSessionManager(sessionManagerOptions);
+    console.log("[NexusBootstrap] SessionManager created");
+    this.wireEventListeners();
+    console.log("[NexusBootstrap] Event listeners wired");
+    this.wireCheckpointListeners();
+    console.log("[NexusBootstrap] Checkpoint listeners wired");
+    this.wireUIEventForwarding();
+    console.log("[NexusBootstrap] UI event forwarding wired");
+    bootstrappedNexus = {
+      nexus: this.nexus,
+      interviewEngine: this.interviewEngine,
+      sessionManager: this.sessionManager,
+      eventBus: this.eventBus,
+      startGenesis: (name) => this.startGenesisMode(name),
+      startEvolution: (path, name) => this.startEvolutionMode(path, name),
+      createCheckpoint: (projectId, reason) => this.createCheckpointForProject(projectId, reason),
+      restoreCheckpoint: (checkpointId, restoreGit) => this.restoreCheckpointById(checkpointId, restoreGit),
+      listCheckpoints: (projectId) => this.listCheckpointsForProject(projectId),
+      shutdown: () => this.shutdown()
+    };
+    console.log("[NexusBootstrap] Initialization complete");
+    return bootstrappedNexus;
+  }
+  /**
+   * CRITICAL: Wire the event listeners that connect the components
+   *
+   * This is where the magic happens:
+   * interview:completed -> planning -> execution
+   */
+  wireEventListeners() {
+    if (!this.nexus || !this.requirementsDB) {
+      throw new Error("Nexus or RequirementsDB not initialized");
+    }
+    const { coordinator } = this.nexus;
+    const { decomposer, resolver } = this.nexus.planning;
+    const interviewCompletedUnsub = this.eventBus.on("interview:completed", async (event) => {
+      const { projectId, totalRequirements } = event.payload;
+      console.log(`[NexusBootstrap] Interview completed for ${projectId} with ${totalRequirements} requirements`);
+      await this.eventBus.emit("project:status-changed", {
+        projectId,
+        previousStatus: "planning",
+        newStatus: "executing",
+        reason: "Interview completed, starting planning"
+      });
+      try {
+        const requirements2 = this.requirementsDB.getRequirements(projectId);
+        console.log(`[NexusBootstrap] Retrieved ${requirements2.length} requirements for decomposition`);
+        const featureDescription = requirements2.map((r) => `- [${r.priority}] ${r.description}`).join("\n");
+        const tasks2 = await decomposer.decompose(featureDescription);
+        console.log(`[NexusBootstrap] Decomposed into ${tasks2.length} tasks`);
+        const waves = resolver.calculateWaves(tasks2);
+        console.log(`[NexusBootstrap] Calculated ${waves.length} execution waves`);
+        const totalMinutes = await this.nexus.planning.estimator.estimateTotal(tasks2);
+        console.log(`[NexusBootstrap] Estimated ${totalMinutes} minutes total`);
+        coordinator.initialize({
+          projectId,
+          projectPath: this.config.workingDir,
+          features: this.tasksToFeatures(tasks2, projectId),
+          mode: "genesis"
+        });
+        coordinator.start(projectId);
+        console.log(`[NexusBootstrap] Execution started for ${projectId}`);
+      } catch (error) {
+        console.error("[NexusBootstrap] Planning failed:", error);
+        await this.eventBus.emit("project:failed", {
+          projectId,
+          error: error instanceof Error ? error.message : String(error),
+          recoverable: true
+        });
+      }
+    });
+    this.unsubscribers.push(interviewCompletedUnsub);
+    coordinator.onEvent((event) => {
+      const eventType = event.type;
+      const eventData = event.data ?? {};
+      console.log(`[NexusBootstrap] Coordinator event: ${eventType}`, eventData);
+      if (eventType === "task:assigned" && "taskId" in eventData && "agentId" in eventData) {
+        void this.eventBus.emit("task:assigned", {
+          taskId: String(eventData.taskId),
+          agentId: String(eventData.agentId),
+          agentType: "coder",
+          worktreePath: String(eventData.worktreePath ?? "")
+        });
+      } else if (eventType === "task:started" && "taskId" in eventData) {
+        void this.eventBus.emit("task:started", {
+          taskId: String(eventData.taskId),
+          agentId: String(eventData.agentId ?? ""),
+          startedAt: /* @__PURE__ */ new Date()
+        });
+      } else if (eventType === "task:completed" && "taskId" in eventData) {
+        void this.eventBus.emit("task:completed", {
+          taskId: String(eventData.taskId),
+          result: {
+            taskId: String(eventData.taskId),
+            success: true,
+            files: [],
+            metrics: {
+              iterations: 1,
+              tokensUsed: 0,
+              timeMs: 0
+            }
+          }
+        });
+      } else if (eventType === "task:failed" && "taskId" in eventData) {
+        void this.eventBus.emit("task:failed", {
+          taskId: String(eventData.taskId),
+          error: String(eventData.error ?? "Unknown error"),
+          iterations: Number(eventData.iterations ?? 1),
+          escalated: Boolean(eventData.escalated ?? false)
+        });
+      } else if (eventType === "task:escalated" && "taskId" in eventData) {
+        void this.eventBus.emit("task:escalated", {
+          taskId: String(eventData.taskId),
+          reason: String(eventData.reason ?? "Max iterations exceeded"),
+          iterations: Number(eventData.iterations ?? 1),
+          lastError: String(eventData.lastError ?? "")
+        });
+      }
+    });
+  }
+  /**
+   * Wire event forwarding to the renderer process via IPC
+   */
+  wireUIEventForwarding() {
+    const eventsToForward = [
+      // Interview events
+      "interview:started",
+      "interview:question-asked",
+      "interview:requirement-captured",
+      "interview:completed",
+      // Project events
+      "project:status-changed",
+      "project:failed",
+      "project:completed",
+      // Task events
+      "task:assigned",
+      "task:started",
+      "task:completed",
+      "task:failed",
+      "task:escalated",
+      // QA events
+      "qa:build-completed",
+      "qa:lint-completed",
+      "qa:test-completed",
+      "qa:review-completed",
+      // System events
+      "system:checkpoint-created",
+      "system:checkpoint-restored",
+      "system:error",
+      // Human review events
+      "review:requested"
+    ];
+    const unsub = this.eventBus.onAny((event) => {
+      if (eventsToForward.includes(event.type) && mainWindowRef) {
+        mainWindowRef.webContents.send("nexus-event", {
+          type: event.type,
+          payload: event.payload,
+          timestamp: event.timestamp
+        });
+      }
+    });
+    this.unsubscribers.push(unsub);
+  }
+  /**
+   * Convert planning tasks to feature format for coordinator
+   */
+  tasksToFeatures(tasks2, projectId) {
+    return tasks2.map((task) => ({
+      id: task.id,
+      name: task.name,
+      description: task.description,
+      priority: "must",
+      status: "backlog",
+      complexity: task.size === "large" ? "complex" : "simple",
+      subFeatures: [],
+      estimatedTasks: 1,
+      completedTasks: 0,
+      createdAt: /* @__PURE__ */ new Date(),
+      updatedAt: /* @__PURE__ */ new Date(),
+      projectId
+    }));
+  }
+  /**
+   * Start Genesis mode (new project from scratch)
+   */
+  async startGenesisMode(projectName) {
+    if (!this.interviewEngine || !this.sessionManager) {
+      throw new Error("NexusBootstrap not initialized");
+    }
+    const projectId = `genesis-${Date.now()}`;
+    const name = projectName ?? `Genesis Project ${Date.now()}`;
+    console.log(`[NexusBootstrap] Starting Genesis mode: ${name} (${projectId})`);
+    const session2 = this.interviewEngine.startSession(projectId);
+    this.sessionManager.startAutoSave(session2);
+    return {
+      projectId,
+      sessionId: session2.id
+    };
+  }
+  /**
+   * Start Evolution mode (enhance existing project)
+   */
+  async startEvolutionMode(projectPath, projectName) {
+    if (!this.interviewEngine || !this.sessionManager) {
+      throw new Error("NexusBootstrap not initialized");
+    }
+    const projectId = `evolution-${Date.now()}`;
+    const _name = projectName ?? `Evolution: ${projectPath}`;
+    console.log(`[NexusBootstrap] Starting Evolution mode: ${_name} (${projectId})`);
+    const session2 = this.interviewEngine.startSession(projectId);
+    this.sessionManager.startAutoSave(session2);
+    return {
+      projectId,
+      sessionId: session2.id
+    };
+  }
+  // =========================================================================
+  // TASK 5: Wire Checkpoint Listeners
+  // =========================================================================
+  /**
+   * Wire checkpoint creation on task escalation (QA Failure -> Checkpoint)
+   *
+   * This is the critical wiring for Task 5:
+   * - When a task is escalated (QA failed after max iterations)
+   * - Automatically create a checkpoint for recovery
+   * - Request human review
+   */
+  wireCheckpointListeners() {
+    if (!this.checkpointManager || !this.stateManager) {
+      console.warn("[NexusBootstrap] CheckpointManager not initialized, skipping checkpoint wiring");
+      return;
+    }
+    const escalatedUnsub = this.eventBus.on("task:escalated", async (event) => {
+      const { taskId, reason, iterations, lastError } = event.payload;
+      const projectId = this.extractProjectIdFromTask(taskId);
+      console.log(`[NexusBootstrap] Task ${taskId} escalated after ${iterations} iterations: ${reason}`);
+      try {
+        this.ensureProjectState(projectId);
+        const checkpoint = await this.checkpointManager.createAutoCheckpoint(
+          projectId,
+          "qa_exhausted"
+        );
+        console.log(`[NexusBootstrap] Created escalation checkpoint: ${checkpoint.id}`);
+        await this.eventBus.emit("review:requested", {
+          reviewId: `review-${Date.now()}`,
+          taskId,
+          reason: "qa_exhausted",
+          context: {
+            qaIterations: iterations,
+            escalationReason: reason,
+            suggestedAction: lastError ? `Last error: ${lastError}. Consider reviewing the task requirements.` : "QA loop exhausted. Manual intervention required."
+          }
+        });
+        console.log(`[NexusBootstrap] Human review requested for task ${taskId}`);
+      } catch (error) {
+        console.error("[NexusBootstrap] Failed to create escalation checkpoint:", error);
+        await this.eventBus.emit("system:error", {
+          component: "NexusBootstrap",
+          error: `Checkpoint creation failed: ${error instanceof Error ? error.message : String(error)}`,
+          recoverable: true
+        });
+      }
+    });
+    this.unsubscribers.push(escalatedUnsub);
+    const failedUnsub = this.eventBus.on("task:failed", async (event) => {
+      const { taskId, error, escalated } = event.payload;
+      if (escalated) {
+        return;
+      }
+      const projectId = this.extractProjectIdFromTask(taskId);
+      console.log(`[NexusBootstrap] Task ${taskId} failed: ${error}`);
+      try {
+        this.ensureProjectState(projectId);
+        await this.checkpointManager.createAutoCheckpoint(
+          projectId,
+          "task_failed"
+        );
+        console.log(`[NexusBootstrap] Created failure checkpoint for task ${taskId}`);
+      } catch (checkpointError) {
+        console.error("[NexusBootstrap] Failed to create failure checkpoint:", checkpointError);
+      }
+    });
+    this.unsubscribers.push(failedUnsub);
+  }
+  /**
+   * Extract project ID from task ID
+   * Task IDs typically follow patterns like: "genesis-123456-task-1" or "task-uuid"
+   */
+  extractProjectIdFromTask(taskId) {
+    const genesisMatch = taskId.match(/^(genesis-\d+)/);
+    if (genesisMatch) {
+      return genesisMatch[1];
+    }
+    const evolutionMatch = taskId.match(/^(evolution-\d+)/);
+    if (evolutionMatch) {
+      return evolutionMatch[1];
+    }
+    return `project-${Date.now()}`;
+  }
+  /**
+   * Ensure project state exists for checkpoint creation
+   */
+  ensureProjectState(projectId) {
+    if (!this.stateManager) {
+      return;
+    }
+    if (!this.stateManager.hasState(projectId)) {
+      this.stateManager.createState(
+        projectId,
+        projectId,
+        projectId.startsWith("evolution") ? "evolution" : "genesis"
+      );
+    }
+  }
+  // =========================================================================
+  // Checkpoint Management Methods
+  // =========================================================================
+  /**
+   * Create a checkpoint for a project
+   */
+  async createCheckpointForProject(projectId, reason) {
+    if (!this.checkpointManager) {
+      throw new Error("CheckpointManager not initialized");
+    }
+    this.ensureProjectState(projectId);
+    const checkpoint = await this.checkpointManager.createCheckpoint(projectId, reason);
+    return {
+      id: checkpoint.id,
+      projectId: checkpoint.projectId,
+      name: checkpoint.name ?? `Checkpoint: ${reason}`,
+      reason: checkpoint.reason,
+      gitCommit: checkpoint.gitCommit,
+      createdAt: checkpoint.createdAt
+    };
+  }
+  /**
+   * Restore a checkpoint by ID
+   */
+  async restoreCheckpointById(checkpointId, restoreGit = false) {
+    if (!this.checkpointManager) {
+      throw new Error("CheckpointManager not initialized");
+    }
+    console.log(`[NexusBootstrap] Restoring checkpoint ${checkpointId} (restoreGit: ${restoreGit})`);
+    await this.checkpointManager.restoreCheckpoint(checkpointId, { restoreGit });
+    console.log(`[NexusBootstrap] Checkpoint ${checkpointId} restored successfully`);
+  }
+  /**
+   * List all checkpoints for a project
+   */
+  listCheckpointsForProject(projectId) {
+    if (!this.checkpointManager) {
+      return [];
+    }
+    const checkpoints2 = this.checkpointManager.listCheckpoints(projectId);
+    return checkpoints2.map((cp) => ({
+      id: cp.id,
+      projectId: cp.projectId,
+      name: cp.name ?? `Checkpoint`,
+      reason: cp.reason,
+      gitCommit: cp.gitCommit,
+      createdAt: cp.createdAt
+    }));
+  }
+  /**
+   * Shutdown all components
+   */
+  async shutdown() {
+    console.log("[NexusBootstrap] Shutting down...");
+    for (const unsub of this.unsubscribers) {
+      try {
+        unsub();
+      } catch {
+      }
+    }
+    this.unsubscribers = [];
+    if (this.nexus) {
+      await this.nexus.shutdown();
+      this.nexus = null;
+    }
+    this.interviewEngine = null;
+    this.sessionManager = null;
+    this.requirementsDB = null;
+    this.stateManager = null;
+    this.checkpointManager = null;
+    this.gitService = null;
+    this.databaseClient = null;
+    bootstrappedNexus = null;
+    console.log("[NexusBootstrap] Shutdown complete");
+  }
+}
+async function initializeNexus(config) {
+  const bootstrap = new NexusBootstrap(config);
+  return bootstrap.initialize();
+}
+function setMainWindow(window) {
+  mainWindowRef = window;
+}
+function clearMainWindow() {
+  mainWindowRef = null;
+}
 let mainWindow = null;
+let nexusInstance = null;
+function getWorkingDir() {
+  if (is.dev) {
+    return process.cwd();
+  }
+  return app.getPath("userData");
+}
+function getDataDir() {
+  return app.getPath("userData");
+}
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1200,
@@ -2438,7 +11518,7 @@ function createWindow() {
     show: false,
     autoHideMenuBar: true,
     webPreferences: {
-      preload: join(__dirname, "../preload/index.js"),
+      preload: join$1(__dirname, "../preload/index.js"),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true
@@ -2451,13 +11531,45 @@ function createWindow() {
     void shell.openExternal(details.url);
     return { action: "deny" };
   });
+  setMainWindow(mainWindow);
   if (is.dev && process.env["ELECTRON_RENDERER_URL"]) {
     void mainWindow.loadURL(process.env["ELECTRON_RENDERER_URL"]);
   } else {
-    void mainWindow.loadFile(join(__dirname, "../renderer/index.html"));
+    void mainWindow.loadFile(join$1(__dirname, "../renderer/index.html"));
   }
 }
-void app.whenReady().then(() => {
+async function initializeNexusSystem() {
+  try {
+    console.log("[Main] Initializing Nexus system...");
+    const config = {
+      workingDir: getWorkingDir(),
+      dataDir: getDataDir(),
+      apiKeys: {
+        anthropic: process.env["ANTHROPIC_API_KEY"],
+        google: process.env["GOOGLE_AI_API_KEY"],
+        openai: process.env["OPENAI_API_KEY"]
+      },
+      useCli: {
+        // Default to CLI if no API keys are set
+        claude: !process.env["ANTHROPIC_API_KEY"],
+        gemini: !process.env["GOOGLE_AI_API_KEY"]
+      }
+    };
+    nexusInstance = await initializeNexus(config);
+    registerInterviewHandlers(
+      nexusInstance.interviewEngine,
+      nexusInstance.sessionManager
+    );
+    console.log("[Main] Nexus system initialized successfully");
+    console.log(`[Main] Working directory: ${config.workingDir}`);
+    console.log(`[Main] Data directory: ${config.dataDir}`);
+    console.log(`[Main] Claude backend: ${config.useCli.claude ? "CLI" : "API"}`);
+    console.log(`[Main] Gemini backend: ${config.useCli.gemini ? "CLI" : "API"}`);
+  } catch (error) {
+    console.error("[Main] Failed to initialize Nexus system:", error);
+  }
+}
+void app.whenReady().then(async () => {
   electronApp.setAppUserModelId("com.nexus.app");
   registerIpcHandlers();
   registerSettingsHandlers();
@@ -2468,6 +11580,7 @@ void app.whenReady().then(() => {
   if (mainWindow) {
     setupEventForwarding(mainWindow);
   }
+  await initializeNexusSystem();
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow();
@@ -2479,7 +11592,21 @@ app.on("window-all-closed", () => {
     app.quit();
   }
 });
+app.on("before-quit", async () => {
+  console.log("[Main] Application shutting down...");
+  clearMainWindow();
+  if (nexusInstance) {
+    try {
+      await nexusInstance.shutdown();
+      console.log("[Main] Nexus system shut down successfully");
+    } catch (error) {
+      console.error("[Main] Error during Nexus shutdown:", error);
+    }
+    nexusInstance = null;
+  }
+});
 export {
   createWindow,
-  mainWindow
+  mainWindow,
+  nexusInstance
 };
