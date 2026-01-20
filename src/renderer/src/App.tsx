@@ -7,6 +7,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { Suspense, lazy, useEffect } from 'react';
 import { useThemeEffect } from './hooks/useTheme';
 import { useNexusEvents } from './hooks/useNexusEvents';
+import { useRealTimeUpdates } from './hooks/useRealTimeUpdates';
 import { useSettingsStore } from './stores/settingsStore';
 import { Toaster } from 'sonner';
 import { KeyboardShortcutsModal } from './components/KeyboardShortcutsModal';
@@ -115,6 +116,7 @@ const router = createBrowserRouter([
  * and backend events are properly routed to UI stores.
  *
  * Phase 19 Task 5: Added useNexusEvents for Backend -> UI event wiring.
+ * Phase 19 Task 16: Added useRealTimeUpdates for dashboard/agent/execution events.
  */
 function SettingsInitializer({ children }: { children: React.ReactNode }): ReactElement {
   const loadSettings = useSettingsStore((s) => s.loadSettings);
@@ -133,6 +135,10 @@ function SettingsInitializer({ children }: { children: React.ReactNode }): React
   // Subscribe to Nexus backend events for real-time UI updates
   // This wires: Backend Events -> IPC -> UI Stores
   useNexusEvents();
+
+  // Subscribe to real-time dashboard, agent, and execution events
+  // This wires: metrics:updated, timeline:event, agent:metrics, etc.
+  useRealTimeUpdates();
 
   return <>{children}</>;
 }
