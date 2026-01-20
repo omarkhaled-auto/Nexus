@@ -1,15 +1,15 @@
-import { c as createLucideIcon, p as useCosts, j as jsxRuntimeExports, e as Card, a as cn, f as CardHeader, g as CardTitle, h as CardContent, r as reactExports, q as clsx, s as getDefaultExportFromCjs, d as reactDomExports, v as React$3, w as useAgentMetrics, B as Bot, R as React$4, x as fo, y as RefreshCw, M as MessageSquare, z as useTimeline, b as useNavigate, A as useIsMetricsLoading, E as useOverview, F as useMetricsStore, o as Button, P as Plus, S as Sparkles, G as FolderOpen, H as Link, I as ChevronRight, D as Dialog, i as DialogContent, k as DialogHeader, l as DialogTitle, m as DialogDescription, n as DialogFooter, L as LoaderCircle } from "./index-D--usuTA.js";
-import { F as FileText, Z as Zap } from "./zap-Ci1I_9VB.js";
-import { B as Bug, G as GitMerge, T as TestTubeDiagonal, C as CodeXml, P as Play, a as Pause } from "./test-tube-diagonal-zeDzFMhx.js";
-import { E as Eye } from "./eye-mxzEpZ5v.js";
-import { C as Circle, A as AnimatedPage } from "./AnimatedPage-CtXSaDRN.js";
-import { C as CircleCheck } from "./circle-check-B1jCuRZi.js";
-import { C as CircleX } from "./circle-x-CD77M2Rb.js";
-import { C as CircleAlert } from "./circle-alert-BQbYeuEC.js";
-import { I as Input } from "./Input-DFbkfK4I.js";
-import "./interviewStore-CAIwj2IQ.js";
-import "./featureStore-LF-S5p12.js";
-import { C as Clock } from "./clock-ozPng9W6.js";
+import { c as createLucideIcon, p as useCosts, j as jsxRuntimeExports, e as Card, a as cn, f as CardHeader, g as CardTitle, h as CardContent, r as reactExports, q as clsx, s as getDefaultExportFromCjs, d as reactDomExports, v as React$3, w as useAgentMetrics, B as Bot, R as React$4, x as fo, y as RefreshCw, M as MessageSquare, z as useTimeline, b as useNavigate, A as useIsMetricsLoading, E as useOverview, F as useMetricsStore, o as Button, P as Plus, S as Sparkles, G as FolderOpen, H as Link, I as ChevronRight, D as Dialog, i as DialogContent, k as DialogHeader, l as DialogTitle, m as DialogDescription, n as DialogFooter, L as LoaderCircle } from "./index-Bb-FdixX.js";
+import { F as FileText, Z as Zap } from "./zap-CvuE1p9Y.js";
+import { B as Bug, G as GitMerge, T as TestTubeDiagonal, C as CodeXml, P as Play, a as Pause } from "./test-tube-diagonal-DeOga9NA.js";
+import { E as Eye } from "./eye-De6_Ps9c.js";
+import { C as Circle, A as AnimatedPage } from "./AnimatedPage-D3iPoWBn.js";
+import { C as CircleCheck } from "./circle-check-BXFZGkpo.js";
+import { C as CircleX } from "./circle-x-RTN-sKtN.js";
+import { C as CircleAlert } from "./circle-alert-DU3QPx86.js";
+import { I as Input } from "./Input-CeuGwk03.js";
+import "./interviewStore-D_i6pNYt.js";
+import "./featureStore-CYGQAU4P.js";
+import { C as Clock } from "./clock-DOyCzCKO.js";
 /**
  * @license lucide-react v0.562.0 - ISC
  *
@@ -28495,7 +28495,7 @@ function DashboardPage() {
               /* @__PURE__ */ jsxRuntimeExports.jsxs(
                 Link,
                 {
-                  to: "/projects",
+                  to: "/settings",
                   className: "text-sm text-accent-primary hover:text-accent-primary/80 flex items-center gap-1 transition-colors",
                   children: [
                     "View All ",
