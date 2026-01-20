@@ -1,0 +1,35 @@
+appId: com.nexus.app
+productName: Nexus
+directories:
+  buildResources: build
+  output: dist
+files:
+  - out/**/*
+  - '!**/*.map'
+asarUnpack:
+  - resources/**
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  artifactName: ${name}-${version}-setup.${ext}
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  perMachine: false
+mac:
+  target:
+    - target: dmg
+      arch:
+        - x64
+        - arm64
+  artifactName: ${name}-${version}-${arch}.${ext}
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+linux:
+  target:
+    - target: AppImage
+      arch:
+        - x64
+  artifactName: ${name}-${version}.${ext}
