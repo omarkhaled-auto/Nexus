@@ -103,9 +103,12 @@ function ProjectCard({ project }: { project: ProjectData }): ReactElement {
     return `${Math.floor(hours / 24)}d ago`
   }
 
+  // Navigate to genesis for genesis mode, evolution for evolution mode
+  const projectPath = project.mode === 'genesis' ? '/genesis' : '/evolution'
+
   return (
     <Link
-      to={`/project/${project.id}`}
+      to={projectPath}
       data-testid="project-card"
       className="block group"
     >
@@ -394,10 +397,9 @@ export default function DashboardPage(): ReactElement {
       // Reload projects to show the new one
       await loadRealData()
 
-      // Navigate to the new project
-      if (result?.id) {
-        navigate(`/project/${result.id}`)
-      }
+      // Navigate based on mode: genesis for interview, evolution for kanban
+      const projectPath = createProjectMode === 'genesis' ? '/genesis' : '/evolution'
+      navigate(projectPath)
     } catch (err) {
       console.error('Failed to create project:', err)
       setCreateError(err instanceof Error ? err.message : 'Failed to create project')
