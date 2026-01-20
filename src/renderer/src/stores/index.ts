@@ -66,7 +66,8 @@ export {
   useIsMetricsLoading,
   useActiveAgentCount,
   useTaskProgress,
-  useLastUpdated
+  useLastUpdated,
+  useLoadMetrics
 } from './metricsStore'
 
 // Selector exports - settingsStore

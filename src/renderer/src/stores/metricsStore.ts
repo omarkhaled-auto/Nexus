@@ -28,6 +28,7 @@ interface MetricsState {
   setAgents: (agents: AgentMetrics[]) => void
   setCosts: (costs: CostMetrics) => void
   setLoading: (isLoading: boolean) => void
+  loadMetrics: () => Promise<void>
   reset: () => void
 }
 
@@ -75,6 +76,31 @@ export const useMetricsStore = create<MetricsState>()((set) => ({
 
   setLoading: (isLoading) => { set({ isLoading }); },
 
+  loadMetrics: async () => {
+    // Only load if nexusAPI is available (Electron context)
+    if (typeof window.nexusAPI === 'undefined') {
+      return
+    }
+
+    try {
+      set({ isLoading: true })
+
+      // Fetch dashboard metrics from main process
+      const metricsData = await window.nexusAPI.getDashboardMetrics()
+
+      if (metricsData) {
+        set({
+          overview: metricsData as OverviewMetrics,
+          lastUpdated: new Date(),
+          isLoading: false
+        })
+      }
+    } catch (error) {
+      console.error('[metricsStore] Failed to load metrics:', error)
+      set({ isLoading: false })
+    }
+  },
+
   reset: () => { set(initialState); }
 }))
 
@@ -85,6 +111,7 @@ export const useAgentMetrics = () => useMetricsStore((s) => s.agents)
 export const useCosts = () => useMetricsStore((s) => s.costs)
 export const useIsMetricsLoading = () => useMetricsStore((s) => s.isLoading)
 export const useLastUpdated = () => useMetricsStore((s) => s.lastUpdated)
+export const useLoadMetrics = () => useMetricsStore((s) => s.loadMetrics)
 
 // Computed selectors
 export const useActiveAgentCount = () =>

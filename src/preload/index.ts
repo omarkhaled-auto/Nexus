@@ -669,6 +669,42 @@ const nexusAPI = {
    * Interview operations via InterviewEngine backend
    */
   interview: interviewAPI,
+
+  // ========================================
+  // Nexus Event System (Phase 19 - Task 5)
+  // ========================================
+
+  /**
+   * Subscribe to all Nexus events from the main process
+   * This is the primary event bridge for real-time UI updates
+   *
+   * @param callback - Called when any Nexus event arrives
+   * @returns Unsubscribe function
+   *
+   * Events include:
+   * - interview:started, interview:question-asked, interview:requirement-captured, interview:completed
+   * - project:status-changed, project:failed, project:completed
+   * - task:assigned, task:started, task:completed, task:failed, task:escalated
+   * - qa:build-completed, qa:lint-completed, qa:test-completed, qa:review-completed
+   * - system:checkpoint-created, system:error
+   */
+  onNexusEvent: (callback: (event: { type: string; payload: unknown; timestamp: Date }) => void): Unsubscribe => {
+    const handler = (_event: IpcRendererEvent, data: { type: string; payload: unknown; timestamp: Date }): void => {
+      callback(data)
+    }
+    ipcRenderer.on('nexus-event', handler)
+    return () => {
+      ipcRenderer.removeListener('nexus-event', handler)
+    }
+  },
+
+  /**
+   * Remove all Nexus event listeners
+   * Call this on component unmount for cleanup
+   */
+  offNexusEvent: (): void => {
+    ipcRenderer.removeAllListeners('nexus-event')
+  },
 }
 
 // Expose the API to the renderer process via contextBridge

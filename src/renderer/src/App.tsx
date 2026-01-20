@@ -6,6 +6,7 @@ import { ModeSelectorPage } from './pages/ModeSelectorPage';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { Suspense, lazy, useEffect } from 'react';
 import { useThemeEffect } from './hooks/useTheme';
+import { useNexusEvents } from './hooks/useNexusEvents';
 import { useSettingsStore } from './stores/settingsStore';
 import { Toaster } from 'sonner';
 import { KeyboardShortcutsModal } from './components/KeyboardShortcutsModal';
@@ -109,8 +110,11 @@ const router = createBrowserRouter([
 /**
  * Settings and Theme Initializer
  *
- * Loads settings on mount and applies theme effect.
- * This ensures settings-based theme is applied after initial load.
+ * Loads settings on mount, applies theme effect, and sets up Nexus event handling.
+ * This ensures settings-based theme is applied after initial load
+ * and backend events are properly routed to UI stores.
+ *
+ * Phase 19 Task 5: Added useNexusEvents for Backend -> UI event wiring.
  */
 function SettingsInitializer({ children }: { children: React.ReactNode }): ReactElement {
   const loadSettings = useSettingsStore((s) => s.loadSettings);
@@ -125,6 +129,10 @@ function SettingsInitializer({ children }: { children: React.ReactNode }): React
 
   // Apply theme from settings (or system default if not loaded)
   useThemeEffect();
+
+  // Subscribe to Nexus backend events for real-time UI updates
+  // This wires: Backend Events -> IPC -> UI Stores
+  useNexusEvents();
 
   return <>{children}</>;
 }

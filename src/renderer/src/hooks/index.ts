@@ -2,6 +2,7 @@
 export { useInterviewPersistence } from './useInterviewPersistence';
 export { useCheckpoint } from './useCheckpoint';
 export { useReducedMotion, usePrefersReducedMotion } from './useReducedMotion';
+export { useNexusEvents, setupNexusEventHandler } from './useNexusEvents';
 export {
   useMediaQuery,
   useIsMobile,
