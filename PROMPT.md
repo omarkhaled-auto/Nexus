@@ -358,8 +358,51 @@ Proceed to Task 12 if issues found, or Task 13 (Verify Both Modes) if no issues.
 
 **[TASK 14 COMPLETE]** - Proceeding to Task 15
 
+### Task 15: Wire Settings & Configuration - COMPLETED
+- [x] **Settings Service** (`src/main/services/settingsService.ts`)
+  - electron-store with schema validation
+  - safeStorage for secure API key encryption
+  - CLI/API backend selection per provider (Claude, Gemini, Embeddings)
+  - Per-agent model assignments support
+
+- [x] **IPC Handlers** (`src/main/ipc/settingsHandlers.ts`)
+  - All CRUD handlers: getAll, get, set, reset
+  - Secure API key management: setApiKey, hasApiKey, clearApiKey
+  - CLI availability detection: checkCliAvailability
+
+- [x] **Preload API** (`src/preload/index.ts`)
+  - Complete settings API exposed via contextBridge
+  - Type-safe interface matching SettingsAPI
+
+- [x] **UI Store** (`src/renderer/src/stores/settingsStore.ts`)
+  - Zustand store with pending changes tracking
+  - Load/save operations with IPC
+  - Dirty state management
+
+- [x] **Main Process Integration** (`src/main/index.ts`)
+  - `getNexusConfigFromSettings()` reads from SettingsService at startup
+  - API key priority: env vars > stored settings
+  - Fallback logic: API selected but no key -> use CLI
+
+- [x] **SettingsPage UI** (`src/renderer/src/pages/SettingsPage.tsx`)
+  - Complete tabbed interface for all settings categories
+  - Backend toggle (CLI/API) with availability detection
+  - Model dropdowns per provider
+  - Per-agent model assignments table
+  - API key management with secure storage indication
+
+- [x] **Integration Tests** (`tests/integration/settings-wiring.test.ts`)
+  - Backend configuration logic tests (5 tests)
+  - API key priority tests (3 tests)
+  - Settings persistence flow tests (2 tests)
+  - Default values tests (7 tests)
+  - Runtime settings application tests (2 tests)
+
+**Note:** Settings changes require application restart to take effect on backend (standard Electron behavior).
+
+**[TASK 15 COMPLETE]** - Proceeding to Task 16
+
 **Next Tasks:**
-- Task 15: Wire Settings & Configuration
 - Task 16: Wire Real-time UI Updates
 
 ---
