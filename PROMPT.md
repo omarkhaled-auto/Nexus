@@ -57,7 +57,7 @@
 
 **[TASK 4 COMPLETE]** - Proceeding to Task 5
 
-### Task 5: Wire Genesis Complete Path - IN PROGRESS
+### Task 5: Wire Genesis Complete Path - COMPLETED
 - [x] **Backend -> UI Events Wiring** - Commit: `05173c6`
   - Added `onNexusEvent` listener to preload script (`src/preload/index.ts`)
   - Created `useNexusEvents` hook (`src/renderer/src/hooks/useNexusEvents.ts`)
@@ -83,8 +83,16 @@
   - Emits `task:merged` event on successful merge
   - No additional wiring needed
 
-**Remaining Task 5 items:**
-- [ ] Integration tests for complete path
+- [x] **Integration tests for complete path** - Commit: `6952a59`
+  - Created `tests/integration/genesis-complete-path.test.ts` (20 tests)
+  - QA Failure -> Escalation -> Checkpoint flow tests
+  - Success -> Merge wiring event tests
+  - Backend -> UI event forwarding tests
+  - Complete Genesis sequence tests (happy path & escalation)
+  - Event payload validation tests
+  - All tests pass with proper EventBus cleanup
+
+**[TASK 5 COMPLETE]** - Proceeding to Task 6
 
 ---
 
