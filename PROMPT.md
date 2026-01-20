@@ -66,10 +66,24 @@
   - Events handled: task, project, interview, QA, system events
   - TypeScript compiles successfully
 
+- [x] **QA Failure -> Escalation Checkpoint Wiring** - Commit: `98ae017`
+  - Added CheckpointManager, StateManager, GitService to NexusBootstrap
+  - Wired `task:escalated` event -> automatic checkpoint creation
+  - Wired `task:failed` event -> checkpoint for non-escalated failures
+  - Added human review request on task escalation (`review:requested` event)
+  - Added checkpoint management methods to BootstrappedNexus:
+    - `createCheckpoint(projectId, reason)`
+    - `restoreCheckpoint(checkpointId, restoreGit)`
+    - `listCheckpoints(projectId)`
+  - Forwarded `system:checkpoint-restored` and `review:requested` events to UI
+  - TypeScript compiles successfully
+
+- [x] **Success -> Merge Wiring** - Already in NexusCoordinator
+  - `executeTask()` method already calls `mergerRunner.merge()` on QA pass
+  - Emits `task:merged` event on successful merge
+  - No additional wiring needed
+
 **Remaining Task 5 items:**
-- [ ] Wire QA Failure -> Escalation (checkpoint creation)
-- [ ] Wire Success -> Merge (git merge after task pass)
-- [ ] Wire checkpoint restore functionality
 - [ ] Integration tests for complete path
 
 ---
