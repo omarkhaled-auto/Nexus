@@ -62,73 +62,14 @@ import {
 } from '../../../llm/models'
 
 // ============================================
-// Demo Mode Detection & Data
+// Environment Detection
 // ============================================
 
 /**
- * Check if we're in demo mode (no Electron backend)
+ * Check if running in Electron environment with nexusAPI available
  */
-const isDemoMode = (): boolean => {
-  return typeof window.nexusAPI === 'undefined'
-}
-
-/**
- * Demo settings for visual testing without Electron backend
- */
-const DEMO_SETTINGS: NexusSettingsPublic = {
-  llm: {
-    claude: {
-      backend: 'cli',
-      hasApiKey: false,
-      timeout: 300000,
-      maxRetries: 2,
-      model: DEFAULT_CLAUDE_MODEL,
-    },
-    gemini: {
-      backend: 'cli',
-      hasApiKey: false,
-      timeout: 300000,
-      model: DEFAULT_GEMINI_MODEL,
-    },
-    embeddings: {
-      backend: 'local',
-      hasApiKey: false,
-      localModel: DEFAULT_LOCAL_EMBEDDING_MODEL,
-      dimensions: 384,
-      cacheEnabled: true,
-      maxCacheSize: 10000,
-    },
-    defaultProvider: 'claude',
-    defaultModel: DEFAULT_CLAUDE_MODEL,
-    fallbackEnabled: true,
-    fallbackOrder: ['claude', 'gemini'],
-    hasClaudeKey: false,
-    hasGeminiKey: false,
-    hasOpenaiKey: false,
-  },
-  agents: {
-    maxParallelAgents: 4,
-    taskTimeoutMinutes: 30,
-    maxRetries: 3,
-    autoRetryEnabled: true,
-  },
-  checkpoints: {
-    autoCheckpointEnabled: true,
-    autoCheckpointIntervalMinutes: 5,
-    maxCheckpointsToKeep: 10,
-    checkpointOnFeatureComplete: true,
-  },
-  ui: {
-    theme: 'dark',
-    sidebarWidth: 280,
-    showNotifications: true,
-    notificationDuration: 5000,
-  },
-  project: {
-    defaultLanguage: 'typescript',
-    defaultTestFramework: 'vitest',
-    outputDirectory: '.nexus',
-  },
+const isElectronEnvironment = (): boolean => {
+  return typeof window !== 'undefined' && typeof window.nexusAPI !== 'undefined'
 }
 
 // ============================================
@@ -1162,43 +1103,24 @@ function ProjectSettings({ settings, updateSetting }: SettingsTabProps): ReactEl
 
 export default function SettingsPage(): ReactElement {
   const [activeTab, setActiveTab] = useState<TabId>('llm')
-  const [demoSettings, setDemoSettings] = useState<NexusSettingsPublic>(DEMO_SETTINGS)
-  const storeSettings = useSettings()
+  const [error, setError] = useState<string | null>(null)
+  const settings = useSettings()
   const isLoading = useSettingsLoading()
   const isDirty = useSettingsDirty()
-  const { loadSettings, updateSetting: storeUpdateSetting, saveSettings, discardChanges, resetToDefaults } = useSettingsStore()
+  const { loadSettings, updateSetting, saveSettings, discardChanges, resetToDefaults } = useSettingsStore()
 
-  // Use demo settings in demo mode, store settings otherwise
-  const inDemoMode = isDemoMode()
-  const settings = inDemoMode ? demoSettings : storeSettings
-
-  // Demo mode update handler
-  const demoUpdateSetting = <K extends keyof NexusSettingsPublic>(
-    category: K,
-    key: keyof NexusSettingsPublic[K],
-    value: NexusSettingsPublic[K][keyof NexusSettingsPublic[K]]
-  ): void => {
-    setDemoSettings(prev => ({
-      ...prev,
-      [category]: {
-        ...prev[category],
-        [key]: value
-      }
-    }))
-  }
-
-  const updateSetting = inDemoMode ? demoUpdateSetting : storeUpdateSetting
-
-  // Load settings on mount (only when not in demo mode)
+  // Load settings on mount
   useEffect(() => {
-    if (!inDemoMode) {
-      void loadSettings()
+    if (!isElectronEnvironment()) {
+      setError('Backend not available. Please run in Electron.')
+      return
     }
-  }, [loadSettings, inDemoMode])
+    void loadSettings()
+  }, [loadSettings])
 
   const handleSave = async (): Promise<void> => {
-    if (inDemoMode) {
-      console.log('Demo mode: Settings would be saved:', demoSettings)
+    if (!isElectronEnvironment()) {
+      setError('Cannot save settings - backend not available.')
       return
     }
     await saveSettings()
@@ -1206,16 +1128,32 @@ export default function SettingsPage(): ReactElement {
 
   const handleReset = async (): Promise<void> => {
     if (window.confirm('Are you sure you want to reset all settings to defaults? This cannot be undone.')) {
-      if (inDemoMode) {
-        setDemoSettings(DEMO_SETTINGS)
+      if (!isElectronEnvironment()) {
+        setError('Cannot reset settings - backend not available.')
         return
       }
       await resetToDefaults()
     }
   }
 
-  // Loading state (skip in demo mode)
-  if (!inDemoMode && (isLoading || !settings)) {
+  // Error state (no backend)
+  if (error) {
+    return (
+      <div className="flex flex-col h-screen bg-bg-dark" data-testid="settings-page-error">
+        <Header title="Settings" icon={Settings2} showBack />
+        <div className="flex items-center justify-center flex-1">
+          <div className="flex flex-col items-center gap-3 text-center max-w-md px-4">
+            <AlertCircle className="h-12 w-12 text-status-warning" />
+            <h2 className="text-lg font-medium text-text-primary">Settings Unavailable</h2>
+            <p className="text-sm text-text-secondary">{error}</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Loading state
+  if (isLoading || !settings) {
     return (
       <div className="flex flex-col h-screen bg-bg-dark" data-testid="settings-page-loading">
         <Header title="Settings" icon={Settings2} showBack />
@@ -1227,11 +1165,6 @@ export default function SettingsPage(): ReactElement {
         </div>
       </div>
     )
-  }
-
-  // Ensure settings is defined for TypeScript
-  if (!settings) {
-    return <div className="flex flex-col h-screen bg-bg-dark" data-testid="settings-page-empty" />
   }
 
   return (
