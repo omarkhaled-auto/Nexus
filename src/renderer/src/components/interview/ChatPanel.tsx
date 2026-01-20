@@ -180,8 +180,14 @@ export function ChatPanel({ className }: ChatPanelProps): ReactElement {
    * Called when isInterviewing becomes true
    */
   const initializeSession = useCallback(async () => {
-    // Skip if no nexusAPI (non-Electron environment) or already initialized
-    if (!window.nexusAPI || sessionId || isInitializing.current) {
+    // Skip if already initialized
+    if (sessionId || isInitializing.current) {
+      return;
+    }
+
+    // Check for backend availability
+    if (!window.nexusAPI) {
+      setError('Backend not available. Please run in Electron to use the interview feature.');
       return;
     }
 
@@ -255,7 +261,8 @@ export function ChatPanel({ className }: ChatPanelProps): ReactElement {
    */
   const sendMessageToBackend = useCallback(async (message: string, userMessageId: string) => {
     if (!sessionId || !window.nexusAPI) {
-      // Fallback to demo mode without backend
+      // No backend available - set error and return
+      setError('Backend not available. Please run in Electron to use the interview feature.');
       return;
     }
 
