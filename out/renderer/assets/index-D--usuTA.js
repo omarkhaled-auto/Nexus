@@ -1,4 +1,4 @@
-const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["./InterviewPage-DvZaaCCL.js","./interviewStore-KxS19hLR.js","./circle-alert-B5chTur6.js","./zap-lwB_tEu_.js","./save-VFbiDzjC.js","./layers-CRgMtEFm.js","./circle-check-BM7kR0e3.js","./AnimatedPage-CaBOvLbi.js","./trash-2-DhMRrSAA.js","./download-BeCr49t9.js","./arrow-left-JELWY6DC.js","./KanbanPage-cLoql6Gh.js","./featureStore-DMHV_yPF.js","./clock-D4ZvFRET.js","./circle-x-BGipjINk.js","./Input-Bih7WUeJ.js","./eye-BDpbQ6e8.js","./DashboardPage-DUMDPEak.js","./test-tube-diagonal-rA31yKFr.js","./SettingsPage-DAfUcYpj.js","./Header-wUNz1tr9.js","./circle-check-big-CvPtXl0C.js","./info-DMyoP-4v.js","./AgentsPage-C13FC8x2.js","./ExecutionPage-BUeO4ZTZ.js"])))=>i.map(i=>d[i]);
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["./InterviewPage-DRQ6sl3g.js","./interviewStore-CAIwj2IQ.js","./circle-alert-BQbYeuEC.js","./zap-Ci1I_9VB.js","./save-D9E8XRtU.js","./layers-DSvsJ-VE.js","./circle-check-B1jCuRZi.js","./AnimatedPage-CtXSaDRN.js","./trash-2-BhDkuHi8.js","./download-Bzes6KUJ.js","./arrow-left-DdOxL2h7.js","./KanbanPage-CpQd4hij.js","./featureStore-LF-S5p12.js","./clock-ozPng9W6.js","./circle-x-CD77M2Rb.js","./Input-DFbkfK4I.js","./eye-mxzEpZ5v.js","./DashboardPage-BRaS0_3_.js","./test-tube-diagonal-zeDzFMhx.js","./SettingsPage-CT0GsFUv.js","./Header-UV7UXziS.js","./circle-check-big-DDYjtSCS.js","./info-BnGB7NuM.js","./AgentsPage-B4wWIu_2.js","./ExecutionPage-B2WNNiip.js"])))=>i.map(i=>d[i]);
 function _mergeNamespaces(n, m) {
   for (var i = 0; i < m.length; i++) {
     const e = m[i];
@@ -27456,12 +27456,12 @@ function KeyboardShortcutsModal() {
     )) })
   ] }) });
 }
-const InterviewPage = reactExports.lazy(() => __vitePreload(() => import("./InterviewPage-DvZaaCCL.js"), true ? __vite__mapDeps([0,1,2,3,4,5,6,7,8,9,10]) : void 0, import.meta.url));
-const KanbanPage = reactExports.lazy(() => __vitePreload(() => import("./KanbanPage-cLoql6Gh.js"), true ? __vite__mapDeps([11,12,7,13,8,14,6,5,15,2,16]) : void 0, import.meta.url));
-const DashboardPage = reactExports.lazy(() => __vitePreload(() => import("./DashboardPage-DUMDPEak.js"), true ? __vite__mapDeps([17,3,18,16,7,6,14,2,15,12,1,13]) : void 0, import.meta.url));
-const SettingsPage = reactExports.lazy(() => __vitePreload(() => import("./SettingsPage-DAfUcYpj.js"), true ? __vite__mapDeps([19,20,10,1,12,2,4,21,22,16]) : void 0, import.meta.url));
-const AgentsPage = reactExports.lazy(() => __vitePreload(() => import("./AgentsPage-C13FC8x2.js"), true ? __vite__mapDeps([23,20,10,22,2,6,3,18,16,13,8,14]) : void 0, import.meta.url));
-const ExecutionPage = reactExports.lazy(() => __vitePreload(() => import("./ExecutionPage-BUeO4ZTZ.js"), true ? __vite__mapDeps([24,20,10,9,8,14,21]) : void 0, import.meta.url));
+const InterviewPage = reactExports.lazy(() => __vitePreload(() => import("./InterviewPage-DRQ6sl3g.js"), true ? __vite__mapDeps([0,1,2,3,4,5,6,7,8,9,10]) : void 0, import.meta.url));
+const KanbanPage = reactExports.lazy(() => __vitePreload(() => import("./KanbanPage-CpQd4hij.js"), true ? __vite__mapDeps([11,12,7,13,8,14,6,5,15,2,16]) : void 0, import.meta.url));
+const DashboardPage = reactExports.lazy(() => __vitePreload(() => import("./DashboardPage-BRaS0_3_.js"), true ? __vite__mapDeps([17,3,18,16,7,6,14,2,15,12,1,13]) : void 0, import.meta.url));
+const SettingsPage = reactExports.lazy(() => __vitePreload(() => import("./SettingsPage-CT0GsFUv.js"), true ? __vite__mapDeps([19,20,10,1,12,2,4,21,22,16]) : void 0, import.meta.url));
+const AgentsPage = reactExports.lazy(() => __vitePreload(() => import("./AgentsPage-B4wWIu_2.js"), true ? __vite__mapDeps([23,20,10,22,2,6,3,18,16,13,8,14]) : void 0, import.meta.url));
+const ExecutionPage = reactExports.lazy(() => __vitePreload(() => import("./ExecutionPage-B2WNNiip.js"), true ? __vite__mapDeps([24,20,10,9,8,14,21]) : void 0, import.meta.url));
 function PageLoader() {
   return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex items-center justify-center min-h-screen bg-bg-dark", "data-testid": "page-loader", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col items-center gap-3", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-8 h-8 rounded-full border-2 border-accent-primary border-t-transparent animate-spin" }),
