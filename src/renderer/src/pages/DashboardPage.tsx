@@ -534,7 +534,7 @@ export default function DashboardPage(): ReactElement {
               Recent Projects
             </CardTitle>
             <Link
-              to="/projects"
+              to="/settings"
               className="text-sm text-accent-primary hover:text-accent-primary/80 flex items-center gap-1 transition-colors"
             >
               View All <ChevronRight className="h-4 w-4" />
