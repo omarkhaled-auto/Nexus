@@ -2,6 +2,14 @@ import { useHotkeys } from 'react-hotkeys-hook'
 import { useNavigate } from 'react-router'
 import { toast } from 'sonner'
 import { useUIStore } from '../stores/uiStore'
+import { useProjectStore } from '../stores/projectStore'
+
+/**
+ * Check if running in Electron environment with nexusAPI available
+ */
+function isElectronEnvironment(): boolean {
+  return typeof window !== 'undefined' && typeof window.nexusAPI !== 'undefined'
+}
 
 /**
  * Global keyboard shortcuts hook.
@@ -36,8 +44,40 @@ export function useGlobalShortcuts(): void {
     'mod+s',
     (e) => {
       e.preventDefault()
-      // TODO: Connect to checkpoint creation when available
-      toast.success('Checkpoint created')
+
+      // Get current project ID from store
+      const projectId = useProjectStore.getState().currentProject?.id
+
+      if (!isElectronEnvironment()) {
+        toast.info('Checkpoint creation requires Electron environment')
+        return
+      }
+
+      if (!projectId) {
+        toast.info('No active project - open a project first')
+        return
+      }
+
+      // Create checkpoint via backend IPC
+      void (async () => {
+        const loadingToast = toast.loading('Creating checkpoint...')
+        try {
+          const checkpoint = await window.nexusAPI.checkpointCreate(
+            projectId,
+            'Manual checkpoint via keyboard shortcut'
+          )
+          toast.dismiss(loadingToast)
+          if (checkpoint) {
+            toast.success('Checkpoint created successfully')
+          } else {
+            toast.error('Failed to create checkpoint')
+          }
+        } catch (err) {
+          toast.dismiss(loadingToast)
+          console.error('Failed to create checkpoint:', err)
+          toast.error(err instanceof Error ? err.message : 'Failed to create checkpoint')
+        }
+      })()
     },
     { preventDefault: true }
   )
