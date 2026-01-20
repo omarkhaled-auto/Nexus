@@ -1,14 +1,17 @@
-import type { ReactElement } from 'react'
+import { useState, type ReactElement } from 'react'
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription
+  DialogDescription,
+  DialogFooter
 } from '@renderer/components/ui/dialog'
+import { Button } from '@renderer/components/ui/button'
 import { cn } from '@renderer/lib/utils'
 import type { Feature, FeaturePriority, FeatureTask } from '@renderer/types/feature'
-import { Circle, CheckCircle2, Loader2, XCircle } from 'lucide-react'
+import { Circle, CheckCircle2, Loader2, XCircle, Trash2, AlertTriangle } from 'lucide-react'
+import { useFeatureStore } from '@renderer/stores/featureStore'
 
 const priorityColors: Record<FeaturePriority, string> = {
   critical: 'bg-red-500',
@@ -52,14 +55,111 @@ export function FeatureDetailModal({
   open,
   onOpenChange
 }: FeatureDetailModalProps): ReactElement | null {
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const removeFeature = useFeatureStore((s) => s.removeFeature)
+
   if (!feature) return null
 
   const completedTasks = feature.tasks.filter((t) => t.status === 'completed').length
   const totalTasks = feature.tasks.length
   const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
 
+  const handleDelete = async (): Promise<void> => {
+    setIsDeleting(true)
+    setDeleteError(null)
+
+    try {
+      const result = await window.nexusAPI.deleteFeature(feature.id)
+      if (result.success) {
+        // Remove from local store
+        removeFeature(feature.id)
+        // Close the modal
+        setShowDeleteConfirm(false)
+        onOpenChange(false)
+      } else {
+        setDeleteError('Failed to delete feature')
+      }
+    } catch (error) {
+      console.error('Failed to delete feature:', error)
+      setDeleteError(error instanceof Error ? error.message : 'Failed to delete feature')
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
+  const handleOpenChange = (isOpen: boolean): void => {
+    if (!isOpen) {
+      // Reset delete confirmation state when closing
+      setShowDeleteConfirm(false)
+      setDeleteError(null)
+    }
+    onOpenChange(isOpen)
+  }
+
+  // If showing delete confirmation, render confirmation dialog
+  if (showDeleteConfirm) {
+    return (
+      <Dialog open={open} onOpenChange={handleOpenChange}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <div className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" />
+              <DialogTitle>Delete Feature</DialogTitle>
+            </div>
+            <DialogDescription className="pt-2">
+              Are you sure you want to delete <strong>&quot;{feature.title}&quot;</strong>?
+              <br />
+              <br />
+              This action cannot be undone. All tasks associated with this feature will also be
+              deleted.
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* Delete Error Message */}
+          {deleteError && (
+            <div className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              {deleteError}
+            </div>
+          )}
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowDeleteConfirm(false)
+                setDeleteError(null)
+              }}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => void handleDelete()}
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete Feature
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    )
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <div className="flex items-center gap-2">
@@ -152,6 +252,19 @@ export function FeatureDetailModal({
               ))}
             </div>
           )}
+
+          {/* Delete Action */}
+          <div className="border-t pt-4">
+            <Button
+              variant="destructive"
+              size="sm"
+              className="w-full"
+              onClick={() => { setShowDeleteConfirm(true) }}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete Feature
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

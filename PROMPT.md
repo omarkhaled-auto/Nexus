@@ -27,10 +27,23 @@
   - Modal resets form state on close
 - **Files Modified**: `src/renderer/src/pages/KanbanPage.tsx`
 
+### Iteration 3 (2024-01-20)
+- **Task**: Add Feature delete option in FeatureDetailModal
+- **Status**: COMPLETED
+- **Changes**:
+  - Added "Delete Feature" button at the bottom of the FeatureDetailModal
+  - Implemented delete confirmation dialog (same modal, different view) with warning message
+  - Wired delete button to call `window.nexusAPI.deleteFeature()`
+  - On successful deletion: removes feature from Zustand store via `removeFeature` and closes modal
+  - Added proper loading states during deletion (spinner, disabled buttons)
+  - Added error handling with error message display
+  - Delete confirmation shows feature title and warns about cascading task deletion
+  - Cancel button returns to feature details view
+- **Files Modified**: `src/renderer/src/components/kanban/FeatureDetailModal.tsx`
+
 ### Remaining Tasks:
-1. Add Feature delete option in FeatureDetailModal
-2. Add dashboard:getHistoricalProgress handler for ProgressChart
-3. Add per-agent model configuration to settings schema
+1. Add dashboard:getHistoricalProgress handler for ProgressChart
+2. Add per-agent model configuration to settings schema
 
 ---
 
