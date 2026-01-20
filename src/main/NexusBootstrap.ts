@@ -22,6 +22,9 @@ import { InterviewEngine, type InterviewEngineOptions } from '../interview/Inter
 import { InterviewSessionManager, type InterviewSessionManagerOptions } from '../interview/InterviewSessionManager';
 import { RequirementsDB } from '../persistence/requirements/RequirementsDB';
 import { DatabaseClient } from '../persistence/database/DatabaseClient';
+import { StateManager } from '../persistence/state/StateManager';
+import { CheckpointManager } from '../persistence/checkpoints/CheckpointManager';
+import { GitService } from '../infrastructure/git/GitService';
 import type { PlanningTask } from '../planning/types';
 import type { OrchestrationFeature } from '../orchestration/types';
 
@@ -54,6 +57,18 @@ export interface NexusBootstrapConfig {
 }
 
 /**
+ * Checkpoint information returned to UI
+ */
+export interface CheckpointInfo {
+  id: string;
+  projectId: string;
+  name: string;
+  reason: string | null;
+  gitCommit: string | null;
+  createdAt: Date;
+}
+
+/**
  * The complete bootstrapped Nexus system
  */
 export interface BootstrappedNexus {
@@ -74,6 +89,15 @@ export interface BootstrappedNexus {
 
   /** Start Evolution mode (enhance existing project) */
   startEvolution: (projectPath: string, projectName?: string) => Promise<{ projectId: string; sessionId: string }>;
+
+  /** Create a checkpoint for a project */
+  createCheckpoint: (projectId: string, reason: string) => Promise<CheckpointInfo>;
+
+  /** Restore a checkpoint */
+  restoreCheckpoint: (checkpointId: string, restoreGit?: boolean) => Promise<void>;
+
+  /** List checkpoints for a project */
+  listCheckpoints: (projectId: string) => CheckpointInfo[];
 
   /** Shutdown all components */
   shutdown: () => Promise<void>;
@@ -107,6 +131,9 @@ export class NexusBootstrap {
   private eventBus: EventBus;
   private requirementsDB: RequirementsDB | null = null;
   private databaseClient: DatabaseClient | null = null;
+  private stateManager: StateManager | null = null;
+  private checkpointManager: CheckpointManager | null = null;
+  private gitService: GitService | null = null;
   private unsubscribers: Array<() => void> = [];
 
   constructor(config: NexusBootstrapConfig) {
@@ -152,7 +179,18 @@ export class NexusBootstrap {
     // 4. Initialize RequirementsDB
     this.requirementsDB = new RequirementsDB(this.databaseClient);
 
-    // 5. Initialize Interview Engine
+    // 5. Initialize GitService, StateManager, and CheckpointManager
+    this.gitService = new GitService({ baseDir: this.config.workingDir });
+    this.stateManager = new StateManager({ db: this.databaseClient });
+    this.checkpointManager = new CheckpointManager({
+      db: this.databaseClient,
+      stateManager: this.stateManager,
+      gitService: this.gitService,
+      eventBus: this.eventBus,
+    });
+    console.log('[NexusBootstrap] CheckpointManager created');
+
+    // 6. Initialize Interview Engine
     const interviewOptions: InterviewEngineOptions = {
       llmClient: this.nexus.llm.claude,
       requirementsDB: this.requirementsDB,
@@ -161,7 +199,7 @@ export class NexusBootstrap {
     this.interviewEngine = new InterviewEngine(interviewOptions);
     console.log('[NexusBootstrap] InterviewEngine created');
 
-    // 6. Initialize Session Manager
+    // 7. Initialize Session Manager
     const sessionManagerOptions: InterviewSessionManagerOptions = {
       db: this.databaseClient,
       eventBus: this.eventBus,
@@ -169,15 +207,19 @@ export class NexusBootstrap {
     this.sessionManager = new InterviewSessionManager(sessionManagerOptions);
     console.log('[NexusBootstrap] SessionManager created');
 
-    // 7. Wire critical event listeners (THE MAIN WIRING)
+    // 8. Wire critical event listeners (THE MAIN WIRING)
     this.wireEventListeners();
     console.log('[NexusBootstrap] Event listeners wired');
 
-    // 8. Wire UI event forwarding
+    // 9. Wire checkpoint listeners (Task 5: QA Failure -> Escalation)
+    this.wireCheckpointListeners();
+    console.log('[NexusBootstrap] Checkpoint listeners wired');
+
+    // 10. Wire UI event forwarding
     this.wireUIEventForwarding();
     console.log('[NexusBootstrap] UI event forwarding wired');
 
-    // 9. Create the bootstrapped instance
+    // 11. Create the bootstrapped instance
     bootstrappedNexus = {
       nexus: this.nexus,
       interviewEngine: this.interviewEngine,
@@ -185,6 +227,9 @@ export class NexusBootstrap {
       eventBus: this.eventBus,
       startGenesis: (name) => this.startGenesisMode(name),
       startEvolution: (path, name) => this.startEvolutionMode(path, name),
+      createCheckpoint: (projectId, reason) => this.createCheckpointForProject(projectId, reason),
+      restoreCheckpoint: (checkpointId, restoreGit) => this.restoreCheckpointById(checkpointId, restoreGit),
+      listCheckpoints: (projectId) => this.listCheckpointsForProject(projectId),
       shutdown: () => this.shutdown(),
     };
 
@@ -356,7 +401,10 @@ export class NexusBootstrap {
       'qa:review-completed',
       // System events
       'system:checkpoint-created',
+      'system:checkpoint-restored',
       'system:error',
+      // Human review events
+      'review:requested',
     ];
 
     // Subscribe to all events and forward to renderer
@@ -447,6 +495,204 @@ export class NexusBootstrap {
     };
   }
 
+  // =========================================================================
+  // TASK 5: Wire Checkpoint Listeners
+  // =========================================================================
+
+  /**
+   * Wire checkpoint creation on task escalation (QA Failure -> Checkpoint)
+   *
+   * This is the critical wiring for Task 5:
+   * - When a task is escalated (QA failed after max iterations)
+   * - Automatically create a checkpoint for recovery
+   * - Request human review
+   */
+  private wireCheckpointListeners(): void {
+    if (!this.checkpointManager || !this.stateManager) {
+      console.warn('[NexusBootstrap] CheckpointManager not initialized, skipping checkpoint wiring');
+      return;
+    }
+
+    // =========================================================================
+    // Wire: task:escalated -> checkpoint creation + review request
+    // =========================================================================
+    const escalatedUnsub = this.eventBus.on('task:escalated', async (event) => {
+      const { taskId, reason, iterations, lastError } = event.payload;
+      const projectId = this.extractProjectIdFromTask(taskId);
+
+      console.log(`[NexusBootstrap] Task ${taskId} escalated after ${iterations} iterations: ${reason}`);
+
+      try {
+        // Ensure project state exists for checkpoint
+        this.ensureProjectState(projectId);
+
+        // Create checkpoint for escalation (human review can restore if needed)
+        const checkpoint = await this.checkpointManager!.createAutoCheckpoint(
+          projectId,
+          'qa_exhausted'
+        );
+        console.log(`[NexusBootstrap] Created escalation checkpoint: ${checkpoint.id}`);
+
+        // Request human review
+        await this.eventBus.emit('review:requested', {
+          reviewId: `review-${Date.now()}`,
+          taskId,
+          reason: 'qa_exhausted' as const,
+          context: {
+            qaIterations: iterations,
+            escalationReason: reason,
+            suggestedAction: lastError
+              ? `Last error: ${lastError}. Consider reviewing the task requirements.`
+              : 'QA loop exhausted. Manual intervention required.',
+          },
+        });
+        console.log(`[NexusBootstrap] Human review requested for task ${taskId}`);
+
+      } catch (error) {
+        console.error('[NexusBootstrap] Failed to create escalation checkpoint:', error);
+        await this.eventBus.emit('system:error', {
+          component: 'NexusBootstrap',
+          error: `Checkpoint creation failed: ${error instanceof Error ? error.message : String(error)}`,
+          recoverable: true,
+        });
+      }
+    });
+
+    this.unsubscribers.push(escalatedUnsub);
+
+    // =========================================================================
+    // Wire: task:failed -> checkpoint if recoverable
+    // =========================================================================
+    const failedUnsub = this.eventBus.on('task:failed', async (event) => {
+      const { taskId, error, escalated } = event.payload;
+
+      // Only create checkpoint if not already escalated (escalated has its own handler)
+      if (escalated) {
+        return;
+      }
+
+      const projectId = this.extractProjectIdFromTask(taskId);
+      console.log(`[NexusBootstrap] Task ${taskId} failed: ${error}`);
+
+      try {
+        // Ensure project state exists
+        this.ensureProjectState(projectId);
+
+        // Create checkpoint for potential recovery
+        await this.checkpointManager!.createAutoCheckpoint(
+          projectId,
+          'task_failed'
+        );
+        console.log(`[NexusBootstrap] Created failure checkpoint for task ${taskId}`);
+
+      } catch (checkpointError) {
+        console.error('[NexusBootstrap] Failed to create failure checkpoint:', checkpointError);
+      }
+    });
+
+    this.unsubscribers.push(failedUnsub);
+  }
+
+  /**
+   * Extract project ID from task ID
+   * Task IDs typically follow patterns like: "genesis-123456-task-1" or "task-uuid"
+   */
+  private extractProjectIdFromTask(taskId: string): string {
+    // Try to extract genesis/evolution prefix
+    const genesisMatch = taskId.match(/^(genesis-\d+)/);
+    if (genesisMatch) {
+      return genesisMatch[1];
+    }
+
+    const evolutionMatch = taskId.match(/^(evolution-\d+)/);
+    if (evolutionMatch) {
+      return evolutionMatch[1];
+    }
+
+    // Fallback: use current active project or generate a placeholder
+    return `project-${Date.now()}`;
+  }
+
+  /**
+   * Ensure project state exists for checkpoint creation
+   */
+  private ensureProjectState(projectId: string): void {
+    if (!this.stateManager) {
+      return;
+    }
+
+    if (!this.stateManager.hasState(projectId)) {
+      // Create minimal state for checkpoint
+      this.stateManager.createState(
+        projectId,
+        projectId,
+        projectId.startsWith('evolution') ? 'evolution' : 'genesis'
+      );
+    }
+  }
+
+  // =========================================================================
+  // Checkpoint Management Methods
+  // =========================================================================
+
+  /**
+   * Create a checkpoint for a project
+   */
+  private async createCheckpointForProject(projectId: string, reason: string): Promise<CheckpointInfo> {
+    if (!this.checkpointManager) {
+      throw new Error('CheckpointManager not initialized');
+    }
+
+    // Ensure state exists
+    this.ensureProjectState(projectId);
+
+    const checkpoint = await this.checkpointManager.createCheckpoint(projectId, reason);
+
+    return {
+      id: checkpoint.id,
+      projectId: checkpoint.projectId,
+      name: checkpoint.name ?? `Checkpoint: ${reason}`,
+      reason: checkpoint.reason,
+      gitCommit: checkpoint.gitCommit,
+      createdAt: checkpoint.createdAt,
+    };
+  }
+
+  /**
+   * Restore a checkpoint by ID
+   */
+  private async restoreCheckpointById(checkpointId: string, restoreGit = false): Promise<void> {
+    if (!this.checkpointManager) {
+      throw new Error('CheckpointManager not initialized');
+    }
+
+    console.log(`[NexusBootstrap] Restoring checkpoint ${checkpointId} (restoreGit: ${restoreGit})`);
+
+    await this.checkpointManager.restoreCheckpoint(checkpointId, { restoreGit });
+
+    console.log(`[NexusBootstrap] Checkpoint ${checkpointId} restored successfully`);
+  }
+
+  /**
+   * List all checkpoints for a project
+   */
+  private listCheckpointsForProject(projectId: string): CheckpointInfo[] {
+    if (!this.checkpointManager) {
+      return [];
+    }
+
+    const checkpoints = this.checkpointManager.listCheckpoints(projectId);
+
+    return checkpoints.map(cp => ({
+      id: cp.id,
+      projectId: cp.projectId,
+      name: cp.name ?? `Checkpoint`,
+      reason: cp.reason,
+      gitCommit: cp.gitCommit,
+      createdAt: cp.createdAt,
+    }));
+  }
+
   /**
    * Shutdown all components
    */
@@ -473,6 +719,9 @@ export class NexusBootstrap {
     this.interviewEngine = null;
     this.sessionManager = null;
     this.requirementsDB = null;
+    this.stateManager = null;
+    this.checkpointManager = null;
+    this.gitService = null;
     this.databaseClient = null;
     bootstrappedNexus = null;
 
