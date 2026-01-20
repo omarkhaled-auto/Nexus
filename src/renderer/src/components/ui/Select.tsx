@@ -296,13 +296,13 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
                     type="text"
                     placeholder="Search..."
                     value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onChange={(e) => { setSearchQuery(e.target.value); }}
                     className={cn(
                       'flex-1 bg-transparent',
                       'text-sm text-[#F0F6FC] placeholder:text-[#6E7681]',
                       'focus:outline-none'
                     )}
-                    onClick={(e) => e.stopPropagation()}
+                    onClick={(e) => { e.stopPropagation(); }}
                     data-testid={dataTestId ? `${dataTestId}-search` : undefined}
                   />
                   {searchQuery && (
@@ -326,8 +326,8 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
 
               <SelectPrimitive.Viewport className="p-1">
                 {/* Render options */}
-                {isGroupedOptions(filteredOptions as SelectOption[] | SelectGroup[])
-                  ? (filteredOptions as SelectGroup[]).map((group, index) => (
+                {isGroupedOptions(filteredOptions)
+                  ? (filteredOptions).map((group, index) => (
                       <React.Fragment key={group.label}>
                         {index > 0 && (
                           <SelectPrimitive.Separator className="my-1 h-px bg-[#30363D]" />
@@ -346,14 +346,14 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
                         </SelectPrimitive.Group>
                       </React.Fragment>
                     ))
-                  : (filteredOptions as SelectOption[]).map((option) => (
+                  : (filteredOptions).map((option) => (
                       <SelectItem key={option.value} option={option} size={size} />
                     ))}
 
                 {/* No results */}
-                {(isGroupedOptions(filteredOptions as SelectOption[] | SelectGroup[])
-                  ? (filteredOptions as SelectGroup[]).length === 0
-                  : (filteredOptions as SelectOption[]).length === 0) && (
+                {(isGroupedOptions(filteredOptions)
+                  ? (filteredOptions).length === 0
+                  : (filteredOptions).length === 0) && (
                   <div className="px-2 py-4 text-center text-sm text-[#6E7681]">
                     No options found
                   </div>

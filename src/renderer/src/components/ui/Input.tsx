@@ -263,7 +263,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
               {type === 'password' && (
                 <button
                   type="button"
-                  onClick={() => setShowPassword(!showPassword)}
+                  onClick={() => { setShowPassword(!showPassword); }}
                   className={cn(
                     'text-[#6E7681] hover:text-[#F0F6FC]',
                     'transition-colors p-0.5 rounded',

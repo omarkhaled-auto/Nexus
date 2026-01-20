@@ -222,7 +222,7 @@ function BackendToggle({ label, value, options, onChange, status }: BackendToggl
             <button
               key={option.value}
               type="button"
-              onClick={() => onChange(option.value)}
+              onClick={() => { onChange(option.value); }}
               className={cn(
                 'flex items-center gap-2 px-3 py-1.5 rounded text-sm font-medium transition-all',
                 value === option.value
@@ -274,7 +274,7 @@ function ModelDropdown({ label, value, models, onChange, description }: ModelDro
       <label className="text-sm font-medium text-text-primary">{label}</label>
       <select
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e) => { onChange(e.target.value); }}
         className={cn(
           'flex h-10 w-full rounded-md border border-border-default bg-bg-dark px-3 py-2 text-sm text-text-primary',
           'focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-accent-primary',
@@ -411,7 +411,7 @@ function AdvancedSection({ title, children, defaultOpen = false }: AdvancedSecti
     <div className="border-t border-border-default pt-4 mt-4">
       <button
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => { setIsOpen(!isOpen); }}
         className="flex items-center gap-2 text-sm font-medium text-text-secondary hover:text-text-primary transition-colors w-full"
         data-testid="advanced-toggle"
       >
@@ -517,7 +517,7 @@ function LLMProvidersSettings({ settings, updateSetting }: SettingsTabProps): Re
               { value: 'cli', label: 'CLI', icon: <Terminal className="w-4 h-4" /> },
               { value: 'api', label: 'API', icon: <Cloud className="w-4 h-4" /> }
             ]}
-            onChange={(value) => updateSetting('llm', 'claude' as any, { ...settings.llm.claude, backend: value as LLMBackendType })}
+            onChange={(value) => { updateSetting('llm', 'claude' as any, { ...settings.llm.claude, backend: value as LLMBackendType }); }}
             status={claudeCliStatus}
           />
 
@@ -525,7 +525,7 @@ function LLMProvidersSettings({ settings, updateSetting }: SettingsTabProps): Re
             label="Model"
             value={settings.llm.claude.model || DEFAULT_CLAUDE_MODEL}
             models={claudeModels}
-            onChange={(value) => updateSetting('llm', 'claude' as any, { ...settings.llm.claude, model: value })}
+            onChange={(value) => { updateSetting('llm', 'claude' as any, { ...settings.llm.claude, model: value }); }}
           />
 
           <ApiKeyInput
@@ -585,7 +585,7 @@ function LLMProvidersSettings({ settings, updateSetting }: SettingsTabProps): Re
               { value: 'cli', label: 'CLI', icon: <Terminal className="w-4 h-4" /> },
               { value: 'api', label: 'API', icon: <Cloud className="w-4 h-4" /> }
             ]}
-            onChange={(value) => updateSetting('llm', 'gemini' as any, { ...settings.llm.gemini, backend: value as LLMBackendType })}
+            onChange={(value) => { updateSetting('llm', 'gemini' as any, { ...settings.llm.gemini, backend: value as LLMBackendType }); }}
             status={geminiCliStatus}
           />
 
@@ -593,7 +593,7 @@ function LLMProvidersSettings({ settings, updateSetting }: SettingsTabProps): Re
             label="Model"
             value={settings.llm.gemini.model || DEFAULT_GEMINI_MODEL}
             models={geminiModels}
-            onChange={(value) => updateSetting('llm', 'gemini' as any, { ...settings.llm.gemini, model: value })}
+            onChange={(value) => { updateSetting('llm', 'gemini' as any, { ...settings.llm.gemini, model: value }); }}
           />
 
           <ApiKeyInput
@@ -617,7 +617,7 @@ function LLMProvidersSettings({ settings, updateSetting }: SettingsTabProps): Re
               { value: 'local', label: 'Local', icon: <Cpu className="w-4 h-4" /> },
               { value: 'api', label: 'OpenAI API', icon: <Cloud className="w-4 h-4" /> }
             ]}
-            onChange={(value) => updateSetting('llm', 'embeddings' as any, { ...settings.llm.embeddings, backend: value as EmbeddingsBackendType })}
+            onChange={(value) => { updateSetting('llm', 'embeddings' as any, { ...settings.llm.embeddings, backend: value as EmbeddingsBackendType }); }}
             status={settings.llm.embeddings.backend === 'local' ? { detected: true, message: 'No API key needed' } : undefined}
           />
 
@@ -626,7 +626,7 @@ function LLMProvidersSettings({ settings, updateSetting }: SettingsTabProps): Re
               label="Local Model"
               value={settings.llm.embeddings.localModel || DEFAULT_LOCAL_EMBEDDING_MODEL}
               models={localEmbeddingModels}
-              onChange={(value) => updateSetting('llm', 'embeddings' as any, { ...settings.llm.embeddings, localModel: value })}
+              onChange={(value) => { updateSetting('llm', 'embeddings' as any, { ...settings.llm.embeddings, localModel: value }); }}
             />
           )}
 
@@ -726,7 +726,7 @@ function AgentModelRow({ agentType, config, onChange, claudeModels, geminiModels
       <td className="py-3 px-4">
         <select
           value={config.provider}
-          onChange={(e) => handleProviderChange(e.target.value as AgentProviderType)}
+          onChange={(e) => { handleProviderChange(e.target.value as AgentProviderType); }}
           className={cn(
             'h-9 w-28 rounded-md border border-border-default bg-bg-dark px-2 py-1 text-sm text-text-primary',
             'focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-accent-primary',
@@ -741,7 +741,7 @@ function AgentModelRow({ agentType, config, onChange, claudeModels, geminiModels
       <td className="py-3 pl-4">
         <select
           value={config.model}
-          onChange={(e) => handleModelChange(e.target.value)}
+          onChange={(e) => { handleModelChange(e.target.value); }}
           className={cn(
             'h-9 w-full rounded-md border border-border-default bg-bg-dark px-2 py-1 text-sm text-text-primary',
             'focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-accent-primary',

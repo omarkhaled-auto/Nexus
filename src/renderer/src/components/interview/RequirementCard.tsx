@@ -82,8 +82,8 @@ export function RequirementCard({ requirement, isNew = false }: RequirementCardP
         // Confirmed state
         requirement.confirmed && 'border-accent-success/30 bg-accent-success/5'
       )}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      onMouseEnter={() => { setIsHovered(true); }}
+      onMouseLeave={() => { setIsHovered(false); }}
       data-testid="requirement-card"
     >
       {/* Category icon */}

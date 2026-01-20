@@ -7,12 +7,10 @@
  * @module execution/agents
  */
 
-import type { LLMClient } from '../../llm/types';
 import type { AgentType } from '../../types/agent';
 import type { Task } from '../../types/task';
 import {
   BaseAgentRunner,
-  type AgentConfig,
   type AgentContext,
   type AgentTaskResult,
 } from './BaseAgentRunner';
@@ -79,15 +77,6 @@ When you have completed the implementation, include [TASK_COMPLETE] in your resp
  * ```
  */
 export class CoderAgent extends BaseAgentRunner {
-  /**
-   * Create a new CoderAgent
-   *
-   * @param llmClient - LLM client for interactions (API or CLI)
-   * @param config - Optional agent configuration
-   */
-  constructor(llmClient: LLMClient, config?: AgentConfig) {
-    super(llmClient, config);
-  }
 
   /**
    * Get the agent type identifier

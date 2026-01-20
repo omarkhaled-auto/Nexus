@@ -7,10 +7,14 @@
  * Layer 4: Execution - QA subsystem
  */
 
-import { BuildRunner, BuildRunnerConfig } from './BuildRunner';
-import { LintRunner, LintRunnerConfig } from './LintRunner';
-import { TestRunner, TestRunnerConfig } from './TestRunner';
-import { ReviewRunner, ReviewRunnerConfig, ReviewContext } from './ReviewRunner';
+import type { BuildRunnerConfig } from './BuildRunner';
+import { BuildRunner } from './BuildRunner';
+import type { LintRunnerConfig } from './LintRunner';
+import { LintRunner } from './LintRunner';
+import type { TestRunnerConfig } from './TestRunner';
+import { TestRunner } from './TestRunner';
+import type { ReviewRunnerConfig, ReviewContext } from './ReviewRunner';
+import { ReviewRunner } from './ReviewRunner';
 import type { QARunner, BuildResult, LintResult, TestResult, ReviewResult } from '../iteration/types';
 import type { LLMClient } from '../../llm/types';
 import { GitService } from '../../infrastructure/git/GitService';

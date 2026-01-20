@@ -123,7 +123,7 @@ export function TaskTimeline({ className, height = 400 }: TaskTimelineProps) {
           </CardTitle>
           {/* Auto-scroll indicator */}
           <button
-            onClick={() => setAutoScroll(!autoScroll)}
+            onClick={() => { setAutoScroll(!autoScroll); }}
             className={cn(
               'flex items-center gap-1.5 text-xs px-2 py-1 rounded-md transition-colors',
               autoScroll

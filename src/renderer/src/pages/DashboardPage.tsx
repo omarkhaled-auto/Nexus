@@ -359,7 +359,7 @@ export default function DashboardPage(): ReactElement {
 
     // Return cleanup function
     return () => {
-      unsubscribers.forEach(unsub => unsub())
+      unsubscribers.forEach(unsub => { unsub(); })
     }
   }, [setOverview, updateAgentMetrics, addTimelineEvent, setCosts])
 
@@ -461,7 +461,7 @@ export default function DashboardPage(): ReactElement {
           size="md"
           data-testid="new-project-button"
           className="gap-2"
-          onClick={() => setIsCreateModalOpen(true)}
+          onClick={() => { setIsCreateModalOpen(true); }}
         >
           <Plus className="h-4 w-4" />
           New Project
@@ -593,7 +593,7 @@ export default function DashboardPage(): ReactElement {
               label="Project Name"
               placeholder="my-awesome-project"
               value={createProjectName}
-              onChange={(e) => setCreateProjectName(e.target.value)}
+              onChange={(e) => { setCreateProjectName(e.target.value); }}
               error={createError || undefined}
               data-testid="create-project-name-input"
             />
@@ -604,7 +604,7 @@ export default function DashboardPage(): ReactElement {
               <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
-                  onClick={() => setCreateProjectMode('genesis')}
+                  onClick={() => { setCreateProjectMode('genesis'); }}
                   className={cn(
                     'flex flex-col items-center gap-2 p-4 rounded-lg border transition-all',
                     createProjectMode === 'genesis'
@@ -628,7 +628,7 @@ export default function DashboardPage(): ReactElement {
 
                 <button
                   type="button"
-                  onClick={() => setCreateProjectMode('evolution')}
+                  onClick={() => { setCreateProjectMode('evolution'); }}
                   className={cn(
                     'flex flex-col items-center gap-2 p-4 rounded-lg border transition-all',
                     createProjectMode === 'evolution'

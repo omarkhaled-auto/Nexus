@@ -238,7 +238,7 @@ export class TimeEstimator implements ITimeEstimator {
   getAccuracy(category?: TaskCategory): { ratio: number; sampleSize: number } | null {
     const categories = category
       ? [category]
-      : (Array.from(this.historicalData.keys()) as TaskCategory[]);
+      : (Array.from(this.historicalData.keys()));
 
     let totalActual = 0;
     let sampleSize = 0;

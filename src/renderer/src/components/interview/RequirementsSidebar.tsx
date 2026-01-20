@@ -93,7 +93,7 @@ function ExportDropdown({ requirements }: { requirements: Requirement[] }): Reac
 
   const handleExport = (format: 'json' | 'markdown' | 'csv') => {
     let content = '';
-    let filename = `requirements.${format}`;
+    const filename = `requirements.${format}`;
 
     switch (format) {
       case 'json':
@@ -128,7 +128,7 @@ function ExportDropdown({ requirements }: { requirements: Requirement[] }): Reac
   return (
     <div className="relative">
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => { setIsOpen(!isOpen); }}
         disabled={requirements.length === 0}
         className={cn(
           'flex items-center gap-1.5 px-2 py-1 rounded text-xs',
@@ -144,12 +144,12 @@ function ExportDropdown({ requirements }: { requirements: Requirement[] }): Reac
 
       {isOpen && (
         <>
-          <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
+          <div className="fixed inset-0 z-40" onClick={() => { setIsOpen(false); }} />
           <div className="absolute right-0 top-full mt-1 z-50 w-32 py-1 bg-bg-card border border-border-default rounded-lg shadow-lg">
             {(['json', 'markdown', 'csv'] as const).map((format) => (
               <button
                 key={format}
-                onClick={() => handleExport(format)}
+                onClick={() => { handleExport(format); }}
                 className="w-full px-3 py-1.5 text-left text-xs text-text-secondary hover:text-text-primary hover:bg-bg-hover"
               >
                 {format.toUpperCase()}

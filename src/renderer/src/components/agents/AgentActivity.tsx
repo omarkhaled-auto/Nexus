@@ -70,7 +70,7 @@ function parseAnsiLine(line: string): React.ReactNode {
   ]
 
   // Strip escape sequences for simple display if complex parsing fails
-  let cleanLine = line.replace(/\[\d+m/g, '')
+  const cleanLine = line.replace(/\[\d+m/g, '')
 
   // Detect line type based on content
   if (
@@ -205,7 +205,7 @@ export const AgentActivity = React.forwardRef<HTMLDivElement, AgentActivityProps
             <Button
               variant="ghost"
               size="icon-sm"
-              onClick={() => setIsPaused(!isPaused)}
+              onClick={() => { setIsPaused(!isPaused); }}
               disabled={isEmpty}
               title={isPaused ? 'Resume auto-scroll' : 'Pause auto-scroll'}
             >

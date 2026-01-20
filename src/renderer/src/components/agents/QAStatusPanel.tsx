@@ -329,7 +329,7 @@ export const QAStatusPanel = React.forwardRef<HTMLDivElement, QAStatusPanelProps
                 step={step}
                 isLast={index === orderedSteps.length - 1}
                 orientation={orientation}
-                onViewLogs={onViewLogs ? () => onViewLogs(step.type) : undefined}
+                onViewLogs={onViewLogs ? () => { onViewLogs(step.type); } : undefined}
               />
 
               {/* Horizontal connector arrow */}

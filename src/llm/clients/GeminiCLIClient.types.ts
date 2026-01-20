@@ -10,7 +10,8 @@
  */
 
 import type { Logger } from '../types';
-import { DEFAULT_GEMINI_MODEL, GEMINI_MODELS } from '../models';
+import type { GEMINI_MODELS } from '../models';
+import { DEFAULT_GEMINI_MODEL } from '../models';
 
 // ============================================================================
 // Configuration Types
@@ -244,7 +245,7 @@ export const GEMINI_ERROR_PATTERNS: Array<{
 /**
  * Available Gemini models (typed from models.ts)
  */
-export type GeminiModel = keyof typeof GEMINI_MODELS | string; // Allow custom models
+export type GeminiModel = keyof typeof GEMINI_MODELS  ; // Allow custom models
 
 /**
  * Output format options for Gemini CLI

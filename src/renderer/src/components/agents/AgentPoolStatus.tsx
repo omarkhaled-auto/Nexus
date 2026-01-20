@@ -111,7 +111,7 @@ export const AgentPoolStatus = React.forwardRef<HTMLDivElement, AgentPoolStatusP
                 type={agent.type}
                 status={agent.status}
                 size="sm"
-                onClick={onSelectAgent ? () => onSelectAgent(agent.id) : undefined}
+                onClick={onSelectAgent ? () => { onSelectAgent(agent.id); } : undefined}
                 className={cn(selectedAgent === agent.id && 'ring-2 ring-accent-primary')}
               />
             ))}

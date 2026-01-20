@@ -116,7 +116,7 @@ export const IterationCounter = React.forwardRef<HTMLDivElement, IterationCounte
     // Determine color based on percentage
     let color: string
     let colorClass: string
-    let trackColor = 'var(--color-border-default)'
+    const trackColor = 'var(--color-border-default)'
     let showWarning = false
 
     if (percent >= 100) {

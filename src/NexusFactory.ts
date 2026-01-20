@@ -19,20 +19,19 @@ import { GeminiCLIClient, GeminiCLINotFoundError } from './llm/clients/GeminiCLI
 import type { GeminiCLIConfig } from './llm/clients/GeminiCLIClient.types';
 import { LocalEmbeddingsService, LocalEmbeddingsInitError } from './persistence/memory/LocalEmbeddingsService';
 import type { LocalEmbeddingsConfig } from './persistence/memory/LocalEmbeddingsService.types';
-import { EmbeddingsService, type EmbeddingsServiceOptions } from './persistence/memory/EmbeddingsService';
+import { EmbeddingsService } from './persistence/memory/EmbeddingsService';
 import { APIKeyMissingError } from './errors/LLMBackendErrors';
 import { TaskDecomposer } from './planning/decomposition/TaskDecomposer';
 import { DependencyResolver } from './planning/dependencies/DependencyResolver';
 import { TimeEstimator } from './planning/estimation/TimeEstimator';
-import { AgentPool, type AgentPoolConfig } from './orchestration/agents/AgentPool';
-import { QARunnerFactory, type QARunnerFactoryConfig } from './execution/qa/QARunnerFactory';
+import { AgentPool } from './orchestration/agents/AgentPool';
+import { QARunnerFactory } from './execution/qa/QARunnerFactory';
 import { NexusCoordinator, type NexusCoordinatorOptions } from './orchestration/coordinator/NexusCoordinator';
 import { TaskQueue } from './orchestration/queue/TaskQueue';
 import { EventBus } from './orchestration/events/EventBus';
 // Note: RalphStyleIterator is not directly instantiated here - it's part of the QA engine workflow
 // import type { RalphStyleIteratorConfig } from './execution/iteration/types';
 import { WorktreeManager } from './infrastructure/git/WorktreeManager';
-import { CheckpointManager } from './persistence/checkpoints/CheckpointManager';
 import { GitService } from './infrastructure/git/GitService';
 import type { AgentType } from './types/agent';
 

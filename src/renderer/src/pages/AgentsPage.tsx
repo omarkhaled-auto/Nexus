@@ -171,7 +171,7 @@ export default function AgentsPage(): ReactElement {
       const qa = status as { iteration?: number; maxIterations?: number };
       if (qa.iteration !== undefined && qa.maxIterations !== undefined) setIteration({ current: qa.iteration, max: qa.maxIterations });
     }));
-    return () => { unsubscribers.forEach((unsub) => unsub()); };
+    return () => { unsubscribers.forEach((unsub) => { unsub(); }); };
   }, [selectedAgentId]);
 
   // Load data and subscribe to events on mount
@@ -253,7 +253,7 @@ export default function AgentsPage(): ReactElement {
       {/* Error Banner */}
       {error && (
         <div className="px-6 pt-4">
-          <Alert variant="warning" dismissible onDismiss={() => setError(null)}>
+          <Alert variant="warning" dismissible onDismiss={() => { setError(null); }}>
             <AlertCircle className="w-4 h-4" />
             <AlertDescription>{error}</AlertDescription>
           </Alert>
@@ -305,7 +305,7 @@ export default function AgentsPage(): ReactElement {
                       key={agent.id}
                       agent={agent}
                       selected={agent.id === selectedAgentId}
-                      onClick={() => handleAgentSelect(agent.id)}
+                      onClick={() => { handleAgentSelect(agent.id); }}
                       data-testid={`agent-card-${agent.id}`}
                     />
                   ))}

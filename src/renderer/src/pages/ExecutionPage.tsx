@@ -392,7 +392,7 @@ export default function ExecutionPage(): ReactElement {
                 key={tab.id}
                 tab={tab}
                 isActive={activeTab === tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => { setActiveTab(tab.id); }}
               />
             ))}
           </div>

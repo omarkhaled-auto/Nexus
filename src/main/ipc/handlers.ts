@@ -889,7 +889,7 @@ export function registerIpcHandlers(): void {
         projectId: state.projectId || 'current',
         name: feature.title,
         description: feature.description,
-        priority: (feature.priority === 'critical' ? 'critical' : feature.priority === 'high' ? 'high' : feature.priority === 'medium' ? 'medium' : 'low') as 'critical' | 'high' | 'medium' | 'low',
+        priority: (feature.priority === 'critical' ? 'critical' : feature.priority === 'high' ? 'high' : feature.priority === 'medium' ? 'medium' : 'low'),
         status: 'pending' as 'pending' | 'decomposing' | 'ready' | 'in_progress' | 'completed' | 'failed',
         createdAt: new Date(),
         updatedAt: new Date()

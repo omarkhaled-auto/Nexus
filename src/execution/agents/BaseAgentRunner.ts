@@ -458,7 +458,7 @@ export abstract class BaseAgentRunner {
     for (const m of messages) {
       if (m.role !== 'system') {
         result.push({
-          role: m.role as 'user' | 'assistant',
+          role: m.role,
           content: m.content,
         });
       }
