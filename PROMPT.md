@@ -161,6 +161,88 @@ Proceed to Task 8 if issues found, or Task 9 (Evolution) if no issues.
 
 ---
 
+## PHASE C PROGRESS (Wire Evolution Mode) - IN PROGRESS
+
+### Task 9: Wire Evolution Critical Path - COMPLETED
+- [x] **Evolution-specific system prompt** - Commit: `e2aecba`
+  - Added `getEvolutionSystemPrompt(repoMapContext)` function
+  - Added `EVOLUTION_INITIAL_GREETING` for existing project context
+  - Includes guidelines for referencing existing code
+  - Adds `modification_type` field for Evolution requirements
+
+- [x] **InterviewEngine Evolution Support** - Commit: `e2aecba`
+  - Added `InterviewMode` type (genesis | evolution)
+  - Added `EvolutionContext` interface with projectPath, repoMapContext, projectSummary
+  - Added `StartSessionOptions` for mode and context
+  - Updated `startSession()` to accept options
+  - Updated `buildLLMMessages()` to use Evolution prompt when context present
+  - Updated `getInitialGreeting()` to return mode-appropriate greeting
+
+- [x] **InterviewSessionManager Persistence** - Commit: `e2aecba`
+  - Added mode and evolutionContext to SerializedSession
+  - Updated serialize/deserialize for persistence
+  - Backward compatible (defaults to 'genesis' mode)
+
+- [x] **NexusBootstrap Evolution Wiring** - Commit: `e2aecba`
+  - Added RepoMapGenerator initialization
+  - `startEvolutionMode()` now:
+    1. Generates repo map from projectPath
+    2. Formats context for LLM (8000 token limit)
+    3. Builds project summary from stats
+    4. Passes EvolutionContext to InterviewEngine
+    5. Emits events for UI updates
+  - Evolution joins same execution path as Genesis after interview
+
+- [x] **Test Results**:
+  - genesis-mode.test.ts: 41/42 PASS (1 API timeout expected)
+  - InterviewSessionManager.test.ts: 11/11 PASS
+  - TypeScript compiles successfully
+
+**[TASK 9 COMPLETE]** - Proceeding to Task 10
+
+### Task 10: Create Evolution Integration Tests - COMPLETED
+- [x] **Created `tests/integration/evolution-mode.test.ts`** (25 tests all passing)
+  - **Evolution Start Flow Tests** (5 tests)
+    - Project selection emits correct status events
+    - Interview starts with evolution mode
+    - Supports different project paths
+    - RepoMap generation status updates
+    - Graceful error handling on repo map failure
+  - **Evolution Interview Context Tests** (6 tests)
+    - Session starts with evolution context
+    - Evolution greeting used for evolution mode
+    - Genesis greeting used for genesis mode
+    - Default to genesis mode without options
+    - Evolution system prompt includes repo map context
+    - Guidelines for referencing existing code
+  - **Evolution Joins Genesis Execution Path Tests** (4 tests)
+    - Same interview:completed event structure
+    - Same execution events after interview
+    - Same QA flow events
+    - Same escalation flow support
+  - **Complete Flow Integration Tests** (2 tests)
+    - Full Evolution flow: select -> repomap -> interview -> execute -> success
+    - Modifications to existing files tracked correctly
+  - **Edge Cases Tests** (4 tests)
+    - Evolution without repo map context (fallback)
+    - Large project repo maps handling
+    - Distinguish evolution vs genesis project IDs
+    - Checkpoint restore in Evolution mode
+  - **Session Persistence Tests** (4 tests)
+    - Evolution context preserved in session
+    - Session retrieval with evolution context
+    - Session end in evolution mode
+    - Session pause/resume in evolution mode
+
+- [x] **Test Results Summary**:
+  - evolution-mode.test.ts: 25/25 PASS
+  - All tests pass in 394ms
+  - TypeScript compiles successfully
+
+**[TASK 10 COMPLETE]** - Proceeding to Task 11
+
+---
+
 ## THE PROBLEM
 
 ```
