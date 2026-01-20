@@ -125,15 +125,58 @@ export interface LLMSettings {
   openaiApiKeyEncrypted?: string;
 }
 
+// ============================================================================
+// Per-Agent Model Configuration (Phase 17B)
+// ============================================================================
+
+/**
+ * Agent types that can have individual model configurations
+ */
+export type AgentType = 'planner' | 'coder' | 'tester' | 'reviewer' | 'merger' | 'architect' | 'debugger' | 'documenter';
+
+/**
+ * Provider type for agent model configuration
+ */
+export type AgentProviderType = 'claude' | 'gemini';
+
+/**
+ * Configuration for a single agent's model assignment
+ */
+export interface AgentModelConfig {
+  /** Provider to use for this agent */
+  provider: AgentProviderType;
+  /** Model ID to use (from models.ts) */
+  model: string;
+}
+
+/**
+ * Per-agent model assignments
+ * Each agent type can be configured with its own provider and model
+ */
+export interface AgentModelAssignments {
+  planner: AgentModelConfig;
+  coder: AgentModelConfig;
+  tester: AgentModelConfig;
+  reviewer: AgentModelConfig;
+  merger: AgentModelConfig;
+  architect: AgentModelConfig;
+  debugger: AgentModelConfig;
+  documenter: AgentModelConfig;
+}
+
 /**
  * Agent Execution Settings
- * Controls parallelism and retry behavior
+ * Controls parallelism, retry behavior, and per-agent model assignments
  */
 export interface AgentSettings {
   maxParallelAgents: number
   taskTimeoutMinutes: number
   maxRetries: number
   autoRetryEnabled: boolean
+  /** QA iteration limit before escalating to human */
+  qaIterationLimit: number
+  /** Per-agent model assignments */
+  agentModels: AgentModelAssignments
 }
 
 /**
@@ -319,6 +362,25 @@ export const DEFAULT_LLM_SETTINGS: LLMSettings = {
 };
 
 /**
+ * Default Per-Agent Model Assignments
+ * Optimized model selection per agent type:
+ * - Planner/Architect: Use more capable models (Opus) for complex planning
+ * - Coder/Tester/Merger/Debugger: Use balanced models (Sonnet) for implementation
+ * - Reviewer: Use Gemini Pro for diverse code review perspective
+ * - Documenter: Use Gemini Flash for fast documentation generation
+ */
+export const DEFAULT_AGENT_MODEL_ASSIGNMENTS: AgentModelAssignments = {
+  planner: { provider: 'claude', model: 'claude-opus-4-5-20251101' },
+  coder: { provider: 'claude', model: 'claude-sonnet-4-5-20250929' },
+  tester: { provider: 'claude', model: 'claude-sonnet-4-5-20250929' },
+  reviewer: { provider: 'gemini', model: 'gemini-2.5-pro' },
+  merger: { provider: 'claude', model: 'claude-sonnet-4-5-20250929' },
+  architect: { provider: 'claude', model: 'claude-opus-4-5-20251101' },
+  debugger: { provider: 'claude', model: 'claude-sonnet-4-5-20250929' },
+  documenter: { provider: 'gemini', model: 'gemini-2.5-flash' },
+};
+
+/**
  * Default Agent Settings
  */
 export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
@@ -326,6 +388,8 @@ export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
   taskTimeoutMinutes: 30,
   maxRetries: 3,
   autoRetryEnabled: true,
+  qaIterationLimit: 50,
+  agentModels: DEFAULT_AGENT_MODEL_ASSIGNMENTS,
 };
 
 /**

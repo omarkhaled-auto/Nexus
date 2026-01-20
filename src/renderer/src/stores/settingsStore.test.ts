@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { useSettingsStore } from './settingsStore'
 import type { NexusSettingsPublic } from '../../../shared/types/settings'
+import { DEFAULT_AGENT_MODEL_ASSIGNMENTS } from '../../../shared/types/settings'
 
 const mockSettings: NexusSettingsPublic = {
   llm: {
@@ -36,7 +37,9 @@ const mockSettings: NexusSettingsPublic = {
     maxParallelAgents: 4,
     taskTimeoutMinutes: 30,
     maxRetries: 3,
-    autoRetryEnabled: true
+    autoRetryEnabled: true,
+    qaIterationLimit: 50,
+    agentModels: DEFAULT_AGENT_MODEL_ASSIGNMENTS
   },
   checkpoints: {
     autoCheckpointEnabled: true,

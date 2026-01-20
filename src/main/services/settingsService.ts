@@ -24,11 +24,8 @@ import type {
   NexusSettings,
   NexusSettingsPublic,
   LLMProvider,
-  LLMSettings,
-  ClaudeProviderSettings,
-  GeminiProviderSettings,
-  EmbeddingsProviderSettings,
 } from '../../shared/types/settings'
+import { DEFAULT_AGENT_MODEL_ASSIGNMENTS } from '../../shared/types/settings'
 import {
   DEFAULT_CLAUDE_MODEL,
   DEFAULT_GEMINI_MODEL,
@@ -71,7 +68,9 @@ const defaults: NexusSettings = {
     maxParallelAgents: 4,
     taskTimeoutMinutes: 30,
     maxRetries: 3,
-    autoRetryEnabled: true
+    autoRetryEnabled: true,
+    qaIterationLimit: 50,
+    agentModels: DEFAULT_AGENT_MODEL_ASSIGNMENTS,
   },
   checkpoints: {
     autoCheckpointEnabled: true,
@@ -156,7 +155,22 @@ const schema = {
       maxParallelAgents: { type: 'number' as const, minimum: 1, maximum: 10 },
       taskTimeoutMinutes: { type: 'number' as const, minimum: 1, maximum: 120 },
       maxRetries: { type: 'number' as const, minimum: 0, maximum: 10 },
-      autoRetryEnabled: { type: 'boolean' as const }
+      autoRetryEnabled: { type: 'boolean' as const },
+      qaIterationLimit: { type: 'number' as const, minimum: 10, maximum: 100 },
+      agentModels: {
+        type: 'object' as const,
+        properties: {
+          planner: { type: 'object' as const, properties: { provider: { type: 'string' as const }, model: { type: 'string' as const } } },
+          coder: { type: 'object' as const, properties: { provider: { type: 'string' as const }, model: { type: 'string' as const } } },
+          tester: { type: 'object' as const, properties: { provider: { type: 'string' as const }, model: { type: 'string' as const } } },
+          reviewer: { type: 'object' as const, properties: { provider: { type: 'string' as const }, model: { type: 'string' as const } } },
+          merger: { type: 'object' as const, properties: { provider: { type: 'string' as const }, model: { type: 'string' as const } } },
+          architect: { type: 'object' as const, properties: { provider: { type: 'string' as const }, model: { type: 'string' as const } } },
+          debugger: { type: 'object' as const, properties: { provider: { type: 'string' as const }, model: { type: 'string' as const } } },
+          documenter: { type: 'object' as const, properties: { provider: { type: 'string' as const }, model: { type: 'string' as const } } },
+        },
+        default: defaults.agents.agentModels,
+      },
     },
     default: defaults.agents
   },

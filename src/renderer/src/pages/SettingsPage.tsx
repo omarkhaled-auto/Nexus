@@ -46,7 +46,8 @@ import {
   useSettingsDirty,
   useHasApiKey
 } from '@renderer/stores'
-import type { NexusSettingsPublic, LLMProvider, LLMBackendType, EmbeddingsBackendType } from '../../../shared/types/settings'
+import type { NexusSettingsPublic, LLMProvider, LLMBackendType, EmbeddingsBackendType, AgentType, AgentProviderType, AgentModelConfig, AgentModelAssignments } from '../../../shared/types/settings'
+import { DEFAULT_AGENT_MODEL_ASSIGNMENTS } from '../../../shared/types/settings'
 import {
   CLAUDE_MODELS,
   GEMINI_MODELS,
@@ -644,24 +645,8 @@ function LLMProvidersSettings({ settings, updateSetting }: SettingsTabProps): Re
 // Agent Types and Model Assignment
 // ============================================
 
-type AgentType = 'planner' | 'coder' | 'tester' | 'reviewer' | 'merger' | 'architect' | 'debugger' | 'documenter'
-type ProviderType = 'claude' | 'gemini'
-
-interface AgentModelConfig {
-  provider: ProviderType
-  model: string
-}
-
-interface AgentModelAssignments {
-  planner: AgentModelConfig
-  coder: AgentModelConfig
-  tester: AgentModelConfig
-  reviewer: AgentModelConfig
-  merger: AgentModelConfig
-  architect: AgentModelConfig
-  debugger: AgentModelConfig
-  documenter: AgentModelConfig
-}
+// Types imported from shared/types/settings: AgentType, AgentProviderType, AgentModelConfig, AgentModelAssignments
+// DEFAULT_AGENT_MODEL_ASSIGNMENTS imported from shared/types/settings
 
 const AGENT_DISPLAY_INFO: Record<AgentType, { label: string; icon: string; description: string }> = {
   planner: { label: 'Planner', icon: '🧠', description: 'Plans and decomposes tasks' },
@@ -672,17 +657,6 @@ const AGENT_DISPLAY_INFO: Record<AgentType, { label: string; icon: string; descr
   architect: { label: 'Architect', icon: '🏗', description: 'Designs system architecture' },
   debugger: { label: 'Debugger', icon: '🐛', description: 'Diagnoses and fixes issues' },
   documenter: { label: 'Documenter', icon: '📝', description: 'Writes documentation' },
-}
-
-const DEFAULT_AGENT_MODEL_ASSIGNMENTS: AgentModelAssignments = {
-  planner: { provider: 'claude', model: 'claude-opus-4-5-20251101' },
-  coder: { provider: 'claude', model: 'claude-sonnet-4-5-20250929' },
-  tester: { provider: 'claude', model: 'claude-sonnet-4-5-20250929' },
-  reviewer: { provider: 'gemini', model: 'gemini-2.5-pro' },
-  merger: { provider: 'claude', model: 'claude-sonnet-4-5-20250929' },
-  architect: { provider: 'claude', model: 'claude-opus-4-5-20251101' },
-  debugger: { provider: 'claude', model: 'claude-sonnet-4-5-20250929' },
-  documenter: { provider: 'gemini', model: 'gemini-2.5-flash' },
 }
 
 interface AgentModelRowProps {
@@ -697,7 +671,7 @@ function AgentModelRow({ agentType, config, onChange, claudeModels, geminiModels
   const info = AGENT_DISPLAY_INFO[agentType]
   const models = config.provider === 'claude' ? claudeModels : geminiModels
 
-  const handleProviderChange = (provider: ProviderType): void => {
+  const handleProviderChange = (provider: AgentProviderType): void => {
     // When switching providers, select the first model from the new provider
     const newModels = provider === 'claude' ? claudeModels : geminiModels
     const defaultModel = newModels.find(m => m.isDefault)?.id || newModels[0]?.id || ''
@@ -722,7 +696,7 @@ function AgentModelRow({ agentType, config, onChange, claudeModels, geminiModels
       <td className="py-3 px-4">
         <select
           value={config.provider}
-          onChange={(e) => handleProviderChange(e.target.value as ProviderType)}
+          onChange={(e) => handleProviderChange(e.target.value as AgentProviderType)}
           className={cn(
             'h-9 w-28 rounded-md border border-border-default bg-bg-dark px-2 py-1 text-sm text-text-primary',
             'focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-accent-primary',
@@ -757,23 +731,23 @@ function AgentModelRow({ agentType, config, onChange, claudeModels, geminiModels
 }
 
 function AgentSettings({ settings, updateSetting }: SettingsTabProps): ReactElement {
-  // Per-agent model assignments - stored locally for now
-  // In a future phase, this could be persisted to settings
-  const [agentModels, setAgentModels] = useState<AgentModelAssignments>(DEFAULT_AGENT_MODEL_ASSIGNMENTS)
-  const [qaIterationLimit, setQaIterationLimit] = useState(50)
+  // Get agent models from backend settings, fallback to defaults
+  const agentModels: AgentModelAssignments = settings.agents.agentModels || DEFAULT_AGENT_MODEL_ASSIGNMENTS
 
   const claudeModels = getClaudeModelList()
   const geminiModels = getGeminiModelList()
 
   const handleAgentModelChange = (agentType: AgentType, config: AgentModelConfig): void => {
-    setAgentModels(prev => ({
-      ...prev,
+    // Update the agentModels in the settings through updateSetting
+    const newAgentModels: AgentModelAssignments = {
+      ...agentModels,
       [agentType]: config
-    }))
+    }
+    updateSetting('agents', 'agentModels' as any, newAgentModels)
   }
 
   const handleResetToDefaults = (): void => {
-    setAgentModels(DEFAULT_AGENT_MODEL_ASSIGNMENTS)
+    updateSetting('agents', 'agentModels' as any, DEFAULT_AGENT_MODEL_ASSIGNMENTS)
   }
 
   const agentTypes: AgentType[] = ['planner', 'coder', 'tester', 'reviewer', 'merger', 'architect', 'debugger', 'documenter']
@@ -856,8 +830,8 @@ function AgentSettings({ settings, updateSetting }: SettingsTabProps): ReactElem
             max={100}
             label="QA Iteration Limit"
             description="Escalate to human after this many QA iterations (10-100)"
-            value={qaIterationLimit}
-            onChange={(e): void => { setQaIterationLimit(parseInt(e.target.value) || 50) }}
+            value={settings.agents.qaIterationLimit || 50}
+            onChange={(e): void => { updateSetting('agents', 'qaIterationLimit' as any, parseInt(e.target.value) || 50) }}
           />
 
           <Input
