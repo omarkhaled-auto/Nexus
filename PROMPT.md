@@ -325,7 +325,7 @@ Proceed to Task 12 if issues found, or Task 13 (Verify Both Modes) if no issues.
 
 ---
 
-## PHASE D PROGRESS (Wire Remaining Components) - IN PROGRESS
+## PHASE D PROGRESS (Wire Remaining Components) - COMPLETED
 
 ### Task 14: Wire Checkpoints & Human Review - COMPLETED
 - [x] **Backend Wiring** (Already Complete in Previous Tasks)
@@ -402,8 +402,57 @@ Proceed to Task 12 if issues found, or Task 13 (Verify Both Modes) if no issues.
 
 **[TASK 15 COMPLETE]** - Proceeding to Task 16
 
-**Next Tasks:**
-- Task 16: Wire Real-time UI Updates
+### Task 16: Wire Real-time UI Updates - COMPLETED
+- [x] **Event Subscription Hooks** (Already Complete)
+  - `useNexusEvents` hook handles all backend events
+  - `useRealTimeUpdates` hook handles dashboard/metrics events
+  - Integrated in App.tsx SettingsInitializer
+
+- [x] **Dashboard Real-time Updates** (Already Complete)
+  - `onMetricsUpdate` - Live metrics refresh
+  - `onCostUpdate` - Cost tracking updates
+  - `onAgentStatusUpdate` - Agent status changes
+  - `onTimelineEvent` - Activity timeline updates
+
+- [x] **Kanban Real-time Updates** (Already Complete)
+  - `onFeatureUpdate` - Feature state changes
+  - `onTaskUpdate` - Task state changes trigger feature reload
+
+- [x] **Agent Activity Real-time Updates** (Already Complete)
+  - `onAgentStatus` - Agent status changes
+  - `onAgentOutput` - Streaming agent output/logs
+  - `onQAStatusUpdate` - QA pipeline status
+
+- [x] **Execution Logs Real-time Updates** (Already Complete)
+  - `onExecutionLogUpdate` - Streaming log entries
+  - `onExecutionStatusChange` - Step status changes
+  - 5-second polling fallback for missed events
+
+- [x] **Progress Indicators** (Already Complete)
+  - `onExecutionProgress` - Global progress updates
+  - Progress state flows through metricsStore
+
+- [x] **Integration Tests** (`tests/integration/realtime-ui-wiring.test.ts`)
+  - 22 tests all passing
+  - Dashboard metrics event forwarding
+  - Task event forwarding
+  - Interview event forwarding
+  - QA event forwarding
+  - System event forwarding
+  - Review event forwarding
+  - Event subscription cleanup
+  - Event payload validation
+  - onAny event forwarding for UI
+
+- [x] **Test Results**
+  - realtime-ui-wiring.test.ts: 22/22 PASS
+  - TypeScript compiles: SUCCESS
+  - All event payloads properly typed
+
+**[TASK 16 COMPLETE]** - Phase D Complete
+
+**Next Phase:**
+- Phase E: Final Verification (Tasks 17-18)
 
 ---
 

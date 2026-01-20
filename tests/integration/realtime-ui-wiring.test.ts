@@ -40,13 +40,13 @@ describe('Real-time UI Wiring', () => {
         events.push(event.payload);
       });
 
-      // Emit task:completed
+      // Emit task:completed with properly typed payload
       await eventBus.emit('task:completed', {
         taskId: 'task-123',
         result: {
           taskId: 'task-123',
           success: true,
-          files: ['src/index.ts'],
+          files: [{ path: 'src/index.ts', action: 'created' as const }],
           metrics: {
             iterations: 1,
             tokensUsed: 500,
@@ -93,16 +93,26 @@ describe('Real-time UI Wiring', () => {
         events.push(event.payload);
       });
 
+      // Use correct ProjectCompletedPayload with metrics
       await eventBus.emit('project:completed', {
         projectId: 'genesis-123',
-        tasksCompleted: 10,
         totalDuration: 5000,
+        metrics: {
+          tasksTotal: 10,
+          tasksCompleted: 10,
+          tasksFailed: 0,
+          featuresTotal: 3,
+          featuresCompleted: 3,
+          estimatedTotalMinutes: 60,
+          actualTotalMinutes: 55,
+          averageQAIterations: 1.5,
+        },
       });
 
       expect(events).toHaveLength(1);
       expect(events[0]).toMatchObject({
         projectId: 'genesis-123',
-        tasksCompleted: 10,
+        totalDuration: 5000,
       });
     });
   });
@@ -209,8 +219,10 @@ describe('Real-time UI Wiring', () => {
         events.push(event.payload);
       });
 
+      // Use correct InterviewStartedPayload with projectName
       await eventBus.emit('interview:started', {
         projectId: 'genesis-interview',
+        projectName: 'My Project',
         mode: 'genesis' as const,
       });
 
@@ -249,19 +261,23 @@ describe('Real-time UI Wiring', () => {
         events.push(event.payload);
       });
 
+      // Use correct InterviewRequirementCapturedPayload with requirement object
       await eventBus.emit('interview:requirement-captured', {
         projectId: 'genesis-interview',
-        requirementId: 'req-1',
-        text: 'User authentication required',
-        priority: 'must' as const,
-        category: 'functional' as const,
+        requirement: {
+          id: 'req-1',
+          projectId: 'genesis-interview',
+          content: 'User authentication required',
+          priority: 'high' as const,
+          category: 'functional' as const,
+          source: 'interview' as const,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
       });
 
       expect(events).toHaveLength(1);
-      expect(events[0]).toMatchObject({
-        requirementId: 'req-1',
-        text: 'User authentication required',
-      });
+      expect((events[0] as { requirement: { id: string } }).requirement.id).toBe('req-1');
     });
   });
 
@@ -276,17 +292,18 @@ describe('Real-time UI Wiring', () => {
         events.push(event.payload);
       });
 
+      // Use correct QABuildCompletedPayload with passed, errors
       await eventBus.emit('qa:build-completed', {
         taskId: 'task-qa',
-        success: true,
-        output: 'Build successful',
+        passed: true,
+        errors: [],
         duration: 5000,
       });
 
       expect(events).toHaveLength(1);
       expect(events[0]).toMatchObject({
         taskId: 'task-qa',
-        success: true,
+        passed: true,
       });
     });
 
@@ -297,18 +314,20 @@ describe('Real-time UI Wiring', () => {
         events.push(event.payload);
       });
 
+      // Use correct QATestCompletedPayload
       await eventBus.emit('qa:test-completed', {
         taskId: 'task-qa',
-        success: false,
-        output: '3 tests failed',
-        errors: ['Test 1 failed', 'Test 2 failed'],
+        passed: false,
+        passedCount: 7,
+        failedCount: 3,
         duration: 10000,
       });
 
       expect(events).toHaveLength(1);
       expect(events[0]).toMatchObject({
         taskId: 'task-qa',
-        success: false,
+        passed: false,
+        failedCount: 3,
       });
     });
   });
@@ -324,10 +343,12 @@ describe('Real-time UI Wiring', () => {
         events.push(event.payload);
       });
 
+      // Use correct CheckpointCreatedPayload with gitCommit
       await eventBus.emit('system:checkpoint-created', {
         checkpointId: 'cp-123',
         projectId: 'genesis-123',
         reason: 'Manual checkpoint',
+        gitCommit: 'abc123def456',
       });
 
       expect(events).toHaveLength(1);
@@ -344,10 +365,11 @@ describe('Real-time UI Wiring', () => {
         events.push(event.payload);
       });
 
+      // Use correct CheckpointRestoredPayload with gitCommit
       await eventBus.emit('system:checkpoint-restored', {
         checkpointId: 'cp-123',
         projectId: 'genesis-123',
-        restoredAt: new Date(),
+        gitCommit: 'abc123def456',
       });
 
       expect(events).toHaveLength(1);
@@ -504,10 +526,20 @@ describe('Real-time UI Wiring', () => {
         events.push({ type: event.type });
       });
 
+      // Use correct payload
       await eventBus.emit('project:completed', {
         projectId: 'proj-1',
-        tasksCompleted: 5,
         totalDuration: 10000,
+        metrics: {
+          tasksTotal: 5,
+          tasksCompleted: 5,
+          tasksFailed: 0,
+          featuresTotal: 2,
+          featuresCompleted: 2,
+          estimatedTotalMinutes: 30,
+          actualTotalMinutes: 28,
+          averageQAIterations: 1.6,
+        },
       });
 
       expect(events[0].type).toBe('project:completed');
@@ -544,6 +576,7 @@ describe('Real-time UI Wiring', () => {
 
       await eventBus.emit('interview:started', {
         projectId: 'proj-1',
+        projectName: 'Test Project',
         mode: 'genesis' as const,
       });
 
@@ -584,8 +617,17 @@ describe('Real-time UI Wiring', () => {
 
       await eventBus.emit('project:completed', {
         projectId: 'proj-1',
-        tasksCompleted: 5,
         totalDuration: 10000,
+        metrics: {
+          tasksTotal: 5,
+          tasksCompleted: 5,
+          tasksFailed: 0,
+          featuresTotal: 2,
+          featuresCompleted: 2,
+          estimatedTotalMinutes: 30,
+          actualTotalMinutes: 28,
+          averageQAIterations: 1.6,
+        },
       });
 
       // This should NOT be forwarded
