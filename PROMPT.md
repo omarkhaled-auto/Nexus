@@ -162,8 +162,69 @@
   - `src/preload/index.ts`
   - `src/renderer/src/pages/SettingsPage.tsx`
 
-### Remaining Tasks:
-(Continue from Phase 17B implementation plan)
+### Iteration 12 (2024-01-20)
+- **Task**: Phase 17B Backend Integration Verification
+- **Status**: COMPLETED
+- **Analysis Summary**:
+  All major backend integrations have been verified as complete:
+
+  **Dashboard Page**:
+  - ✅ Stats cards load from `getMetrics()` backend call
+  - ✅ Projects list loads from `getProjects()` backend call
+  - ✅ New Project button wired to `createProject()` with modal
+  - ✅ Agent activity uses real `useAgentMetrics()` from store
+  - ✅ Timeline uses real `useTimeline()` events from store
+  - ✅ Cost tracker uses real `useCosts()` from store
+  - ✅ Progress chart uses `getHistoricalProgress()` backend call
+
+  **Interview Page**:
+  - ✅ Chat panel initializes session via `interview.start()` or `resumeByProject()`
+  - ✅ Messages sent to backend via `interview.sendMessage()`
+  - ✅ Requirements extracted from responses and added to store
+  - ✅ Save Draft wired to `interview.pause(sessionId)`
+  - ✅ Complete Interview wired to `interview.end(sessionId)`
+  - ✅ Export dropdown exports requirements from memory (JSON/MD/CSV)
+
+  **Kanban/Tasks Page**:
+  - ✅ Features loaded from `getFeatures()` backend call
+  - ✅ Add Feature modal wired to `createFeature()`
+  - ✅ Delete Feature wired to `deleteFeature()`
+  - ✅ Drag-and-drop persists via `updateFeature()` with optimistic updates
+
+  **Agents Page**:
+  - ✅ Pool status from `getPoolStatus()` backend call
+  - ✅ Agent list from `getAgents()` backend call
+  - ✅ Agent output streaming via `getAgentOutput()` and `onAgentOutput` events
+  - ✅ QA status from `getQAStatus()` backend call
+  - ✅ Pause/Resume wired to `pauseExecution()`
+
+  **Execution Page**:
+  - ✅ Logs load from `getExecutionStatus()` backend call
+  - ✅ Real-time updates via `onExecutionLogUpdate` and `onExecutionStatusChange`
+  - ✅ Clear logs wired to `clearExecutionLogs()`
+  - ✅ Export logs wired to `exportExecutionLogs()`
+
+  **Settings Page**:
+  - ✅ Settings load from `settings.getAll()` backend call
+  - ✅ Model dropdowns use all models from `models.ts`
+  - ✅ Backend toggles (CLI/API) save via `settings.set()`
+  - ✅ CLI availability detection via `settings.checkCliAvailability()`
+  - ✅ Per-agent model configuration persisted in settings
+  - ✅ Save button wired to `saveSettings()` store action
+  - ✅ Reset defaults wired to `resetToDefaults()` store action
+  - ✅ API key management via `setApiKey()` and `clearApiKey()`
+
+- **Conclusion**: Phase 17B Backend Integration is COMPLETE. All major UI components are connected to their respective backend services. The application is ready for integration testing.
+
+### Phase 17B Status: COMPLETE ✅
+
+---
+
+### Future Work (Post-17B):
+- Integration testing across all flows
+- End-to-end testing with real AI backends
+- Performance optimization for large projects
+- Error recovery and resilience improvements
 
 ---
 
