@@ -1,9 +1,21 @@
 import type { ReactElement } from 'react'
 import { useEffect, useCallback, useState } from 'react'
+import { Loader2 } from 'lucide-react'
 import { KanbanBoard, KanbanHeader } from '@renderer/components/kanban'
 import { AnimatedPage } from '@renderer/components/AnimatedPage'
 import { useFeatureStore } from '@renderer/stores/featureStore'
 import type { Feature, FeatureStatus, FeaturePriority, FeatureComplexity } from '@renderer/types/feature'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter
+} from '@renderer/components/ui/dialog'
+import { Button } from '@renderer/components/ui/button'
+import { Input } from '@renderer/components/ui/Input'
+import { cn } from '@renderer/lib/utils'
 
 /**
  * Check if running in Electron environment with nexusAPI available
@@ -84,10 +96,20 @@ function mapBackendFeature(backendFeature: Record<string, unknown>): Feature {
 export default function KanbanPage(): ReactElement {
   const setFeatures = useFeatureStore((s) => s.setFeatures)
   const updateFeature = useFeatureStore((s) => s.updateFeature)
+  const addFeature = useFeatureStore((s) => s.addFeature)
   const features = useFeatureStore((s) => s.features)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isEmpty, setIsEmpty] = useState(false)
+
+  // Add Feature modal state
+  const [isAddFeatureModalOpen, setIsAddFeatureModalOpen] = useState(false)
+  const [newFeatureTitle, setNewFeatureTitle] = useState('')
+  const [newFeatureDescription, setNewFeatureDescription] = useState('')
+  const [newFeaturePriority, setNewFeaturePriority] = useState<FeaturePriority>('medium')
+  const [newFeatureComplexity, setNewFeatureComplexity] = useState<FeatureComplexity>('moderate')
+  const [isCreating, setIsCreating] = useState(false)
+  const [createError, setCreateError] = useState<string | null>(null)
 
   /**
    * Load features from backend API
@@ -167,10 +189,74 @@ export default function KanbanPage(): ReactElement {
     return unsubscribe
   }, [loadRealData, subscribeToEvents])
 
+  /**
+   * Handle creating a new feature via backend API
+   */
+  const handleCreateFeature = useCallback(async () => {
+    if (!newFeatureTitle.trim()) {
+      setCreateError('Feature title is required')
+      return
+    }
+
+    if (!isElectronEnvironment()) {
+      setCreateError('Backend not available')
+      return
+    }
+
+    setIsCreating(true)
+    setCreateError(null)
+
+    try {
+      // Call backend to create feature
+      const createdFeature = await window.nexusAPI.createFeature({
+        title: newFeatureTitle.trim(),
+        description: newFeatureDescription.trim() || undefined,
+        priority: newFeaturePriority,
+        complexity: newFeatureComplexity
+      })
+
+      // Map the created feature and add to local store
+      const mappedFeature = mapBackendFeature(createdFeature as Record<string, unknown>)
+      addFeature(mappedFeature)
+
+      // Reset form and close modal
+      setIsAddFeatureModalOpen(false)
+      setNewFeatureTitle('')
+      setNewFeatureDescription('')
+      setNewFeaturePriority('medium')
+      setNewFeatureComplexity('moderate')
+      setIsEmpty(false)
+    } catch (err) {
+      console.error('Failed to create feature:', err)
+      setCreateError(err instanceof Error ? err.message : 'Failed to create feature')
+    } finally {
+      setIsCreating(false)
+    }
+  }, [newFeatureTitle, newFeatureDescription, newFeaturePriority, newFeatureComplexity, addFeature])
+
+  /**
+   * Handle closing the Add Feature modal
+   */
+  const handleCloseAddFeatureModal = useCallback(() => {
+    setIsAddFeatureModalOpen(false)
+    setNewFeatureTitle('')
+    setNewFeatureDescription('')
+    setNewFeaturePriority('medium')
+    setNewFeatureComplexity('moderate')
+    setCreateError(null)
+  }, [])
+
+  /**
+   * Open the Add Feature modal
+   */
+  const handleOpenAddFeatureModal = useCallback(() => {
+    setIsAddFeatureModalOpen(true)
+  }, [])
+
   return (
     <AnimatedPage className="flex h-full flex-col">
       {/* Header - fixed at top */}
-      <KanbanHeader projectName="Nexus" />
+      <KanbanHeader projectName="Nexus" onNewFeature={handleOpenAddFeatureModal} />
 
       {/* Error banner */}
       {error && (
@@ -208,6 +294,114 @@ export default function KanbanPage(): ReactElement {
           <KanbanBoard />
         )}
       </div>
+
+      {/* Add Feature Modal */}
+      <Dialog open={isAddFeatureModalOpen} onOpenChange={handleCloseAddFeatureModal}>
+        <DialogContent className="bg-bg-card border-border-default">
+          <DialogHeader>
+            <DialogTitle className="text-text-primary">Add New Feature</DialogTitle>
+            <DialogDescription className="text-text-secondary">
+              Create a new feature to add to the backlog.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {/* Feature Title Input */}
+            <Input
+              label="Feature Title"
+              placeholder="User authentication system"
+              value={newFeatureTitle}
+              onChange={(e) => { setNewFeatureTitle(e.target.value); }}
+              error={createError || undefined}
+              data-testid="add-feature-title-input"
+            />
+
+            {/* Feature Description */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-text-primary">Description (optional)</label>
+              <textarea
+                placeholder="Describe the feature requirements..."
+                value={newFeatureDescription}
+                onChange={(e) => { setNewFeatureDescription(e.target.value); }}
+                className="w-full h-24 px-3 py-2 text-sm rounded-md border border-border-default bg-bg-secondary text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-accent-primary focus:ring-offset-2 resize-none"
+                data-testid="add-feature-description-input"
+              />
+            </div>
+
+            {/* Priority Selection */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-text-primary">Priority</label>
+              <div className="grid grid-cols-4 gap-2">
+                {(['critical', 'high', 'medium', 'low'] as const).map((priority) => (
+                  <button
+                    key={priority}
+                    type="button"
+                    onClick={() => { setNewFeaturePriority(priority); }}
+                    className={cn(
+                      'px-3 py-2 text-sm rounded-md border transition-all capitalize',
+                      newFeaturePriority === priority
+                        ? priority === 'critical'
+                          ? 'border-status-error bg-status-error/10 text-status-error'
+                          : priority === 'high'
+                            ? 'border-status-warning bg-status-warning/10 text-status-warning'
+                            : priority === 'medium'
+                              ? 'border-accent-primary bg-accent-primary/10 text-accent-primary'
+                              : 'border-text-tertiary bg-bg-tertiary text-text-secondary'
+                        : 'border-border-default hover:border-border-subtle text-text-secondary'
+                    )}
+                    data-testid={`add-feature-priority-${priority}`}
+                  >
+                    {priority}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Complexity Selection */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-text-primary">Complexity</label>
+              <div className="grid grid-cols-3 gap-2">
+                {(['simple', 'moderate', 'complex'] as const).map((complexity) => (
+                  <button
+                    key={complexity}
+                    type="button"
+                    onClick={() => { setNewFeatureComplexity(complexity); }}
+                    className={cn(
+                      'px-3 py-2 text-sm rounded-md border transition-all capitalize',
+                      newFeatureComplexity === complexity
+                        ? 'border-accent-secondary bg-accent-secondary/10 text-accent-secondary'
+                        : 'border-border-default hover:border-border-subtle text-text-secondary'
+                    )}
+                    data-testid={`add-feature-complexity-${complexity}`}
+                  >
+                    {complexity}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={handleCloseAddFeatureModal}
+              disabled={isCreating}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              onClick={() => { void handleCreateFeature(); }}
+              disabled={isCreating || !newFeatureTitle.trim()}
+              data-testid="add-feature-submit"
+              className="gap-2"
+            >
+              {isCreating && <Loader2 className="h-4 w-4 animate-spin" />}
+              {isCreating ? 'Creating...' : 'Add Feature'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AnimatedPage>
   )
 }
