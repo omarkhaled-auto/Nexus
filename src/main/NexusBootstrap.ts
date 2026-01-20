@@ -27,6 +27,8 @@ import { CheckpointManager } from '../persistence/checkpoints/CheckpointManager'
 import { GitService } from '../infrastructure/git/GitService';
 import type { PlanningTask } from '../planning/types';
 import type { OrchestrationFeature } from '../orchestration/types';
+import { RepoMapGenerator } from '../infrastructure/analysis/RepoMapGenerator';
+import type { EvolutionContext } from '../interview/InterviewEngine';
 
 // ============================================================================
 // Types
@@ -134,6 +136,7 @@ export class NexusBootstrap {
   private stateManager: StateManager | null = null;
   private checkpointManager: CheckpointManager | null = null;
   private gitService: GitService | null = null;
+  private repoMapGenerator: RepoMapGenerator | null = null;
   private unsubscribers: Array<() => void> = [];
 
   constructor(config: NexusBootstrapConfig) {
@@ -189,6 +192,10 @@ export class NexusBootstrap {
       eventBus: this.eventBus,
     });
     console.log('[NexusBootstrap] CheckpointManager created');
+
+    // 5b. Initialize RepoMapGenerator for Evolution mode
+    this.repoMapGenerator = new RepoMapGenerator();
+    console.log('[NexusBootstrap] RepoMapGenerator created');
 
     // 6. Initialize Interview Engine
     const interviewOptions: InterviewEngineOptions = {
@@ -467,32 +474,113 @@ export class NexusBootstrap {
 
   /**
    * Start Evolution mode (enhance existing project)
+   *
+   * Task 9: Wire Evolution Critical Path
+   * 1. Generate repo map from projectPath
+   * 2. Pass context to interview engine
+   * 3. Interview completion triggers same execution path as Genesis
    */
   private async startEvolutionMode(
     projectPath: string,
     projectName?: string
   ): Promise<{ projectId: string; sessionId: string }> {
-    if (!this.interviewEngine || !this.sessionManager) {
+    if (!this.interviewEngine || !this.sessionManager || !this.repoMapGenerator) {
       throw new Error('NexusBootstrap not initialized');
     }
 
     const projectId = `evolution-${Date.now()}`;
-    const _name = projectName ?? `Evolution: ${projectPath}`;
+    const name = projectName ?? `Evolution: ${projectPath}`;
 
-    console.log(`[NexusBootstrap] Starting Evolution mode: ${_name} (${projectId})`);
+    console.log(`[NexusBootstrap] Starting Evolution mode: ${name} (${projectId})`);
 
-    // TODO: Generate repo map from projectPath
-    // TODO: Pass context to interview engine
+    // Emit evolution started event
+    await this.eventBus.emit('project:status-changed', {
+      projectId,
+      previousStatus: 'planning' as const,
+      newStatus: 'planning' as const,
+      reason: 'Starting Evolution mode - analyzing existing codebase',
+    });
 
-    // Start interview session
-    const session = this.interviewEngine.startSession(projectId);
+    // 1. Generate repo map from projectPath
+    console.log(`[NexusBootstrap] Generating repo map for: ${projectPath}`);
+    let evolutionContext: EvolutionContext | undefined;
+
+    try {
+      // Initialize and generate repo map
+      await this.repoMapGenerator.initialize();
+      const repoMap = await this.repoMapGenerator.generate(projectPath, {
+        maxFiles: 500, // Reasonable limit for context
+        countReferences: true,
+      });
+
+      // Format repo map for LLM context
+      const repoMapContext = this.repoMapGenerator.formatForContext({
+        maxTokens: 8000, // Limit for context window
+        includeSignatures: true,
+        rankByReferences: true,
+        groupByFile: true,
+        includeDependencies: true,
+        style: 'compact',
+      });
+
+      console.log(`[NexusBootstrap] Repo map generated: ${repoMap.stats.totalFiles} files, ${repoMap.stats.totalSymbols} symbols`);
+
+      // Build project summary
+      const projectSummary = this.buildProjectSummary(repoMap);
+
+      // Create evolution context
+      evolutionContext = {
+        projectPath,
+        repoMapContext,
+        projectSummary,
+      };
+
+      // Emit repo map generated event (if we have this event type)
+      console.log(`[NexusBootstrap] Evolution context prepared with ${repoMapContext.length} chars of context`);
+
+    } catch (error) {
+      console.error('[NexusBootstrap] Failed to generate repo map:', error);
+      // Continue without repo map - interview will work but without context
+      console.log('[NexusBootstrap] Continuing Evolution mode without repo map context');
+    }
+
+    // 2. Start interview session with Evolution context
+    const session = this.interviewEngine.startSession(projectId, {
+      mode: 'evolution',
+      evolutionContext,
+    });
     this.sessionManager.startAutoSave(session);
 
-    // Interview completion will trigger the rest via EventBus wiring
+    console.log(`[NexusBootstrap] Evolution session started: ${session.id}`);
+
+    // Interview completion will trigger the rest via EventBus wiring (same as Genesis)
     return {
       projectId,
       sessionId: session.id,
     };
+  }
+
+  /**
+   * Build a human-readable summary of the project from the repo map
+   */
+  private buildProjectSummary(repoMap: import('../infrastructure/analysis/types').RepoMap): string {
+    const stats = repoMap.stats;
+    const lines: string[] = [
+      `Project: ${repoMap.projectPath}`,
+      `Files: ${stats.totalFiles} (${stats.languageBreakdown.typescript} TypeScript, ${stats.languageBreakdown.javascript} JavaScript)`,
+      `Symbols: ${stats.totalSymbols} (${stats.symbolBreakdown.class} classes, ${stats.symbolBreakdown.function} functions, ${stats.symbolBreakdown.interface} interfaces)`,
+      `Dependencies: ${stats.totalDependencies} connections`,
+    ];
+
+    if (stats.largestFiles.length > 0) {
+      lines.push(`Largest files: ${stats.largestFiles.slice(0, 5).join(', ')}`);
+    }
+
+    if (stats.mostConnectedFiles.length > 0) {
+      lines.push(`Key files (most connected): ${stats.mostConnectedFiles.slice(0, 5).join(', ')}`);
+    }
+
+    return lines.join('\n');
   }
 
   // =========================================================================
@@ -722,6 +810,7 @@ export class NexusBootstrap {
     this.stateManager = null;
     this.checkpointManager = null;
     this.gitService = null;
+    this.repoMapGenerator = null;
     this.databaseClient = null;
     bootstrappedNexus = null;
 

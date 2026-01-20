@@ -18,7 +18,12 @@ import { RequirementExtractor } from './RequirementExtractor';
 import { QuestionGenerator } from './QuestionGenerator';
 import type { InterviewMessage, GenerationContext } from './QuestionGenerator';
 import type { ExtractedRequirement } from './types';
-import { INTERVIEWER_SYSTEM_PROMPT, INITIAL_GREETING } from './prompts/interviewer';
+import {
+  INTERVIEWER_SYSTEM_PROMPT,
+  INITIAL_GREETING,
+  EVOLUTION_INITIAL_GREETING,
+  getEvolutionSystemPrompt,
+} from './prompts/interviewer';
 import type { RequirementCategory as CoreRequirementCategory, RequirementPriority as CoreRequirementPriority } from '../types/core';
 
 /**
@@ -47,6 +52,33 @@ export interface InterviewEngineOptions {
 export type InterviewSessionStatus = 'active' | 'paused' | 'completed';
 
 /**
+ * Interview mode: genesis (new project) or evolution (existing project)
+ */
+export type InterviewMode = 'genesis' | 'evolution';
+
+/**
+ * Evolution context for existing project enhancement
+ */
+export interface EvolutionContext {
+  /** Path to the existing project */
+  projectPath: string;
+  /** Formatted repo map context for LLM */
+  repoMapContext: string;
+  /** Summary of the project structure */
+  projectSummary?: string;
+}
+
+/**
+ * Options for starting a new session
+ */
+export interface StartSessionOptions {
+  /** Interview mode */
+  mode?: InterviewMode;
+  /** Evolution context (required for evolution mode) */
+  evolutionContext?: EvolutionContext;
+}
+
+/**
  * An interview session
  */
 export interface InterviewSession {
@@ -56,6 +88,10 @@ export interface InterviewSession {
   projectId: string;
   /** Current session status */
   status: InterviewSessionStatus;
+  /** Interview mode */
+  mode: InterviewMode;
+  /** Evolution context (if mode is 'evolution') */
+  evolutionContext?: EvolutionContext;
   /** All messages in the conversation */
   messages: InterviewMessage[];
   /** Requirements extracted during this session */
@@ -128,14 +164,25 @@ export class InterviewEngine {
    * Start a new interview session
    *
    * @param projectId The project to conduct interview for
+   * @param options Optional session configuration (mode, evolution context)
    * @returns The new interview session
    */
-  startSession(projectId: string): InterviewSession {
+  startSession(projectId: string, options?: StartSessionOptions): InterviewSession {
     const now = new Date();
+    const mode = options?.mode ?? 'genesis';
+    const evolutionContext = options?.evolutionContext;
+
+    // Validate evolution mode has context
+    if (mode === 'evolution' && !evolutionContext) {
+      this.logger?.warn('Evolution mode started without context', { projectId });
+    }
+
     const session: InterviewSession = {
       id: nanoid(),
       projectId,
       status: 'active',
+      mode,
+      evolutionContext,
       messages: [],
       extractedRequirements: [],
       exploredAreas: [],
@@ -148,13 +195,15 @@ export class InterviewEngine {
     this.logger?.info('Started interview session', {
       sessionId: session.id,
       projectId,
+      mode,
+      hasEvolutionContext: !!evolutionContext,
     });
 
     // Emit interview:started event (fire-and-forget)
     void this.eventBus.emit('interview:started', {
       projectId,
       projectName: projectId, // Will be resolved from DB if needed
-      mode: 'genesis',
+      mode,
     });
 
     return session;
@@ -381,17 +430,24 @@ export class InterviewEngine {
 
   /**
    * Get the initial greeting for a new session
+   * @param mode The interview mode (genesis or evolution)
    */
-  getInitialGreeting(): string {
-    return INITIAL_GREETING;
+  getInitialGreeting(mode: InterviewMode = 'genesis'): string {
+    return mode === 'evolution' ? EVOLUTION_INITIAL_GREETING : INITIAL_GREETING;
   }
 
   /**
    * Build messages array for LLM call
    */
   private buildLLMMessages(session: InterviewSession): Message[] {
+    // Use Evolution-specific system prompt if in evolution mode with context
+    let systemPrompt = INTERVIEWER_SYSTEM_PROMPT;
+    if (session.mode === 'evolution' && session.evolutionContext) {
+      systemPrompt = getEvolutionSystemPrompt(session.evolutionContext.repoMapContext);
+    }
+
     const messages: Message[] = [
-      { role: 'system', content: INTERVIEWER_SYSTEM_PROMPT },
+      { role: 'system', content: systemPrompt },
     ];
 
     // Add conversation history

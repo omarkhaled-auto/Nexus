@@ -116,6 +116,55 @@ Let's start with the big picture: What are you building, and what problem does i
 Feel free to describe your vision in your own words - I'll ask follow-up questions to make sure I understand everything correctly.`;
 
 /**
+ * Initial greeting for Evolution mode (enhancing existing project)
+ */
+export const EVOLUTION_INITIAL_GREETING = `Hello! I see you want to enhance an existing project.
+
+I've analyzed your codebase and have context about its structure. What changes or features would you like to add?
+
+You can describe:
+- New features to add
+- Existing functionality to modify
+- Bugs to fix
+- Performance improvements
+- Refactoring goals
+
+I'll help translate your ideas into actionable requirements that work with your existing code.`;
+
+/**
+ * Evolution-specific system prompt extension
+ * Adds context about the existing codebase
+ */
+export function getEvolutionSystemPrompt(repoMapContext: string): string {
+  return `${INTERVIEWER_SYSTEM_PROMPT}
+
+---
+
+EVOLUTION MODE: You are enhancing an existing project, not creating one from scratch.
+
+EXISTING CODEBASE CONTEXT:
+${repoMapContext}
+
+Additional Evolution Mode Guidelines:
+- Reference existing files, functions, and patterns when discussing changes
+- Consider backward compatibility with existing code
+- Identify potential conflicts with current implementation
+- Suggest integration points based on the existing architecture
+- Extract requirements that account for existing functionality
+- Mark requirements that modify existing code vs add new code
+
+When extracting requirements in Evolution mode, add this field:
+<modification_type>add|modify|extend|refactor|fix</modification_type>
+
+Where:
+- add: Completely new functionality
+- modify: Changes to existing behavior
+- extend: Building on existing features
+- refactor: Code improvement without behavior change
+- fix: Bug fixes or corrections`;
+}
+
+/**
  * Prompt suffix for gap detection suggestion
  * Appended when gaps are detected after sufficient requirements
  */

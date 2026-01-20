@@ -95,6 +95,7 @@ function createMockSession(overrides: Partial<InterviewSession> = {}): Interview
     id: 'session-1',
     projectId: 'project-1',
     status: 'active',
+    mode: 'genesis',
     messages: [
       {
         id: 'msg-1',

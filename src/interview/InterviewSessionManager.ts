@@ -44,6 +44,12 @@ interface SerializedSession {
   id: string;
   projectId: string;
   status: string;
+  mode?: 'genesis' | 'evolution'; // Added for Task 9
+  evolutionContext?: {
+    projectPath: string;
+    repoMapContext: string;
+    projectSummary?: string;
+  };
   messages: Array<{
     id: string;
     role: 'user' | 'assistant';
@@ -302,6 +308,8 @@ export class InterviewSessionManager {
       id: session.id,
       projectId: session.projectId,
       status: session.status,
+      mode: session.mode,
+      evolutionContext: session.evolutionContext,
       messages: session.messages.map((msg) => ({
         id: msg.id,
         role: msg.role,
@@ -326,6 +334,8 @@ export class InterviewSessionManager {
       id: parsed.id,
       projectId: parsed.projectId,
       status: parsed.status as InterviewSession['status'],
+      mode: parsed.mode ?? 'genesis', // Default to genesis for backward compatibility
+      evolutionContext: parsed.evolutionContext,
       messages: parsed.messages.map((msg) => ({
         id: msg.id,
         role: msg.role,
