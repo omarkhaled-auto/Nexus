@@ -59,100 +59,12 @@ interface LogTab {
   logs: string[];
 }
 
-// ============================================================================
-// Mock Data (will be replaced with real data from stores/IPC)
-// ============================================================================
-
-const mockTabs: LogTab[] = [
-  {
-    id: 'build',
-    label: 'Build',
-    status: 'success',
-    duration: 2300,
-    logs: [
-      '$ tsc --noEmit',
-      '',
-      'Compiling 47 files...',
-      '  src/auth/middleware.ts',
-      '  src/auth/jwt.ts',
-      '  src/auth/oauth.ts',
-      '  src/api/routes.ts',
-      '  src/api/handlers/userHandler.ts',
-      '  src/api/handlers/teamHandler.ts',
-      '  src/database/schema.ts',
-      '  src/database/migrations/001_init.ts',
-      '  ... and 39 more files',
-      '',
-      'Compilation complete. 0 errors.',
-      'Duration: 2.3s',
-    ],
-  },
-  {
-    id: 'lint',
-    label: 'Lint',
-    status: 'success',
-    count: 0,
-    duration: 1100,
-    logs: [
-      '$ eslint src/ --ext .ts,.tsx',
-      '',
-      'Checking 47 files...',
-      '',
-      'All files passed linting',
-      'Checked 47 files in 1.1s',
-    ],
-  },
-  {
-    id: 'test',
-    label: 'Test',
-    status: 'running',
-    count: 47,
-    logs: [
-      '$ vitest run',
-      '',
-      ' DEV  v1.6.0 /project',
-      '',
-      ' auth/middleware.test.ts (8 tests) 234ms',
-      '   verifyToken',
-      '     verifies valid tokens',
-      '     rejects expired tokens',
-      '     rejects invalid signatures',
-      '   refreshToken',
-      '     rotates refresh tokens',
-      '     invalidates old refresh tokens',
-      '   validateSession',
-      '     validates active sessions',
-      '     rejects expired sessions',
-      '     handles concurrent sessions',
-      '',
-      ' auth/jwt.test.ts (10 tests) 156ms',
-      '   signToken',
-      '     creates valid JWT tokens',
-      '     includes correct claims',
-      '     sets expiration correctly',
-      '   verifyToken',
-      '     verifies valid tokens',
-      '     handles malformed tokens',
-      '   ...',
-      '',
-      ' auth/oauth.test.ts (5 tests) 312ms',
-      '   GoogleOAuth',
-      '     handles authorization code',
-      '     exchanges tokens correctly',
-      '   GitHubOAuth',
-      '     handles authorization code',
-      '     exchanges tokens correctly',
-      '     handles organization access',
-      '',
-      ' Running 24 more tests...',
-    ],
-  },
-  {
-    id: 'review',
-    label: 'Review',
-    status: 'pending',
-    logs: ['Waiting for tests to complete...'],
-  },
+// Default tabs (used when no data from backend yet)
+const defaultTabs: LogTab[] = [
+  { id: 'build', label: 'Build', status: 'pending', logs: [] },
+  { id: 'lint', label: 'Lint', status: 'pending', logs: [] },
+  { id: 'test', label: 'Test', status: 'pending', logs: [] },
+  { id: 'review', label: 'Review', status: 'pending', logs: [] },
 ];
 
 // ============================================================================
@@ -282,12 +194,11 @@ function LogViewer({ logs, status }: LogViewerProps): ReactElement {
  * - Status indicators and durations
  * - Clear and export actions
  *
- * Connects to real backend data via IPC when running in Electron,
- * falls back to mock data for development.
+ * Connects to real backend data via IPC when running in Electron.
  */
 export default function ExecutionPage(): ReactElement {
   const [activeTab, setActiveTab] = useState<TabId>('build');
-  const [tabs, setTabs] = useState<LogTab[]>(mockTabs);
+  const [tabs, setTabs] = useState<LogTab[]>(defaultTabs);
   const [currentTaskName, setCurrentTaskName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -295,6 +206,7 @@ export default function ExecutionPage(): ReactElement {
   // Load real data from backend
   const loadRealData = useCallback(async () => {
     if (!isElectronEnvironment()) {
+      setError('Backend not available. Please run in Electron.');
       setLoading(false);
       return;
     }
@@ -317,11 +229,14 @@ export default function ExecutionPage(): ReactElement {
 
         setTabs(newTabs);
         setCurrentTaskName(status.currentTaskName);
+      } else {
+        // No status from backend - show empty default tabs
+        setTabs(defaultTabs);
       }
     } catch (err) {
       console.error('Failed to load execution status:', err);
       setError(err instanceof Error ? err.message : 'Failed to load execution status');
-      setTabs(mockTabs);
+      // Keep current tabs (default empty) on error
     } finally {
       setLoading(false);
     }
@@ -396,11 +311,12 @@ export default function ExecutionPage(): ReactElement {
         return;
       }
     } else {
-      content = `Nexus Execution Logs (Mock)\nGenerated: ${new Date().toISOString()}\n${'='.repeat(60)}\n\n`;
+      // Non-Electron: export current tab data as-is
+      content = `Nexus Execution Logs\nGenerated: ${new Date().toISOString()}\n${'='.repeat(60)}\n\n`;
       for (const tab of tabs) {
         content += `## ${tab.label.toUpperCase()} [${tab.status.toUpperCase()}]\n`;
         if (tab.duration) content += `Duration: ${(tab.duration / 1000).toFixed(2)}s\n`;
-        content += `${'-'.repeat(40)}\n${tab.logs.join('\n')}\n\n`;
+        content += `${'-'.repeat(40)}\n${tab.logs.length > 0 ? tab.logs.join('\n') : 'No logs available'}\n\n`;
       }
     }
 
@@ -452,7 +368,6 @@ export default function ExecutionPage(): ReactElement {
         <div className="mx-6 mt-4 px-4 py-3 bg-accent-error/10 border border-accent-error/30 rounded-lg flex items-center gap-3">
           <AlertTriangle className="w-5 h-5 text-accent-error" />
           <span className="text-sm text-accent-error">{error}</span>
-          <span className="text-sm text-text-secondary">(Using demo data)</span>
         </div>
       )}
 
