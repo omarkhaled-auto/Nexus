@@ -2,6 +2,8 @@ import { app, session, ipcMain, BrowserWindow, safeStorage, shell } from "electr
 import { join } from "path";
 import { nanoid } from "nanoid";
 import Store from "electron-store";
+import { spawn } from "child_process";
+import "@anthropic-ai/sdk";
 import __cjs_mod__ from "node:module";
 const __filename = import.meta.filename;
 const __dirname = import.meta.dirname;
@@ -451,6 +453,30 @@ function registerIpcHandlers() {
       breakdownByAgent: [],
       updatedAt: /* @__PURE__ */ new Date()
     };
+  });
+  ipcMain.handle("dashboard:getHistoricalProgress", (event) => {
+    if (!validateSender$1(event)) {
+      throw new Error("Unauthorized IPC sender");
+    }
+    const tasks = Array.from(state.tasks.values());
+    const totalTasks = tasks.length;
+    const completedTasks = tasks.filter((t) => t.status === "completed").length;
+    if (totalTasks === 0) {
+      return [];
+    }
+    const now = /* @__PURE__ */ new Date();
+    const progressData = [];
+    const intervalsBack = 12;
+    for (let i = intervalsBack; i >= 0; i--) {
+      const timestamp = new Date(now.getTime() - i * 5 * 60 * 1e3);
+      const progressAtTime = totalTasks > 0 ? Math.min(completedTasks, Math.floor(completedTasks * ((intervalsBack - i) / intervalsBack))) : 0;
+      progressData.push({
+        timestamp,
+        completed: i === 0 ? completedTasks : progressAtTime,
+        total: totalTasks
+      });
+    }
+    return progressData;
   });
   ipcMain.handle(
     "project:create",
@@ -1172,6 +1198,16 @@ const LOCAL_EMBEDDING_MODELS = {
   }
 };
 const DEFAULT_LOCAL_EMBEDDING_MODEL = "Xenova/all-MiniLM-L6-v2";
+const DEFAULT_AGENT_MODEL_ASSIGNMENTS = {
+  planner: { provider: "claude", model: "claude-opus-4-5-20251101" },
+  coder: { provider: "claude", model: "claude-sonnet-4-5-20250929" },
+  tester: { provider: "claude", model: "claude-sonnet-4-5-20250929" },
+  reviewer: { provider: "gemini", model: "gemini-2.5-pro" },
+  merger: { provider: "claude", model: "claude-sonnet-4-5-20250929" },
+  architect: { provider: "claude", model: "claude-opus-4-5-20251101" },
+  debugger: { provider: "claude", model: "claude-sonnet-4-5-20250929" },
+  documenter: { provider: "gemini", model: "gemini-2.5-flash" }
+};
 const defaults = {
   llm: {
     // Phase 16: Provider-specific settings with CLI-first defaults
@@ -1209,7 +1245,9 @@ const defaults = {
     maxParallelAgents: 4,
     taskTimeoutMinutes: 30,
     maxRetries: 3,
-    autoRetryEnabled: true
+    autoRetryEnabled: true,
+    qaIterationLimit: 50,
+    agentModels: DEFAULT_AGENT_MODEL_ASSIGNMENTS
   },
   checkpoints: {
     autoCheckpointEnabled: true,
@@ -1289,7 +1327,22 @@ const schema = {
       maxParallelAgents: { type: "number", minimum: 1, maximum: 10 },
       taskTimeoutMinutes: { type: "number", minimum: 1, maximum: 120 },
       maxRetries: { type: "number", minimum: 0, maximum: 10 },
-      autoRetryEnabled: { type: "boolean" }
+      autoRetryEnabled: { type: "boolean" },
+      qaIterationLimit: { type: "number", minimum: 10, maximum: 100 },
+      agentModels: {
+        type: "object",
+        properties: {
+          planner: { type: "object", properties: { provider: { type: "string" }, model: { type: "string" } } },
+          coder: { type: "object", properties: { provider: { type: "string" }, model: { type: "string" } } },
+          tester: { type: "object", properties: { provider: { type: "string" }, model: { type: "string" } } },
+          reviewer: { type: "object", properties: { provider: { type: "string" }, model: { type: "string" } } },
+          merger: { type: "object", properties: { provider: { type: "string" }, model: { type: "string" } } },
+          architect: { type: "object", properties: { provider: { type: "string" }, model: { type: "string" } } },
+          debugger: { type: "object", properties: { provider: { type: "string" }, model: { type: "string" } } },
+          documenter: { type: "object", properties: { provider: { type: "string" }, model: { type: "string" } } }
+        },
+        default: defaults.agents.agentModels
+      }
     },
     default: defaults.agents
   },
@@ -1488,6 +1541,792 @@ class SettingsService {
   }
 }
 const settingsService = new SettingsService();
+class LLMError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "LLMError";
+    Object.setPrototypeOf(this, LLMError.prototype);
+  }
+}
+class TimeoutError extends LLMError {
+  constructor(message = "Request timed out") {
+    super(message);
+    this.name = "TimeoutError";
+    Object.setPrototypeOf(this, TimeoutError.prototype);
+  }
+}
+class CLIError extends LLMError {
+  exitCode;
+  constructor(message, exitCode = null) {
+    super(message);
+    this.name = "CLIError";
+    this.exitCode = exitCode;
+    Object.setPrototypeOf(this, CLIError.prototype);
+  }
+}
+class CLINotFoundError extends CLIError {
+  /** Command to install the CLI */
+  installCommand = "npm install -g @anthropic-ai/claude-code";
+  /** URL for more installation information */
+  installUrl = "https://docs.anthropic.com/claude/docs/claude-code-cli";
+  /** Environment variable for API key fallback */
+  envVariable = "ANTHROPIC_API_KEY";
+  /** Path in Settings UI to configure API backend */
+  settingsPath = "Settings → LLM Providers → Claude → Use API";
+  constructor(message = `Claude CLI not found.
+
+You have two options:
+
+━━━ OPTION 1: Install the CLI ━━━
+  npm install -g @anthropic-ai/claude-code
+  More info: https://docs.anthropic.com/claude/docs/claude-code-cli
+
+━━━ OPTION 2: Use API Key ━━━
+  Set ANTHROPIC_API_KEY in your .env file
+  Or: Settings → LLM Providers → Claude → Use API
+`) {
+    super(message, null);
+    this.name = "CLINotFoundError";
+    Object.setPrototypeOf(this, CLINotFoundError.prototype);
+  }
+}
+const DEFAULT_CLAUDE_PATH = "claude";
+const DEFAULT_TIMEOUT = 3e5;
+const DEFAULT_MAX_RETRIES = 2;
+class ClaudeCodeCLIClient {
+  config;
+  constructor(config = {}) {
+    this.config = {
+      claudePath: config.claudePath ?? DEFAULT_CLAUDE_PATH,
+      workingDirectory: config.workingDirectory ?? process.cwd(),
+      timeout: config.timeout ?? DEFAULT_TIMEOUT,
+      maxRetries: config.maxRetries ?? DEFAULT_MAX_RETRIES,
+      logger: config.logger
+    };
+  }
+  /**
+   * Send a chat completion request via Claude Code CLI.
+   * Uses --print flag for non-interactive output.
+   */
+  async chat(messages, options) {
+    const prompt = this.messagesToPrompt(messages);
+    const systemPrompt = this.extractSystemPrompt(messages);
+    const args = this.buildArgs(prompt, systemPrompt, options);
+    const result = await this.executeWithRetry(args);
+    return this.parseResponse(result, options);
+  }
+  /**
+   * Stream a chat completion from Claude Code CLI.
+   * Note: CLI doesn't support true streaming, so we execute and yield complete response.
+   */
+  async *chatStream(messages, options) {
+    const response = await this.chat(messages, options);
+    if (response.content) {
+      yield { type: "text", content: response.content };
+    }
+    if (response.toolCalls) {
+      for (const toolCall of response.toolCalls) {
+        yield { type: "tool_use", toolCall };
+      }
+    }
+    yield { type: "done" };
+  }
+  /**
+   * Approximate token count for content.
+   * Uses ~4 characters per token approximation.
+   */
+  countTokens(content) {
+    if (!content || content.length === 0) return 0;
+    return Math.ceil(content.length / 4);
+  }
+  /**
+   * Execute a task with tools via Claude Code CLI.
+   * Claude Code has built-in tools (Read, Write, Bash, etc.)
+   */
+  async executeWithTools(messages, tools, options) {
+    const prompt = this.messagesToPrompt(messages);
+    const systemPrompt = this.extractSystemPrompt(messages);
+    const args = this.buildArgs(prompt, systemPrompt, options);
+    if (tools.length > 0) {
+      const allowedToolsIdx = args.indexOf("--allowedTools");
+      if (allowedToolsIdx !== -1) {
+        args.splice(allowedToolsIdx, 2);
+      }
+      const cliToolNames = tools.map((t) => this.mapToolName(t.name));
+      args.push("--allowedTools", cliToolNames.join(","));
+    }
+    const result = await this.executeWithRetry(args);
+    return this.parseResponse(result, options);
+  }
+  /**
+   * Continue an existing conversation by ID.
+   * Uses --resume flag to continue from where the conversation left off.
+   */
+  async continueConversation(conversationId, message, options) {
+    const args = ["--print", "--output-format", "json"];
+    args.push("--resume", conversationId);
+    args.push("--message", message);
+    if (options?.maxTokens) {
+      args.push("--max-tokens", String(options.maxTokens));
+    }
+    const result = await this.executeWithRetry(args);
+    return this.parseResponse(result, options);
+  }
+  /**
+   * Check if Claude CLI is available on the system.
+   */
+  async isAvailable() {
+    try {
+      await this.execute(["--version"]);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  /**
+   * Get Claude CLI version string.
+   */
+  async getVersion() {
+    const result = await this.execute(["--version"]);
+    return result.trim();
+  }
+  // ============ Private Methods ============
+  /**
+   * Build CLI arguments from prompt and options.
+   */
+  buildArgs(prompt, system, options) {
+    const args = ["--print"];
+    args.push("--output-format", "json");
+    if (system) {
+      args.push("--system-prompt", system);
+    }
+    if (options?.maxTokens) {
+      args.push("--max-tokens", String(options.maxTokens));
+    }
+    if (options?.tools && options.tools.length > 0) {
+      const toolNames = this.mapToolNames(options.tools);
+      args.push("--allowedTools", toolNames.join(","));
+    }
+    args.push("--message", prompt);
+    return args;
+  }
+  /**
+   * Execute CLI command with retry logic.
+   */
+  async executeWithRetry(args) {
+    let lastError = null;
+    for (let attempt = 0; attempt <= this.config.maxRetries; attempt++) {
+      try {
+        return await this.execute(args);
+      } catch (error) {
+        lastError = error;
+        this.config.logger?.warn(
+          `CLI attempt ${attempt + 1}/${this.config.maxRetries + 1} failed: ${lastError.message}`
+        );
+        if (attempt < this.config.maxRetries) {
+          const delay = 1e3 * Math.pow(2, attempt);
+          await this.sleep(delay);
+        }
+      }
+    }
+    throw lastError ?? new CLIError("Unknown CLI error");
+  }
+  /**
+   * Execute the Claude CLI command.
+   */
+  execute(args) {
+    return new Promise((resolve, reject) => {
+      this.config.logger?.debug("Executing Claude CLI", { args: args.join(" ") });
+      const child = spawn(this.config.claudePath, args, {
+        cwd: this.config.workingDirectory,
+        env: { ...process.env },
+        stdio: ["pipe", "pipe", "pipe"],
+        shell: process.platform === "win32"
+        // Use shell on Windows for PATH resolution
+      });
+      let stdout = "";
+      let stderr = "";
+      child.stdout.on("data", (data) => {
+        stdout += data.toString();
+      });
+      child.stderr.on("data", (data) => {
+        stderr += data.toString();
+      });
+      const timeout = setTimeout(() => {
+        child.kill("SIGTERM");
+        reject(new TimeoutError(`Claude CLI timed out after ${this.config.timeout}ms`));
+      }, this.config.timeout);
+      child.on("close", (code) => {
+        clearTimeout(timeout);
+        if (code === 0) {
+          this.config.logger?.debug("Claude CLI completed successfully");
+          resolve(stdout);
+        } else {
+          reject(new CLIError(`Claude CLI exited with code ${String(code)}: ${stderr}`, code));
+        }
+      });
+      child.on("error", (error) => {
+        clearTimeout(timeout);
+        if (error.code === "ENOENT") {
+          reject(new CLINotFoundError());
+        } else {
+          reject(new CLIError(`Failed to spawn Claude CLI: ${error.message}`));
+        }
+      });
+    });
+  }
+  /**
+   * Convert messages array to a single prompt string.
+   */
+  messagesToPrompt(messages) {
+    return messages.filter((msg) => msg.role !== "system").map((msg) => {
+      if (msg.role === "user") {
+        return `Human: ${msg.content}`;
+      } else if (msg.role === "assistant") {
+        return `Assistant: ${msg.content}`;
+      } else if (msg.role === "tool" && msg.toolResults) {
+        const results = msg.toolResults.map((r) => `Tool ${r.toolCallId}: ${JSON.stringify(r.result)}`).join("\n");
+        return `Tool Results:
+${results}`;
+      }
+      return msg.content;
+    }).join("\n\n");
+  }
+  /**
+   * Extract system prompt from messages.
+   */
+  extractSystemPrompt(messages) {
+    const systemMsg = messages.find((msg) => msg.role === "system");
+    return systemMsg?.content;
+  }
+  /**
+   * Parse CLI output to LLMResponse.
+   */
+  parseResponse(result, _options) {
+    try {
+      const json = JSON.parse(result);
+      const content = json.result || json.response || json.content || result;
+      const usage = {
+        inputTokens: Number(json.inputTokens ?? json.input_tokens ?? 0),
+        outputTokens: Number(json.outputTokens ?? json.output_tokens ?? 0),
+        totalTokens: 0
+      };
+      usage.totalTokens = usage.inputTokens + usage.outputTokens;
+      let finishReason = "stop";
+      const stopReason = json.stopReason ?? json.stop_reason;
+      if (stopReason === "tool_use") {
+        finishReason = "tool_use";
+      } else if (stopReason === "max_tokens") {
+        finishReason = "max_tokens";
+      }
+      const toolCalls = this.extractToolCalls(json);
+      return {
+        content: typeof content === "string" ? content : JSON.stringify(content),
+        toolCalls: toolCalls.length > 0 ? toolCalls : void 0,
+        usage,
+        finishReason: toolCalls.length > 0 ? "tool_use" : finishReason
+      };
+    } catch {
+      return {
+        content: result.trim(),
+        usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
+        finishReason: "stop"
+      };
+    }
+  }
+  /**
+   * Extract tool calls from JSON response if present.
+   */
+  extractToolCalls(json) {
+    const toolCalls = [];
+    if (Array.isArray(json.tool_calls)) {
+      for (const tc of json.tool_calls) {
+        if (tc && typeof tc === "object") {
+          const call = tc;
+          toolCalls.push({
+            id: typeof call.id === "string" ? call.id : `cli_tool_${Date.now()}`,
+            name: call.name,
+            arguments: call.arguments ?? call.input ?? {}
+          });
+        }
+      }
+    }
+    return toolCalls;
+  }
+  /**
+   * Map a single Nexus tool name to Claude Code CLI tool name.
+   */
+  mapToolName(nexusTool) {
+    const toolMap = {
+      read_file: "Read",
+      write_file: "Write",
+      edit_file: "Edit",
+      run_command: "Bash",
+      search_code: "Grep",
+      list_files: "LS",
+      web_search: "WebSearch",
+      web_fetch: "WebFetch"
+    };
+    return toolMap[nexusTool] ?? nexusTool;
+  }
+  /**
+   * Map Nexus tool names to Claude Code CLI tool names.
+   */
+  mapToolNames(tools) {
+    return tools.map((t) => this.mapToolName(t.name));
+  }
+  /**
+   * Generate tool hints string for prompt enhancement.
+   */
+  toolsToHints(tools) {
+    return tools.map((t) => `${t.name}: ${t.description}`).join(", ");
+  }
+  /**
+   * Sleep utility for retry delays.
+   */
+  sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+}
+const DEFAULT_GEMINI_CLI_CONFIG = {
+  cliPath: "gemini",
+  workingDirectory: process.cwd(),
+  timeout: 3e5,
+  // 5 minutes
+  maxRetries: 2,
+  model: DEFAULT_GEMINI_MODEL
+  // gemini-2.5-flash
+};
+const GEMINI_ERROR_PATTERNS = [
+  { pattern: /ENOENT|not found|command not found/i, code: "CLI_NOT_FOUND", retriable: false },
+  { pattern: /auth|credentials|permission denied|401/i, code: "AUTH_FAILED", retriable: false },
+  { pattern: /timeout|timed out/i, code: "TIMEOUT", retriable: true },
+  { pattern: /rate limit|429|too many requests/i, code: "RATE_LIMIT", retriable: true },
+  { pattern: /invalid|400|bad request/i, code: "INVALID_REQUEST", retriable: false },
+  { pattern: /500|502|503|504|server error/i, code: "SERVER_ERROR", retriable: true }
+];
+class GeminiCLIError extends LLMError {
+  exitCode;
+  errorCode;
+  constructor(message, exitCode = null, errorCode = "UNKNOWN") {
+    super(message);
+    this.name = "GeminiCLIError";
+    this.exitCode = exitCode;
+    this.errorCode = errorCode;
+    Object.setPrototypeOf(this, GeminiCLIError.prototype);
+  }
+}
+class GeminiCLINotFoundError extends GeminiCLIError {
+  constructor(message = `Gemini CLI not found. You have two options:
+
+1. Install Gemini CLI:
+   npm install -g @anthropic-ai/gemini-cli
+   (or visit: https://ai.google.dev/gemini-api/docs/cli)
+
+2. Use API key instead:
+   Set GOOGLE_AI_API_KEY in your .env file
+   Or configure in Settings > LLM Providers > Gemini > Use API
+`) {
+    super(message, null, "CLI_NOT_FOUND");
+    this.name = "GeminiCLINotFoundError";
+    Object.setPrototypeOf(this, GeminiCLINotFoundError.prototype);
+  }
+}
+class GeminiCLIAuthError extends GeminiCLIError {
+  constructor(message = `Gemini CLI authentication failed. Options:
+
+1. Authenticate with gcloud:
+   gcloud auth application-default login
+
+2. Use API key instead:
+   Set GOOGLE_AI_API_KEY in your .env file
+`) {
+    super(message, null, "AUTH_FAILED");
+    this.name = "GeminiCLIAuthError";
+    Object.setPrototypeOf(this, GeminiCLIAuthError.prototype);
+  }
+}
+class GeminiCLITimeoutError extends GeminiCLIError {
+  constructor(timeout) {
+    super(
+      `Gemini CLI request timed out after ${timeout / 1e3} seconds.
+Try increasing timeout in Settings > LLM Providers > Gemini > Timeout`,
+      null,
+      "TIMEOUT"
+    );
+    this.name = "GeminiCLITimeoutError";
+    Object.setPrototypeOf(this, GeminiCLITimeoutError.prototype);
+  }
+}
+class GeminiCLIClient {
+  config;
+  constructor(config = {}) {
+    this.config = {
+      cliPath: config.cliPath ?? DEFAULT_GEMINI_CLI_CONFIG.cliPath,
+      workingDirectory: config.workingDirectory ?? DEFAULT_GEMINI_CLI_CONFIG.workingDirectory,
+      timeout: config.timeout ?? DEFAULT_GEMINI_CLI_CONFIG.timeout,
+      maxRetries: config.maxRetries ?? DEFAULT_GEMINI_CLI_CONFIG.maxRetries,
+      model: config.model ?? DEFAULT_GEMINI_CLI_CONFIG.model,
+      additionalFlags: config.additionalFlags ?? [],
+      logger: config.logger
+    };
+  }
+  // ============================================================================
+  // Public LLMClient Interface Methods
+  // ============================================================================
+  /**
+   * Send a chat completion request via Gemini CLI.
+   * Uses --yolo flag for non-interactive output.
+   */
+  async chat(messages, options) {
+    const prompt = this.messagesToPrompt(messages);
+    const args = this.buildArgs(prompt, options);
+    const result = await this.executeWithRetry(args);
+    return this.parseResponse(result);
+  }
+  /**
+   * Stream a chat completion from Gemini CLI.
+   * Uses `-o stream-json` for NDJSON streaming.
+   */
+  async *chatStream(messages, options) {
+    const prompt = this.messagesToPrompt(messages);
+    const args = this.buildStreamArgs(prompt, options);
+    try {
+      for await (const chunk of this.executeStream(args)) {
+        if (chunk.type === "message" && chunk.role === "assistant") {
+          yield { type: "text", content: chunk.content };
+        } else if (chunk.type === "error") {
+          yield { type: "error", error: chunk.error };
+        }
+      }
+      yield { type: "done" };
+    } catch (error) {
+      this.config.logger?.warn("Streaming failed, falling back to non-streaming", {
+        error: error.message
+      });
+      const response = await this.chat(messages, options);
+      if (response.content) {
+        yield { type: "text", content: response.content };
+      }
+      yield { type: "done" };
+    }
+  }
+  /**
+   * Approximate token count for content.
+   * Uses ~4 characters per token approximation.
+   */
+  countTokens(content) {
+    if (!content || content.length === 0) return 0;
+    return Math.ceil(content.length / 4);
+  }
+  // ============================================================================
+  // Additional Public Methods
+  // ============================================================================
+  /**
+   * Check if Gemini CLI is available on the system.
+   */
+  async isAvailable() {
+    try {
+      await this.execute(["--version"]);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  /**
+   * Get Gemini CLI version string.
+   */
+  async getVersion() {
+    const result = await this.execute(["--version"]);
+    return result.trim();
+  }
+  /**
+   * Get the current configuration.
+   */
+  getConfig() {
+    return { ...this.config };
+  }
+  // ============================================================================
+  // Private Methods - Argument Building
+  // ============================================================================
+  /**
+   * Build CLI arguments for non-streaming request.
+   */
+  buildArgs(prompt, options) {
+    const args = [];
+    args.push("--yolo");
+    args.push("-o", "json");
+    args.push("-m", this.config.model);
+    args.push(...this.config.additionalFlags);
+    args.push(prompt);
+    return args;
+  }
+  /**
+   * Build CLI arguments for streaming request.
+   */
+  buildStreamArgs(prompt, _options) {
+    const args = [];
+    args.push("--yolo");
+    args.push("-o", "stream-json");
+    args.push("-m", this.config.model);
+    args.push(...this.config.additionalFlags);
+    args.push(prompt);
+    return args;
+  }
+  // ============================================================================
+  // Private Methods - Message Conversion
+  // ============================================================================
+  /**
+   * Convert messages array to a single prompt string.
+   * Gemini CLI doesn't support --system-prompt, so we prepend it to the prompt.
+   */
+  messagesToPrompt(messages) {
+    const parts = [];
+    const systemMsg = messages.find((msg) => msg.role === "system");
+    if (systemMsg) {
+      parts.push(`[System Instructions]
+${systemMsg.content}
+[End System Instructions]
+`);
+    }
+    const conversationParts = messages.filter((msg) => msg.role !== "system").map((msg) => {
+      if (msg.role === "user") {
+        return `Human: ${msg.content}`;
+      } else if (msg.role === "assistant") {
+        return `Assistant: ${msg.content}`;
+      } else if (msg.role === "tool" && msg.toolResults) {
+        const results = msg.toolResults.map((r) => `Tool ${r.toolCallId}: ${JSON.stringify(r.result)}`).join("\n");
+        return `Tool Results:
+${results}`;
+      }
+      return msg.content;
+    });
+    parts.push(...conversationParts);
+    return parts.join("\n\n");
+  }
+  // ============================================================================
+  // Private Methods - Response Parsing
+  // ============================================================================
+  /**
+   * Parse CLI JSON output to LLMResponse.
+   */
+  parseResponse(result) {
+    try {
+      const json = JSON.parse(result);
+      const content = json.response || "";
+      const modelStats = Object.values(json.stats?.models || {})[0];
+      const tokens = modelStats?.tokens;
+      const usage = {
+        inputTokens: tokens?.input ?? tokens?.prompt ?? 0,
+        outputTokens: tokens?.candidates ?? 0,
+        totalTokens: tokens?.total ?? 0,
+        thinkingTokens: tokens?.thoughts
+      };
+      if (usage.totalTokens === 0 && (usage.inputTokens > 0 || usage.outputTokens > 0)) {
+        usage.totalTokens = usage.inputTokens + usage.outputTokens;
+      }
+      const finishReason = "stop";
+      return {
+        content: typeof content === "string" ? content : JSON.stringify(content),
+        usage,
+        finishReason
+      };
+    } catch {
+      return {
+        content: result.trim(),
+        usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
+        finishReason: "stop"
+      };
+    }
+  }
+  // ============================================================================
+  // Private Methods - CLI Execution
+  // ============================================================================
+  /**
+   * Execute CLI command with retry logic.
+   */
+  async executeWithRetry(args) {
+    let lastError = null;
+    for (let attempt = 0; attempt <= this.config.maxRetries; attempt++) {
+      try {
+        return await this.execute(args);
+      } catch (error) {
+        lastError = error;
+        this.config.logger?.warn(
+          `Gemini CLI attempt ${attempt + 1}/${this.config.maxRetries + 1} failed: ${lastError.message}`
+        );
+        if (!this.isRetriableError(lastError)) {
+          throw this.wrapError(lastError);
+        }
+        if (attempt < this.config.maxRetries) {
+          const delay = 1e3 * Math.pow(2, attempt);
+          await this.sleep(delay);
+        }
+      }
+    }
+    throw this.wrapError(lastError ?? new GeminiCLIError("Unknown Gemini CLI error"));
+  }
+  /**
+   * Execute the Gemini CLI command.
+   */
+  execute(args) {
+    return new Promise((resolve, reject) => {
+      this.config.logger?.debug("Executing Gemini CLI", { args: args.join(" ") });
+      const child = spawn(this.config.cliPath, args, {
+        cwd: this.config.workingDirectory,
+        env: { ...process.env },
+        stdio: ["pipe", "pipe", "pipe"],
+        shell: process.platform === "win32"
+        // Use shell on Windows for PATH resolution
+      });
+      let stdout = "";
+      let stderr = "";
+      child.stdout.on("data", (data) => {
+        stdout += data.toString();
+      });
+      child.stderr.on("data", (data) => {
+        stderr += data.toString();
+      });
+      const timeout = setTimeout(() => {
+        child.kill("SIGTERM");
+        reject(new GeminiCLITimeoutError(this.config.timeout));
+      }, this.config.timeout);
+      child.on("close", (code) => {
+        clearTimeout(timeout);
+        if (code === 0) {
+          this.config.logger?.debug("Gemini CLI completed successfully");
+          resolve(stdout);
+        } else {
+          const error = new GeminiCLIError(
+            `Gemini CLI exited with code ${String(code)}: ${stderr}`,
+            code
+          );
+          reject(this.wrapError(error));
+        }
+      });
+      child.on("error", (error) => {
+        clearTimeout(timeout);
+        if (error.code === "ENOENT") {
+          reject(new GeminiCLINotFoundError());
+        } else {
+          reject(new GeminiCLIError(`Failed to spawn Gemini CLI: ${error.message}`));
+        }
+      });
+    });
+  }
+  /**
+   * Execute the Gemini CLI command with streaming output.
+   */
+  async *executeStream(args) {
+    this.config.logger?.debug("Executing Gemini CLI with streaming", { args: args.join(" ") });
+    const child = spawn(this.config.cliPath, args, {
+      cwd: this.config.workingDirectory,
+      env: { ...process.env },
+      stdio: ["pipe", "pipe", "pipe"],
+      shell: process.platform === "win32"
+    });
+    let buffer = "";
+    let stderr = "";
+    let processEnded = false;
+    let exitCode = null;
+    child.stderr?.on("data", (data) => {
+      stderr += data.toString();
+    });
+    const processEndPromise = new Promise((resolve) => {
+      child.on("close", (code) => {
+        processEnded = true;
+        exitCode = code;
+        resolve();
+      });
+      child.on("error", (error) => {
+        processEnded = true;
+        if (error.code === "ENOENT") {
+          throw new GeminiCLINotFoundError();
+        }
+        throw new GeminiCLIError(`Failed to spawn Gemini CLI: ${error.message}`);
+      });
+    });
+    const timeoutId = setTimeout(() => {
+      child.kill("SIGTERM");
+      throw new GeminiCLITimeoutError(this.config.timeout);
+    }, this.config.timeout);
+    try {
+      for await (const data of child.stdout) {
+        buffer += data.toString();
+        let newlineIndex;
+        while ((newlineIndex = buffer.indexOf("\n")) !== -1) {
+          const line = buffer.slice(0, newlineIndex).trim();
+          buffer = buffer.slice(newlineIndex + 1);
+          if (line) {
+            try {
+              const chunk = JSON.parse(line);
+              yield chunk;
+            } catch {
+              this.config.logger?.debug("Skipped non-JSON line in stream", { line });
+            }
+          }
+        }
+      }
+      await processEndPromise;
+      if (exitCode !== 0) {
+        throw new GeminiCLIError(`Gemini CLI exited with code ${exitCode}: ${stderr}`, exitCode);
+      }
+    } finally {
+      clearTimeout(timeoutId);
+      if (!processEnded && child.exitCode === null) {
+        child.kill("SIGTERM");
+        setTimeout(() => {
+          if (child.exitCode === null) {
+            child.kill("SIGKILL");
+          }
+        }, 1e3);
+      }
+    }
+  }
+  // ============================================================================
+  // Private Methods - Error Handling
+  // ============================================================================
+  /**
+   * Check if an error is retriable.
+   */
+  isRetriableError(error) {
+    const message = error.message.toLowerCase();
+    for (const pattern of GEMINI_ERROR_PATTERNS) {
+      if (pattern.pattern.test(message)) {
+        return pattern.retriable;
+      }
+    }
+    return true;
+  }
+  /**
+   * Wrap generic errors in specific error classes.
+   */
+  wrapError(error) {
+    const message = error.message.toLowerCase();
+    if (message.includes("enoent") || message.includes("not found") || message.includes("command not found")) {
+      return new GeminiCLINotFoundError();
+    }
+    if (message.includes("auth") || message.includes("credentials") || message.includes("permission denied") || message.includes("401")) {
+      return new GeminiCLIAuthError();
+    }
+    if (message.includes("timeout") || message.includes("timed out")) {
+      return new GeminiCLITimeoutError(this.config.timeout);
+    }
+    if (error instanceof GeminiCLIError) {
+      return error;
+    }
+    return new GeminiCLIError(error.message);
+  }
+  // ============================================================================
+  // Private Methods - Utilities
+  // ============================================================================
+  /**
+   * Sleep utility for retry delays.
+   */
+  sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+}
 const ALLOWED_ORIGINS = ["http://localhost:5173", "file://"];
 function validateSender(event) {
   const url = event.sender.getURL();
@@ -1559,6 +2398,36 @@ function registerSettingsHandlers() {
     }
     settingsService.reset();
     return true;
+  });
+  ipcMain.handle("settings:checkCliAvailability", async (event, provider) => {
+    if (!validateSender(event)) {
+      throw new Error("Unauthorized IPC sender");
+    }
+    if (provider !== "claude" && provider !== "gemini") {
+      throw new Error("Invalid provider. Must be claude or gemini.");
+    }
+    try {
+      if (provider === "claude") {
+        const client = new ClaudeCodeCLIClient();
+        const available = await client.isAvailable();
+        if (available) {
+          const version = await client.getVersion();
+          return { detected: true, message: `Claude CLI ${version}` };
+        }
+        return { detected: false, message: "Claude CLI not found" };
+      } else {
+        const client = new GeminiCLIClient();
+        const available = await client.isAvailable();
+        if (available) {
+          const version = await client.getVersion();
+          return { detected: true, message: `Gemini CLI ${version}` };
+        }
+        return { detected: false, message: "Gemini CLI not found" };
+      }
+    } catch (error) {
+      console.error(`Failed to check ${provider} CLI availability:`, error);
+      return { detected: false, message: `Failed to detect ${provider} CLI` };
+    }
   });
 }
 let mainWindow = null;

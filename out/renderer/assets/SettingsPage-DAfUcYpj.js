@@ -1,55 +1,21 @@
-import { c as createLucideIcon, r as reactExports, G as useSettings, H as useSettingsLoading, I as useSettingsDirty, J as useSettingsStore, j as jsxRuntimeExports, n as Button, a as cn, S as Sparkles, B as Bot, T as Terminal, e as Card, f as CardHeader, g as CardTitle, K as CardDescription, h as CardContent, N as useHasApiKey, C as ChevronDown } from "./index-xnK5wLuD.js";
-import { H as Header } from "./Header-B6Pu_07z.js";
-import "./interviewStore-CPGRq6SR.js";
-import "./featureStore-BEKfnQRM.js";
-import { R as RotateCcw, S as Save, C as Cpu } from "./save-B1SVSeo_.js";
-import { C as CircleCheckBig } from "./circle-check-big-BGG7AhUM.js";
-import { C as CircleAlert } from "./circle-alert-CpZnaSJZ.js";
-import { E as Eye } from "./eye-CrQvWFi5.js";
-import "./arrow-left-CgFeZlyf.js";
+import { c as createLucideIcon, r as reactExports, K as useSettings, N as useSettingsLoading, O as useSettingsDirty, Q as useSettingsStore, j as jsxRuntimeExports, o as Button, a as cn, S as Sparkles, B as Bot, U as Terminal, e as Card, f as CardHeader, g as CardTitle, V as CardDescription, h as CardContent, W as useHasApiKey, C as ChevronDown } from "./index-DeoAs8is.js";
+import { H as Header } from "./Header-wUNz1tr9.js";
+import "./interviewStore-KxS19hLR.js";
+import { E as EyeOff } from "./featureStore-DMHV_yPF.js";
+import { C as CircleAlert } from "./circle-alert-B5chTur6.js";
+import { R as RotateCcw, S as Save, C as Cpu } from "./save-VFbiDzjC.js";
+import { C as CircleCheckBig } from "./circle-check-big-CvPtXl0C.js";
+import { I as Info } from "./info-DMyoP-4v.js";
+import { E as Eye } from "./eye-BDpbQ6e8.js";
+import "./arrow-left-JELWY6DC.js";
 /**
  * @license lucide-react v0.562.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$8 = [["path", { d: "m18 15-6-6-6 6", key: "153udz" }]];
-const ChevronUp = createLucideIcon("chevron-up", __iconNode$8);
-/**
- * @license lucide-react v0.562.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode$7 = [
-  ["path", { d: "M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z", key: "p7xjir" }]
-];
-const Cloud = createLucideIcon("cloud", __iconNode$7);
-/**
- * @license lucide-react v0.562.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode$6 = [
-  [
-    "path",
-    {
-      d: "M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49",
-      key: "ct8e1f"
-    }
-  ],
-  ["path", { d: "M14.084 14.158a3 3 0 0 1-4.242-4.242", key: "151rxh" }],
-  [
-    "path",
-    {
-      d: "M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143",
-      key: "13bj9a"
-    }
-  ],
-  ["path", { d: "m2 2 20 20", key: "1ooewy" }]
-];
-const EyeOff = createLucideIcon("eye-off", __iconNode$6);
+const __iconNode$6 = [["path", { d: "m18 15-6-6-6 6", key: "153udz" }]];
+const ChevronUp = createLucideIcon("chevron-up", __iconNode$6);
 /**
  * @license lucide-react v0.562.0 - ISC
  *
@@ -57,6 +23,16 @@ const EyeOff = createLucideIcon("eye-off", __iconNode$6);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$5 = [
+  ["path", { d: "M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z", key: "p7xjir" }]
+];
+const Cloud = createLucideIcon("cloud", __iconNode$5);
+/**
+ * @license lucide-react v0.562.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$4 = [
   [
     "path",
     {
@@ -74,19 +50,7 @@ const __iconNode$5 = [
   ["path", { d: "m20.772 19.148.924.383", key: "9w9pjp" }],
   ["circle", { cx: "18", cy: "18", r: "3", key: "1xkwt0" }]
 ];
-const FolderCog = createLucideIcon("folder-cog", __iconNode$5);
-/**
- * @license lucide-react v0.562.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode$4 = [
-  ["circle", { cx: "12", cy: "12", r: "10", key: "1mglay" }],
-  ["path", { d: "M12 16v-4", key: "1dtifu" }],
-  ["path", { d: "M12 8h.01", key: "e9boi3" }]
-];
-const Info = createLucideIcon("info", __iconNode$4);
+const FolderCog = createLucideIcon("folder-cog", __iconNode$4);
 /**
  * @license lucide-react v0.562.0 - ISC
  *
@@ -266,63 +230,18 @@ function getGeminiModelList() {
 function getLocalEmbeddingModelList() {
   return Object.values(LOCAL_EMBEDDING_MODELS);
 }
-const isDemoMode = () => {
-  return typeof window.nexusAPI === "undefined";
+const DEFAULT_AGENT_MODEL_ASSIGNMENTS = {
+  planner: { provider: "claude", model: "claude-opus-4-5-20251101" },
+  coder: { provider: "claude", model: "claude-sonnet-4-5-20250929" },
+  tester: { provider: "claude", model: "claude-sonnet-4-5-20250929" },
+  reviewer: { provider: "gemini", model: "gemini-2.5-pro" },
+  merger: { provider: "claude", model: "claude-sonnet-4-5-20250929" },
+  architect: { provider: "claude", model: "claude-opus-4-5-20251101" },
+  debugger: { provider: "claude", model: "claude-sonnet-4-5-20250929" },
+  documenter: { provider: "gemini", model: "gemini-2.5-flash" }
 };
-const DEMO_SETTINGS = {
-  llm: {
-    claude: {
-      backend: "cli",
-      hasApiKey: false,
-      timeout: 3e5,
-      maxRetries: 2,
-      model: DEFAULT_CLAUDE_MODEL
-    },
-    gemini: {
-      backend: "cli",
-      hasApiKey: false,
-      timeout: 3e5,
-      model: DEFAULT_GEMINI_MODEL
-    },
-    embeddings: {
-      backend: "local",
-      hasApiKey: false,
-      localModel: DEFAULT_LOCAL_EMBEDDING_MODEL,
-      dimensions: 384,
-      cacheEnabled: true,
-      maxCacheSize: 1e4
-    },
-    defaultProvider: "claude",
-    defaultModel: DEFAULT_CLAUDE_MODEL,
-    fallbackEnabled: true,
-    fallbackOrder: ["claude", "gemini"],
-    hasClaudeKey: false,
-    hasGeminiKey: false,
-    hasOpenaiKey: false
-  },
-  agents: {
-    maxParallelAgents: 4,
-    taskTimeoutMinutes: 30,
-    maxRetries: 3,
-    autoRetryEnabled: true
-  },
-  checkpoints: {
-    autoCheckpointEnabled: true,
-    autoCheckpointIntervalMinutes: 5,
-    maxCheckpointsToKeep: 10,
-    checkpointOnFeatureComplete: true
-  },
-  ui: {
-    theme: "dark",
-    sidebarWidth: 280,
-    showNotifications: true,
-    notificationDuration: 5e3
-  },
-  project: {
-    defaultLanguage: "typescript",
-    defaultTestFramework: "vitest",
-    outputDirectory: ".nexus"
-  }
+const isElectronEnvironment = () => {
+  return typeof window !== "undefined" && typeof window.nexusAPI !== "undefined";
 };
 const tabs = [
   { id: "llm", label: "LLM Providers", icon: /* @__PURE__ */ jsxRuntimeExports.jsx(Sparkles, { className: "w-4 h-4" }), description: "Backend selection, models, and API keys" },
@@ -404,7 +323,9 @@ function BackendToggle({ label, value, options, onChange, status }) {
         "button",
         {
           type: "button",
-          onClick: () => onChange(option.value),
+          onClick: () => {
+            onChange(option.value);
+          },
           className: cn(
             "flex items-center gap-2 px-3 py-1.5 rounded text-sm font-medium transition-all",
             value === option.value ? "bg-accent-primary text-white shadow-sm" : "text-text-secondary hover:text-text-primary hover:bg-bg-hover"
@@ -435,7 +356,9 @@ function ModelDropdown({ label, value, models, onChange, description }) {
       "select",
       {
         value,
-        onChange: (e) => onChange(e.target.value),
+        onChange: (e) => {
+          onChange(e.target.value);
+        },
         className: cn(
           "flex h-10 w-full rounded-md border border-border-default bg-bg-dark px-3 py-2 text-sm text-text-primary",
           "focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-accent-primary",
@@ -543,7 +466,9 @@ function AdvancedSection({ title, children, defaultOpen = false }) {
       "button",
       {
         type: "button",
-        onClick: () => setIsOpen(!isOpen),
+        onClick: () => {
+          setIsOpen(!isOpen);
+        },
         className: "flex items-center gap-2 text-sm font-medium text-text-secondary hover:text-text-primary transition-colors w-full",
         "data-testid": "advanced-toggle",
         children: [
@@ -568,6 +493,23 @@ function LLMProvidersSettings({ settings, updateSetting }) {
   const claudeModels = getClaudeModelList();
   const geminiModels = getGeminiModelList();
   const localEmbeddingModels = getLocalEmbeddingModelList();
+  const [claudeCliStatus, setClaudeCliStatus] = reactExports.useState({ detected: false, message: "Checking..." });
+  const [geminiCliStatus, setGeminiCliStatus] = reactExports.useState({ detected: false, message: "Checking..." });
+  reactExports.useEffect(() => {
+    if (!window.nexusAPI?.settings?.checkCliAvailability) {
+      setClaudeCliStatus({ detected: false, message: "Backend not available" });
+      setGeminiCliStatus({ detected: false, message: "Backend not available" });
+      return;
+    }
+    window.nexusAPI.settings.checkCliAvailability("claude").then(setClaudeCliStatus).catch((err) => {
+      console.error("Failed to check Claude CLI:", err);
+      setClaudeCliStatus({ detected: false, message: "Check failed" });
+    });
+    window.nexusAPI.settings.checkCliAvailability("gemini").then(setGeminiCliStatus).catch((err) => {
+      console.error("Failed to check Gemini CLI:", err);
+      setGeminiCliStatus({ detected: false, message: "Check failed" });
+    });
+  }, []);
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-6", "data-testid": "llm-providers-tab", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx(
       ProviderCard,
@@ -584,8 +526,10 @@ function LLMProvidersSettings({ settings, updateSetting }) {
                 { value: "cli", label: "CLI", icon: /* @__PURE__ */ jsxRuntimeExports.jsx(Terminal, { className: "w-4 h-4" }) },
                 { value: "api", label: "API", icon: /* @__PURE__ */ jsxRuntimeExports.jsx(Cloud, { className: "w-4 h-4" }) }
               ],
-              onChange: (value) => updateSetting("llm", "claude", { ...settings.llm.claude, backend: value }),
-              status: { detected: true, message: "CLI detected" }
+              onChange: (value) => {
+                updateSetting("llm", "claude", { ...settings.llm.claude, backend: value });
+              },
+              status: claudeCliStatus
             }
           ),
           /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -594,7 +538,9 @@ function LLMProvidersSettings({ settings, updateSetting }) {
               label: "Model",
               value: settings.llm.claude.model || DEFAULT_CLAUDE_MODEL,
               models: claudeModels,
-              onChange: (value) => updateSetting("llm", "claude", { ...settings.llm.claude, model: value })
+              onChange: (value) => {
+                updateSetting("llm", "claude", { ...settings.llm.claude, model: value });
+              }
             }
           ),
           /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -662,8 +608,10 @@ function LLMProvidersSettings({ settings, updateSetting }) {
                 { value: "cli", label: "CLI", icon: /* @__PURE__ */ jsxRuntimeExports.jsx(Terminal, { className: "w-4 h-4" }) },
                 { value: "api", label: "API", icon: /* @__PURE__ */ jsxRuntimeExports.jsx(Cloud, { className: "w-4 h-4" }) }
               ],
-              onChange: (value) => updateSetting("llm", "gemini", { ...settings.llm.gemini, backend: value }),
-              status: { detected: true, message: "CLI detected" }
+              onChange: (value) => {
+                updateSetting("llm", "gemini", { ...settings.llm.gemini, backend: value });
+              },
+              status: geminiCliStatus
             }
           ),
           /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -672,7 +620,9 @@ function LLMProvidersSettings({ settings, updateSetting }) {
               label: "Model",
               value: settings.llm.gemini.model || DEFAULT_GEMINI_MODEL,
               models: geminiModels,
-              onChange: (value) => updateSetting("llm", "gemini", { ...settings.llm.gemini, model: value })
+              onChange: (value) => {
+                updateSetting("llm", "gemini", { ...settings.llm.gemini, model: value });
+              }
             }
           ),
           /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -701,7 +651,9 @@ function LLMProvidersSettings({ settings, updateSetting }) {
                 { value: "local", label: "Local", icon: /* @__PURE__ */ jsxRuntimeExports.jsx(Cpu, { className: "w-4 h-4" }) },
                 { value: "api", label: "OpenAI API", icon: /* @__PURE__ */ jsxRuntimeExports.jsx(Cloud, { className: "w-4 h-4" }) }
               ],
-              onChange: (value) => updateSetting("llm", "embeddings", { ...settings.llm.embeddings, backend: value }),
+              onChange: (value) => {
+                updateSetting("llm", "embeddings", { ...settings.llm.embeddings, backend: value });
+              },
               status: settings.llm.embeddings.backend === "local" ? { detected: true, message: "No API key needed" } : void 0
             }
           ),
@@ -711,7 +663,9 @@ function LLMProvidersSettings({ settings, updateSetting }) {
               label: "Local Model",
               value: settings.llm.embeddings.localModel || DEFAULT_LOCAL_EMBEDDING_MODEL,
               models: localEmbeddingModels,
-              onChange: (value) => updateSetting("llm", "embeddings", { ...settings.llm.embeddings, localModel: value })
+              onChange: (value) => {
+                updateSetting("llm", "embeddings", { ...settings.llm.embeddings, localModel: value });
+              }
             }
           ),
           settings.llm.embeddings.backend === "api" && /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -772,16 +726,6 @@ const AGENT_DISPLAY_INFO = {
   debugger: { label: "Debugger", icon: "🐛", description: "Diagnoses and fixes issues" },
   documenter: { label: "Documenter", icon: "📝", description: "Writes documentation" }
 };
-const DEFAULT_AGENT_MODEL_ASSIGNMENTS = {
-  planner: { provider: "claude", model: "claude-opus-4-5-20251101" },
-  coder: { provider: "claude", model: "claude-sonnet-4-5-20250929" },
-  tester: { provider: "claude", model: "claude-sonnet-4-5-20250929" },
-  reviewer: { provider: "gemini", model: "gemini-2.5-pro" },
-  merger: { provider: "claude", model: "claude-sonnet-4-5-20250929" },
-  architect: { provider: "claude", model: "claude-opus-4-5-20251101" },
-  debugger: { provider: "claude", model: "claude-sonnet-4-5-20250929" },
-  documenter: { provider: "gemini", model: "gemini-2.5-flash" }
-};
 function AgentModelRow({ agentType, config, onChange, claudeModels, geminiModels }) {
   const info = AGENT_DISPLAY_INFO[agentType];
   const models = config.provider === "claude" ? claudeModels : geminiModels;
@@ -805,7 +749,9 @@ function AgentModelRow({ agentType, config, onChange, claudeModels, geminiModels
       "select",
       {
         value: config.provider,
-        onChange: (e) => handleProviderChange(e.target.value),
+        onChange: (e) => {
+          handleProviderChange(e.target.value);
+        },
         className: cn(
           "h-9 w-28 rounded-md border border-border-default bg-bg-dark px-2 py-1 text-sm text-text-primary",
           "focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-accent-primary",
@@ -822,7 +768,9 @@ function AgentModelRow({ agentType, config, onChange, claudeModels, geminiModels
       "select",
       {
         value: config.model,
-        onChange: (e) => handleModelChange(e.target.value),
+        onChange: (e) => {
+          handleModelChange(e.target.value);
+        },
         className: cn(
           "h-9 w-full rounded-md border border-border-default bg-bg-dark px-2 py-1 text-sm text-text-primary",
           "focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-accent-primary",
@@ -839,18 +787,18 @@ function AgentModelRow({ agentType, config, onChange, claudeModels, geminiModels
   ] });
 }
 function AgentSettings({ settings, updateSetting }) {
-  const [agentModels, setAgentModels] = reactExports.useState(DEFAULT_AGENT_MODEL_ASSIGNMENTS);
-  const [qaIterationLimit, setQaIterationLimit] = reactExports.useState(50);
+  const agentModels = settings.agents.agentModels || DEFAULT_AGENT_MODEL_ASSIGNMENTS;
   const claudeModels = getClaudeModelList();
   const geminiModels = getGeminiModelList();
   const handleAgentModelChange = (agentType, config) => {
-    setAgentModels((prev) => ({
-      ...prev,
+    const newAgentModels = {
+      ...agentModels,
       [agentType]: config
-    }));
+    };
+    updateSetting("agents", "agentModels", newAgentModels);
   };
   const handleResetToDefaults = () => {
-    setAgentModels(DEFAULT_AGENT_MODEL_ASSIGNMENTS);
+    updateSetting("agents", "agentModels", DEFAULT_AGENT_MODEL_ASSIGNMENTS);
   };
   const agentTypes = ["planner", "coder", "tester", "reviewer", "merger", "architect", "debugger", "documenter"];
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-6", "data-testid": "agents-tab", children: [
@@ -926,9 +874,9 @@ function AgentSettings({ settings, updateSetting }) {
             max: 100,
             label: "QA Iteration Limit",
             description: "Escalate to human after this many QA iterations (10-100)",
-            value: qaIterationLimit,
+            value: settings.agents.qaIterationLimit || 50,
             onChange: (e) => {
-              setQaIterationLimit(parseInt(e.target.value) || 50);
+              updateSetting("agents", "qaIterationLimit", parseInt(e.target.value) || 50);
             }
           }
         ),
@@ -1194,45 +1142,45 @@ function ProjectSettings({ settings, updateSetting }) {
 }
 function SettingsPage() {
   const [activeTab, setActiveTab] = reactExports.useState("llm");
-  const [demoSettings, setDemoSettings] = reactExports.useState(DEMO_SETTINGS);
-  const storeSettings = useSettings();
+  const [error, setError] = reactExports.useState(null);
+  const settings = useSettings();
   const isLoading = useSettingsLoading();
   const isDirty = useSettingsDirty();
-  const { loadSettings, updateSetting: storeUpdateSetting, saveSettings, discardChanges, resetToDefaults } = useSettingsStore();
-  const inDemoMode = isDemoMode();
-  const settings = inDemoMode ? demoSettings : storeSettings;
-  const demoUpdateSetting = (category, key, value) => {
-    setDemoSettings((prev) => ({
-      ...prev,
-      [category]: {
-        ...prev[category],
-        [key]: value
-      }
-    }));
-  };
-  const updateSetting = inDemoMode ? demoUpdateSetting : storeUpdateSetting;
+  const { loadSettings, updateSetting, saveSettings, discardChanges, resetToDefaults } = useSettingsStore();
   reactExports.useEffect(() => {
-    if (!inDemoMode) {
-      void loadSettings();
+    if (!isElectronEnvironment()) {
+      setError("Backend not available. Please run in Electron.");
+      return;
     }
-  }, [loadSettings, inDemoMode]);
+    void loadSettings();
+  }, [loadSettings]);
   const handleSave = async () => {
-    if (inDemoMode) {
-      console.log("Demo mode: Settings would be saved:", demoSettings);
+    if (!isElectronEnvironment()) {
+      setError("Cannot save settings - backend not available.");
       return;
     }
     await saveSettings();
   };
   const handleReset = async () => {
     if (window.confirm("Are you sure you want to reset all settings to defaults? This cannot be undone.")) {
-      if (inDemoMode) {
-        setDemoSettings(DEMO_SETTINGS);
+      if (!isElectronEnvironment()) {
+        setError("Cannot reset settings - backend not available.");
         return;
       }
       await resetToDefaults();
     }
   };
-  if (!inDemoMode && (isLoading || !settings)) {
+  if (error) {
+    return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col h-screen bg-bg-dark", "data-testid": "settings-page-error", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx(Header, { title: "Settings", icon: Settings2, showBack: true }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex items-center justify-center flex-1", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col items-center gap-3 text-center max-w-md px-4", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(CircleAlert, { className: "h-12 w-12 text-status-warning" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-lg font-medium text-text-primary", children: "Settings Unavailable" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm text-text-secondary", children: error })
+      ] }) })
+    ] });
+  }
+  if (isLoading || !settings) {
     return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col h-screen bg-bg-dark", "data-testid": "settings-page-loading", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx(Header, { title: "Settings", icon: Settings2, showBack: true }),
       /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex items-center justify-center flex-1", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col items-center gap-2", children: [
@@ -1240,9 +1188,6 @@ function SettingsPage() {
         /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-sm text-text-secondary", children: "Loading settings..." })
       ] }) })
     ] });
-  }
-  if (!settings) {
-    return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex flex-col h-screen bg-bg-dark", "data-testid": "settings-page-empty" });
   }
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col h-screen bg-bg-dark", "data-testid": "settings-page", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx(

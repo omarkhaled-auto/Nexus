@@ -1,11 +1,12 @@
-import { O as create } from "./index-xnK5wLuD.js";
+import { Y as create } from "./index-DeoAs8is.js";
 const initialState = {
   stage: "welcome",
   messages: [],
   requirements: [],
   isInterviewing: false,
   projectName: null,
-  interviewStartTime: null
+  interviewStartTime: null,
+  sessionId: null
 };
 function emitEvent(method, payload) {
   if (window.nexusAPI) {
@@ -60,6 +61,9 @@ const useInterviewStore = create()((set, get) => ({
   setProjectName: (name) => {
     set({ projectName: name });
   },
+  setSessionId: (sessionId) => {
+    set({ sessionId });
+  },
   startInterview: () => {
     const state = get();
     set({
@@ -91,7 +95,8 @@ const useInterviewStore = create()((set, get) => ({
       ...initialState,
       messages: [],
       requirements: [],
-      interviewStartTime: null
+      interviewStartTime: null,
+      sessionId: null
     });
   }
 }));
@@ -99,10 +104,12 @@ const useInterviewStage = () => useInterviewStore((s) => s.stage);
 const useMessages = () => useInterviewStore((s) => s.messages);
 const useRequirements = () => useInterviewStore((s) => s.requirements);
 const useIsInterviewing = () => useInterviewStore((s) => s.isInterviewing);
+const useSessionId = () => useInterviewStore((s) => s.sessionId);
 export {
   useIsInterviewing as a,
   useInterviewStore as b,
-  useRequirements as c,
-  useInterviewStage as d,
+  useSessionId as c,
+  useRequirements as d,
+  useInterviewStage as e,
   useMessages as u
 };

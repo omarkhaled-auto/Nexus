@@ -1,14 +1,14 @@
-import { c as createLucideIcon, r as reactExports, j as jsxRuntimeExports, a as cn, u as useProjectStore, L as LoaderCircle, S as Sparkles, B as Bot, C as ChevronDown, b as useNavigate } from "./index-xnK5wLuD.js";
-import { u as useMessages, a as useIsInterviewing, b as useInterviewStore, c as useRequirements, d as useInterviewStage } from "./interviewStore-CPGRq6SR.js";
-import { C as CircleAlert } from "./circle-alert-CpZnaSJZ.js";
-import { Z as Zap, F as FileText } from "./zap-CBlQZ7d7.js";
-import { C as Cpu, S as Save, R as RotateCcw } from "./save-B1SVSeo_.js";
-import { L as Layers } from "./layers-By3mZB1o.js";
-import { C as CircleCheck } from "./circle-check-DcrdITtO.js";
-import { C as Circle, A as AnimatedPage } from "./AnimatedPage-DLggbSB3.js";
-import { T as Trash2 } from "./trash-2-DG-6S5M4.js";
-import { D as Download } from "./download-3kURp0-F.js";
-import { A as ArrowLeft } from "./arrow-left-CgFeZlyf.js";
+import { c as createLucideIcon, r as reactExports, j as jsxRuntimeExports, a as cn, u as useProjectStore, L as LoaderCircle, S as Sparkles, B as Bot, C as ChevronDown, b as useNavigate, t as toast } from "./index-DeoAs8is.js";
+import { u as useMessages, a as useIsInterviewing, b as useInterviewStore, c as useSessionId, d as useRequirements, e as useInterviewStage } from "./interviewStore-KxS19hLR.js";
+import { C as CircleAlert } from "./circle-alert-B5chTur6.js";
+import { Z as Zap, F as FileText } from "./zap-lwB_tEu_.js";
+import { C as Cpu, S as Save, R as RotateCcw } from "./save-VFbiDzjC.js";
+import { L as Layers } from "./layers-CRgMtEFm.js";
+import { C as CircleCheck } from "./circle-check-BM7kR0e3.js";
+import { C as Circle, A as AnimatedPage } from "./AnimatedPage-CaBOvLbi.js";
+import { T as Trash2 } from "./trash-2-DhMRrSAA.js";
+import { D as Download } from "./download-BeCr49t9.js";
+import { A as ArrowLeft } from "./arrow-left-JELWY6DC.js";
 /**
  * @license lucide-react v0.562.0 - ISC
  *
@@ -355,16 +355,21 @@ function ChatPanel({ className }) {
   const isInterviewing = useIsInterviewing();
   const addMessage = useInterviewStore((s) => s.addMessage);
   const addRequirement = useInterviewStore((s) => s.addRequirement);
+  const setSessionId = useInterviewStore((s) => s.setSessionId);
+  const sessionId = useSessionId();
   const currentProject = useProjectStore((s) => s.currentProject);
   const [input, setInput] = reactExports.useState("");
   const [isLoading, setIsLoading] = reactExports.useState(false);
   const [error, setError] = reactExports.useState(null);
-  const [sessionId, setSessionId] = reactExports.useState(null);
   const messagesEndRef = reactExports.useRef(null);
   const inputRef = reactExports.useRef(null);
   const isInitializing = reactExports.useRef(false);
   const initializeSession = reactExports.useCallback(async () => {
-    if (!window.nexusAPI || sessionId || isInitializing.current) {
+    if (sessionId || isInitializing.current) {
+      return;
+    }
+    if (!window.nexusAPI) {
+      setError("Backend not available. Please run in Electron to use the interview feature.");
       return;
     }
     isInitializing.current = true;
@@ -393,7 +398,7 @@ function ChatPanel({ className }) {
     } finally {
       isInitializing.current = false;
     }
-  }, [sessionId, currentProject?.id, addMessage]);
+  }, [sessionId, currentProject?.id, addMessage, setSessionId]);
   reactExports.useEffect(() => {
     if (isInterviewing && !sessionId && !isInitializing.current) {
       void initializeSession();
@@ -415,6 +420,7 @@ function ChatPanel({ className }) {
   };
   const sendMessageToBackend = reactExports.useCallback(async (message, userMessageId) => {
     if (!sessionId || !window.nexusAPI) {
+      setError("Backend not available. Please run in Electron to use the interview feature.");
       return;
     }
     try {
@@ -601,8 +607,12 @@ function RequirementCard({ requirement, isNew = false }) {
         // Confirmed state
         requirement.confirmed && "border-accent-success/30 bg-accent-success/5"
       ),
-      onMouseEnter: () => setIsHovered(true),
-      onMouseLeave: () => setIsHovered(false),
+      onMouseEnter: () => {
+        setIsHovered(true);
+      },
+      onMouseLeave: () => {
+        setIsHovered(false);
+      },
       "data-testid": "requirement-card",
       children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-start gap-3", children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -756,7 +766,9 @@ function CategorySection({
     /* @__PURE__ */ jsxRuntimeExports.jsxs(
       "button",
       {
-        onClick: () => setIsExpanded(!isExpanded),
+        onClick: () => {
+          setIsExpanded(!isExpanded);
+        },
         className: cn(
           "flex w-full items-center gap-3 px-4 py-3 text-left transition-colors",
           "hover:bg-bg-hover"
@@ -841,10 +853,20 @@ const STAGE_ORDER = [
 ];
 const STAGE_LABELS = {
   welcome: "Welcome",
+  project_name: "Project Name",
   project_overview: "Project Overview",
+  overview: "Overview",
+  functional: "Functional Requirements",
+  technical: "Technical",
   technical_requirements: "Technical Requirements",
   features: "Features",
+  ui: "UI/UX",
+  performance: "Performance",
+  security: "Security",
+  integration: "Integration",
   constraints: "Constraints",
+  testing: "Testing",
+  summary: "Summary",
   review: "Review",
   complete: "Complete"
 };
@@ -883,7 +905,7 @@ function ExportDropdown({ requirements }) {
   const [isOpen, setIsOpen] = reactExports.useState(false);
   const handleExport = (format) => {
     let content = "";
-    let filename = `requirements.${format}`;
+    const filename = `requirements.${format}`;
     switch (format) {
       case "json":
         content = JSON.stringify(requirements, null, 2);
@@ -913,7 +935,9 @@ function ExportDropdown({ requirements }) {
     /* @__PURE__ */ jsxRuntimeExports.jsxs(
       "button",
       {
-        onClick: () => setIsOpen(!isOpen),
+        onClick: () => {
+          setIsOpen(!isOpen);
+        },
         disabled: requirements.length === 0,
         className: cn(
           "flex items-center gap-1.5 px-2 py-1 rounded text-xs",
@@ -929,11 +953,15 @@ function ExportDropdown({ requirements }) {
       }
     ),
     isOpen && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "fixed inset-0 z-40", onClick: () => setIsOpen(false) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "fixed inset-0 z-40", onClick: () => {
+        setIsOpen(false);
+      } }),
       /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute right-0 top-full mt-1 z-50 w-32 py-1 bg-bg-card border border-border-default rounded-lg shadow-lg", children: ["json", "markdown", "csv"].map((format) => /* @__PURE__ */ jsxRuntimeExports.jsx(
         "button",
         {
-          onClick: () => handleExport(format),
+          onClick: () => {
+            handleExport(format);
+          },
           className: "w-full px-3 py-1.5 text-left text-xs text-text-secondary hover:text-text-primary hover:bg-bg-hover",
           children: format.toUpperCase()
         },
@@ -1144,8 +1172,12 @@ function InterviewPage() {
   const navigate = useNavigate();
   const isInterviewing = useIsInterviewing();
   const requirements = useRequirements();
+  const sessionId = useSessionId();
   const startInterview = useInterviewStore((s) => s.startInterview);
+  const completeInterviewStore = useInterviewStore((s) => s.completeInterview);
   const reset = useInterviewStore((s) => s.reset);
+  const [isCompleting, setIsCompleting] = reactExports.useState(false);
+  const [isSavingDraft, setIsSavingDraft] = reactExports.useState(false);
   const { restore, applyDraft, clearDraft, markAsInitialized, isSaving, lastSaved } = useInterviewPersistence();
   const [showResumeBanner, setShowResumeBanner] = reactExports.useState(false);
   const [pendingDraft, setPendingDraft] = reactExports.useState(null);
@@ -1179,11 +1211,39 @@ function InterviewPage() {
     setShowResumeBanner(false);
     setPendingDraft(null);
   };
-  const handleSaveDraft = () => {
+  const handleSaveDraft = async () => {
+    if (isSavingDraft) return;
+    setIsSavingDraft(true);
+    try {
+      if (sessionId && window.nexusAPI) {
+        await window.nexusAPI.interview.pause(sessionId);
+        toast.success("Draft saved to server");
+      } else {
+        toast.info("Draft saved locally");
+      }
+    } catch (err) {
+      console.error("Failed to save draft to backend:", err);
+      toast.warning("Saved locally only - server unavailable");
+    } finally {
+      setIsSavingDraft(false);
+    }
   };
-  const handleComplete = () => {
-    console.log("Interview complete with requirements:", requirements);
-    navigate("/tasks");
+  const handleComplete = async () => {
+    if (isCompleting) return;
+    setIsCompleting(true);
+    try {
+      if (sessionId && window.nexusAPI) {
+        await window.nexusAPI.interview.end(sessionId);
+      }
+      completeInterviewStore();
+      void navigate("/tasks", { state: { requirements } });
+    } catch (err) {
+      console.error("Failed to complete interview:", err);
+      completeInterviewStore();
+      void navigate("/tasks", { state: { requirements } });
+    } finally {
+      setIsCompleting(false);
+    }
   };
   const formatLastSaved = () => {
     if (!lastSaved) return null;
@@ -1233,25 +1293,27 @@ function InterviewPage() {
         /* @__PURE__ */ jsxRuntimeExports.jsxs(
           "button",
           {
-            onClick: handleSaveDraft,
+            onClick: () => void handleSaveDraft(),
+            disabled: isSavingDraft,
             className: cn(
               "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium",
               "border border-border-default bg-bg-dark text-text-secondary",
               "hover:bg-bg-hover hover:text-text-primary",
+              "disabled:opacity-50 disabled:cursor-not-allowed",
               "transition-colors"
             ),
             "data-testid": "save-draft-button",
             children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx(Save, { className: "w-4 h-4" }),
-              "Save Draft"
+              isSavingDraft ? /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "w-4 h-4 animate-spin" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Save, { className: "w-4 h-4" }),
+              isSavingDraft ? "Saving..." : "Save Draft"
             ]
           }
         ),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
           "button",
           {
-            onClick: handleComplete,
-            disabled: !canComplete,
+            onClick: () => void handleComplete(),
+            disabled: !canComplete || isCompleting,
             className: cn(
               "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium",
               "bg-accent-primary text-white",
@@ -1260,10 +1322,13 @@ function InterviewPage() {
               "transition-all"
             ),
             "data-testid": "complete-button",
-            children: [
+            children: isCompleting ? /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" }),
+              "Completing..."
+            ] }) : /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
               /* @__PURE__ */ jsxRuntimeExports.jsx(CircleCheck, { className: "w-4 h-4" }),
               "Complete"
-            ]
+            ] })
           }
         )
       ] })

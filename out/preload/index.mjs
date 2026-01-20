@@ -175,6 +175,11 @@ const nexusAPI = {
    * @returns Promise with token usage and cost breakdown
    */
   getDashboardCosts: () => ipcRenderer.invoke("dashboard:getCosts"),
+  /**
+   * Get historical progress data for ProgressChart
+   * @returns Promise with array of progress data points
+   */
+  getHistoricalProgress: () => ipcRenderer.invoke("dashboard:getHistoricalProgress"),
   // ========================================
   // Task Operations
   // ========================================
@@ -610,7 +615,13 @@ const nexusAPI = {
      * Reset all settings to defaults (also clears API keys)
      * @returns Promise with success status
      */
-    reset: () => ipcRenderer.invoke("settings:reset")
+    reset: () => ipcRenderer.invoke("settings:reset"),
+    /**
+     * Check if CLI is available for a provider (Phase 17B)
+     * @param provider - LLM provider to check ('claude' or 'gemini')
+     * @returns Promise with detection status and message
+     */
+    checkCliAvailability: (provider) => ipcRenderer.invoke("settings:checkCliAvailability", provider)
   },
   // ========================================
   // Interview Engine API (Phase 9)

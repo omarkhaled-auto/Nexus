@@ -1,4 +1,4 @@
-const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["./InterviewPage-BpcNc9ja.js","./interviewStore-CPGRq6SR.js","./circle-alert-CpZnaSJZ.js","./zap-CBlQZ7d7.js","./save-B1SVSeo_.js","./layers-By3mZB1o.js","./circle-check-DcrdITtO.js","./AnimatedPage-DLggbSB3.js","./trash-2-DG-6S5M4.js","./download-3kURp0-F.js","./arrow-left-CgFeZlyf.js","./KanbanPage-CxdU7IjI.js","./featureStore-BEKfnQRM.js","./clock-zSUTFGik.js","./circle-x-BDPGfBfa.js","./plus-DRS8OUHN.js","./DashboardPage-ZoW09plv.js","./test-tube-diagonal-6cNDtFPB.js","./eye-CrQvWFi5.js","./SettingsPage-BptkqiYf.js","./Header-B6Pu_07z.js","./circle-check-big-BGG7AhUM.js","./AgentsPage-D72cBo_Z.js","./ExecutionPage-f3f2C11Z.js"])))=>i.map(i=>d[i]);
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["./InterviewPage-DvZaaCCL.js","./interviewStore-KxS19hLR.js","./circle-alert-B5chTur6.js","./zap-lwB_tEu_.js","./save-VFbiDzjC.js","./layers-CRgMtEFm.js","./circle-check-BM7kR0e3.js","./AnimatedPage-CaBOvLbi.js","./trash-2-DhMRrSAA.js","./download-BeCr49t9.js","./arrow-left-JELWY6DC.js","./KanbanPage-cLoql6Gh.js","./featureStore-DMHV_yPF.js","./clock-D4ZvFRET.js","./circle-x-BGipjINk.js","./Input-Bih7WUeJ.js","./eye-BDpbQ6e8.js","./DashboardPage-DUMDPEak.js","./test-tube-diagonal-rA31yKFr.js","./SettingsPage-DAfUcYpj.js","./Header-wUNz1tr9.js","./circle-check-big-CvPtXl0C.js","./info-DMyoP-4v.js","./AgentsPage-C13FC8x2.js","./ExecutionPage-BUeO4ZTZ.js"])))=>i.map(i=>d[i]);
 function _mergeNamespaces(n, m) {
   for (var i = 0; i < m.length; i++) {
     const e = m[i];
@@ -18955,6 +18955,336 @@ function ThemeProvider({
   };
   return /* @__PURE__ */ jsxRuntimeExports.jsx(ThemeProviderContext.Provider, { value, children });
 }
+/**
+ * @license lucide-react v0.562.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const toKebabCase = (string) => string.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase();
+const toCamelCase = (string) => string.replace(
+  /^([A-Z])|[\s-_]+(\w)/g,
+  (match, p1, p2) => p2 ? p2.toUpperCase() : p1.toLowerCase()
+);
+const toPascalCase = (string) => {
+  const camelCase = toCamelCase(string);
+  return camelCase.charAt(0).toUpperCase() + camelCase.slice(1);
+};
+const mergeClasses = (...classes) => classes.filter((className, index2, array) => {
+  return Boolean(className) && className.trim() !== "" && array.indexOf(className) === index2;
+}).join(" ").trim();
+const hasA11yProp = (props) => {
+  for (const prop in props) {
+    if (prop.startsWith("aria-") || prop === "role" || prop === "title") {
+      return true;
+    }
+  }
+};
+/**
+ * @license lucide-react v0.562.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+var defaultAttributes = {
+  xmlns: "http://www.w3.org/2000/svg",
+  width: 24,
+  height: 24,
+  viewBox: "0 0 24 24",
+  fill: "none",
+  stroke: "currentColor",
+  strokeWidth: 2,
+  strokeLinecap: "round",
+  strokeLinejoin: "round"
+};
+/**
+ * @license lucide-react v0.562.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const Icon = reactExports.forwardRef(
+  ({
+    color = "currentColor",
+    size = 24,
+    strokeWidth = 2,
+    absoluteStrokeWidth,
+    className = "",
+    children,
+    iconNode,
+    ...rest
+  }, ref) => reactExports.createElement(
+    "svg",
+    {
+      ref,
+      ...defaultAttributes,
+      width: size,
+      height: size,
+      stroke: color,
+      strokeWidth: absoluteStrokeWidth ? Number(strokeWidth) * 24 / Number(size) : strokeWidth,
+      className: mergeClasses("lucide", className),
+      ...!children && !hasA11yProp(rest) && { "aria-hidden": "true" },
+      ...rest
+    },
+    [
+      ...iconNode.map(([tag, attrs]) => reactExports.createElement(tag, attrs)),
+      ...Array.isArray(children) ? children : [children]
+    ]
+  )
+);
+/**
+ * @license lucide-react v0.562.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const createLucideIcon = (iconName, iconNode) => {
+  const Component2 = reactExports.forwardRef(
+    ({ className, ...props }, ref) => reactExports.createElement(Icon, {
+      ref,
+      iconNode,
+      className: mergeClasses(
+        `lucide-${toKebabCase(toPascalCase(iconName))}`,
+        `lucide-${iconName}`,
+        className
+      ),
+      ...props
+    })
+  );
+  Component2.displayName = toPascalCase(iconName);
+  return Component2;
+};
+/**
+ * @license lucide-react v0.562.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$h = [
+  ["path", { d: "M12 8V4H8", key: "hb8ula" }],
+  ["rect", { width: "16", height: "12", x: "4", y: "8", rx: "2", key: "enze0r" }],
+  ["path", { d: "M2 14h2", key: "vft8re" }],
+  ["path", { d: "M20 14h2", key: "4cs60a" }],
+  ["path", { d: "M15 13v2", key: "1xurst" }],
+  ["path", { d: "M9 13v2", key: "rq6x2g" }]
+];
+const Bot = createLucideIcon("bot", __iconNode$h);
+/**
+ * @license lucide-react v0.562.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$g = [["path", { d: "m6 9 6 6 6-6", key: "qrunsl" }]];
+const ChevronDown = createLucideIcon("chevron-down", __iconNode$g);
+/**
+ * @license lucide-react v0.562.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$f = [["path", { d: "m15 18-6-6 6-6", key: "1wnfg3" }]];
+const ChevronLeft = createLucideIcon("chevron-left", __iconNode$f);
+/**
+ * @license lucide-react v0.562.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$e = [["path", { d: "m9 18 6-6-6-6", key: "mthhwq" }]];
+const ChevronRight = createLucideIcon("chevron-right", __iconNode$e);
+/**
+ * @license lucide-react v0.562.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$d = [
+  [
+    "path",
+    {
+      d: "m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2",
+      key: "usdka0"
+    }
+  ]
+];
+const FolderOpen = createLucideIcon("folder-open", __iconNode$d);
+/**
+ * @license lucide-react v0.562.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$c = [
+  ["line", { x1: "6", x2: "6", y1: "3", y2: "15", key: "17qcm7" }],
+  ["circle", { cx: "18", cy: "6", r: "3", key: "1h7g24" }],
+  ["circle", { cx: "6", cy: "18", r: "3", key: "fqmcym" }],
+  ["path", { d: "M18 9a9 9 0 0 1-9 9", key: "n2h4wq" }]
+];
+const GitBranch = createLucideIcon("git-branch", __iconNode$c);
+/**
+ * @license lucide-react v0.562.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$b = [
+  ["rect", { width: "7", height: "9", x: "3", y: "3", rx: "1", key: "10lvy0" }],
+  ["rect", { width: "7", height: "5", x: "14", y: "3", rx: "1", key: "16une8" }],
+  ["rect", { width: "7", height: "9", x: "14", y: "12", rx: "1", key: "1hutg5" }],
+  ["rect", { width: "7", height: "5", x: "3", y: "16", rx: "1", key: "ldoo1y" }]
+];
+const LayoutDashboard = createLucideIcon("layout-dashboard", __iconNode$b);
+/**
+ * @license lucide-react v0.562.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$a = [
+  ["path", { d: "M13 5h8", key: "a7qcls" }],
+  ["path", { d: "M13 12h8", key: "h98zly" }],
+  ["path", { d: "M13 19h8", key: "c3s6r1" }],
+  ["path", { d: "m3 17 2 2 4-4", key: "1jhpwq" }],
+  ["rect", { x: "3", y: "4", width: "6", height: "6", rx: "1", key: "cif1o7" }]
+];
+const ListTodo = createLucideIcon("list-todo", __iconNode$a);
+/**
+ * @license lucide-react v0.562.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$9 = [["path", { d: "M21 12a9 9 0 1 1-6.219-8.56", key: "13zald" }]];
+const LoaderCircle = createLucideIcon("loader-circle", __iconNode$9);
+/**
+ * @license lucide-react v0.562.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$8 = [
+  ["path", { d: "M4 5h16", key: "1tepv9" }],
+  ["path", { d: "M4 12h16", key: "1lakjw" }],
+  ["path", { d: "M4 19h16", key: "1djgab" }]
+];
+const Menu = createLucideIcon("menu", __iconNode$8);
+/**
+ * @license lucide-react v0.562.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$7 = [
+  [
+    "path",
+    {
+      d: "M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z",
+      key: "18887p"
+    }
+  ]
+];
+const MessageSquare = createLucideIcon("message-square", __iconNode$7);
+/**
+ * @license lucide-react v0.562.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$6 = [
+  ["path", { d: "M5 12h14", key: "1ays0h" }],
+  ["path", { d: "M12 5v14", key: "s699le" }]
+];
+const Plus = createLucideIcon("plus", __iconNode$6);
+/**
+ * @license lucide-react v0.562.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$5 = [
+  ["path", { d: "M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8", key: "v9h5vc" }],
+  ["path", { d: "M21 3v5h-5", key: "1q7to0" }],
+  ["path", { d: "M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16", key: "3uifl3" }],
+  ["path", { d: "M8 16H3v5", key: "1cv678" }]
+];
+const RefreshCw = createLucideIcon("refresh-cw", __iconNode$5);
+/**
+ * @license lucide-react v0.562.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$4 = [
+  [
+    "path",
+    {
+      d: "M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915",
+      key: "1i5ecw"
+    }
+  ],
+  ["circle", { cx: "12", cy: "12", r: "3", key: "1v7zrd" }]
+];
+const Settings = createLucideIcon("settings", __iconNode$4);
+/**
+ * @license lucide-react v0.562.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$3 = [
+  [
+    "path",
+    {
+      d: "M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z",
+      key: "1s2grr"
+    }
+  ],
+  ["path", { d: "M20 2v4", key: "1rf3ol" }],
+  ["path", { d: "M22 4h-4", key: "gwowj6" }],
+  ["circle", { cx: "4", cy: "20", r: "2", key: "6kqj1y" }]
+];
+const Sparkles = createLucideIcon("sparkles", __iconNode$3);
+/**
+ * @license lucide-react v0.562.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$2 = [
+  ["path", { d: "M12 19h8", key: "baeox8" }],
+  ["path", { d: "m4 17 6-6-6-6", key: "1yngyt" }]
+];
+const Terminal = createLucideIcon("terminal", __iconNode$2);
+/**
+ * @license lucide-react v0.562.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$1 = [
+  [
+    "path",
+    {
+      d: "m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3",
+      key: "wmoenq"
+    }
+  ],
+  ["path", { d: "M12 9v4", key: "juzpu7" }],
+  ["path", { d: "M12 17h.01", key: "p32p05" }]
+];
+const TriangleAlert = createLucideIcon("triangle-alert", __iconNode$1);
+/**
+ * @license lucide-react v0.562.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode = [
+  ["path", { d: "M18 6 6 18", key: "1bl5f8" }],
+  ["path", { d: "m6 6 12 12", key: "d8bk6v" }]
+];
+const X$1 = createLucideIcon("x", __iconNode);
 const createStoreImpl = (createState) => {
   let state;
   const listeners = /* @__PURE__ */ new Set();
@@ -19475,7 +19805,7 @@ function I(e) {
 function V(e, n, r2) {
   (typeof r2 == "function" && r2(e, n) || r2 === true) && e.preventDefault();
 }
-function X$1(e, n, r2) {
+function X(e, n, r2) {
   return typeof r2 == "function" ? r2(e, n) : r2 === true || r2 === void 0;
 }
 const Y = [
@@ -19604,7 +19934,7 @@ function de(e, n, r2, i) {
           } else if (re(s, g, t?.ignoreModifiers) || g.keys?.includes("*")) {
             if (t?.ignoreEventWhen?.(s) || B && f.current)
               return;
-            if (V(s, g, t?.preventDefault), !X$1(s, g, t?.enabled)) {
+            if (V(s, g, t?.preventDefault), !X(s, g, t?.enabled)) {
               N(s);
               return;
             }
@@ -20724,6 +21054,9 @@ const Toaster = /* @__PURE__ */ React$2.forwardRef(function Toaster2(props, ref)
     }))
   );
 });
+function isElectronEnvironment$1() {
+  return typeof window !== "undefined" && typeof window.nexusAPI !== "undefined";
+}
 function useGlobalShortcuts() {
   const navigate = useNavigate();
   de(
@@ -20739,7 +21072,34 @@ function useGlobalShortcuts() {
     "mod+s",
     (e) => {
       e.preventDefault();
-      toast.success("Checkpoint created");
+      const projectId = useProjectStore.getState().currentProject?.id;
+      if (!isElectronEnvironment$1()) {
+        toast.info("Checkpoint creation requires Electron environment");
+        return;
+      }
+      if (!projectId) {
+        toast.info("No active project - open a project first");
+        return;
+      }
+      void (async () => {
+        const loadingToast = toast.loading("Creating checkpoint...");
+        try {
+          const checkpoint = await window.nexusAPI.checkpointCreate(
+            projectId,
+            "Manual checkpoint via keyboard shortcut"
+          );
+          toast.dismiss(loadingToast);
+          if (checkpoint) {
+            toast.success("Checkpoint created successfully");
+          } else {
+            toast.error("Failed to create checkpoint");
+          }
+        } catch (err) {
+          toast.dismiss(loadingToast);
+          console.error("Failed to create checkpoint:", err);
+          toast.error(err instanceof Error ? err.message : "Failed to create checkpoint");
+        }
+      })();
     },
     { preventDefault: true }
   );
@@ -20780,6 +21140,42 @@ const KEYBOARD_SHORTCUTS = [
   { keys: ["?"], description: "Show keyboard shortcuts" },
   { keys: ["Esc"], description: "Close modal" }
 ];
+const BREAKPOINTS = {
+  md: 768
+};
+function useMediaQuery(query) {
+  const getMatches = reactExports.useCallback(() => {
+    if (typeof window !== "undefined") {
+      return window.matchMedia(query).matches;
+    }
+    return false;
+  }, [query]);
+  const [matches, setMatches] = reactExports.useState(getMatches);
+  reactExports.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mediaQuery = window.matchMedia(query);
+    setMatches(mediaQuery.matches);
+    const handleChange = (event) => {
+      setMatches(event.matches);
+    };
+    if (mediaQuery.addEventListener) {
+      mediaQuery.addEventListener("change", handleChange);
+    } else {
+      mediaQuery.addListener(handleChange);
+    }
+    return () => {
+      if (mediaQuery.removeEventListener) {
+        mediaQuery.removeEventListener("change", handleChange);
+      } else {
+        mediaQuery.removeListener(handleChange);
+      }
+    };
+  }, [query]);
+  return matches;
+}
+function useIsMobile() {
+  return useMediaQuery(`(max-width: ${BREAKPOINTS.md - 1}px)`);
+}
 function r(e) {
   var t, f, n = "";
   if ("string" == typeof e || "number" == typeof e) n += e;
@@ -23803,297 +24199,6 @@ const twMerge = /* @__PURE__ */ createTailwindMerge(getDefaultConfig);
 function cn(...inputs) {
   return twMerge(clsx(inputs));
 }
-/**
- * @license lucide-react v0.562.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const toKebabCase = (string) => string.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase();
-const toCamelCase = (string) => string.replace(
-  /^([A-Z])|[\s-_]+(\w)/g,
-  (match, p1, p2) => p2 ? p2.toUpperCase() : p1.toLowerCase()
-);
-const toPascalCase = (string) => {
-  const camelCase = toCamelCase(string);
-  return camelCase.charAt(0).toUpperCase() + camelCase.slice(1);
-};
-const mergeClasses = (...classes) => classes.filter((className, index2, array) => {
-  return Boolean(className) && className.trim() !== "" && array.indexOf(className) === index2;
-}).join(" ").trim();
-const hasA11yProp = (props) => {
-  for (const prop in props) {
-    if (prop.startsWith("aria-") || prop === "role" || prop === "title") {
-      return true;
-    }
-  }
-};
-/**
- * @license lucide-react v0.562.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-var defaultAttributes = {
-  xmlns: "http://www.w3.org/2000/svg",
-  width: 24,
-  height: 24,
-  viewBox: "0 0 24 24",
-  fill: "none",
-  stroke: "currentColor",
-  strokeWidth: 2,
-  strokeLinecap: "round",
-  strokeLinejoin: "round"
-};
-/**
- * @license lucide-react v0.562.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const Icon = reactExports.forwardRef(
-  ({
-    color = "currentColor",
-    size = 24,
-    strokeWidth = 2,
-    absoluteStrokeWidth,
-    className = "",
-    children,
-    iconNode,
-    ...rest
-  }, ref) => reactExports.createElement(
-    "svg",
-    {
-      ref,
-      ...defaultAttributes,
-      width: size,
-      height: size,
-      stroke: color,
-      strokeWidth: absoluteStrokeWidth ? Number(strokeWidth) * 24 / Number(size) : strokeWidth,
-      className: mergeClasses("lucide", className),
-      ...!children && !hasA11yProp(rest) && { "aria-hidden": "true" },
-      ...rest
-    },
-    [
-      ...iconNode.map(([tag, attrs]) => reactExports.createElement(tag, attrs)),
-      ...Array.isArray(children) ? children : [children]
-    ]
-  )
-);
-/**
- * @license lucide-react v0.562.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const createLucideIcon = (iconName, iconNode) => {
-  const Component2 = reactExports.forwardRef(
-    ({ className, ...props }, ref) => reactExports.createElement(Icon, {
-      ref,
-      iconNode,
-      className: mergeClasses(
-        `lucide-${toKebabCase(toPascalCase(iconName))}`,
-        `lucide-${iconName}`,
-        className
-      ),
-      ...props
-    })
-  );
-  Component2.displayName = toPascalCase(iconName);
-  return Component2;
-};
-/**
- * @license lucide-react v0.562.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode$e = [
-  ["path", { d: "M12 8V4H8", key: "hb8ula" }],
-  ["rect", { width: "16", height: "12", x: "4", y: "8", rx: "2", key: "enze0r" }],
-  ["path", { d: "M2 14h2", key: "vft8re" }],
-  ["path", { d: "M20 14h2", key: "4cs60a" }],
-  ["path", { d: "M15 13v2", key: "1xurst" }],
-  ["path", { d: "M9 13v2", key: "rq6x2g" }]
-];
-const Bot = createLucideIcon("bot", __iconNode$e);
-/**
- * @license lucide-react v0.562.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode$d = [["path", { d: "m6 9 6 6 6-6", key: "qrunsl" }]];
-const ChevronDown = createLucideIcon("chevron-down", __iconNode$d);
-/**
- * @license lucide-react v0.562.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode$c = [["path", { d: "m15 18-6-6 6-6", key: "1wnfg3" }]];
-const ChevronLeft = createLucideIcon("chevron-left", __iconNode$c);
-/**
- * @license lucide-react v0.562.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode$b = [["path", { d: "m9 18 6-6-6-6", key: "mthhwq" }]];
-const ChevronRight = createLucideIcon("chevron-right", __iconNode$b);
-/**
- * @license lucide-react v0.562.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode$a = [
-  ["line", { x1: "6", x2: "6", y1: "3", y2: "15", key: "17qcm7" }],
-  ["circle", { cx: "18", cy: "6", r: "3", key: "1h7g24" }],
-  ["circle", { cx: "6", cy: "18", r: "3", key: "fqmcym" }],
-  ["path", { d: "M18 9a9 9 0 0 1-9 9", key: "n2h4wq" }]
-];
-const GitBranch = createLucideIcon("git-branch", __iconNode$a);
-/**
- * @license lucide-react v0.562.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode$9 = [
-  ["rect", { width: "7", height: "9", x: "3", y: "3", rx: "1", key: "10lvy0" }],
-  ["rect", { width: "7", height: "5", x: "14", y: "3", rx: "1", key: "16une8" }],
-  ["rect", { width: "7", height: "9", x: "14", y: "12", rx: "1", key: "1hutg5" }],
-  ["rect", { width: "7", height: "5", x: "3", y: "16", rx: "1", key: "ldoo1y" }]
-];
-const LayoutDashboard = createLucideIcon("layout-dashboard", __iconNode$9);
-/**
- * @license lucide-react v0.562.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode$8 = [
-  ["path", { d: "M13 5h8", key: "a7qcls" }],
-  ["path", { d: "M13 12h8", key: "h98zly" }],
-  ["path", { d: "M13 19h8", key: "c3s6r1" }],
-  ["path", { d: "m3 17 2 2 4-4", key: "1jhpwq" }],
-  ["rect", { x: "3", y: "4", width: "6", height: "6", rx: "1", key: "cif1o7" }]
-];
-const ListTodo = createLucideIcon("list-todo", __iconNode$8);
-/**
- * @license lucide-react v0.562.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode$7 = [["path", { d: "M21 12a9 9 0 1 1-6.219-8.56", key: "13zald" }]];
-const LoaderCircle = createLucideIcon("loader-circle", __iconNode$7);
-/**
- * @license lucide-react v0.562.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode$6 = [
-  [
-    "path",
-    {
-      d: "M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z",
-      key: "18887p"
-    }
-  ]
-];
-const MessageSquare = createLucideIcon("message-square", __iconNode$6);
-/**
- * @license lucide-react v0.562.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode$5 = [
-  ["path", { d: "M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8", key: "v9h5vc" }],
-  ["path", { d: "M21 3v5h-5", key: "1q7to0" }],
-  ["path", { d: "M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16", key: "3uifl3" }],
-  ["path", { d: "M8 16H3v5", key: "1cv678" }]
-];
-const RefreshCw = createLucideIcon("refresh-cw", __iconNode$5);
-/**
- * @license lucide-react v0.562.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode$4 = [
-  [
-    "path",
-    {
-      d: "M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915",
-      key: "1i5ecw"
-    }
-  ],
-  ["circle", { cx: "12", cy: "12", r: "3", key: "1v7zrd" }]
-];
-const Settings = createLucideIcon("settings", __iconNode$4);
-/**
- * @license lucide-react v0.562.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode$3 = [
-  [
-    "path",
-    {
-      d: "M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z",
-      key: "1s2grr"
-    }
-  ],
-  ["path", { d: "M20 2v4", key: "1rf3ol" }],
-  ["path", { d: "M22 4h-4", key: "gwowj6" }],
-  ["circle", { cx: "4", cy: "20", r: "2", key: "6kqj1y" }]
-];
-const Sparkles = createLucideIcon("sparkles", __iconNode$3);
-/**
- * @license lucide-react v0.562.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode$2 = [
-  ["path", { d: "M12 19h8", key: "baeox8" }],
-  ["path", { d: "m4 17 6-6-6-6", key: "1yngyt" }]
-];
-const Terminal = createLucideIcon("terminal", __iconNode$2);
-/**
- * @license lucide-react v0.562.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode$1 = [
-  [
-    "path",
-    {
-      d: "m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3",
-      key: "wmoenq"
-    }
-  ],
-  ["path", { d: "M12 9v4", key: "juzpu7" }],
-  ["path", { d: "M12 17h.01", key: "p32p05" }]
-];
-const TriangleAlert = createLucideIcon("triangle-alert", __iconNode$1);
-/**
- * @license lucide-react v0.562.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode = [
-  ["path", { d: "M18 6 6 18", key: "1bl5f8" }],
-  ["path", { d: "m6 6 12 12", key: "d8bk6v" }]
-];
-const X = createLucideIcon("x", __iconNode);
 const SIDEBAR_WIDTH_EXPANDED = 240;
 const SIDEBAR_WIDTH_COLLAPSED = 64;
 const badgeVariantClasses = {
@@ -24377,7 +24482,9 @@ const PAGES_WITH_SIDEBAR = [
 const FULL_SCREEN_PAGES = ["/"];
 function RootLayout() {
   const location = useLocation();
+  const isMobile = useIsMobile();
   useGlobalShortcuts();
+  const [mobileMenuOpen, setMobileMenuOpen] = reactExports.useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = reactExports.useState(() => {
     try {
       const saved = localStorage.getItem(SIDEBAR_STATE_KEY);
@@ -24392,8 +24499,37 @@ function RootLayout() {
     } catch {
     }
   }, [sidebarCollapsed]);
+  reactExports.useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location.pathname]);
+  reactExports.useEffect(() => {
+    if (!isMobile) {
+      setMobileMenuOpen(false);
+    }
+  }, [isMobile]);
+  reactExports.useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape" && mobileMenuOpen) {
+        setMobileMenuOpen(false);
+      }
+    };
+    if (mobileMenuOpen) {
+      document.addEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = "hidden";
+    }
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = "";
+    };
+  }, [mobileMenuOpen]);
   const handleSidebarToggle = reactExports.useCallback(() => {
     setSidebarCollapsed((prev) => !prev);
+  }, []);
+  const handleMobileMenuToggle = reactExports.useCallback(() => {
+    setMobileMenuOpen((prev) => !prev);
+  }, []);
+  const handleMobileMenuClose = reactExports.useCallback(() => {
+    setMobileMenuOpen(false);
   }, []);
   reactExports.useEffect(() => {
     uiBackendBridge.initialize();
@@ -24418,23 +24554,78 @@ function RootLayout() {
       className: "flex min-h-screen bg-bg-dark text-text-primary",
       "data-testid": "root-layout",
       children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsxs(
-          Sidebar,
+        isMobile && /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "button",
           {
-            collapsed: sidebarCollapsed,
-            onToggle: handleSidebarToggle,
-            "data-testid": "app-sidebar",
-            children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx(SidebarSection, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(SidebarNav, { items: defaultNavigationItems, collapsed: sidebarCollapsed }) }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx(SidebarSection, { className: "mt-auto pt-4 border-t border-border-default", children: /* @__PURE__ */ jsxRuntimeExports.jsx(SidebarNav, { items: settingsNavigationItems, collapsed: sidebarCollapsed }) })
-            ]
+            type: "button",
+            onClick: handleMobileMenuToggle,
+            className: cn(
+              "fixed top-3 left-3 z-50 flex items-center justify-center",
+              "w-10 h-10 rounded-lg bg-bg-card border border-border-default",
+              "text-text-secondary hover:text-text-primary hover:bg-bg-hover",
+              "transition-colors duration-normal",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary",
+              mobileMenuOpen && "bg-bg-hover"
+            ),
+            "aria-label": mobileMenuOpen ? "Close menu" : "Open menu",
+            "aria-expanded": mobileMenuOpen,
+            "data-testid": "mobile-menu-button",
+            children: mobileMenuOpen ? /* @__PURE__ */ jsxRuntimeExports.jsx(X$1, { className: "w-5 h-5", strokeWidth: 1.5 }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Menu, { className: "w-5 h-5", strokeWidth: 1.5 })
+          }
+        ),
+        isMobile && mobileMenuOpen && /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "div",
+          {
+            className: "fixed inset-0 z-40 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200",
+            onClick: handleMobileMenuClose,
+            "aria-hidden": "true",
+            "data-testid": "mobile-menu-overlay"
+          }
+        ),
+        (!isMobile || mobileMenuOpen) && /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "div",
+          {
+            className: cn(
+              isMobile && [
+                "fixed left-0 top-0 z-40 h-full",
+                "animate-in slide-in-from-left duration-300"
+              ]
+            ),
+            children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
+              Sidebar,
+              {
+                collapsed: isMobile ? false : sidebarCollapsed,
+                onToggle: isMobile ? void 0 : handleSidebarToggle,
+                "data-testid": "app-sidebar",
+                children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(SidebarSection, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+                    SidebarNav,
+                    {
+                      items: defaultNavigationItems,
+                      collapsed: isMobile ? false : sidebarCollapsed
+                    }
+                  ) }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(SidebarSection, { className: "mt-auto pt-4 border-t border-border-default", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+                    SidebarNav,
+                    {
+                      items: settingsNavigationItems,
+                      collapsed: isMobile ? false : sidebarCollapsed
+                    }
+                  ) })
+                ]
+              }
+            )
           }
         ),
         /* @__PURE__ */ jsxRuntimeExports.jsx(
           "div",
           {
-            className: "flex flex-col flex-1 min-w-0",
-            style: {
+            className: cn(
+              "flex flex-col flex-1 min-w-0",
+              isMobile && "pt-14"
+              // Add top padding for mobile menu button
+            ),
+            style: isMobile ? void 0 : {
               width: `calc(100% - ${sidebarCollapsed ? SIDEBAR_WIDTH_COLLAPSED : SIDEBAR_WIDTH_EXPANDED}px)`
             },
             "data-testid": "main-content-area",
@@ -24484,79 +24675,13 @@ const CardFooter = reactExports.forwardRef(
   ({ className, ...props }, ref) => /* @__PURE__ */ jsxRuntimeExports.jsx("div", { ref, className: cn("flex items-center p-6 pt-0", className), ...props })
 );
 CardFooter.displayName = "CardFooter";
-function ModeSelectorPage() {
-  const navigate = useNavigate();
-  const isLoading = useUIStore((s) => s.isLoading);
-  const handleGenesisClick = () => {
-    void navigate("/genesis");
-    void uiBackendBridge.startGenesis().catch((error) => {
-      console.error("Failed to start Genesis:", error);
-    });
+function composeEventHandlers(originalEventHandler, ourEventHandler, { checkForDefaultPrevented = true } = {}) {
+  return function handleEvent(event) {
+    originalEventHandler?.(event);
+    if (checkForDefaultPrevented === false || !event.defaultPrevented) {
+      return ourEventHandler?.(event);
+    }
   };
-  const handleEvolutionClick = () => {
-    void navigate("/evolution");
-    void uiBackendBridge.startEvolution("placeholder-project").catch((error) => {
-      console.error("Failed to start Evolution:", error);
-    });
-  };
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "min-h-screen flex flex-col items-center justify-center p-8 bg-gradient-to-b from-background to-background/80", children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-center mb-12", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("h1", { className: "text-4xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/60 bg-clip-text text-transparent", children: "Nexus" }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-muted-foreground mt-2 text-lg", children: "Build anything with AI" })
-    ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl w-full", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsxs(
-        Card,
-        {
-          className: "relative overflow-hidden cursor-pointer group hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-violet-500/10",
-          onClick: handleGenesisClick,
-          children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute inset-0 bg-gradient-to-br from-violet-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs(CardHeader, { className: "pb-4", children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-3 mb-2", children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "p-2 rounded-lg bg-violet-500/10 text-violet-500", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Sparkles, { className: "h-6 w-6" }) }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx(CardTitle, { className: "text-2xl", children: "Genesis" })
-              ] }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx(CardDescription, { className: "text-base", children: "Start a new project from scratch" })
-            ] }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs(CardContent, { children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-muted-foreground text-sm", children: "Describe your idea in natural language. Nexus will interview you to understand requirements, then build it autonomously." }),
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mt-4 flex items-center text-xs text-muted-foreground/60", children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "inline-block w-2 h-2 rounded-full bg-violet-500 mr-2" }),
-                "New applications"
-              ] })
-            ] })
-          ]
-        }
-      ),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs(
-        Card,
-        {
-          className: "relative overflow-hidden cursor-pointer group hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-emerald-500/10",
-          onClick: handleEvolutionClick,
-          children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs(CardHeader, { className: "pb-4", children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-3 mb-2", children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "p-2 rounded-lg bg-emerald-500/10 text-emerald-500", children: /* @__PURE__ */ jsxRuntimeExports.jsx(GitBranch, { className: "h-6 w-6" }) }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx(CardTitle, { className: "text-2xl", children: "Evolution" })
-              ] }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx(CardDescription, { className: "text-base", children: "Enhance an existing project" })
-            ] }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs(CardContent, { children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-muted-foreground text-sm", children: "Add features to existing codebases. Manage work visually on a Kanban board while AI agents handle implementation." }),
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mt-4 flex items-center text-xs text-muted-foreground/60", children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "inline-block w-2 h-2 rounded-full bg-emerald-500 mr-2" }),
-                "Existing codebases"
-              ] })
-            ] })
-          ]
-        }
-      )
-    ] }),
-    isLoading && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "mt-8 text-muted-foreground animate-pulse", children: "Initializing..." }),
-    /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "mt-12 text-xs text-muted-foreground/50", children: "Press a card to begin" })
-  ] });
 }
 function setRef(ref, value) {
   if (typeof ref === "function") {
@@ -24591,462 +24716,6 @@ function composeRefs(...refs) {
 }
 function useComposedRefs(...refs) {
   return reactExports.useCallback(composeRefs(...refs), refs);
-}
-var REACT_LAZY_TYPE = Symbol.for("react.lazy");
-var use = React$3[" use ".trim().toString()];
-function isPromiseLike(value) {
-  return typeof value === "object" && value !== null && "then" in value;
-}
-function isLazyComponent(element) {
-  return element != null && typeof element === "object" && "$$typeof" in element && element.$$typeof === REACT_LAZY_TYPE && "_payload" in element && isPromiseLike(element._payload);
-}
-// @__NO_SIDE_EFFECTS__
-function createSlot$1(ownerName) {
-  const SlotClone = /* @__PURE__ */ createSlotClone$1(ownerName);
-  const Slot2 = reactExports.forwardRef((props, forwardedRef) => {
-    let { children, ...slotProps } = props;
-    if (isLazyComponent(children) && typeof use === "function") {
-      children = use(children._payload);
-    }
-    const childrenArray = reactExports.Children.toArray(children);
-    const slottable = childrenArray.find(isSlottable$1);
-    if (slottable) {
-      const newElement = slottable.props.children;
-      const newChildren = childrenArray.map((child) => {
-        if (child === slottable) {
-          if (reactExports.Children.count(newElement) > 1) return reactExports.Children.only(null);
-          return reactExports.isValidElement(newElement) ? newElement.props.children : null;
-        } else {
-          return child;
-        }
-      });
-      return /* @__PURE__ */ jsxRuntimeExports.jsx(SlotClone, { ...slotProps, ref: forwardedRef, children: reactExports.isValidElement(newElement) ? reactExports.cloneElement(newElement, void 0, newChildren) : null });
-    }
-    return /* @__PURE__ */ jsxRuntimeExports.jsx(SlotClone, { ...slotProps, ref: forwardedRef, children });
-  });
-  Slot2.displayName = `${ownerName}.Slot`;
-  return Slot2;
-}
-var Slot$1 = /* @__PURE__ */ createSlot$1("Slot");
-// @__NO_SIDE_EFFECTS__
-function createSlotClone$1(ownerName) {
-  const SlotClone = reactExports.forwardRef((props, forwardedRef) => {
-    let { children, ...slotProps } = props;
-    if (isLazyComponent(children) && typeof use === "function") {
-      children = use(children._payload);
-    }
-    if (reactExports.isValidElement(children)) {
-      const childrenRef = getElementRef$2(children);
-      const props2 = mergeProps$1(slotProps, children.props);
-      if (children.type !== reactExports.Fragment) {
-        props2.ref = forwardedRef ? composeRefs(forwardedRef, childrenRef) : childrenRef;
-      }
-      return reactExports.cloneElement(children, props2);
-    }
-    return reactExports.Children.count(children) > 1 ? reactExports.Children.only(null) : null;
-  });
-  SlotClone.displayName = `${ownerName}.SlotClone`;
-  return SlotClone;
-}
-var SLOTTABLE_IDENTIFIER$1 = Symbol("radix.slottable");
-function isSlottable$1(child) {
-  return reactExports.isValidElement(child) && typeof child.type === "function" && "__radixId" in child.type && child.type.__radixId === SLOTTABLE_IDENTIFIER$1;
-}
-function mergeProps$1(slotProps, childProps) {
-  const overrideProps = { ...childProps };
-  for (const propName in childProps) {
-    const slotPropValue = slotProps[propName];
-    const childPropValue = childProps[propName];
-    const isHandler = /^on[A-Z]/.test(propName);
-    if (isHandler) {
-      if (slotPropValue && childPropValue) {
-        overrideProps[propName] = (...args) => {
-          const result = childPropValue(...args);
-          slotPropValue(...args);
-          return result;
-        };
-      } else if (slotPropValue) {
-        overrideProps[propName] = slotPropValue;
-      }
-    } else if (propName === "style") {
-      overrideProps[propName] = { ...slotPropValue, ...childPropValue };
-    } else if (propName === "className") {
-      overrideProps[propName] = [slotPropValue, childPropValue].filter(Boolean).join(" ");
-    }
-  }
-  return { ...slotProps, ...overrideProps };
-}
-function getElementRef$2(element) {
-  let getter = Object.getOwnPropertyDescriptor(element.props, "ref")?.get;
-  let mayWarn = getter && "isReactWarning" in getter && getter.isReactWarning;
-  if (mayWarn) {
-    return element.ref;
-  }
-  getter = Object.getOwnPropertyDescriptor(element, "ref")?.get;
-  mayWarn = getter && "isReactWarning" in getter && getter.isReactWarning;
-  if (mayWarn) {
-    return element.props.ref;
-  }
-  return element.props.ref || element.ref;
-}
-const falsyToString = (value) => typeof value === "boolean" ? `${value}` : value === 0 ? "0" : value;
-const cx = clsx;
-const cva = (base, config) => (props) => {
-  var _config_compoundVariants;
-  if ((config === null || config === void 0 ? void 0 : config.variants) == null) return cx(base, props === null || props === void 0 ? void 0 : props.class, props === null || props === void 0 ? void 0 : props.className);
-  const { variants, defaultVariants } = config;
-  const getVariantClassNames = Object.keys(variants).map((variant) => {
-    const variantProp = props === null || props === void 0 ? void 0 : props[variant];
-    const defaultVariantProp = defaultVariants === null || defaultVariants === void 0 ? void 0 : defaultVariants[variant];
-    if (variantProp === null) return null;
-    const variantKey = falsyToString(variantProp) || falsyToString(defaultVariantProp);
-    return variants[variant][variantKey];
-  });
-  const propsWithoutUndefined = props && Object.entries(props).reduce((acc, param) => {
-    let [key, value] = param;
-    if (value === void 0) {
-      return acc;
-    }
-    acc[key] = value;
-    return acc;
-  }, {});
-  const getCompoundVariantClassNames = config === null || config === void 0 ? void 0 : (_config_compoundVariants = config.compoundVariants) === null || _config_compoundVariants === void 0 ? void 0 : _config_compoundVariants.reduce((acc, param) => {
-    let { class: cvClass, className: cvClassName, ...compoundVariantOptions } = param;
-    return Object.entries(compoundVariantOptions).every((param2) => {
-      let [key, value] = param2;
-      return Array.isArray(value) ? value.includes({
-        ...defaultVariants,
-        ...propsWithoutUndefined
-      }[key]) : {
-        ...defaultVariants,
-        ...propsWithoutUndefined
-      }[key] === value;
-    }) ? [
-      ...acc,
-      cvClass,
-      cvClassName
-    ] : acc;
-  }, []);
-  return cx(base, getVariantClassNames, getCompoundVariantClassNames, props === null || props === void 0 ? void 0 : props.class, props === null || props === void 0 ? void 0 : props.className);
-};
-const buttonVariants = cva(
-  // Base styles
-  [
-    "inline-flex items-center justify-center gap-2 whitespace-nowrap",
-    "font-medium transition-all duration-150",
-    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
-    "focus-visible:ring-offset-[#0D1117] focus-visible:ring-[#7C3AED]",
-    "disabled:pointer-events-none disabled:opacity-50",
-    "active:scale-[0.98]",
-    "[&_svg]:pointer-events-none [&_svg]:shrink-0"
-  ].join(" "),
-  {
-    variants: {
-      variant: {
-        // Primary - Main CTA actions (Nexus Purple)
-        primary: [
-          "bg-[#7C3AED] text-white",
-          "hover:bg-[#6D28D9]",
-          "shadow-sm hover:shadow-md hover:shadow-[0_0_20px_rgba(124,58,237,0.3)]"
-        ].join(" "),
-        // Secondary - Secondary actions with border
-        secondary: [
-          "border border-[#30363D] bg-transparent",
-          "text-[#F0F6FC]",
-          "hover:bg-[#21262D] hover:border-[#6E7681]"
-        ].join(" "),
-        // Ghost - Minimal styling for tertiary actions
-        ghost: [
-          "bg-transparent text-[#8B949E]",
-          "hover:bg-[#21262D] hover:text-[#F0F6FC]"
-        ].join(" "),
-        // Danger - Destructive actions
-        danger: [
-          "bg-[#EF4444] text-white",
-          "hover:bg-[#DC2626]",
-          "shadow-sm hover:shadow-md hover:shadow-[0_0_20px_rgba(239,68,68,0.3)]"
-        ].join(" "),
-        // Success - Positive/confirmation actions
-        success: [
-          "bg-[#10B981] text-white",
-          "hover:bg-[#059669]",
-          "shadow-sm hover:shadow-md hover:shadow-[0_0_20px_rgba(16,185,129,0.3)]"
-        ].join(" "),
-        // Link - Text link style
-        link: [
-          "text-[#7C3AED] underline-offset-4",
-          "hover:underline hover:text-[#6D28D9]",
-          "p-0 h-auto"
-        ].join(" "),
-        // Outline - Similar to secondary but with accent border
-        outline: [
-          "border-2 border-[#7C3AED] bg-transparent",
-          "text-[#7C3AED]",
-          "hover:bg-[#7C3AED]/10"
-        ].join(" "),
-        // Default - for backward compatibility (maps to primary)
-        default: [
-          "bg-[#7C3AED] text-white",
-          "hover:bg-[#6D28D9]",
-          "shadow-sm hover:shadow-md"
-        ].join(" "),
-        // Destructive - alias for danger (backward compatibility)
-        destructive: [
-          "bg-[#EF4444] text-white",
-          "hover:bg-[#DC2626]",
-          "shadow-sm hover:shadow-md"
-        ].join(" ")
-      },
-      size: {
-        xs: "h-7 px-2.5 text-xs rounded [&_svg]:h-3.5 [&_svg]:w-3.5",
-        sm: "h-8 px-3 text-sm rounded [&_svg]:h-4 [&_svg]:w-4",
-        md: "h-10 px-4 text-sm rounded-md [&_svg]:h-4 [&_svg]:w-4",
-        lg: "h-11 px-6 text-base rounded-md [&_svg]:h-5 [&_svg]:w-5",
-        xl: "h-12 px-8 text-base rounded-lg [&_svg]:h-5 [&_svg]:w-5",
-        icon: "h-10 w-10 rounded-md [&_svg]:h-5 [&_svg]:w-5",
-        "icon-sm": "h-8 w-8 rounded [&_svg]:h-4 [&_svg]:w-4",
-        "icon-lg": "h-12 w-12 rounded-md [&_svg]:h-6 [&_svg]:w-6",
-        // Backward compatibility
-        default: "h-10 px-4 py-2 rounded-md [&_svg]:h-4 [&_svg]:w-4"
-      },
-      fullWidth: {
-        true: "w-full",
-        false: ""
-      }
-    },
-    defaultVariants: {
-      variant: "primary",
-      size: "md",
-      fullWidth: false
-    }
-  }
-);
-const Button = reactExports.forwardRef(
-  ({
-    className,
-    variant,
-    size,
-    fullWidth,
-    asChild = false,
-    loading = false,
-    icon,
-    iconPosition = "left",
-    disabled,
-    children,
-    ...props
-  }, ref) => {
-    const Comp = asChild ? Slot$1 : "button";
-    const isDisabled = disabled || loading;
-    const isIconOnly = size?.toString().startsWith("icon");
-    const iconElement = loading ? /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "animate-spin", "aria-hidden": "true" }) : icon;
-    if (isIconOnly) {
-      return /* @__PURE__ */ jsxRuntimeExports.jsx(
-        Comp,
-        {
-          className: cn(buttonVariants({ variant, size, fullWidth, className })),
-          ref,
-          disabled: isDisabled,
-          "aria-disabled": isDisabled,
-          ...props,
-          children: loading ? /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "animate-spin", "aria-hidden": "true" }) : children || icon
-        }
-      );
-    }
-    return /* @__PURE__ */ jsxRuntimeExports.jsxs(
-      Comp,
-      {
-        className: cn(buttonVariants({ variant, size, fullWidth, className })),
-        ref,
-        disabled: isDisabled,
-        "aria-disabled": isDisabled,
-        ...props,
-        children: [
-          iconElement && iconPosition === "left" && iconElement,
-          loading && !icon ? /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "animate-spin", "aria-hidden": "true" }),
-            children
-          ] }) : children,
-          iconElement && iconPosition === "right" && !loading && iconElement
-        ]
-      }
-    );
-  }
-);
-Button.displayName = "Button";
-class ErrorBoundary extends reactExports.Component {
-  constructor(props) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
-  static getDerivedStateFromError(error) {
-    return { hasError: true, error };
-  }
-  componentDidCatch(error, errorInfo) {
-    console.error("ErrorBoundary caught:", error, errorInfo);
-  }
-  handleRetry = () => {
-    this.setState({ hasError: false, error: null });
-  };
-  render() {
-    if (this.state.hasError) {
-      if (this.props.fallback) {
-        return this.props.fallback;
-      }
-      return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col items-center justify-center min-h-[400px] p-8 text-center", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx(TriangleAlert, { className: "h-12 w-12 text-destructive mb-4" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-xl font-semibold mb-2", children: "Something went wrong" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-muted-foreground mb-4 max-w-md", children: this.state.error?.message || "An unexpected error occurred" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs(Button, { onClick: this.handleRetry, variant: "outline", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx(RefreshCw, { className: "h-4 w-4 mr-2" }),
-          "Try Again"
-        ] })
-      ] });
-    }
-    return this.props.children;
-  }
-}
-function getMergedSettings(settings, pendingChanges) {
-  if (!settings) return null;
-  return {
-    llm: { ...settings.llm, ...pendingChanges.llm },
-    agents: { ...settings.agents, ...pendingChanges.agents },
-    checkpoints: { ...settings.checkpoints, ...pendingChanges.checkpoints },
-    ui: { ...settings.ui, ...pendingChanges.ui },
-    project: { ...settings.project, ...pendingChanges.project }
-  };
-}
-const useSettingsStore = create()((set, get) => ({
-  settings: null,
-  isLoading: false,
-  isDirty: false,
-  pendingChanges: {},
-  loadSettings: async () => {
-    set({ isLoading: true });
-    try {
-      const settings = await window.nexusAPI.settings.getAll();
-      set({ settings, isLoading: false, isDirty: false, pendingChanges: {} });
-    } catch (error) {
-      console.error("Failed to load settings:", error);
-      set({ isLoading: false });
-    }
-  },
-  updateSetting: (category, key, value) => {
-    const { pendingChanges } = get();
-    const categoryChanges = pendingChanges[category] ?? {};
-    set({
-      pendingChanges: {
-        ...pendingChanges,
-        [category]: {
-          ...categoryChanges,
-          [key]: value
-        }
-      },
-      isDirty: true
-    });
-  },
-  saveSettings: async () => {
-    const { pendingChanges, settings } = get();
-    if (!settings) return false;
-    try {
-      for (const [category, changes] of Object.entries(pendingChanges)) {
-        for (const [key, value] of Object.entries(changes)) {
-          const settingPath = `${category}.${key}`;
-          await window.nexusAPI.settings.set(settingPath, value);
-        }
-      }
-      await get().loadSettings();
-      return true;
-    } catch (error) {
-      console.error("Failed to save settings:", error);
-      return false;
-    }
-  },
-  discardChanges: () => {
-    set({ pendingChanges: {}, isDirty: false });
-    void get().loadSettings();
-  },
-  setApiKey: async (provider, key) => {
-    try {
-      const result = await window.nexusAPI.settings.setApiKey(provider, key);
-      if (result) {
-        await get().loadSettings();
-      }
-      return result;
-    } catch (error) {
-      console.error("Failed to set API key:", error);
-      return false;
-    }
-  },
-  clearApiKey: async (provider) => {
-    try {
-      const result = await window.nexusAPI.settings.clearApiKey(provider);
-      if (result) {
-        await get().loadSettings();
-      }
-      return result;
-    } catch (error) {
-      console.error("Failed to clear API key:", error);
-      return false;
-    }
-  },
-  resetToDefaults: async () => {
-    try {
-      await window.nexusAPI.settings.reset();
-      await get().loadSettings();
-    } catch (error) {
-      console.error("Failed to reset settings:", error);
-    }
-  }
-}));
-const useSettings = () => useSettingsStore((s) => getMergedSettings(s.settings, s.pendingChanges));
-const useHasApiKey = (provider) => useSettingsStore((s) => {
-  if (!s.settings) return false;
-  switch (provider) {
-    case "claude":
-      return s.settings.llm.hasClaudeKey;
-    case "gemini":
-      return s.settings.llm.hasGeminiKey;
-    case "openai":
-      return s.settings.llm.hasOpenaiKey;
-    default:
-      return false;
-  }
-});
-const useSettingsLoading = () => useSettingsStore((s) => s.isLoading);
-const useSettingsDirty = () => useSettingsStore((s) => s.isDirty);
-function useThemeEffect() {
-  const theme = useSettingsStore((s) => s.settings?.ui.theme ?? "system");
-  reactExports.useEffect(() => {
-    const root2 = document.documentElement;
-    function applyTheme() {
-      root2.classList.remove("light", "dark");
-      if (theme === "system") {
-        const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-        root2.classList.add(prefersDark ? "dark" : "light");
-      } else {
-        root2.classList.add(theme);
-      }
-    }
-    applyTheme();
-    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-    const handler = () => {
-      if (theme === "system") {
-        applyTheme();
-      }
-    };
-    mediaQuery.addEventListener("change", handler);
-    return () => {
-      mediaQuery.removeEventListener("change", handler);
-    };
-  }, [theme]);
-}
-function composeEventHandlers(originalEventHandler, ourEventHandler, { checkForDefaultPrevented = true } = {}) {
-  return function handleEvent(event) {
-    originalEventHandler?.(event);
-    if (checkForDefaultPrevented === false || !event.defaultPrevented) {
-      return ourEventHandler?.(event);
-    }
-  };
 }
 function createContext2(rootComponentName, defaultContext) {
   const Context = reactExports.createContext(defaultContext);
@@ -25197,12 +24866,12 @@ function isFunction(value) {
   return typeof value === "function";
 }
 // @__NO_SIDE_EFFECTS__
-function createSlot(ownerName) {
-  const SlotClone = /* @__PURE__ */ createSlotClone(ownerName);
+function createSlot$2(ownerName) {
+  const SlotClone = /* @__PURE__ */ createSlotClone$2(ownerName);
   const Slot2 = reactExports.forwardRef((props, forwardedRef) => {
     const { children, ...slotProps } = props;
     const childrenArray = reactExports.Children.toArray(children);
-    const slottable = childrenArray.find(isSlottable);
+    const slottable = childrenArray.find(isSlottable$2);
     if (slottable) {
       const newElement = slottable.props.children;
       const newChildren = childrenArray.map((child) => {
@@ -25221,12 +24890,12 @@ function createSlot(ownerName) {
   return Slot2;
 }
 // @__NO_SIDE_EFFECTS__
-function createSlotClone(ownerName) {
+function createSlotClone$2(ownerName) {
   const SlotClone = reactExports.forwardRef((props, forwardedRef) => {
     const { children, ...slotProps } = props;
     if (reactExports.isValidElement(children)) {
-      const childrenRef = getElementRef$1(children);
-      const props2 = mergeProps(slotProps, children.props);
+      const childrenRef = getElementRef$3(children);
+      const props2 = mergeProps$2(slotProps, children.props);
       if (children.type !== reactExports.Fragment) {
         props2.ref = forwardedRef ? composeRefs(forwardedRef, childrenRef) : childrenRef;
       }
@@ -25237,11 +24906,11 @@ function createSlotClone(ownerName) {
   SlotClone.displayName = `${ownerName}.SlotClone`;
   return SlotClone;
 }
-var SLOTTABLE_IDENTIFIER = Symbol("radix.slottable");
-function isSlottable(child) {
-  return reactExports.isValidElement(child) && typeof child.type === "function" && "__radixId" in child.type && child.type.__radixId === SLOTTABLE_IDENTIFIER;
+var SLOTTABLE_IDENTIFIER$2 = Symbol("radix.slottable");
+function isSlottable$2(child) {
+  return reactExports.isValidElement(child) && typeof child.type === "function" && "__radixId" in child.type && child.type.__radixId === SLOTTABLE_IDENTIFIER$2;
 }
-function mergeProps(slotProps, childProps) {
+function mergeProps$2(slotProps, childProps) {
   const overrideProps = { ...childProps };
   for (const propName in childProps) {
     const slotPropValue = slotProps[propName];
@@ -25265,7 +24934,7 @@ function mergeProps(slotProps, childProps) {
   }
   return { ...slotProps, ...overrideProps };
 }
-function getElementRef$1(element) {
+function getElementRef$3(element) {
   let getter = Object.getOwnPropertyDescriptor(element.props, "ref")?.get;
   let mayWarn = getter && "isReactWarning" in getter && getter.isReactWarning;
   if (mayWarn) {
@@ -25298,7 +24967,7 @@ var NODES = [
   "ul"
 ];
 var Primitive = NODES.reduce((primitive, node) => {
-  const Slot2 = /* @__PURE__ */ createSlot(`Primitive.${node}`);
+  const Slot2 = /* @__PURE__ */ createSlot$2(`Primitive.${node}`);
   const Node2 = reactExports.forwardRef((props, forwardedRef) => {
     const { asChild, ...primitiveProps } = props;
     const Comp = asChild ? Slot2 : node;
@@ -25751,7 +25420,7 @@ var Presence = (props) => {
   const { present, children } = props;
   const presence = usePresence(present);
   const child = typeof children === "function" ? children({ present: presence.isPresent }) : reactExports.Children.only(children);
-  const ref = useComposedRefs(presence.ref, getElementRef(child));
+  const ref = useComposedRefs(presence.ref, getElementRef$2(child));
   const forceMount = typeof children === "function";
   return forceMount || presence.isPresent ? reactExports.cloneElement(child, { ref }) : null;
 };
@@ -25850,7 +25519,7 @@ function usePresence(present) {
 function getAnimationName(styles) {
   return styles?.animationName || "none";
 }
-function getElementRef(element) {
+function getElementRef$2(element) {
   let getter = Object.getOwnPropertyDescriptor(element.props, "ref")?.get;
   let mayWarn = getter && "isReactWarning" in getter && getter.isReactWarning;
   if (mayWarn) {
@@ -26667,6 +26336,88 @@ var hideOthers = function(originalTarget, parentNode, markerName) {
   targets.push.apply(targets, Array.from(activeParentNode.querySelectorAll("[aria-live], script")));
   return applyAttributeToOthers(targets, activeParentNode, markerName, "aria-hidden");
 };
+// @__NO_SIDE_EFFECTS__
+function createSlot$1(ownerName) {
+  const SlotClone = /* @__PURE__ */ createSlotClone$1(ownerName);
+  const Slot2 = reactExports.forwardRef((props, forwardedRef) => {
+    const { children, ...slotProps } = props;
+    const childrenArray = reactExports.Children.toArray(children);
+    const slottable = childrenArray.find(isSlottable$1);
+    if (slottable) {
+      const newElement = slottable.props.children;
+      const newChildren = childrenArray.map((child) => {
+        if (child === slottable) {
+          if (reactExports.Children.count(newElement) > 1) return reactExports.Children.only(null);
+          return reactExports.isValidElement(newElement) ? newElement.props.children : null;
+        } else {
+          return child;
+        }
+      });
+      return /* @__PURE__ */ jsxRuntimeExports.jsx(SlotClone, { ...slotProps, ref: forwardedRef, children: reactExports.isValidElement(newElement) ? reactExports.cloneElement(newElement, void 0, newChildren) : null });
+    }
+    return /* @__PURE__ */ jsxRuntimeExports.jsx(SlotClone, { ...slotProps, ref: forwardedRef, children });
+  });
+  Slot2.displayName = `${ownerName}.Slot`;
+  return Slot2;
+}
+// @__NO_SIDE_EFFECTS__
+function createSlotClone$1(ownerName) {
+  const SlotClone = reactExports.forwardRef((props, forwardedRef) => {
+    const { children, ...slotProps } = props;
+    if (reactExports.isValidElement(children)) {
+      const childrenRef = getElementRef$1(children);
+      const props2 = mergeProps$1(slotProps, children.props);
+      if (children.type !== reactExports.Fragment) {
+        props2.ref = forwardedRef ? composeRefs(forwardedRef, childrenRef) : childrenRef;
+      }
+      return reactExports.cloneElement(children, props2);
+    }
+    return reactExports.Children.count(children) > 1 ? reactExports.Children.only(null) : null;
+  });
+  SlotClone.displayName = `${ownerName}.SlotClone`;
+  return SlotClone;
+}
+var SLOTTABLE_IDENTIFIER$1 = Symbol("radix.slottable");
+function isSlottable$1(child) {
+  return reactExports.isValidElement(child) && typeof child.type === "function" && "__radixId" in child.type && child.type.__radixId === SLOTTABLE_IDENTIFIER$1;
+}
+function mergeProps$1(slotProps, childProps) {
+  const overrideProps = { ...childProps };
+  for (const propName in childProps) {
+    const slotPropValue = slotProps[propName];
+    const childPropValue = childProps[propName];
+    const isHandler = /^on[A-Z]/.test(propName);
+    if (isHandler) {
+      if (slotPropValue && childPropValue) {
+        overrideProps[propName] = (...args) => {
+          const result = childPropValue(...args);
+          slotPropValue(...args);
+          return result;
+        };
+      } else if (slotPropValue) {
+        overrideProps[propName] = slotPropValue;
+      }
+    } else if (propName === "style") {
+      overrideProps[propName] = { ...slotPropValue, ...childPropValue };
+    } else if (propName === "className") {
+      overrideProps[propName] = [slotPropValue, childPropValue].filter(Boolean).join(" ");
+    }
+  }
+  return { ...slotProps, ...overrideProps };
+}
+function getElementRef$1(element) {
+  let getter = Object.getOwnPropertyDescriptor(element.props, "ref")?.get;
+  let mayWarn = getter && "isReactWarning" in getter && getter.isReactWarning;
+  if (mayWarn) {
+    return element.ref;
+  }
+  getter = Object.getOwnPropertyDescriptor(element, "ref")?.get;
+  mayWarn = getter && "isReactWarning" in getter && getter.isReactWarning;
+  if (mayWarn) {
+    return element.props.ref;
+  }
+  return element.props.ref || element.ref;
+}
 var DIALOG_NAME = "Dialog";
 var [createDialogContext] = createContextScope(DIALOG_NAME);
 var [DialogProvider, useDialogContext] = createDialogContext(DIALOG_NAME);
@@ -26747,7 +26498,7 @@ var DialogOverlay$1 = reactExports.forwardRef(
   }
 );
 DialogOverlay$1.displayName = OVERLAY_NAME;
-var Slot = /* @__PURE__ */ createSlot("DialogOverlay.RemoveScroll");
+var Slot$1 = /* @__PURE__ */ createSlot$1("DialogOverlay.RemoveScroll");
 var DialogOverlayImpl = reactExports.forwardRef(
   (props, forwardedRef) => {
     const { __scopeDialog, ...overlayProps } = props;
@@ -26755,7 +26506,7 @@ var DialogOverlayImpl = reactExports.forwardRef(
     return (
       // Make sure `Content` is scrollable even when it doesn't live inside `RemoveScroll`
       // ie. when `Overlay` and `Content` are siblings
-      /* @__PURE__ */ jsxRuntimeExports.jsx(ReactRemoveScroll, { as: Slot, allowPinchZoom: true, shards: [context.contentRef], children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+      /* @__PURE__ */ jsxRuntimeExports.jsx(ReactRemoveScroll, { as: Slot$1, allowPinchZoom: true, shards: [context.contentRef], children: /* @__PURE__ */ jsxRuntimeExports.jsx(
         Primitive.div,
         {
           "data-state": getState(context.open),
@@ -26996,7 +26747,7 @@ const DialogContent = reactExports.forwardRef(({ className, children, ...props }
       children: [
         children,
         /* @__PURE__ */ jsxRuntimeExports.jsxs(Close, { className: "absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx(X, { className: "h-4 w-4" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(X$1, { className: "h-4 w-4" }),
           /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "sr-only", children: "Close" })
         ] })
       ]
@@ -27006,6 +26757,14 @@ const DialogContent = reactExports.forwardRef(({ className, children, ...props }
 DialogContent.displayName = Content.displayName;
 const DialogHeader = ({ className, ...props }) => /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: cn("flex flex-col space-y-1.5 text-center sm:text-left", className), ...props });
 DialogHeader.displayName = "DialogHeader";
+const DialogFooter = ({ className, ...props }) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+  "div",
+  {
+    className: cn("flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2", className),
+    ...props
+  }
+);
+DialogFooter.displayName = "DialogFooter";
 const DialogTitle = reactExports.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsxRuntimeExports.jsx(
   Title,
   {
@@ -27024,6 +26783,654 @@ const DialogDescription = reactExports.forwardRef(({ className, ...props }, ref)
   }
 ));
 DialogDescription.displayName = Description.displayName;
+var REACT_LAZY_TYPE = Symbol.for("react.lazy");
+var use = React$3[" use ".trim().toString()];
+function isPromiseLike(value) {
+  return typeof value === "object" && value !== null && "then" in value;
+}
+function isLazyComponent(element) {
+  return element != null && typeof element === "object" && "$$typeof" in element && element.$$typeof === REACT_LAZY_TYPE && "_payload" in element && isPromiseLike(element._payload);
+}
+// @__NO_SIDE_EFFECTS__
+function createSlot(ownerName) {
+  const SlotClone = /* @__PURE__ */ createSlotClone(ownerName);
+  const Slot2 = reactExports.forwardRef((props, forwardedRef) => {
+    let { children, ...slotProps } = props;
+    if (isLazyComponent(children) && typeof use === "function") {
+      children = use(children._payload);
+    }
+    const childrenArray = reactExports.Children.toArray(children);
+    const slottable = childrenArray.find(isSlottable);
+    if (slottable) {
+      const newElement = slottable.props.children;
+      const newChildren = childrenArray.map((child) => {
+        if (child === slottable) {
+          if (reactExports.Children.count(newElement) > 1) return reactExports.Children.only(null);
+          return reactExports.isValidElement(newElement) ? newElement.props.children : null;
+        } else {
+          return child;
+        }
+      });
+      return /* @__PURE__ */ jsxRuntimeExports.jsx(SlotClone, { ...slotProps, ref: forwardedRef, children: reactExports.isValidElement(newElement) ? reactExports.cloneElement(newElement, void 0, newChildren) : null });
+    }
+    return /* @__PURE__ */ jsxRuntimeExports.jsx(SlotClone, { ...slotProps, ref: forwardedRef, children });
+  });
+  Slot2.displayName = `${ownerName}.Slot`;
+  return Slot2;
+}
+var Slot = /* @__PURE__ */ createSlot("Slot");
+// @__NO_SIDE_EFFECTS__
+function createSlotClone(ownerName) {
+  const SlotClone = reactExports.forwardRef((props, forwardedRef) => {
+    let { children, ...slotProps } = props;
+    if (isLazyComponent(children) && typeof use === "function") {
+      children = use(children._payload);
+    }
+    if (reactExports.isValidElement(children)) {
+      const childrenRef = getElementRef(children);
+      const props2 = mergeProps(slotProps, children.props);
+      if (children.type !== reactExports.Fragment) {
+        props2.ref = forwardedRef ? composeRefs(forwardedRef, childrenRef) : childrenRef;
+      }
+      return reactExports.cloneElement(children, props2);
+    }
+    return reactExports.Children.count(children) > 1 ? reactExports.Children.only(null) : null;
+  });
+  SlotClone.displayName = `${ownerName}.SlotClone`;
+  return SlotClone;
+}
+var SLOTTABLE_IDENTIFIER = Symbol("radix.slottable");
+function isSlottable(child) {
+  return reactExports.isValidElement(child) && typeof child.type === "function" && "__radixId" in child.type && child.type.__radixId === SLOTTABLE_IDENTIFIER;
+}
+function mergeProps(slotProps, childProps) {
+  const overrideProps = { ...childProps };
+  for (const propName in childProps) {
+    const slotPropValue = slotProps[propName];
+    const childPropValue = childProps[propName];
+    const isHandler = /^on[A-Z]/.test(propName);
+    if (isHandler) {
+      if (slotPropValue && childPropValue) {
+        overrideProps[propName] = (...args) => {
+          const result = childPropValue(...args);
+          slotPropValue(...args);
+          return result;
+        };
+      } else if (slotPropValue) {
+        overrideProps[propName] = slotPropValue;
+      }
+    } else if (propName === "style") {
+      overrideProps[propName] = { ...slotPropValue, ...childPropValue };
+    } else if (propName === "className") {
+      overrideProps[propName] = [slotPropValue, childPropValue].filter(Boolean).join(" ");
+    }
+  }
+  return { ...slotProps, ...overrideProps };
+}
+function getElementRef(element) {
+  let getter = Object.getOwnPropertyDescriptor(element.props, "ref")?.get;
+  let mayWarn = getter && "isReactWarning" in getter && getter.isReactWarning;
+  if (mayWarn) {
+    return element.ref;
+  }
+  getter = Object.getOwnPropertyDescriptor(element, "ref")?.get;
+  mayWarn = getter && "isReactWarning" in getter && getter.isReactWarning;
+  if (mayWarn) {
+    return element.props.ref;
+  }
+  return element.props.ref || element.ref;
+}
+const falsyToString = (value) => typeof value === "boolean" ? `${value}` : value === 0 ? "0" : value;
+const cx = clsx;
+const cva = (base, config) => (props) => {
+  var _config_compoundVariants;
+  if ((config === null || config === void 0 ? void 0 : config.variants) == null) return cx(base, props === null || props === void 0 ? void 0 : props.class, props === null || props === void 0 ? void 0 : props.className);
+  const { variants, defaultVariants } = config;
+  const getVariantClassNames = Object.keys(variants).map((variant) => {
+    const variantProp = props === null || props === void 0 ? void 0 : props[variant];
+    const defaultVariantProp = defaultVariants === null || defaultVariants === void 0 ? void 0 : defaultVariants[variant];
+    if (variantProp === null) return null;
+    const variantKey = falsyToString(variantProp) || falsyToString(defaultVariantProp);
+    return variants[variant][variantKey];
+  });
+  const propsWithoutUndefined = props && Object.entries(props).reduce((acc, param) => {
+    let [key, value] = param;
+    if (value === void 0) {
+      return acc;
+    }
+    acc[key] = value;
+    return acc;
+  }, {});
+  const getCompoundVariantClassNames = config === null || config === void 0 ? void 0 : (_config_compoundVariants = config.compoundVariants) === null || _config_compoundVariants === void 0 ? void 0 : _config_compoundVariants.reduce((acc, param) => {
+    let { class: cvClass, className: cvClassName, ...compoundVariantOptions } = param;
+    return Object.entries(compoundVariantOptions).every((param2) => {
+      let [key, value] = param2;
+      return Array.isArray(value) ? value.includes({
+        ...defaultVariants,
+        ...propsWithoutUndefined
+      }[key]) : {
+        ...defaultVariants,
+        ...propsWithoutUndefined
+      }[key] === value;
+    }) ? [
+      ...acc,
+      cvClass,
+      cvClassName
+    ] : acc;
+  }, []);
+  return cx(base, getVariantClassNames, getCompoundVariantClassNames, props === null || props === void 0 ? void 0 : props.class, props === null || props === void 0 ? void 0 : props.className);
+};
+const buttonVariants = cva(
+  // Base styles
+  [
+    "inline-flex items-center justify-center gap-2 whitespace-nowrap",
+    "font-medium transition-all duration-150",
+    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
+    "focus-visible:ring-offset-[#0D1117] focus-visible:ring-[#7C3AED]",
+    "disabled:pointer-events-none disabled:opacity-50",
+    "active:scale-[0.98]",
+    "[&_svg]:pointer-events-none [&_svg]:shrink-0"
+  ].join(" "),
+  {
+    variants: {
+      variant: {
+        // Primary - Main CTA actions (Nexus Purple)
+        primary: [
+          "bg-[#7C3AED] text-white",
+          "hover:bg-[#6D28D9]",
+          "shadow-sm hover:shadow-md hover:shadow-[0_0_20px_rgba(124,58,237,0.3)]"
+        ].join(" "),
+        // Secondary - Secondary actions with border
+        secondary: [
+          "border border-[#30363D] bg-transparent",
+          "text-[#F0F6FC]",
+          "hover:bg-[#21262D] hover:border-[#6E7681]"
+        ].join(" "),
+        // Ghost - Minimal styling for tertiary actions
+        ghost: [
+          "bg-transparent text-[#8B949E]",
+          "hover:bg-[#21262D] hover:text-[#F0F6FC]"
+        ].join(" "),
+        // Danger - Destructive actions
+        danger: [
+          "bg-[#EF4444] text-white",
+          "hover:bg-[#DC2626]",
+          "shadow-sm hover:shadow-md hover:shadow-[0_0_20px_rgba(239,68,68,0.3)]"
+        ].join(" "),
+        // Success - Positive/confirmation actions
+        success: [
+          "bg-[#10B981] text-white",
+          "hover:bg-[#059669]",
+          "shadow-sm hover:shadow-md hover:shadow-[0_0_20px_rgba(16,185,129,0.3)]"
+        ].join(" "),
+        // Link - Text link style
+        link: [
+          "text-[#7C3AED] underline-offset-4",
+          "hover:underline hover:text-[#6D28D9]",
+          "p-0 h-auto"
+        ].join(" "),
+        // Outline - Similar to secondary but with accent border
+        outline: [
+          "border-2 border-[#7C3AED] bg-transparent",
+          "text-[#7C3AED]",
+          "hover:bg-[#7C3AED]/10"
+        ].join(" "),
+        // Default - for backward compatibility (maps to primary)
+        default: [
+          "bg-[#7C3AED] text-white",
+          "hover:bg-[#6D28D9]",
+          "shadow-sm hover:shadow-md"
+        ].join(" "),
+        // Destructive - alias for danger (backward compatibility)
+        destructive: [
+          "bg-[#EF4444] text-white",
+          "hover:bg-[#DC2626]",
+          "shadow-sm hover:shadow-md"
+        ].join(" ")
+      },
+      size: {
+        xs: "h-7 px-2.5 text-xs rounded [&_svg]:h-3.5 [&_svg]:w-3.5",
+        sm: "h-8 px-3 text-sm rounded [&_svg]:h-4 [&_svg]:w-4",
+        md: "h-10 px-4 text-sm rounded-md [&_svg]:h-4 [&_svg]:w-4",
+        lg: "h-11 px-6 text-base rounded-md [&_svg]:h-5 [&_svg]:w-5",
+        xl: "h-12 px-8 text-base rounded-lg [&_svg]:h-5 [&_svg]:w-5",
+        icon: "h-10 w-10 rounded-md [&_svg]:h-5 [&_svg]:w-5",
+        "icon-sm": "h-8 w-8 rounded [&_svg]:h-4 [&_svg]:w-4",
+        "icon-lg": "h-12 w-12 rounded-md [&_svg]:h-6 [&_svg]:w-6",
+        // Backward compatibility
+        default: "h-10 px-4 py-2 rounded-md [&_svg]:h-4 [&_svg]:w-4"
+      },
+      fullWidth: {
+        true: "w-full",
+        false: ""
+      }
+    },
+    defaultVariants: {
+      variant: "primary",
+      size: "md",
+      fullWidth: false
+    }
+  }
+);
+const Button = reactExports.forwardRef(
+  ({
+    className,
+    variant,
+    size,
+    fullWidth,
+    asChild = false,
+    loading = false,
+    icon,
+    iconPosition = "left",
+    disabled,
+    children,
+    ...props
+  }, ref) => {
+    const Comp = asChild ? Slot : "button";
+    const isDisabled = disabled || loading;
+    const isIconOnly = size?.toString().startsWith("icon");
+    const iconElement = loading ? /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "animate-spin", "aria-hidden": "true" }) : icon;
+    if (isIconOnly) {
+      return /* @__PURE__ */ jsxRuntimeExports.jsx(
+        Comp,
+        {
+          className: cn(buttonVariants({ variant, size, fullWidth, className })),
+          ref,
+          disabled: isDisabled,
+          "aria-disabled": isDisabled,
+          ...props,
+          children: loading ? /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "animate-spin", "aria-hidden": "true" }) : children || icon
+        }
+      );
+    }
+    return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      Comp,
+      {
+        className: cn(buttonVariants({ variant, size, fullWidth, className })),
+        ref,
+        disabled: isDisabled,
+        "aria-disabled": isDisabled,
+        ...props,
+        children: [
+          iconElement && iconPosition === "left" && iconElement,
+          loading && !icon ? /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "animate-spin", "aria-hidden": "true" }),
+            children
+          ] }) : children,
+          iconElement && iconPosition === "right" && !loading && iconElement
+        ]
+      }
+    );
+  }
+);
+Button.displayName = "Button";
+const isElectronEnvironment = () => {
+  return typeof window !== "undefined" && typeof window.nexusAPI !== "undefined";
+};
+function ModeSelectorPage() {
+  const navigate = useNavigate();
+  const isLoading = useUIStore((s) => s.isLoading);
+  const [showProjectModal, setShowProjectModal] = reactExports.useState(false);
+  const [projects, setProjects] = reactExports.useState([]);
+  const [loadingProjects, setLoadingProjects] = reactExports.useState(false);
+  const [projectsError, setProjectsError] = reactExports.useState(null);
+  const loadProjects = reactExports.useCallback(async () => {
+    if (!isElectronEnvironment()) {
+      setProjectsError("Backend not available. Please run in Electron.");
+      return;
+    }
+    setLoadingProjects(true);
+    setProjectsError(null);
+    try {
+      const projectsData = await window.nexusAPI.getProjects();
+      if (Array.isArray(projectsData)) {
+        const transformedProjects = projectsData.map((p) => {
+          const proj = p;
+          return {
+            id: proj.id,
+            name: proj.name,
+            mode: proj.mode,
+            status: proj.status
+          };
+        });
+        setProjects(transformedProjects);
+      }
+    } catch (err) {
+      console.error("Failed to load projects:", err);
+      setProjectsError("Failed to load projects");
+    } finally {
+      setLoadingProjects(false);
+    }
+  }, []);
+  const handleGenesisClick = () => {
+    void navigate("/genesis");
+    void uiBackendBridge.startGenesis().catch((error) => {
+      console.error("Failed to start Genesis:", error);
+    });
+  };
+  const handleEvolutionClick = () => {
+    setShowProjectModal(true);
+    void loadProjects();
+  };
+  const handleSelectProject = (projectId) => {
+    setShowProjectModal(false);
+    void navigate("/evolution");
+    void uiBackendBridge.startEvolution(projectId).catch((error) => {
+      console.error("Failed to start Evolution:", error);
+    });
+  };
+  const handleCreateNewProject = () => {
+    setShowProjectModal(false);
+    void navigate("/dashboard");
+  };
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "min-h-screen flex flex-col items-center justify-center p-8 bg-gradient-to-b from-background to-background/80", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-center mb-12", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("h1", { className: "text-4xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/60 bg-clip-text text-transparent", children: "Nexus" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-muted-foreground mt-2 text-lg", children: "Build anything with AI" })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl w-full", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        Card,
+        {
+          className: "relative overflow-hidden cursor-pointer group hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-violet-500/10",
+          onClick: handleGenesisClick,
+          children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute inset-0 bg-gradient-to-br from-violet-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs(CardHeader, { className: "pb-4", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-3 mb-2", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "p-2 rounded-lg bg-violet-500/10 text-violet-500", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Sparkles, { className: "h-6 w-6" }) }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx(CardTitle, { className: "text-2xl", children: "Genesis" })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(CardDescription, { className: "text-base", children: "Start a new project from scratch" })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs(CardContent, { children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-muted-foreground text-sm", children: "Describe your idea in natural language. Nexus will interview you to understand requirements, then build it autonomously." }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mt-4 flex items-center text-xs text-muted-foreground/60", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "inline-block w-2 h-2 rounded-full bg-violet-500 mr-2" }),
+                "New applications"
+              ] })
+            ] })
+          ]
+        }
+      ),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        Card,
+        {
+          className: "relative overflow-hidden cursor-pointer group hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-emerald-500/10",
+          onClick: handleEvolutionClick,
+          children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs(CardHeader, { className: "pb-4", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-3 mb-2", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "p-2 rounded-lg bg-emerald-500/10 text-emerald-500", children: /* @__PURE__ */ jsxRuntimeExports.jsx(GitBranch, { className: "h-6 w-6" }) }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx(CardTitle, { className: "text-2xl", children: "Evolution" })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(CardDescription, { className: "text-base", children: "Enhance an existing project" })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs(CardContent, { children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-muted-foreground text-sm", children: "Add features to existing codebases. Manage work visually on a Kanban board while AI agents handle implementation." }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mt-4 flex items-center text-xs text-muted-foreground/60", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "inline-block w-2 h-2 rounded-full bg-emerald-500 mr-2" }),
+                "Existing codebases"
+              ] })
+            ] })
+          ]
+        }
+      )
+    ] }),
+    isLoading && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "mt-8 text-muted-foreground animate-pulse", children: "Initializing..." }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "mt-12 text-xs text-muted-foreground/50", children: "Press a card to begin" }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(Dialog, { open: showProjectModal, onOpenChange: setShowProjectModal, children: /* @__PURE__ */ jsxRuntimeExports.jsxs(DialogContent, { className: "bg-bg-card border-border-default max-w-md", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs(DialogHeader, { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs(DialogTitle, { className: "text-text-primary flex items-center gap-2", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(GitBranch, { className: "h-5 w-5 text-emerald-500" }),
+          "Select Project"
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(DialogDescription, { className: "text-text-secondary", children: "Choose an existing project to evolve, or create a new one." })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "py-4", children: [
+        loadingProjects && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-center py-8", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "h-6 w-6 animate-spin text-emerald-500" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "ml-2 text-text-secondary", children: "Loading projects..." })
+        ] }),
+        projectsError && !loadingProjects && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-center py-8", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm text-accent-error", children: projectsError }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            Button,
+            {
+              variant: "outline",
+              size: "sm",
+              className: "mt-4",
+              onClick: () => void loadProjects(),
+              children: "Retry"
+            }
+          )
+        ] }),
+        !loadingProjects && !projectsError && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "space-y-2 max-h-[300px] overflow-y-auto", children: projects.length === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-center py-8", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(FolderOpen, { className: "h-10 w-10 text-text-tertiary mx-auto mb-3" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm text-text-secondary", children: "No projects yet" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs text-text-tertiary mt-1", children: "Create your first project to get started" })
+        ] }) : projects.map((project) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "button",
+          {
+            onClick: () => {
+              handleSelectProject(project.id);
+            },
+            className: cn(
+              "w-full flex items-center gap-3 p-3 rounded-lg border transition-all",
+              "border-border-default hover:border-emerald-500/50 hover:bg-bg-hover",
+              "text-left group"
+            ),
+            "data-testid": `project-select-${project.id}`,
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex-shrink-0 w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center", children: /* @__PURE__ */ jsxRuntimeExports.jsx(GitBranch, { className: "h-5 w-5 text-emerald-500" }) }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex-1 min-w-0", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "font-medium text-text-primary truncate", children: project.name }),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-xs text-text-tertiary capitalize", children: [
+                  project.mode,
+                  " mode"
+                ] })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(ChevronRight, { className: "h-5 w-5 text-text-tertiary group-hover:text-emerald-500 transition-colors" })
+            ]
+          },
+          project.id
+        )) })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between pt-4 border-t border-border-default", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          Button,
+          {
+            variant: "outline",
+            onClick: () => {
+              setShowProjectModal(false);
+            },
+            children: "Cancel"
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          Button,
+          {
+            variant: "primary",
+            onClick: handleCreateNewProject,
+            className: "gap-2 bg-emerald-600 hover:bg-emerald-700",
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(Plus, { className: "h-4 w-4" }),
+              "New Project"
+            ]
+          }
+        )
+      ] })
+    ] }) })
+  ] });
+}
+class ErrorBoundary extends reactExports.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error, errorInfo) {
+    console.error("ErrorBoundary caught:", error, errorInfo);
+  }
+  handleRetry = () => {
+    this.setState({ hasError: false, error: null });
+  };
+  render() {
+    if (this.state.hasError) {
+      if (this.props.fallback) {
+        return this.props.fallback;
+      }
+      return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col items-center justify-center min-h-[400px] p-8 text-center", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(TriangleAlert, { className: "h-12 w-12 text-destructive mb-4" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-xl font-semibold mb-2", children: "Something went wrong" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-muted-foreground mb-4 max-w-md", children: this.state.error?.message || "An unexpected error occurred" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs(Button, { onClick: this.handleRetry, variant: "outline", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(RefreshCw, { className: "h-4 w-4 mr-2" }),
+          "Try Again"
+        ] })
+      ] });
+    }
+    return this.props.children;
+  }
+}
+function getMergedSettings(settings, pendingChanges) {
+  if (!settings) return null;
+  return {
+    llm: { ...settings.llm, ...pendingChanges.llm },
+    agents: { ...settings.agents, ...pendingChanges.agents },
+    checkpoints: { ...settings.checkpoints, ...pendingChanges.checkpoints },
+    ui: { ...settings.ui, ...pendingChanges.ui },
+    project: { ...settings.project, ...pendingChanges.project }
+  };
+}
+const useSettingsStore = create()((set, get) => ({
+  settings: null,
+  isLoading: false,
+  isDirty: false,
+  pendingChanges: {},
+  loadSettings: async () => {
+    set({ isLoading: true });
+    try {
+      const settings = await window.nexusAPI.settings.getAll();
+      set({ settings, isLoading: false, isDirty: false, pendingChanges: {} });
+    } catch (error) {
+      console.error("Failed to load settings:", error);
+      set({ isLoading: false });
+    }
+  },
+  updateSetting: (category, key, value) => {
+    const { pendingChanges } = get();
+    const categoryChanges = pendingChanges[category] ?? {};
+    set({
+      pendingChanges: {
+        ...pendingChanges,
+        [category]: {
+          ...categoryChanges,
+          [key]: value
+        }
+      },
+      isDirty: true
+    });
+  },
+  saveSettings: async () => {
+    const { pendingChanges, settings } = get();
+    if (!settings) return false;
+    try {
+      for (const [category, changes] of Object.entries(pendingChanges)) {
+        for (const [key, value] of Object.entries(changes)) {
+          const settingPath = `${category}.${key}`;
+          await window.nexusAPI.settings.set(settingPath, value);
+        }
+      }
+      await get().loadSettings();
+      return true;
+    } catch (error) {
+      console.error("Failed to save settings:", error);
+      return false;
+    }
+  },
+  discardChanges: () => {
+    set({ pendingChanges: {}, isDirty: false });
+    void get().loadSettings();
+  },
+  setApiKey: async (provider, key) => {
+    try {
+      const result = await window.nexusAPI.settings.setApiKey(provider, key);
+      if (result) {
+        await get().loadSettings();
+      }
+      return result;
+    } catch (error) {
+      console.error("Failed to set API key:", error);
+      return false;
+    }
+  },
+  clearApiKey: async (provider) => {
+    try {
+      const result = await window.nexusAPI.settings.clearApiKey(provider);
+      if (result) {
+        await get().loadSettings();
+      }
+      return result;
+    } catch (error) {
+      console.error("Failed to clear API key:", error);
+      return false;
+    }
+  },
+  resetToDefaults: async () => {
+    try {
+      await window.nexusAPI.settings.reset();
+      await get().loadSettings();
+    } catch (error) {
+      console.error("Failed to reset settings:", error);
+    }
+  }
+}));
+const useSettings = () => useSettingsStore((s) => getMergedSettings(s.settings, s.pendingChanges));
+const useHasApiKey = (provider) => useSettingsStore((s) => {
+  if (!s.settings) return false;
+  switch (provider) {
+    case "claude":
+      return s.settings.llm.hasClaudeKey;
+    case "gemini":
+      return s.settings.llm.hasGeminiKey;
+    case "openai":
+      return s.settings.llm.hasOpenaiKey;
+    default:
+      return false;
+  }
+});
+const useSettingsLoading = () => useSettingsStore((s) => s.isLoading);
+const useSettingsDirty = () => useSettingsStore((s) => s.isDirty);
+function useThemeEffect() {
+  const theme = useSettingsStore((s) => s.settings?.ui.theme ?? "system");
+  reactExports.useEffect(() => {
+    const root2 = document.documentElement;
+    function applyTheme() {
+      root2.classList.remove("light", "dark");
+      if (theme === "system") {
+        const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        root2.classList.add(prefersDark ? "dark" : "light");
+      } else {
+        root2.classList.add(theme);
+      }
+    }
+    applyTheme();
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const handler = () => {
+      if (theme === "system") {
+        applyTheme();
+      }
+    };
+    mediaQuery.addEventListener("change", handler);
+    return () => {
+      mediaQuery.removeEventListener("change", handler);
+    };
+  }, [theme]);
+}
 function KeyboardShortcutsModal() {
   const showShortcuts = useUIStore((s) => s.showShortcuts);
   const setShowShortcuts = useUIStore((s) => s.setShowShortcuts);
@@ -27049,12 +27456,12 @@ function KeyboardShortcutsModal() {
     )) })
   ] }) });
 }
-const InterviewPage = reactExports.lazy(() => __vitePreload(() => import("./InterviewPage-BpcNc9ja.js"), true ? __vite__mapDeps([0,1,2,3,4,5,6,7,8,9,10]) : void 0, import.meta.url));
-const KanbanPage = reactExports.lazy(() => __vitePreload(() => import("./KanbanPage-CxdU7IjI.js"), true ? __vite__mapDeps([11,12,7,13,14,6,5,15]) : void 0, import.meta.url));
-const DashboardPage = reactExports.lazy(() => __vitePreload(() => import("./DashboardPage-ZoW09plv.js"), true ? __vite__mapDeps([16,3,17,18,7,6,14,2,1,12,15,13]) : void 0, import.meta.url));
-const SettingsPage = reactExports.lazy(() => __vitePreload(() => import("./SettingsPage-BptkqiYf.js"), true ? __vite__mapDeps([19,20,10,1,12,4,21,2,18]) : void 0, import.meta.url));
-const AgentsPage = reactExports.lazy(() => __vitePreload(() => import("./AgentsPage-D72cBo_Z.js"), true ? __vite__mapDeps([22,20,10,3,17,18,13,8,2,14,6]) : void 0, import.meta.url));
-const ExecutionPage = reactExports.lazy(() => __vitePreload(() => import("./ExecutionPage-f3f2C11Z.js"), true ? __vite__mapDeps([23,20,10,9,8,14,21]) : void 0, import.meta.url));
+const InterviewPage = reactExports.lazy(() => __vitePreload(() => import("./InterviewPage-DvZaaCCL.js"), true ? __vite__mapDeps([0,1,2,3,4,5,6,7,8,9,10]) : void 0, import.meta.url));
+const KanbanPage = reactExports.lazy(() => __vitePreload(() => import("./KanbanPage-cLoql6Gh.js"), true ? __vite__mapDeps([11,12,7,13,8,14,6,5,15,2,16]) : void 0, import.meta.url));
+const DashboardPage = reactExports.lazy(() => __vitePreload(() => import("./DashboardPage-DUMDPEak.js"), true ? __vite__mapDeps([17,3,18,16,7,6,14,2,15,12,1,13]) : void 0, import.meta.url));
+const SettingsPage = reactExports.lazy(() => __vitePreload(() => import("./SettingsPage-DAfUcYpj.js"), true ? __vite__mapDeps([19,20,10,1,12,2,4,21,22,16]) : void 0, import.meta.url));
+const AgentsPage = reactExports.lazy(() => __vitePreload(() => import("./AgentsPage-C13FC8x2.js"), true ? __vite__mapDeps([23,20,10,22,2,6,3,18,16,13,8,14]) : void 0, import.meta.url));
+const ExecutionPage = reactExports.lazy(() => __vitePreload(() => import("./ExecutionPage-BUeO4ZTZ.js"), true ? __vite__mapDeps([24,20,10,9,8,14,21]) : void 0, import.meta.url));
 function PageLoader() {
   return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex items-center justify-center min-h-screen bg-bg-dark", "data-testid": "page-loader", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col items-center gap-3", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-8 h-8 rounded-full border-2 border-accent-primary border-t-transparent animate-spin" }),
@@ -27133,26 +27540,31 @@ root.render(
   /* @__PURE__ */ jsxRuntimeExports.jsx(reactExports.StrictMode, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(App, {}) })
 );
 export {
-  useMetricsStore as A,
+  useIsMetricsLoading as A,
   Bot as B,
   ChevronDown as C,
   Dialog as D,
-  Link as E,
-  ChevronRight as F,
-  useSettings as G,
-  useSettingsLoading as H,
-  useSettingsDirty as I,
-  useSettingsStore as J,
-  CardDescription as K,
+  useOverview as E,
+  useMetricsStore as F,
+  FolderOpen as G,
+  Link as H,
+  ChevronRight as I,
+  cva as J,
+  useSettings as K,
   LoaderCircle as L,
   MessageSquare as M,
-  useHasApiKey as N,
-  create as O,
-  cva as P,
-  TriangleAlert as Q,
+  useSettingsLoading as N,
+  useSettingsDirty as O,
+  Plus as P,
+  useSettingsStore as Q,
   React$2 as R,
   Sparkles as S,
-  Terminal as T,
+  TriangleAlert as T,
+  Terminal as U,
+  CardDescription as V,
+  useHasApiKey as W,
+  X$1 as X,
+  create as Y,
   cn as a,
   useNavigate as b,
   createLucideIcon as c,
@@ -27166,17 +27578,17 @@ export {
   DialogHeader as k,
   DialogTitle as l,
   DialogDescription as m,
-  Button as n,
-  useCosts as o,
-  clsx as p,
-  getDefaultExportFromCjs as q,
+  DialogFooter as n,
+  Button as o,
+  useCosts as p,
+  clsx as q,
   reactExports as r,
-  React$3 as s,
-  useAgentMetrics as t,
+  getDefaultExportFromCjs as s,
+  toast as t,
   useProjectStore as u,
-  fo as v,
-  RefreshCw as w,
-  useTimeline as x,
-  useIsMetricsLoading as y,
-  useOverview as z
+  React$3 as v,
+  useAgentMetrics as w,
+  fo as x,
+  RefreshCw as y,
+  useTimeline as z
 };

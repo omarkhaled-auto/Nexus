@@ -1,14 +1,15 @@
-import { c as createLucideIcon, R as React, j as jsxRuntimeExports, a as cn, r as reactExports, P as cva, n as Button, C as ChevronDown, Q as TriangleAlert, F as ChevronRight, L as LoaderCircle, B as Bot, w as RefreshCw } from "./index-xnK5wLuD.js";
-import { H as Header } from "./Header-B6Pu_07z.js";
-import { F as FileText, Z as Zap } from "./zap-CBlQZ7d7.js";
-import { B as Bug, G as GitMerge, T as TestTubeDiagonal, C as CodeXml, P as Play, a as Pause } from "./test-tube-diagonal-6cNDtFPB.js";
-import { E as Eye } from "./eye-CrQvWFi5.js";
-import { C as Clock } from "./clock-zSUTFGik.js";
-import { T as Trash2 } from "./trash-2-DG-6S5M4.js";
-import { C as CircleAlert } from "./circle-alert-CpZnaSJZ.js";
-import { C as CircleX } from "./circle-x-BDPGfBfa.js";
-import { C as CircleCheck } from "./circle-check-DcrdITtO.js";
-import "./arrow-left-CgFeZlyf.js";
+import { c as createLucideIcon, r as reactExports, j as jsxRuntimeExports, a as cn, X, J as cva, T as TriangleAlert, L as LoaderCircle, R as React, o as Button, C as ChevronDown, I as ChevronRight, B as Bot, y as RefreshCw } from "./index-DeoAs8is.js";
+import { H as Header } from "./Header-wUNz1tr9.js";
+import { I as Info } from "./info-DMyoP-4v.js";
+import { C as CircleAlert } from "./circle-alert-B5chTur6.js";
+import { C as CircleCheck } from "./circle-check-BM7kR0e3.js";
+import { F as FileText, Z as Zap } from "./zap-lwB_tEu_.js";
+import { B as Bug, G as GitMerge, T as TestTubeDiagonal, C as CodeXml, P as Play, a as Pause } from "./test-tube-diagonal-rA31yKFr.js";
+import { E as Eye } from "./eye-BDpbQ6e8.js";
+import { C as Clock } from "./clock-D4ZvFRET.js";
+import { T as Trash2 } from "./trash-2-DhMRrSAA.js";
+import { C as CircleX } from "./circle-x-BGipjINk.js";
+import "./arrow-left-JELWY6DC.js";
 /**
  * @license lucide-react v0.562.0 - ISC
  *
@@ -139,6 +140,184 @@ const __iconNode = [
   ["circle", { cx: "9", cy: "7", r: "4", key: "nufk8" }]
 ];
 const Users = createLucideIcon("users", __iconNode);
+const alertVariants = cva(
+  [
+    "relative w-full rounded-lg border p-4",
+    "flex gap-3",
+    "[&>svg]:flex-shrink-0"
+  ].join(" "),
+  {
+    variants: {
+      variant: {
+        default: [
+          "bg-bg-card border-border-default",
+          "text-text-primary"
+        ].join(" "),
+        success: [
+          "bg-accent-success/10 border-accent-success/50",
+          "text-text-primary",
+          "[&_.alert-icon]:text-accent-success"
+        ].join(" "),
+        warning: [
+          "bg-accent-warning/10 border-accent-warning/50",
+          "text-text-primary",
+          "[&_.alert-icon]:text-accent-warning"
+        ].join(" "),
+        error: [
+          "bg-accent-error/10 border-accent-error/50",
+          "text-text-primary",
+          "[&_.alert-icon]:text-accent-error"
+        ].join(" "),
+        info: [
+          "bg-accent-info/10 border-accent-info/50",
+          "text-text-primary",
+          "[&_.alert-icon]:text-accent-info"
+        ].join(" "),
+        destructive: [
+          "bg-accent-error/10 border-accent-error",
+          "text-accent-error",
+          "[&_.alert-icon]:text-accent-error"
+        ].join(" ")
+      }
+    },
+    defaultVariants: {
+      variant: "default"
+    }
+  }
+);
+function getVariantIcon(variant) {
+  const iconProps = { className: "h-5 w-5 alert-icon" };
+  switch (variant) {
+    case "success":
+      return /* @__PURE__ */ jsxRuntimeExports.jsx(CircleCheck, { ...iconProps });
+    case "warning":
+      return /* @__PURE__ */ jsxRuntimeExports.jsx(TriangleAlert, { ...iconProps });
+    case "error":
+    case "destructive":
+      return /* @__PURE__ */ jsxRuntimeExports.jsx(CircleAlert, { ...iconProps });
+    case "info":
+      return /* @__PURE__ */ jsxRuntimeExports.jsx(Info, { ...iconProps });
+    default:
+      return /* @__PURE__ */ jsxRuntimeExports.jsx(Info, { ...iconProps });
+  }
+}
+const Alert = reactExports.forwardRef(
+  ({
+    className,
+    variant = "default",
+    title,
+    icon,
+    showIcon = true,
+    dismissible = false,
+    onDismiss,
+    children,
+    "data-testid": testId,
+    ...props
+  }, ref) => {
+    const displayIcon = icon ?? (showIcon ? getVariantIcon(variant) : null);
+    return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "div",
+      {
+        ref,
+        role: "alert",
+        className: cn(alertVariants({ variant }), className),
+        "data-testid": testId ?? "alert",
+        ...props,
+        children: [
+          displayIcon && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex-shrink-0 mt-0.5", children: displayIcon }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex-1 min-w-0", children: [
+            title && /* @__PURE__ */ jsxRuntimeExports.jsx(AlertTitle, { children: title }),
+            children && /* @__PURE__ */ jsxRuntimeExports.jsx(AlertDescription, { children })
+          ] }),
+          dismissible && /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "button",
+            {
+              type: "button",
+              onClick: onDismiss,
+              className: cn(
+                "flex-shrink-0 ml-auto",
+                "h-6 w-6 rounded-md",
+                "flex items-center justify-center",
+                "text-text-tertiary hover:text-text-primary",
+                "hover:bg-bg-hover",
+                "focus:outline-none focus:ring-2 focus:ring-border-focus",
+                "transition-colors"
+              ),
+              "aria-label": "Dismiss alert",
+              "data-testid": "alert-dismiss",
+              children: /* @__PURE__ */ jsxRuntimeExports.jsx(X, { className: "h-4 w-4" })
+            }
+          )
+        ]
+      }
+    );
+  }
+);
+Alert.displayName = "Alert";
+const AlertTitle = reactExports.forwardRef(
+  ({ className, children, ...props }, ref) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+    "h5",
+    {
+      ref,
+      className: cn("mb-1 font-medium text-sm leading-none tracking-tight", className),
+      ...props,
+      children
+    }
+  )
+);
+AlertTitle.displayName = "AlertTitle";
+const AlertDescription = reactExports.forwardRef(
+  ({ className, children, ...props }, ref) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+    "div",
+    {
+      ref,
+      className: cn("text-sm text-text-secondary [&_p]:leading-relaxed", className),
+      ...props,
+      children
+    }
+  )
+);
+AlertDescription.displayName = "AlertDescription";
+const sizeClasses = {
+  xs: "h-3 w-3",
+  sm: "h-4 w-4",
+  md: "h-6 w-6",
+  lg: "h-8 w-8",
+  xl: "h-12 w-12"
+};
+const colorClasses = {
+  primary: "text-accent-primary",
+  secondary: "text-accent-secondary",
+  white: "text-white",
+  muted: "text-text-tertiary",
+  success: "text-accent-success",
+  error: "text-accent-error",
+  warning: "text-accent-warning",
+  inherit: "text-current"
+};
+function Spinner({
+  size = "md",
+  color = "muted",
+  label,
+  className,
+  "data-testid": testId,
+  ...props
+}) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    "div",
+    {
+      role: "status",
+      "aria-label": label ?? "Loading",
+      className: cn("inline-flex", className),
+      "data-testid": testId ?? "spinner",
+      ...props,
+      children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: cn("animate-spin", sizeClasses[size], colorClasses[color]) }),
+        label && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "sr-only", children: label })
+      ]
+    }
+  );
+}
 const colors = {
   // Agent Type Colors
   agent: {
@@ -649,7 +828,7 @@ const AgentCard = React.forwardRef(
 );
 AgentCard.displayName = "AgentCard";
 function parseAnsiLine(line) {
-  let cleanLine = line.replace(/\[\d+m/g, "");
+  const cleanLine = line.replace(/\[\d+m/g, "");
   if (line.includes("error") || line.includes("Error") || line.includes("ERROR") || line.includes("failed") || line.includes("Failed")) {
     return /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-accent-error", children: cleanLine });
   }
@@ -747,7 +926,9 @@ const AgentActivity = React.forwardRef(
                 {
                   variant: "ghost",
                   size: "icon-sm",
-                  onClick: () => setIsPaused(!isPaused),
+                  onClick: () => {
+                    setIsPaused(!isPaused);
+                  },
                   disabled: isEmpty,
                   title: isPaused ? "Resume auto-scroll" : "Pause auto-scroll",
                   children: isPaused ? /* @__PURE__ */ jsxRuntimeExports.jsx(Play, { size: 14 }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Pause, { size: 14 })
@@ -873,7 +1054,9 @@ const AgentPoolStatus = React.forwardRef(
                   type: agent.type,
                   status: agent.status,
                   size: "sm",
-                  onClick: onSelectAgent ? () => onSelectAgent(agent.id) : void 0,
+                  onClick: onSelectAgent ? () => {
+                    onSelectAgent(agent.id);
+                  } : void 0,
                   className: cn(selectedAgent === agent.id && "ring-2 ring-accent-primary")
                 },
                 agent.id
@@ -1074,7 +1257,7 @@ const IterationCounter = React.forwardRef(
     const percent = Math.min(current / max * 100, 100);
     let color;
     let colorClass;
-    let trackColor = "var(--color-border-default)";
+    const trackColor = "var(--color-border-default)";
     let showWarning = false;
     if (percent >= 100) {
       color = "var(--color-accent-error)";
@@ -1341,7 +1524,9 @@ const QAStatusPanel = React.forwardRef(
                     step,
                     isLast: index === orderedSteps.length - 1,
                     orientation,
-                    onViewLogs: onViewLogs ? () => onViewLogs(step.type) : void 0
+                    onViewLogs: onViewLogs ? () => {
+                      onViewLogs(step.type);
+                    } : void 0
                   }
                 ),
                 orientation === "horizontal" && index < orderedSteps.length - 1 && /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -1375,101 +1560,158 @@ const QAStatusPanel = React.forwardRef(
   }
 );
 QAStatusPanel.displayName = "QAStatusPanel";
-const mockAgents = [
-  {
-    id: "agent-1",
-    type: "coder",
-    status: "working",
-    model: "claude-sonnet-4-5-20250929",
-    currentTask: {
-      id: "task-1",
-      name: "Implementing auth middleware",
-      progress: 65
-    },
-    iteration: {
-      current: 3,
-      max: 50
-    },
-    metrics: { tokensUsed: 12450, duration: 45e3 },
-    currentFile: "src/auth/middleware.ts"
-  },
-  {
-    id: "agent-2",
-    type: "reviewer",
-    status: "working",
-    model: "gemini-2.5-pro",
-    currentTask: {
-      id: "task-2",
-      name: "Reviewing database schema",
-      progress: 30
-    },
-    iteration: {
-      current: 1,
-      max: 10
-    },
-    metrics: { tokensUsed: 3200, duration: 15e3 },
-    currentFile: "src/database/schema.ts"
-  },
-  {
-    id: "agent-3",
-    type: "planner",
-    status: "idle",
-    model: "claude-opus-4-5-20251101"
-  },
-  {
-    id: "agent-4",
-    type: "tester",
-    status: "idle",
-    model: "claude-sonnet-4-5-20250929"
-  },
-  {
-    id: "agent-5",
-    type: "merger",
-    status: "idle",
-    model: "claude-sonnet-4-5-20250929"
+function isElectronEnvironment() {
+  return typeof window !== "undefined" && "nexusAPI" in window && window.nexusAPI !== void 0;
+}
+function mapBackendAgent(agent) {
+  const a = agent;
+  return {
+    id: a.id || "unknown",
+    type: a.type || "coder",
+    status: a.status || "idle",
+    model: a.model,
+    currentTask: a.currentTask,
+    iteration: a.iteration,
+    metrics: a.metrics,
+    currentFile: a.currentFile
+  };
+}
+function mapQAStatus(qaStatus) {
+  const defaultSteps = [
+    { type: "build", status: "pending" },
+    { type: "lint", status: "pending" },
+    { type: "test", status: "pending" },
+    { type: "review", status: "pending" }
+  ];
+  if (!qaStatus) return defaultSteps;
+  const qa = qaStatus;
+  if (qa.steps && Array.isArray(qa.steps)) {
+    return qa.steps.map((step) => {
+      const s = step;
+      return {
+        type: s.type || "build",
+        status: s.status || "pending",
+        duration: s.duration,
+        error: s.error,
+        testCounts: s.testCounts
+      };
+    });
   }
-];
-const mockPoolAgents = mockAgents.map((a) => ({
-  id: a.id,
-  type: a.type,
-  status: a.status,
-  taskName: a.currentTask?.name
-}));
-const mockQASteps = [
-  { type: "build", status: "success", duration: 2300 },
-  { type: "lint", status: "success", duration: 1100 },
-  { type: "test", status: "running", testCounts: { passed: 47, failed: 0, skipped: 2 } },
+  return defaultSteps;
+}
+const defaultQASteps = [
+  { type: "build", status: "pending" },
+  { type: "lint", status: "pending" },
+  { type: "test", status: "pending" },
   { type: "review", status: "pending" }
 ];
-const mockAgentOutput = [
-  "$ Starting implementation...",
-  "Analyzing auth requirements from specification",
-  "Creating authMiddleware.ts in src/auth/",
-  "Adding JWT validation logic",
-  "  - Importing jsonwebtoken library",
-  "  - Adding token verification function",
-  "  - Implementing refresh token rotation",
-  "Running TypeScript compilation check...",
-  "> No errors found in authMiddleware.ts",
-  "Adding unit tests for auth middleware...",
-  "  - Testing valid token verification",
-  "  - Testing expired token handling",
-  "  - Testing invalid signature detection",
-  "Running tests...",
-  "> All 3 tests passed"
-];
 function AgentsPage() {
-  const [selectedAgentId, setSelectedAgentId] = reactExports.useState("agent-1");
+  const [agents, setAgents] = reactExports.useState([]);
+  const [qaSteps, setQASteps] = reactExports.useState(defaultQASteps);
+  const [iteration, setIteration] = reactExports.useState({ current: 0, max: 50 });
+  const [agentOutput, setAgentOutput] = reactExports.useState([]);
+  const [selectedAgentId, setSelectedAgentId] = reactExports.useState(null);
   const [isPaused, setIsPaused] = reactExports.useState(false);
-  const selectedAgent = mockAgents.find((a) => a.id === selectedAgentId);
-  const handlePauseAll = () => {
+  const [isLoading, setIsLoading] = reactExports.useState(true);
+  const [error, setError] = reactExports.useState(null);
+  const selectedAgent = agents.find((a) => a.id === selectedAgentId);
+  const loadRealData = reactExports.useCallback(async () => {
+    if (!isElectronEnvironment()) {
+      setError("Backend not available. Please run in Electron.");
+      setIsLoading(false);
+      return;
+    }
+    setIsLoading(true);
+    setError(null);
+    try {
+      const api = window.nexusAPI;
+      const [agentsData, qaStatusData] = await Promise.all([
+        api.getAgents(),
+        api.getQAStatus()
+      ]);
+      if (agentsData && Array.isArray(agentsData)) {
+        setAgents(agentsData.map(mapBackendAgent));
+        if (agentsData.length > 0 && !selectedAgentId) {
+          setSelectedAgentId(agentsData[0].id);
+        }
+      }
+      if (qaStatusData) {
+        const qa = qaStatusData;
+        setQASteps(mapQAStatus(qaStatusData));
+        if (qa.iteration !== void 0 && qa.maxIterations !== void 0) {
+          setIteration({ current: qa.iteration, max: qa.maxIterations });
+        }
+      }
+      if (selectedAgentId) {
+        try {
+          const output = await api.getAgentOutput(selectedAgentId);
+          if (output && Array.isArray(output)) setAgentOutput(output);
+        } catch {
+        }
+      }
+    } catch (err) {
+      console.error("Failed to load agent data:", err);
+      setError("Failed to load agent data from backend.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [selectedAgentId]);
+  const subscribeToEvents = reactExports.useCallback(() => {
+    if (!isElectronEnvironment()) return () => {
+    };
+    const api = window.nexusAPI;
+    const unsubscribers = [];
+    unsubscribers.push(api.onAgentStatus((status) => {
+      const s = status;
+      const agentId = s.id || s.agentId;
+      if (agentId) {
+        setAgents((prev) => prev.map((a) => a.id === agentId ? { ...a, status: s.status || a.status } : a));
+      }
+    }));
+    unsubscribers.push(api.onAgentOutput((data) => {
+      if (data.agentId === selectedAgentId) setAgentOutput((prev) => [...prev, data.line]);
+    }));
+    unsubscribers.push(api.onQAStatusUpdate((status) => {
+      setQASteps(mapQAStatus(status));
+      const qa = status;
+      if (qa.iteration !== void 0 && qa.maxIterations !== void 0) setIteration({ current: qa.iteration, max: qa.maxIterations });
+    }));
+    return () => {
+      unsubscribers.forEach((unsub) => {
+        unsub();
+      });
+    };
+  }, [selectedAgentId]);
+  reactExports.useEffect(() => {
+    void loadRealData();
+    const cleanup = subscribeToEvents();
+    return cleanup;
+  }, [loadRealData, subscribeToEvents]);
+  const handlePauseAll = async () => {
     setIsPaused((prev) => !prev);
+    if (isElectronEnvironment()) {
+      try {
+        await window.nexusAPI.pauseExecution(isPaused ? "user_resume" : "user_pause");
+      } catch (err) {
+        console.error("Failed to pause/resume:", err);
+      }
+    }
   };
   const handleRefresh = () => {
+    void loadRealData();
   };
   const handleAgentSelect = (agentId) => {
     setSelectedAgentId(agentId);
+    setAgentOutput([]);
+    if (isElectronEnvironment()) {
+      void window.nexusAPI.getAgentOutput(agentId).then((output) => {
+        if (output && Array.isArray(output)) setAgentOutput(output);
+      }).catch(() => {
+      });
+    }
   };
+  const poolAgents = agents.map((a) => ({ id: a.id, type: a.type, status: a.status, taskName: a.currentTask?.name }));
+  const refreshIconClass = isLoading ? "w-4 h-4 mr-2 animate-spin" : "w-4 h-4 mr-2";
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col h-screen", "data-testid": "agents-page", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx(
       Header,
@@ -1485,9 +1727,10 @@ function AgentsPage() {
               variant: "outline",
               size: "sm",
               onClick: handleRefresh,
+              disabled: isLoading,
               "data-testid": "refresh-agents-button",
               children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx(RefreshCw, { className: "w-4 h-4 mr-2" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx(RefreshCw, { className: refreshIconClass }),
                 "Refresh"
               ]
             }
@@ -1511,12 +1754,22 @@ function AgentsPage() {
         ] })
       }
     ),
+    error && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "px-6 pt-4", children: /* @__PURE__ */ jsxRuntimeExports.jsxs(Alert, { variant: "warning", dismissible: true, onDismiss: () => {
+      setError(null);
+    }, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx(CircleAlert, { className: "w-4 h-4" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(AlertDescription, { children: error })
+    ] }) }),
+    isLoading && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-center p-4", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx(Spinner, { size: "sm", className: "mr-2" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-text-secondary", children: "Loading agent data..." })
+    ] }),
     /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex-1 overflow-hidden p-6", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "h-full flex flex-col gap-6", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx(
         AgentPoolStatus,
         {
-          agents: mockPoolAgents,
-          maxAgents: 5,
+          agents: poolAgents,
+          maxAgents: 10,
           selectedAgent: selectedAgentId ?? void 0,
           onSelectAgent: handleAgentSelect,
           className: "shrink-0",
@@ -1526,12 +1779,18 @@ function AgentsPage() {
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex-1 grid grid-cols-1 lg:grid-cols-2 gap-6 min-h-0", children: [
         /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-4 overflow-auto", "data-testid": "agents-list", children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-sm font-semibold text-text-secondary uppercase tracking-wider", children: "Active Agents" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "space-y-3", children: mockAgents.map((agent) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+          agents.length === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col items-center justify-center py-12 text-center", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "h-12 w-12 rounded-full bg-bg-tertiary flex items-center justify-center mb-3", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Bot, { className: "h-6 w-6 text-text-tertiary" }) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-text-secondary text-sm", children: "No agents active" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-text-tertiary text-xs mt-1", children: "Agents will appear here when a task is being processed" })
+          ] }) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "space-y-3", children: agents.map((agent) => /* @__PURE__ */ jsxRuntimeExports.jsx(
             AgentCard,
             {
               agent,
               selected: agent.id === selectedAgentId,
-              onClick: () => setSelectedAgentId(agent.id),
+              onClick: () => {
+                handleAgentSelect(agent.id);
+              },
               "data-testid": `agent-card-${agent.id}`
             },
             agent.id
@@ -1543,7 +1802,7 @@ function AgentsPage() {
             AgentActivity,
             {
               agentId: selectedAgent.id,
-              output: mockAgentOutput,
+              output: agentOutput,
               status: selectedAgent.status,
               className: "flex-1 min-h-0",
               "data-testid": "agent-activity"
@@ -1554,9 +1813,9 @@ function AgentsPage() {
             /* @__PURE__ */ jsxRuntimeExports.jsx(
               QAStatusPanel,
               {
-                steps: mockQASteps,
-                iteration: selectedAgent.iteration?.current ?? 0,
-                maxIterations: selectedAgent.iteration?.max ?? 50,
+                steps: qaSteps,
+                iteration: selectedAgent.iteration?.current ?? iteration.current,
+                maxIterations: selectedAgent.iteration?.max ?? iteration.max,
                 orientation: "horizontal",
                 "data-testid": "qa-status-panel"
               }

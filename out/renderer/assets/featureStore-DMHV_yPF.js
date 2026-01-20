@@ -1,4 +1,29 @@
-import { O as create } from "./index-xnK5wLuD.js";
+import { c as createLucideIcon, Y as create } from "./index-DeoAs8is.js";
+/**
+ * @license lucide-react v0.562.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode = [
+  [
+    "path",
+    {
+      d: "M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49",
+      key: "ct8e1f"
+    }
+  ],
+  ["path", { d: "M14.084 14.158a3 3 0 0 1-4.242-4.242", key: "151rxh" }],
+  [
+    "path",
+    {
+      d: "M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143",
+      key: "13bj9a"
+    }
+  ],
+  ["path", { d: "m2 2 20 20", key: "1ooewy" }]
+];
+const EyeOff = createLucideIcon("eye-off", __iconNode);
 const WIP_LIMIT = 3;
 function emitEvent(channel, payload) {
   if (window.nexusAPI?.emitEvent) {
@@ -56,6 +81,7 @@ const useFeatureStore = create()((set, get) => ({
     const feature = state.features.find((f) => f.id === id);
     if (!feature) return false;
     const oldStatus = feature.status;
+    if (oldStatus === newStatus) return true;
     if (newStatus === "in_progress" && oldStatus !== "in_progress") {
       const inProgressCount = state.features.filter((f) => f.status === "in_progress").length;
       if (inProgressCount >= WIP_LIMIT) {
@@ -71,6 +97,20 @@ const useFeatureStore = create()((set, get) => ({
         } : f
       )
     }));
+    if (window.nexusAPI?.updateFeature) {
+      window.nexusAPI.updateFeature(id, { status: newStatus }).catch((error) => {
+        console.error("Failed to persist feature status change:", error);
+        set((state2) => ({
+          features: state2.features.map(
+            (f) => f.id === id ? {
+              ...f,
+              status: oldStatus,
+              updatedAt: (/* @__PURE__ */ new Date()).toISOString()
+            } : f
+          )
+        }));
+      });
+    }
     emitEvent("feature:status-changed", {
       featureId: id,
       projectId: "current",
@@ -167,6 +207,7 @@ function mapToEventFeatureStatus(status) {
 }
 const useFeatureCount = () => useFeatureStore((s) => s.features.length);
 export {
+  EyeOff as E,
   useFeatureCount as a,
   useFeatureStore as u
 };

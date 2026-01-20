@@ -1,26 +1,14 @@
-import { c as createLucideIcon, r as reactExports, R as React, d as reactDomExports, j as jsxRuntimeExports, e as Card, a as cn, f as CardHeader, g as CardTitle, h as CardContent, D as Dialog, i as DialogContent, k as DialogHeader, l as DialogTitle, m as DialogDescription, L as LoaderCircle, n as Button } from "./index-xnK5wLuD.js";
-import { u as useFeatureStore, a as useFeatureCount } from "./featureStore-BEKfnQRM.js";
-import { C as Circle, A as AnimatedPage } from "./AnimatedPage-DLggbSB3.js";
-import { C as Clock } from "./clock-zSUTFGik.js";
-import { C as CircleX } from "./circle-x-BDPGfBfa.js";
-import { C as CircleCheck } from "./circle-check-DcrdITtO.js";
-import { L as Layers } from "./layers-By3mZB1o.js";
-import { P as Plus } from "./plus-DRS8OUHN.js";
-/**
- * @license lucide-react v0.562.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode$1 = [
-  ["circle", { cx: "9", cy: "12", r: "1", key: "1vctgf" }],
-  ["circle", { cx: "9", cy: "5", r: "1", key: "hp0tcf" }],
-  ["circle", { cx: "9", cy: "19", r: "1", key: "fkjjf6" }],
-  ["circle", { cx: "15", cy: "12", r: "1", key: "1tmaij" }],
-  ["circle", { cx: "15", cy: "5", r: "1", key: "19l28e" }],
-  ["circle", { cx: "15", cy: "19", r: "1", key: "f4zoj3" }]
-];
-const GripVertical = createLucideIcon("grip-vertical", __iconNode$1);
+import { c as createLucideIcon, r as reactExports, R as React, d as reactDomExports, j as jsxRuntimeExports, e as Card, a as cn, f as CardHeader, g as CardTitle, h as CardContent, D as Dialog, i as DialogContent, k as DialogHeader, T as TriangleAlert, l as DialogTitle, m as DialogDescription, n as DialogFooter, o as Button, L as LoaderCircle, P as Plus } from "./index-DeoAs8is.js";
+import { u as useFeatureStore, a as useFeatureCount } from "./featureStore-DMHV_yPF.js";
+import { C as Circle, A as AnimatedPage } from "./AnimatedPage-CaBOvLbi.js";
+import { C as Clock } from "./clock-D4ZvFRET.js";
+import { T as Trash2 } from "./trash-2-DhMRrSAA.js";
+import { C as CircleX } from "./circle-x-BGipjINk.js";
+import { C as CircleCheck } from "./circle-check-BM7kR0e3.js";
+import { L as Layers } from "./layers-CRgMtEFm.js";
+import { S as Search, I as Input } from "./Input-Bih7WUeJ.js";
+import "./circle-alert-B5chTur6.js";
+import "./eye-BDpbQ6e8.js";
 /**
  * @license lucide-react v0.562.0 - ISC
  *
@@ -28,10 +16,14 @@ const GripVertical = createLucideIcon("grip-vertical", __iconNode$1);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode = [
-  ["path", { d: "m21 21-4.34-4.34", key: "14j7rj" }],
-  ["circle", { cx: "11", cy: "11", r: "8", key: "4ej97u" }]
+  ["circle", { cx: "9", cy: "12", r: "1", key: "1vctgf" }],
+  ["circle", { cx: "9", cy: "5", r: "1", key: "hp0tcf" }],
+  ["circle", { cx: "9", cy: "19", r: "1", key: "fkjjf6" }],
+  ["circle", { cx: "15", cy: "12", r: "1", key: "1tmaij" }],
+  ["circle", { cx: "15", cy: "5", r: "1", key: "19l28e" }],
+  ["circle", { cx: "15", cy: "19", r: "1", key: "f4zoj3" }]
 ];
-const Search = createLucideIcon("search", __iconNode);
+const GripVertical = createLucideIcon("grip-vertical", __iconNode);
 function useCombinedRefs() {
   for (var _len = arguments.length, refs = new Array(_len), _key = 0; _key < _len; _key++) {
     refs[_key] = arguments[_key];
@@ -4521,11 +4513,93 @@ function FeatureDetailModal({
   open,
   onOpenChange
 }) {
+  const [isDeleting, setIsDeleting] = reactExports.useState(false);
+  const [deleteError, setDeleteError] = reactExports.useState(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = reactExports.useState(false);
+  const removeFeature = useFeatureStore((s) => s.removeFeature);
   if (!feature) return null;
   const completedTasks = feature.tasks.filter((t) => t.status === "completed").length;
   const totalTasks = feature.tasks.length;
   const progress = totalTasks > 0 ? Math.round(completedTasks / totalTasks * 100) : 0;
-  return /* @__PURE__ */ jsxRuntimeExports.jsx(Dialog, { open, onOpenChange, children: /* @__PURE__ */ jsxRuntimeExports.jsxs(DialogContent, { className: "max-w-2xl", children: [
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    setDeleteError(null);
+    try {
+      const result = await window.nexusAPI.deleteFeature(feature.id);
+      if (result.success) {
+        removeFeature(feature.id);
+        setShowDeleteConfirm(false);
+        onOpenChange(false);
+      } else {
+        setDeleteError("Failed to delete feature");
+      }
+    } catch (error) {
+      console.error("Failed to delete feature:", error);
+      setDeleteError(error instanceof Error ? error.message : "Failed to delete feature");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+  const handleOpenChange = (isOpen) => {
+    if (!isOpen) {
+      setShowDeleteConfirm(false);
+      setDeleteError(null);
+    }
+    onOpenChange(isOpen);
+  };
+  if (showDeleteConfirm) {
+    return /* @__PURE__ */ jsxRuntimeExports.jsx(Dialog, { open, onOpenChange: handleOpenChange, children: /* @__PURE__ */ jsxRuntimeExports.jsxs(DialogContent, { className: "max-w-md", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs(DialogHeader, { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2 text-destructive", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(TriangleAlert, { className: "h-5 w-5" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(DialogTitle, { children: "Delete Feature" })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs(DialogDescription, { className: "pt-2", children: [
+          "Are you sure you want to delete ",
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("strong", { children: [
+            '"',
+            feature.title,
+            '"'
+          ] }),
+          "?",
+          /* @__PURE__ */ jsxRuntimeExports.jsx("br", {}),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("br", {}),
+          "This action cannot be undone. All tasks associated with this feature will also be deleted."
+        ] })
+      ] }),
+      deleteError && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive", children: deleteError }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs(DialogFooter, { className: "gap-2 sm:gap-0", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          Button,
+          {
+            variant: "outline",
+            onClick: () => {
+              setShowDeleteConfirm(false);
+              setDeleteError(null);
+            },
+            disabled: isDeleting,
+            children: "Cancel"
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          Button,
+          {
+            variant: "destructive",
+            onClick: () => void handleDelete(),
+            disabled: isDeleting,
+            children: isDeleting ? /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "mr-2 h-4 w-4 animate-spin" }),
+              "Deleting..."
+            ] }) : /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(Trash2, { className: "mr-2 h-4 w-4" }),
+              "Delete Feature"
+            ] })
+          }
+        )
+      ] })
+    ] }) });
+  }
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(Dialog, { open, onOpenChange: handleOpenChange, children: /* @__PURE__ */ jsxRuntimeExports.jsxs(DialogContent, { className: "max-w-2xl", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsxs(DialogHeader, { children: [
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2", children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx(Circle, { className: cn("h-3 w-3 fill-current", priorityColors[feature.priority]) }),
@@ -4606,7 +4680,22 @@ function FeatureDetailModal({
           children: tag
         },
         tag
-      )) })
+      )) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "border-t pt-4", children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        Button,
+        {
+          variant: "destructive",
+          size: "sm",
+          className: "w-full",
+          onClick: () => {
+            setShowDeleteConfirm(true);
+          },
+          children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(Trash2, { className: "mr-2 h-4 w-4" }),
+            "Delete Feature"
+          ]
+        }
+      ) })
     ] })
   ] }) });
 }
@@ -4806,86 +4895,6 @@ function KanbanHeader({ projectName, onNewFeature }) {
     ] })
   ] });
 }
-const DEMO_FEATURES = [
-  {
-    id: "feat-1",
-    title: "User Authentication System",
-    description: "Implement OAuth2 login flow with Google and GitHub providers. Include session management and token refresh.",
-    status: "backlog",
-    complexity: "complex",
-    progress: 0,
-    assignedAgent: void 0,
-    tasks: [],
-    priority: "high",
-    createdAt: (/* @__PURE__ */ new Date()).toISOString(),
-    updatedAt: (/* @__PURE__ */ new Date()).toISOString()
-  },
-  {
-    id: "feat-2",
-    title: "Dashboard Analytics Widget",
-    description: "Create real-time analytics dashboard showing key metrics and trends.",
-    status: "planning",
-    complexity: "moderate",
-    progress: 15,
-    assignedAgent: "decomposer-agent",
-    tasks: [],
-    priority: "medium",
-    createdAt: (/* @__PURE__ */ new Date()).toISOString(),
-    updatedAt: (/* @__PURE__ */ new Date()).toISOString()
-  },
-  {
-    id: "feat-3",
-    title: "API Rate Limiting",
-    description: "Add rate limiting middleware to protect API endpoints from abuse.",
-    status: "in_progress",
-    complexity: "simple",
-    progress: 45,
-    assignedAgent: "coder-agent",
-    tasks: [],
-    priority: "critical",
-    createdAt: (/* @__PURE__ */ new Date()).toISOString(),
-    updatedAt: (/* @__PURE__ */ new Date()).toISOString()
-  },
-  {
-    id: "feat-4",
-    title: "Email Notification Service",
-    description: "Build email notification system with template support and queue processing.",
-    status: "ai_review",
-    complexity: "moderate",
-    progress: 80,
-    assignedAgent: "qa-agent",
-    tasks: [],
-    priority: "medium",
-    createdAt: (/* @__PURE__ */ new Date()).toISOString(),
-    updatedAt: (/* @__PURE__ */ new Date()).toISOString()
-  },
-  {
-    id: "feat-5",
-    title: "Dark Mode Support",
-    description: "Add system-wide dark mode toggle with CSS variable theming.",
-    status: "human_review",
-    complexity: "simple",
-    progress: 95,
-    assignedAgent: "reviewer-agent",
-    tasks: [],
-    priority: "low",
-    createdAt: (/* @__PURE__ */ new Date()).toISOString(),
-    updatedAt: (/* @__PURE__ */ new Date()).toISOString()
-  },
-  {
-    id: "feat-6",
-    title: "File Upload Component",
-    description: "Drag and drop file upload with progress indicator and validation.",
-    status: "done",
-    complexity: "moderate",
-    progress: 100,
-    assignedAgent: void 0,
-    tasks: [],
-    priority: "medium",
-    createdAt: (/* @__PURE__ */ new Date()).toISOString(),
-    updatedAt: (/* @__PURE__ */ new Date()).toISOString()
-  }
-];
 function isElectronEnvironment() {
   return typeof window !== "undefined" && typeof window.nexusAPI !== "undefined" && typeof window.nexusAPI.getFeatures === "function";
 }
@@ -4940,15 +4949,23 @@ function mapBackendFeature(backendFeature) {
 function KanbanPage() {
   const setFeatures = useFeatureStore((s) => s.setFeatures);
   const updateFeature = useFeatureStore((s) => s.updateFeature);
+  const addFeature = useFeatureStore((s) => s.addFeature);
   const features = useFeatureStore((s) => s.features);
   const [isLoading, setIsLoading] = reactExports.useState(true);
   const [error, setError] = reactExports.useState(null);
+  const [isEmpty, setIsEmpty] = reactExports.useState(false);
+  const [isAddFeatureModalOpen, setIsAddFeatureModalOpen] = reactExports.useState(false);
+  const [newFeatureTitle, setNewFeatureTitle] = reactExports.useState("");
+  const [newFeatureDescription, setNewFeatureDescription] = reactExports.useState("");
+  const [newFeaturePriority, setNewFeaturePriority] = reactExports.useState("medium");
+  const [newFeatureComplexity, setNewFeatureComplexity] = reactExports.useState("moderate");
+  const [isCreating, setIsCreating] = reactExports.useState(false);
+  const [createError, setCreateError] = reactExports.useState(null);
   const loadRealData = reactExports.useCallback(async () => {
     if (!isElectronEnvironment()) {
-      if (features.length === 0) {
-        setFeatures(DEMO_FEATURES);
-      }
+      setError("Backend not available. Please run in Electron.");
       setIsLoading(false);
+      setIsEmpty(true);
       return;
     }
     try {
@@ -4960,17 +4977,15 @@ function KanbanPage() {
           (f) => mapBackendFeature(f)
         );
         setFeatures(mappedFeatures);
+        setIsEmpty(false);
       } else {
-        if (features.length === 0) {
-          setFeatures(DEMO_FEATURES);
-        }
+        setFeatures([]);
+        setIsEmpty(true);
       }
     } catch (err) {
       console.error("Failed to load features:", err);
-      setError("Failed to load features. Using demo data.");
-      if (features.length === 0) {
-        setFeatures(DEMO_FEATURES);
-      }
+      setError("Failed to load features from backend.");
+      setIsEmpty(features.length === 0);
     } finally {
       setIsLoading(false);
     }
@@ -5001,13 +5016,164 @@ function KanbanPage() {
     const unsubscribe = subscribeToEvents();
     return unsubscribe;
   }, [loadRealData, subscribeToEvents]);
+  const handleCreateFeature = reactExports.useCallback(async () => {
+    if (!newFeatureTitle.trim()) {
+      setCreateError("Feature title is required");
+      return;
+    }
+    if (!isElectronEnvironment()) {
+      setCreateError("Backend not available");
+      return;
+    }
+    setIsCreating(true);
+    setCreateError(null);
+    try {
+      const createdFeature = await window.nexusAPI.createFeature({
+        title: newFeatureTitle.trim(),
+        description: newFeatureDescription.trim() || void 0,
+        priority: newFeaturePriority,
+        complexity: newFeatureComplexity
+      });
+      const mappedFeature = mapBackendFeature(createdFeature);
+      addFeature(mappedFeature);
+      setIsAddFeatureModalOpen(false);
+      setNewFeatureTitle("");
+      setNewFeatureDescription("");
+      setNewFeaturePriority("medium");
+      setNewFeatureComplexity("moderate");
+      setIsEmpty(false);
+    } catch (err) {
+      console.error("Failed to create feature:", err);
+      setCreateError(err instanceof Error ? err.message : "Failed to create feature");
+    } finally {
+      setIsCreating(false);
+    }
+  }, [newFeatureTitle, newFeatureDescription, newFeaturePriority, newFeatureComplexity, addFeature]);
+  const handleCloseAddFeatureModal = reactExports.useCallback(() => {
+    setIsAddFeatureModalOpen(false);
+    setNewFeatureTitle("");
+    setNewFeatureDescription("");
+    setNewFeaturePriority("medium");
+    setNewFeatureComplexity("moderate");
+    setCreateError(null);
+  }, []);
+  const handleOpenAddFeatureModal = reactExports.useCallback(() => {
+    setIsAddFeatureModalOpen(true);
+  }, []);
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(AnimatedPage, { className: "flex h-full flex-col", children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsx(KanbanHeader, { projectName: "Nexus" }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(KanbanHeader, { projectName: "Nexus", onNewFeature: handleOpenAddFeatureModal }),
     error && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "mx-4 mt-2 rounded-md bg-status-warning/10 border border-status-warning/20 px-4 py-2 text-sm text-status-warning", children: error }),
     /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex-1 overflow-auto", children: isLoading ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex h-full items-center justify-center", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col items-center gap-3", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "h-8 w-8 animate-spin rounded-full border-2 border-accent-primary border-t-transparent" }),
       /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-sm text-text-secondary", children: "Loading features..." })
-    ] }) }) : /* @__PURE__ */ jsxRuntimeExports.jsx(KanbanBoard, {}) })
+    ] }) }) : isEmpty && features.length === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex h-full items-center justify-center", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col items-center gap-4 text-center max-w-md px-4", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "h-16 w-16 rounded-full bg-bg-tertiary flex items-center justify-center", children: /* @__PURE__ */ jsxRuntimeExports.jsx("svg", { className: "h-8 w-8 text-text-tertiary", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor", children: /* @__PURE__ */ jsxRuntimeExports.jsx("path", { strokeLinecap: "round", strokeLinejoin: "round", strokeWidth: 1.5, d: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" }) }) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "text-lg font-medium text-text-primary mb-1", children: "No features yet" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm text-text-secondary", children: "Complete the interview process to generate features, or add them manually using the button above." })
+      ] })
+    ] }) }) : /* @__PURE__ */ jsxRuntimeExports.jsx(KanbanBoard, {}) }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(Dialog, { open: isAddFeatureModalOpen, onOpenChange: handleCloseAddFeatureModal, children: /* @__PURE__ */ jsxRuntimeExports.jsxs(DialogContent, { className: "bg-bg-card border-border-default", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs(DialogHeader, { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(DialogTitle, { className: "text-text-primary", children: "Add New Feature" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(DialogDescription, { className: "text-text-secondary", children: "Create a new feature to add to the backlog." })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-4 py-4", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          Input,
+          {
+            label: "Feature Title",
+            placeholder: "User authentication system",
+            value: newFeatureTitle,
+            onChange: (e) => {
+              setNewFeatureTitle(e.target.value);
+            },
+            error: createError || void 0,
+            "data-testid": "add-feature-title-input"
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-2", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-sm font-medium text-text-primary", children: "Description (optional)" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "textarea",
+            {
+              placeholder: "Describe the feature requirements...",
+              value: newFeatureDescription,
+              onChange: (e) => {
+                setNewFeatureDescription(e.target.value);
+              },
+              className: "w-full h-24 px-3 py-2 text-sm rounded-md border border-border-default bg-bg-secondary text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-accent-primary focus:ring-offset-2 resize-none",
+              "data-testid": "add-feature-description-input"
+            }
+          )
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-2", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-sm font-medium text-text-primary", children: "Priority" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-4 gap-2", children: ["critical", "high", "medium", "low"].map((priority) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "button",
+            {
+              type: "button",
+              onClick: () => {
+                setNewFeaturePriority(priority);
+              },
+              className: cn(
+                "px-3 py-2 text-sm rounded-md border transition-all capitalize",
+                newFeaturePriority === priority ? priority === "critical" ? "border-status-error bg-status-error/10 text-status-error" : priority === "high" ? "border-status-warning bg-status-warning/10 text-status-warning" : priority === "medium" ? "border-accent-primary bg-accent-primary/10 text-accent-primary" : "border-text-tertiary bg-bg-tertiary text-text-secondary" : "border-border-default hover:border-border-subtle text-text-secondary"
+              ),
+              "data-testid": `add-feature-priority-${priority}`,
+              children: priority
+            },
+            priority
+          )) })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-2", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-sm font-medium text-text-primary", children: "Complexity" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-3 gap-2", children: ["simple", "moderate", "complex"].map((complexity) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "button",
+            {
+              type: "button",
+              onClick: () => {
+                setNewFeatureComplexity(complexity);
+              },
+              className: cn(
+                "px-3 py-2 text-sm rounded-md border transition-all capitalize",
+                newFeatureComplexity === complexity ? "border-accent-secondary bg-accent-secondary/10 text-accent-secondary" : "border-border-default hover:border-border-subtle text-text-secondary"
+              ),
+              "data-testid": `add-feature-complexity-${complexity}`,
+              children: complexity
+            },
+            complexity
+          )) })
+        ] })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs(DialogFooter, { className: "gap-2 sm:gap-0", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          Button,
+          {
+            variant: "outline",
+            onClick: handleCloseAddFeatureModal,
+            disabled: isCreating,
+            children: "Cancel"
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          Button,
+          {
+            variant: "primary",
+            onClick: () => {
+              void handleCreateFeature();
+            },
+            disabled: isCreating || !newFeatureTitle.trim(),
+            "data-testid": "add-feature-submit",
+            className: "gap-2",
+            children: [
+              isCreating && /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "h-4 w-4 animate-spin" }),
+              isCreating ? "Creating..." : "Add Feature"
+            ]
+          }
+        )
+      ] })
+    ] }) })
   ] });
 }
 export {
