@@ -82,6 +82,8 @@ export interface Requirement {
   source: 'interview' | 'manual' | 'inferred';
   createdAt: number;
   updatedAt: number;
+  /** Whether this requirement has been confirmed by the user */
+  confirmed?: boolean;
 }
 
 /**

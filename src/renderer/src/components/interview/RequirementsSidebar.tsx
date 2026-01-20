@@ -27,10 +27,20 @@ const STAGE_ORDER: InterviewStage[] = [
 
 const STAGE_LABELS: Record<InterviewStage, string> = {
   welcome: 'Welcome',
+  project_name: 'Project Name',
   project_overview: 'Project Overview',
+  overview: 'Overview',
+  functional: 'Functional Requirements',
+  technical: 'Technical',
   technical_requirements: 'Technical Requirements',
   features: 'Features',
+  ui: 'UI/UX',
+  performance: 'Performance',
+  security: 'Security',
+  integration: 'Integration',
   constraints: 'Constraints',
+  testing: 'Testing',
+  summary: 'Summary',
   review: 'Review',
   complete: 'Complete',
 };

@@ -43,7 +43,7 @@ export interface AnimatedListProps {
   'data-testid'?: string;
 }
 
-export const AnimatedList = React.forwardRef<HTMLDivElement, AnimatedListProps>(
+export const AnimatedList = React.forwardRef<HTMLElement, AnimatedListProps>(
   (
     {
       children,
@@ -69,7 +69,7 @@ export const AnimatedList = React.forwardRef<HTMLDivElement, AnimatedListProps>(
 
     return (
       <Component
-        ref={ref}
+        ref={ref as React.Ref<HTMLDivElement & HTMLUListElement & HTMLOListElement>}
         data-testid={testId}
         variants={containerVariants}
         initial="hidden"
@@ -100,7 +100,7 @@ export interface AnimatedListItemProps {
   'data-testid'?: string;
 }
 
-export const AnimatedListItem = React.forwardRef<HTMLDivElement, AnimatedListItemProps>(
+export const AnimatedListItem = React.forwardRef<HTMLElement, AnimatedListItemProps>(
   (
     {
       children,
@@ -138,7 +138,7 @@ export const AnimatedListItem = React.forwardRef<HTMLDivElement, AnimatedListIte
 
     return (
       <Component
-        ref={ref}
+        ref={ref as React.Ref<HTMLDivElement & HTMLLIElement>}
         data-testid={testId}
         variants={itemVariants}
         className={className}
