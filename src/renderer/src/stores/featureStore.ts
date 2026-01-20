@@ -102,6 +102,9 @@ export const useFeatureStore = create<FeatureState>()((set, get) => ({
 
     const oldStatus = feature.status
 
+    // Skip if status hasn't changed
+    if (oldStatus === newStatus) return true
+
     // WIP Limit enforcement: reject move to in_progress if at capacity
     if (newStatus === 'in_progress' && oldStatus !== 'in_progress') {
       const inProgressCount = state.features.filter((f) => f.status === 'in_progress').length
@@ -122,6 +125,27 @@ export const useFeatureStore = create<FeatureState>()((set, get) => ({
           : f
       )
     }))
+
+    // Persist to backend via IPC
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- defensive check for non-Electron environments
+    if (window.nexusAPI?.updateFeature) {
+      window.nexusAPI.updateFeature(id, { status: newStatus })
+        .catch((error: unknown) => {
+          console.error('Failed to persist feature status change:', error)
+          // Revert the optimistic update on failure
+          set((state) => ({
+            features: state.features.map((f) =>
+              f.id === id
+                ? {
+                    ...f,
+                    status: oldStatus,
+                    updatedAt: new Date().toISOString()
+                  }
+                : f
+            )
+          }))
+        })
+    }
 
     // Emit events via IPC
     emitEvent('feature:status-changed', {

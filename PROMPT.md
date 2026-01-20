@@ -100,6 +100,21 @@
   - `src/renderer/src/pages/InterviewPage.tsx`
 - **Commit**: `fec4585 feat(interview): wire Complete Interview button to backend`
 
+### Iteration 7 (2024-01-20)
+- **Task**: Wire Kanban feature drag-and-drop to persist status changes to backend
+- **Status**: COMPLETED
+- **Changes**:
+  - Updated `moveFeature` function in `featureStore.ts` to persist status changes via IPC
+  - Implemented optimistic update pattern:
+    - Update local state immediately for responsive UI
+    - Call `window.nexusAPI.updateFeature(id, { status })` to persist to backend
+    - Revert local state on backend failure with error logging
+  - Added early return when status hasn't changed (no-op optimization)
+  - Used proper TypeScript ESLint disable comment for defensive non-Electron check
+- **Files Modified**:
+  - `src/renderer/src/stores/featureStore.ts`
+- **Commit**: `7a499aa feat(kanban): wire feature drag-and-drop to persist status to backend`
+
 ### Remaining Tasks:
 (Continue from Phase 17B implementation plan)
 
