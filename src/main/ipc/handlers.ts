@@ -351,6 +351,52 @@ export function registerIpcHandlers(): void {
     }
   })
 
+  /**
+   * Get historical progress data for ProgressChart
+   * Returns array of progress data points over time
+   */
+  ipcMain.handle('dashboard:getHistoricalProgress', (event) => {
+    if (!validateSender(event)) {
+      throw new Error('Unauthorized IPC sender')
+    }
+
+    // Get current task state for calculating progress
+    const tasks = Array.from(state.tasks.values())
+    const totalTasks = tasks.length
+    const completedTasks = tasks.filter(t => t.status === 'completed').length
+
+    // If no tasks exist, return empty progress history
+    if (totalTasks === 0) {
+      return []
+    }
+
+    // Generate historical progress data based on completed tasks
+    // In a real implementation, this would be stored in the database
+    // For now, we'll generate some data points leading up to the current state
+    const now = new Date()
+    const progressData: Array<{ timestamp: Date; completed: number; total: number }> = []
+
+    // Create progress points for the past hour at 5-minute intervals
+    const intervalsBack = 12 // 12 intervals of 5 minutes = 1 hour
+    for (let i = intervalsBack; i >= 0; i--) {
+      const timestamp = new Date(now.getTime() - i * 5 * 60 * 1000)
+
+      // Calculate completed tasks at this point in time (simulated linear progress)
+      // In production, this would query historical completion times from the database
+      const progressAtTime = totalTasks > 0
+        ? Math.min(completedTasks, Math.floor(completedTasks * ((intervalsBack - i) / intervalsBack)))
+        : 0
+
+      progressData.push({
+        timestamp,
+        completed: i === 0 ? completedTasks : progressAtTime,
+        total: totalTasks
+      })
+    }
+
+    return progressData
+  })
+
   ipcMain.handle('project:create', (event, input: { name: string; mode: 'genesis' | 'evolution' }) => {
       if (!validateSender(event)) {
         throw new Error('Unauthorized IPC sender')

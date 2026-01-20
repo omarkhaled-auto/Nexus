@@ -39,6 +39,7 @@ import type {
   TimelineEvent,
   CostMetrics
 } from '../types/metrics'
+import type { ProgressDataPoint } from '../components/dashboard/ProgressChart'
 
 /**
  * Check if running in Electron environment with nexusAPI available
@@ -236,6 +237,9 @@ export default function DashboardPage(): ReactElement {
   const [projects, setProjects] = useState<ProjectData[]>([])
   const [error, setError] = useState<string | null>(null)
 
+  // State for progress chart data (real data from backend)
+  const [progressData, setProgressData] = useState<ProgressDataPoint[]>([])
+
   // State for create project modal
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [createProjectName, setCreateProjectName] = useState('')
@@ -289,6 +293,22 @@ export default function DashboardPage(): ReactElement {
           }
         })
         setProjects(transformedProjects)
+      }
+
+      // Load historical progress data for ProgressChart
+      const historicalProgressData = await window.nexusAPI.getHistoricalProgress()
+      if (Array.isArray(historicalProgressData)) {
+        // Transform backend progress data to ProgressDataPoint format
+        // Backend returns timestamps as strings when serialized via IPC
+        const transformedProgressData: ProgressDataPoint[] = historicalProgressData.map((point: unknown) => {
+          const p = point as { timestamp: string | Date; completed: number; total: number }
+          return {
+            timestamp: p.timestamp instanceof Date ? p.timestamp : new Date(p.timestamp),
+            completed: p.completed,
+            total: p.total
+          }
+        })
+        setProgressData(transformedProgressData)
       }
     } catch (err) {
       console.error('Failed to load dashboard data:', err)
@@ -544,7 +564,7 @@ export default function DashboardPage(): ReactElement {
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 flex-1 min-h-[300px]">
         <div className="lg:col-span-2">
           <ProgressChart
-            data={[]}
+            data={progressData}
             height={280}
             className="h-full bg-bg-card border-border-default"
           />

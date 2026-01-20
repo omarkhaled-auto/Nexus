@@ -92,6 +92,13 @@ const nexusAPI = {
   getDashboardCosts: (): Promise<unknown> =>
     ipcRenderer.invoke('dashboard:getCosts'),
 
+  /**
+   * Get historical progress data for ProgressChart
+   * @returns Promise with array of progress data points
+   */
+  getHistoricalProgress: (): Promise<Array<{ timestamp: Date; completed: number; total: number }>> =>
+    ipcRenderer.invoke('dashboard:getHistoricalProgress'),
+
   // ========================================
   // Task Operations
   // ========================================
