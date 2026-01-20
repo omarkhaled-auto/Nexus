@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback, type ReactElement } from 'react'
-import { Link } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 import {
   CostTracker,
   ProgressChart,
@@ -10,6 +10,15 @@ import { AnimatedPage } from '../components/AnimatedPage'
 import { CardSkeleton } from '../components/ui/Skeleton'
 import { Button } from '../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter
+} from '../components/ui/dialog'
+import { Input } from '../components/ui/Input'
 import { useMetricsStore, useIsMetricsLoading, useOverview, useAgentMetrics } from '../stores'
 import {
   Plus,
@@ -20,7 +29,8 @@ import {
   Sparkles,
   Zap,
   CheckCircle2,
-  Clock
+  Clock,
+  Loader2
 } from 'lucide-react'
 import { cn } from '../lib/utils'
 import type {
@@ -212,6 +222,7 @@ function StatCard({
  * ```
  */
 export default function DashboardPage(): ReactElement {
+  const navigate = useNavigate()
   const isLoading = useIsMetricsLoading()
   const overview = useOverview()
   const agents = useAgentMetrics()
@@ -224,6 +235,13 @@ export default function DashboardPage(): ReactElement {
   // State for projects from backend (initialized empty)
   const [projects, setProjects] = useState<ProjectData[]>([])
   const [error, setError] = useState<string | null>(null)
+
+  // State for create project modal
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  const [createProjectName, setCreateProjectName] = useState('')
+  const [createProjectMode, setCreateProjectMode] = useState<'genesis' | 'evolution'>('genesis')
+  const [isCreating, setIsCreating] = useState(false)
+  const [createError, setCreateError] = useState<string | null>(null)
 
   /**
    * Load initial data from backend
@@ -325,6 +343,59 @@ export default function DashboardPage(): ReactElement {
     }
   }, [setOverview, updateAgentMetrics, addTimelineEvent, setCosts])
 
+  /**
+   * Handle creating a new project via the modal
+   */
+  const handleCreateProject = useCallback(async () => {
+    if (!isElectronEnvironment()) {
+      setCreateError('Cannot create project: backend not available')
+      return
+    }
+
+    if (!createProjectName.trim()) {
+      setCreateError('Project name is required')
+      return
+    }
+
+    setIsCreating(true)
+    setCreateError(null)
+
+    try {
+      const result = await window.nexusAPI.createProject({
+        name: createProjectName.trim(),
+        mode: createProjectMode
+      })
+
+      // Close modal and reset state
+      setIsCreateModalOpen(false)
+      setCreateProjectName('')
+      setCreateProjectMode('genesis')
+
+      // Reload projects to show the new one
+      await loadRealData()
+
+      // Navigate to the new project
+      if (result?.id) {
+        navigate(`/project/${result.id}`)
+      }
+    } catch (err) {
+      console.error('Failed to create project:', err)
+      setCreateError(err instanceof Error ? err.message : 'Failed to create project')
+    } finally {
+      setIsCreating(false)
+    }
+  }, [createProjectName, createProjectMode, loadRealData, navigate])
+
+  /**
+   * Handle modal close - reset form state
+   */
+  const handleModalClose = useCallback(() => {
+    setIsCreateModalOpen(false)
+    setCreateProjectName('')
+    setCreateProjectMode('genesis')
+    setCreateError(null)
+  }, [])
+
   // Initialize data and subscriptions on mount
   useEffect(() => {
     if (initializedRef.current) return
@@ -370,6 +441,7 @@ export default function DashboardPage(): ReactElement {
           size="md"
           data-testid="new-project-button"
           className="gap-2"
+          onClick={() => setIsCreateModalOpen(true)}
         >
           <Plus className="h-4 w-4" />
           New Project
@@ -484,6 +556,104 @@ export default function DashboardPage(): ReactElement {
           />
         </div>
       </div>
+
+      {/* Create Project Modal */}
+      <Dialog open={isCreateModalOpen} onOpenChange={handleModalClose}>
+        <DialogContent className="bg-bg-card border-border-default">
+          <DialogHeader>
+            <DialogTitle className="text-text-primary">Create New Project</DialogTitle>
+            <DialogDescription className="text-text-secondary">
+              Start a new project with Nexus AI agent orchestration.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {/* Project Name Input */}
+            <Input
+              label="Project Name"
+              placeholder="my-awesome-project"
+              value={createProjectName}
+              onChange={(e) => setCreateProjectName(e.target.value)}
+              error={createError || undefined}
+              data-testid="create-project-name-input"
+            />
+
+            {/* Project Mode Selection */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-text-primary">Project Mode</label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setCreateProjectMode('genesis')}
+                  className={cn(
+                    'flex flex-col items-center gap-2 p-4 rounded-lg border transition-all',
+                    createProjectMode === 'genesis'
+                      ? 'border-accent-primary bg-accent-primary/10'
+                      : 'border-border-default hover:border-border-subtle'
+                  )}
+                  data-testid="create-project-mode-genesis"
+                >
+                  <Sparkles className={cn(
+                    'h-6 w-6',
+                    createProjectMode === 'genesis' ? 'text-accent-primary' : 'text-text-secondary'
+                  )} />
+                  <div>
+                    <p className={cn(
+                      'text-sm font-medium',
+                      createProjectMode === 'genesis' ? 'text-accent-primary' : 'text-text-primary'
+                    )}>Genesis</p>
+                    <p className="text-xs text-text-tertiary">Create from scratch</p>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setCreateProjectMode('evolution')}
+                  className={cn(
+                    'flex flex-col items-center gap-2 p-4 rounded-lg border transition-all',
+                    createProjectMode === 'evolution'
+                      ? 'border-accent-secondary bg-accent-secondary/10'
+                      : 'border-border-default hover:border-border-subtle'
+                  )}
+                  data-testid="create-project-mode-evolution"
+                >
+                  <TrendingUp className={cn(
+                    'h-6 w-6',
+                    createProjectMode === 'evolution' ? 'text-accent-secondary' : 'text-text-secondary'
+                  )} />
+                  <div>
+                    <p className={cn(
+                      'text-sm font-medium',
+                      createProjectMode === 'evolution' ? 'text-accent-secondary' : 'text-text-primary'
+                    )}>Evolution</p>
+                    <p className="text-xs text-text-tertiary">Extend existing code</p>
+                  </div>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={handleModalClose}
+              disabled={isCreating}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handleCreateProject}
+              disabled={isCreating || !createProjectName.trim()}
+              data-testid="create-project-submit"
+              className="gap-2"
+            >
+              {isCreating && <Loader2 className="h-4 w-4 animate-spin" />}
+              {isCreating ? 'Creating...' : 'Create Project'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AnimatedPage>
   )
 }
