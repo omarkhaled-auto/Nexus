@@ -2,6 +2,8 @@ import { app, BrowserWindow, shell } from 'electron';
 import { join } from 'path';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
 import { registerIpcHandlers, registerSettingsHandlers, setupEventForwarding } from './ipc';
+// Note: registerInterviewHandlers requires InterviewEngine + SessionManager instances
+// TODO: Wire up interview infrastructure (LLMClient, DatabaseClient, EventBus)
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -47,6 +49,7 @@ void app.whenReady().then(() => {
   // Register IPC handlers before creating window
   registerIpcHandlers();
   registerSettingsHandlers();
+  // TODO: registerInterviewHandlers(interviewEngine, sessionManager) - needs infrastructure
 
   // Default open or close DevTools by F12 in development
   // and ignore CommandOrControl + R in production.

@@ -14,16 +14,13 @@ import { ClaudeCodeCLIClient } from '../../llm/clients/ClaudeCodeCLIClient'
 import { GeminiCLIClient } from '../../llm/clients/GeminiCLIClient'
 
 /**
- * Allowed origins for IPC communication
- */
-const ALLOWED_ORIGINS = ['http://localhost:5173', 'file://']
-
-/**
  * Validate IPC sender is from allowed origin
+ * Allows localhost on any port (for dev server port changes) and file:// for production
  */
 function validateSender(event: IpcMainInvokeEvent): boolean {
   const url = event.sender.getURL()
-  return ALLOWED_ORIGINS.some((origin) => url.startsWith(origin))
+  // Allow localhost on any port (dev) and file:// (production)
+  return url.startsWith('http://localhost:') || url.startsWith('file://')
 }
 
 /**

@@ -351,10 +351,9 @@ class EventBus {
     }
   }
 }
-const ALLOWED_ORIGINS$1 = ["http://localhost:5173", "file://"];
 function validateSender$1(event) {
   const url = event.sender.getURL();
-  return ALLOWED_ORIGINS$1.some((origin) => url.startsWith(origin));
+  return url.startsWith("http://localhost:") || url.startsWith("file://");
 }
 const state = {
   mode: null,
@@ -2327,10 +2326,9 @@ ${results}`;
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }
-const ALLOWED_ORIGINS = ["http://localhost:5173", "file://"];
 function validateSender(event) {
   const url = event.sender.getURL();
-  return ALLOWED_ORIGINS.some((origin) => url.startsWith(origin));
+  return url.startsWith("http://localhost:") || url.startsWith("file://");
 }
 function isValidProvider(provider) {
   return provider === "claude" || provider === "gemini" || provider === "openai";

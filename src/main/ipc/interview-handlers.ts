@@ -11,19 +11,13 @@ import type { InterviewEngine, InterviewSession, ProcessMessageResult } from '..
 import type { InterviewSessionManager } from '../../interview';
 
 /**
- * Allowed origins for IPC communication
- * - localhost:5173 for Vite dev server
- * - file:// for production builds
- */
-const ALLOWED_ORIGINS = ['http://localhost:5173', 'file://'];
-
-/**
  * Validate IPC sender is from allowed origin
  * Security: Prevents malicious pages from invoking IPC handlers
+ * Allows localhost on any port (for dev server port changes) and file:// for production
  */
 function validateSender(event: IpcMainInvokeEvent): boolean {
   const url = event.sender.getURL();
-  return ALLOWED_ORIGINS.some((origin) => url.startsWith(origin));
+  return url.startsWith('http://localhost:') || url.startsWith('file://');
 }
 
 /**
