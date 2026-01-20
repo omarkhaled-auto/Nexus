@@ -41,9 +41,27 @@
   - Cancel button returns to feature details view
 - **Files Modified**: `src/renderer/src/components/kanban/FeatureDetailModal.tsx`
 
+### Iteration 4 (2024-01-20)
+- **Task**: Add dashboard:getHistoricalProgress IPC handler for ProgressChart
+- **Status**: COMPLETED
+- **Changes**:
+  - Added `dashboard:getHistoricalProgress` IPC handler in `src/main/ipc/handlers.ts`
+    - Returns array of progress data points based on current task state
+    - Generates historical progress at 5-minute intervals for past hour
+    - Returns empty array when no tasks exist (shows proper empty state)
+  - Added `getHistoricalProgress` method to preload API (`nexusAPI`)
+  - Wired `ProgressChart` in `DashboardPage` to fetch and display real backend data
+    - Added `progressData` state to store fetched progress points
+    - Transform backend timestamps from strings to Date objects
+    - Pass `progressData` to ProgressChart instead of empty array
+- **Files Modified**:
+  - `src/main/ipc/handlers.ts`
+  - `src/preload/index.ts`
+  - `src/renderer/src/pages/DashboardPage.tsx`
+- **Commit**: `7ca9340 feat(dashboard): add getHistoricalProgress IPC handler for ProgressChart`
+
 ### Remaining Tasks:
-1. Add dashboard:getHistoricalProgress handler for ProgressChart
-2. Add per-agent model configuration to settings schema
+1. Add per-agent model configuration to settings schema
 
 ---
 
