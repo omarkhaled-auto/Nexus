@@ -33,6 +33,24 @@
 
 ---
 
+## PHASE B PROGRESS (Wire Genesis Mode) - IN PROGRESS
+
+### Task 4: Wire Genesis Critical Path - COMPLETED
+- [x] **Created `src/main/NexusBootstrap.ts`** - Central wiring layer
+  - Wires Interview -> Planning -> Execution flow via EventBus
+  - Event listener on `interview:completed` triggers TaskDecomposer
+  - Coordinator event forwarding to main EventBus for UI updates
+  - IPC event forwarding to renderer process
+  - Genesis and Evolution mode entry points (`startGenesis`, `startEvolution`)
+  - TypeScript compiles successfully
+  - Commit: `0e2050a`
+
+### Remaining Task 4 Work:
+- [ ] Update `main/index.ts` to use NexusBootstrap instead of manual wiring
+- [ ] Create integration tests for the wiring
+
+---
+
 ## THE PROBLEM
 
 ```
