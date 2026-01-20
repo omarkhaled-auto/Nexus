@@ -325,10 +325,40 @@ Proceed to Task 12 if issues found, or Task 13 (Verify Both Modes) if no issues.
 
 ---
 
-## PHASE D PROGRESS (Wire Remaining Components) - PENDING
+## PHASE D PROGRESS (Wire Remaining Components) - IN PROGRESS
+
+### Task 14: Wire Checkpoints & Human Review - COMPLETED
+- [x] **Backend Wiring** (Already Complete in Previous Tasks)
+  - CheckpointManager initialized in NexusBootstrap
+  - HumanReviewService initialized in NexusBootstrap
+  - `task:escalated` -> automatic checkpoint + `review:requested` event
+  - `task:failed` -> automatic checkpoint (for non-escalated failures)
+  - Event forwarding to UI (`system:checkpoint-created`, `system:checkpoint-restored`, `review:requested`)
+
+- [x] **IPC Handlers** (Already Complete)
+  - `checkpoint:list`, `checkpoint:create`, `checkpoint:restore`, `checkpoint:delete`
+  - `review:list`, `review:get`, `review:approve`, `review:reject`
+  - Event forwarding for `review:requested`, `review:approved`, `review:rejected`
+  - Timeline events for checkpoints and reviews
+
+- [x] **Preload/API** (Already Complete)
+  - Full checkpoint API exposed (`checkpointList`, `checkpointCreate`, `checkpointRestore`, `checkpointDelete`)
+  - Full review API exposed (`reviewList`, `reviewGet`, `reviewApprove`, `reviewReject`)
+  - Event subscriptions (`onReviewRequested`, `onReviewApproved`, `onReviewRejected`)
+
+- [x] **UI Components** (Already Complete)
+  - `useCheckpoint` hook with full checkpoint and review functionality
+  - `CheckpointList` component for viewing/managing checkpoints
+  - `ReviewModal` component for human review approve/reject
+
+- [x] **Test Results**
+  - checkpoint-review-wiring.test.ts: 21/21 PASS
+  - genesis-complete-path.test.ts: 20/20 PASS (includes checkpoint flow tests)
+  - Build: SUCCESS
+
+**[TASK 14 COMPLETE]** - Proceeding to Task 15
 
 **Next Tasks:**
-- Task 14: Wire Checkpoints & Human Review
 - Task 15: Wire Settings & Configuration
 - Task 16: Wire Real-time UI Updates
 
