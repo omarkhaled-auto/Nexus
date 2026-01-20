@@ -24,6 +24,7 @@ import { RequirementsDB } from '../persistence/requirements/RequirementsDB';
 import { DatabaseClient } from '../persistence/database/DatabaseClient';
 import { StateManager } from '../persistence/state/StateManager';
 import { CheckpointManager } from '../persistence/checkpoints/CheckpointManager';
+import { HumanReviewService } from '../orchestration/review/HumanReviewService';
 import { GitService } from '../infrastructure/git/GitService';
 import type { PlanningTask } from '../planning/types';
 import type { OrchestrationFeature } from '../orchestration/types';
@@ -101,6 +102,12 @@ export interface BootstrappedNexus {
   /** List checkpoints for a project */
   listCheckpoints: (projectId: string) => CheckpointInfo[];
 
+  /** CheckpointManager instance for IPC handler registration */
+  checkpointManager: CheckpointManager;
+
+  /** HumanReviewService instance for IPC handler registration */
+  humanReviewService: HumanReviewService;
+
   /** Shutdown all components */
   shutdown: () => Promise<void>;
 }
@@ -135,6 +142,7 @@ export class NexusBootstrap {
   private databaseClient: DatabaseClient | null = null;
   private stateManager: StateManager | null = null;
   private checkpointManager: CheckpointManager | null = null;
+  private humanReviewService: HumanReviewService | null = null;
   private gitService: GitService | null = null;
   private repoMapGenerator: RepoMapGenerator | null = null;
   private unsubscribers: Array<() => void> = [];
@@ -193,6 +201,14 @@ export class NexusBootstrap {
     });
     console.log('[NexusBootstrap] CheckpointManager created');
 
+    // 5a. Initialize HumanReviewService for human-in-the-loop reviews
+    this.humanReviewService = new HumanReviewService({
+      db: this.databaseClient,
+      eventBus: this.eventBus,
+      checkpointManager: this.checkpointManager,
+    });
+    console.log('[NexusBootstrap] HumanReviewService created');
+
     // 5b. Initialize RepoMapGenerator for Evolution mode
     this.repoMapGenerator = new RepoMapGenerator();
     console.log('[NexusBootstrap] RepoMapGenerator created');
@@ -237,6 +253,8 @@ export class NexusBootstrap {
       createCheckpoint: (projectId, reason) => this.createCheckpointForProject(projectId, reason),
       restoreCheckpoint: (checkpointId, restoreGit) => this.restoreCheckpointById(checkpointId, restoreGit),
       listCheckpoints: (projectId) => this.listCheckpointsForProject(projectId),
+      checkpointManager: this.checkpointManager,
+      humanReviewService: this.humanReviewService,
       shutdown: () => this.shutdown(),
     };
 
@@ -809,6 +827,7 @@ export class NexusBootstrap {
     this.requirementsDB = null;
     this.stateManager = null;
     this.checkpointManager = null;
+    this.humanReviewService = null;
     this.gitService = null;
     this.repoMapGenerator = null;
     this.databaseClient = null;

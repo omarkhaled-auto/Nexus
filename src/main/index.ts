@@ -12,7 +12,7 @@
 import { app, BrowserWindow, shell } from 'electron';
 import { join } from 'path';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
-import { registerIpcHandlers, registerSettingsHandlers, registerInterviewHandlers, setupEventForwarding } from './ipc';
+import { registerIpcHandlers, registerCheckpointReviewHandlers, registerSettingsHandlers, registerInterviewHandlers, setupEventForwarding } from './ipc';
 import {
   initializeNexus,
   setMainWindow,
@@ -110,6 +110,12 @@ async function initializeNexusSystem(): Promise<void> {
     registerInterviewHandlers(
       nexusInstance.interviewEngine,
       nexusInstance.sessionManager
+    );
+
+    // Register checkpoint and review IPC handlers
+    registerCheckpointReviewHandlers(
+      nexusInstance.checkpointManager,
+      nexusInstance.humanReviewService
     );
 
     console.log('[Main] Nexus system initialized successfully');

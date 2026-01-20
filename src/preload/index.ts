@@ -461,6 +461,51 @@ const nexusAPI = {
   reviewReject: (reviewId: string, feedback: string): Promise<void> =>
     ipcRenderer.invoke('review:reject', reviewId, feedback),
 
+  /**
+   * Subscribe to review request events
+   * @param callback - Called when a review is requested
+   * @returns Unsubscribe function
+   */
+  onReviewRequested: (callback: (payload: { reviewId: string; taskId: string; reason: string; context: unknown }) => void): Unsubscribe => {
+    const handler = (_event: IpcRendererEvent, payload: { reviewId: string; taskId: string; reason: string; context: unknown }): void => {
+      callback(payload)
+    }
+    ipcRenderer.on('review:requested', handler)
+    return () => {
+      ipcRenderer.removeListener('review:requested', handler)
+    }
+  },
+
+  /**
+   * Subscribe to review approved events
+   * @param callback - Called when a review is approved
+   * @returns Unsubscribe function
+   */
+  onReviewApproved: (callback: (payload: { reviewId: string; resolution?: string }) => void): Unsubscribe => {
+    const handler = (_event: IpcRendererEvent, payload: { reviewId: string; resolution?: string }): void => {
+      callback(payload)
+    }
+    ipcRenderer.on('review:approved', handler)
+    return () => {
+      ipcRenderer.removeListener('review:approved', handler)
+    }
+  },
+
+  /**
+   * Subscribe to review rejected events
+   * @param callback - Called when a review is rejected
+   * @returns Unsubscribe function
+   */
+  onReviewRejected: (callback: (payload: { reviewId: string; feedback: string }) => void): Unsubscribe => {
+    const handler = (_event: IpcRendererEvent, payload: { reviewId: string; feedback: string }): void => {
+      callback(payload)
+    }
+    ipcRenderer.on('review:rejected', handler)
+    return () => {
+      ipcRenderer.removeListener('review:rejected', handler)
+    }
+  },
+
   // ========================================
   // Event Subscriptions
   // ========================================

@@ -1333,6 +1333,71 @@ export function setupEventForwarding(mainWindow: BrowserWindow): void {
       metadata: {}
     })
   })
+
+  eventBus.on('system:checkpoint-restored', (event) => {
+    forwardTimelineEvent({
+      id: event.id,
+      type: 'checkpoint_restored',
+      title: `Checkpoint restored: ${event.payload.checkpointId}`,
+      timestamp: event.timestamp,
+      metadata: {
+        checkpointId: event.payload.checkpointId,
+        projectId: event.payload.projectId
+      }
+    })
+  })
+
+  // ========================================
+  // Human Review Events → Timeline + UI Notification
+  // ========================================
+
+  eventBus.on('review:requested', (event) => {
+    forwardTimelineEvent({
+      id: event.id,
+      type: 'review_requested',
+      title: `Human review requested for task ${event.payload.taskId}`,
+      timestamp: event.timestamp,
+      metadata: {
+        reviewId: event.payload.reviewId,
+        taskId: event.payload.taskId,
+        reason: event.payload.reason
+      }
+    })
+    // Also forward directly for UI to show review panel
+    if (eventForwardingWindow && !eventForwardingWindow.isDestroyed()) {
+      eventForwardingWindow.webContents.send('review:requested', event.payload)
+    }
+  })
+
+  eventBus.on('review:approved', (event) => {
+    forwardTimelineEvent({
+      id: event.id,
+      type: 'review_approved',
+      title: `Review approved: ${event.payload.reviewId}`,
+      timestamp: event.timestamp,
+      metadata: {
+        reviewId: event.payload.reviewId
+      }
+    })
+    if (eventForwardingWindow && !eventForwardingWindow.isDestroyed()) {
+      eventForwardingWindow.webContents.send('review:approved', event.payload)
+    }
+  })
+
+  eventBus.on('review:rejected', (event) => {
+    forwardTimelineEvent({
+      id: event.id,
+      type: 'review_rejected',
+      title: `Review rejected: ${event.payload.reviewId}`,
+      timestamp: event.timestamp,
+      metadata: {
+        reviewId: event.payload.reviewId
+      }
+    })
+    if (eventForwardingWindow && !eventForwardingWindow.isDestroyed()) {
+      eventForwardingWindow.webContents.send('review:rejected', event.payload)
+    }
+  })
 }
 
 // Reference to main window for event forwarding
