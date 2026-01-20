@@ -11,8 +11,10 @@ import {
   ArrowLeft,
   CheckCircle2,
   Sparkles,
+  Loader2,
 } from 'lucide-react';
 import { cn } from '@renderer/lib/utils';
+import { toast } from 'sonner';
 
 /**
  * Interview Page - Genesis mode interview interface.
@@ -30,6 +32,7 @@ export default function InterviewPage(): ReactElement {
   const completeInterviewStore = useInterviewStore((s) => s.completeInterview);
   const reset = useInterviewStore((s) => s.reset);
   const [isCompleting, setIsCompleting] = useState(false);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
 
   const { restore, applyDraft, clearDraft, markAsInitialized, isSaving, lastSaved } =
     useInterviewPersistence();
@@ -76,10 +79,29 @@ export default function InterviewPage(): ReactElement {
     setPendingDraft(null);
   };
 
-  // Handle save draft
-  const handleSaveDraft = () => {
-    // The persistence hook auto-saves, but we can trigger a manual save here
-    // For now, this is just a visual confirmation
+  // Handle save draft - persists to backend via interview.pause()
+  const handleSaveDraft = async (): Promise<void> => {
+    if (isSavingDraft) return;
+
+    setIsSavingDraft(true);
+
+    try {
+      // Save to backend if we have a session
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Runtime check for non-Electron environments
+      if (sessionId && window.nexusAPI) {
+        await window.nexusAPI.interview.pause(sessionId);
+        toast.success('Draft saved to server');
+      } else {
+        // LocalStorage auto-save is already happening via useInterviewPersistence
+        toast.info('Draft saved locally');
+      }
+    } catch (err) {
+      console.error('Failed to save draft to backend:', err);
+      // LocalStorage save still works, so inform user
+      toast.warning('Saved locally only - server unavailable');
+    } finally {
+      setIsSavingDraft(false);
+    }
   };
 
   // Handle complete interview
@@ -173,17 +195,23 @@ export default function InterviewPage(): ReactElement {
 
             {/* Save Draft button */}
             <button
-              onClick={handleSaveDraft}
+              onClick={() => void handleSaveDraft()}
+              disabled={isSavingDraft}
               className={cn(
                 'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium',
                 'border border-border-default bg-bg-dark text-text-secondary',
                 'hover:bg-bg-hover hover:text-text-primary',
+                'disabled:opacity-50 disabled:cursor-not-allowed',
                 'transition-colors'
               )}
               data-testid="save-draft-button"
             >
-              <Save className="w-4 h-4" />
-              Save Draft
+              {isSavingDraft ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4" />
+              )}
+              {isSavingDraft ? 'Saving...' : 'Save Draft'}
             </button>
 
             {/* Complete button */}
