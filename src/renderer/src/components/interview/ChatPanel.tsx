@@ -9,7 +9,7 @@ import {
 } from 'react';
 import { Send, Loader2, Bot, User, Sparkles, AlertCircle } from 'lucide-react';
 import { cn } from '@renderer/lib/utils';
-import { useMessages, useIsInterviewing, useInterviewStore } from '@renderer/stores/interviewStore';
+import { useMessages, useIsInterviewing, useInterviewStore, useSessionId } from '@renderer/stores/interviewStore';
 import { useProjectStore } from '@renderer/stores/projectStore';
 import type { InterviewMessage, RequirementCategory, RequirementPriority } from '@renderer/types/interview';
 import { nanoid } from 'nanoid';
@@ -165,12 +165,13 @@ export function ChatPanel({ className }: ChatPanelProps): ReactElement {
   const isInterviewing = useIsInterviewing();
   const addMessage = useInterviewStore((s) => s.addMessage);
   const addRequirement = useInterviewStore((s) => s.addRequirement);
+  const setSessionId = useInterviewStore((s) => s.setSessionId);
+  const sessionId = useSessionId();
   const currentProject = useProjectStore((s) => s.currentProject);
 
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [sessionId, setSessionId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const isInitializing = useRef(false);
@@ -226,7 +227,7 @@ export function ChatPanel({ className }: ChatPanelProps): ReactElement {
     } finally {
       isInitializing.current = false;
     }
-  }, [sessionId, currentProject?.id, addMessage]);
+  }, [sessionId, currentProject?.id, addMessage, setSessionId]);
 
   // Initialize session when interviewing starts
   useEffect(() => {

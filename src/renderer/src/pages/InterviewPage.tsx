@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactElement } from 'react';
 import { useNavigate } from 'react-router';
 import { InterviewLayout, ChatPanel, RequirementsSidebar } from '@renderer/components/interview';
-import { useInterviewStore, useIsInterviewing, useRequirements } from '@renderer/stores/interviewStore';
+import { useInterviewStore, useIsInterviewing, useRequirements, useSessionId } from '@renderer/stores/interviewStore';
 import { useInterviewPersistence } from '@renderer/hooks';
 import { AnimatedPage } from '@renderer/components/AnimatedPage';
 import {
@@ -25,8 +25,11 @@ export default function InterviewPage(): ReactElement {
   const navigate = useNavigate();
   const isInterviewing = useIsInterviewing();
   const requirements = useRequirements();
+  const sessionId = useSessionId();
   const startInterview = useInterviewStore((s) => s.startInterview);
+  const completeInterviewStore = useInterviewStore((s) => s.completeInterview);
   const reset = useInterviewStore((s) => s.reset);
+  const [isCompleting, setIsCompleting] = useState(false);
 
   const { restore, applyDraft, clearDraft, markAsInitialized, isSaving, lastSaved } =
     useInterviewPersistence();
@@ -80,10 +83,31 @@ export default function InterviewPage(): ReactElement {
   };
 
   // Handle complete interview
-  const handleComplete = () => {
-    // TODO: Integrate with backend to finalize requirements
-    console.log('Interview complete with requirements:', requirements);
-    navigate('/tasks');
+  const handleComplete = async (): Promise<void> => {
+    if (isCompleting) return;
+
+    setIsCompleting(true);
+
+    try {
+      // End the interview session in the backend if we have a session
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Runtime check for non-Electron environments
+      if (sessionId && window.nexusAPI) {
+        await window.nexusAPI.interview.end(sessionId);
+      }
+
+      // Complete the interview in the store (emits INTERVIEW_COMPLETED event)
+      completeInterviewStore();
+
+      // Navigate to tasks page with requirements context
+      void navigate('/tasks', { state: { requirements } });
+    } catch (err) {
+      console.error('Failed to complete interview:', err);
+      // Still navigate even if backend call fails - requirements are in store
+      completeInterviewStore();
+      void navigate('/tasks', { state: { requirements } });
+    } finally {
+      setIsCompleting(false);
+    }
   };
 
   // Format last saved time
@@ -164,8 +188,8 @@ export default function InterviewPage(): ReactElement {
 
             {/* Complete button */}
             <button
-              onClick={handleComplete}
-              disabled={!canComplete}
+              onClick={() => void handleComplete()}
+              disabled={!canComplete || isCompleting}
               className={cn(
                 'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium',
                 'bg-accent-primary text-white',
@@ -175,8 +199,17 @@ export default function InterviewPage(): ReactElement {
               )}
               data-testid="complete-button"
             >
-              <CheckCircle2 className="w-4 h-4" />
-              Complete
+              {isCompleting ? (
+                <>
+                  <span className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                  Completing...
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="w-4 h-4" />
+                  Complete
+                </>
+              )}
             </button>
           </div>
         </div>

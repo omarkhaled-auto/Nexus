@@ -14,6 +14,7 @@ interface InterviewState {
   isInterviewing: boolean
   projectName: string | null
   interviewStartTime: number | null
+  sessionId: string | null
 
   // Actions
   setStage: (stage: InterviewStage) => void
@@ -23,6 +24,7 @@ interface InterviewState {
   updateRequirement: (id: string, updates: Partial<Requirement>) => void
   removeRequirement: (id: string) => void
   setProjectName: (name: string) => void
+  setSessionId: (sessionId: string | null) => void
   startInterview: () => void
   completeInterview: () => void
   reset: () => void
@@ -34,7 +36,8 @@ const initialState = {
   requirements: [] as Requirement[],
   isInterviewing: false,
   projectName: null as string | null,
-  interviewStartTime: null as number | null
+  interviewStartTime: null as number | null,
+  sessionId: null as string | null
 }
 
 /**
@@ -102,6 +105,8 @@ export const useInterviewStore = create<InterviewState>()((set, get) => ({
 
   setProjectName: (name) => { set({ projectName: name }); },
 
+  setSessionId: (sessionId) => { set({ sessionId }); },
+
   startInterview: () => {
     const state = get()
     set({
@@ -144,7 +149,8 @@ export const useInterviewStore = create<InterviewState>()((set, get) => ({
       ...initialState,
       messages: [],
       requirements: [],
-      interviewStartTime: null
+      interviewStartTime: null,
+      sessionId: null
     }); }
 }))
 
@@ -154,6 +160,7 @@ export const useMessages = () => useInterviewStore((s) => s.messages)
 export const useRequirements = () => useInterviewStore((s) => s.requirements)
 export const useIsInterviewing = () => useInterviewStore((s) => s.isInterviewing)
 export const useProjectName = () => useInterviewStore((s) => s.projectName)
+export const useSessionId = () => useInterviewStore((s) => s.sessionId)
 
 /** Returns the most recent message */
 export const useLatestMessage = () =>
