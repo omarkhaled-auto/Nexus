@@ -115,6 +115,38 @@
   - `src/renderer/src/stores/featureStore.ts`
 - **Commit**: `7a499aa feat(kanban): wire feature drag-and-drop to persist status to backend`
 
+### Iteration 8 (2024-01-20)
+- **Task**: Wire Ctrl+S keyboard shortcut to checkpoint creation backend
+- **Status**: COMPLETED
+- **Changes**:
+  - Updated `useKeyboardShortcuts.ts` to connect `Cmd/Ctrl+S` to real checkpoint creation
+  - Added `isElectronEnvironment()` check for backend availability
+  - Imported `useProjectStore` to get current project ID
+  - Call `window.nexusAPI.checkpointCreate(projectId, reason)` on shortcut trigger
+  - Added loading toast during checkpoint creation with `toast.loading()`
+  - Handle success/error cases with appropriate toast feedback
+  - Gracefully handle case when no project is active (shows info toast)
+  - Resolved the TODO comment in useKeyboardShortcuts.ts
+- **Files Modified**:
+  - `src/renderer/src/hooks/useKeyboardShortcuts.ts`
+- **Commit**: `9eef124 Wire Ctrl+S keyboard shortcut to checkpoint creation backend`
+
+### Iteration 9 (2024-01-20)
+- **Task**: Wire Evolution mode click to show project selector instead of placeholder
+- **Status**: COMPLETED
+- **Changes**:
+  - Replaced `placeholder-project` hardcoded value with actual project selection
+  - Added project selection modal when Evolution mode card is clicked
+  - Load projects from backend via `window.nexusAPI.getProjects()`
+  - Display existing projects with clickable cards to select
+  - Show empty state with option to create new project
+  - Add "New Project" button that navigates to dashboard
+  - Proper loading and error states for project loading
+  - Removed the TODO comment as functionality is now implemented
+- **Files Modified**:
+  - `src/renderer/src/pages/ModeSelectorPage.tsx`
+- **Commit**: `22d23bf feat(mode-selector): wire Evolution mode to project selector modal`
+
 ### Remaining Tasks:
 (Continue from Phase 17B implementation plan)
 
