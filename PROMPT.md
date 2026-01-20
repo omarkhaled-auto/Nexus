@@ -44,10 +44,20 @@
   - Genesis and Evolution mode entry points (`startGenesis`, `startEvolution`)
   - TypeScript compiles successfully
   - Commit: `0e2050a`
+- [x] **Updated `src/main/index.ts`** - Now uses NexusBootstrap
+  - Initializes NexusBootstrap with config from environment
+  - Sets up IPC handlers with bootstrapped components
+  - Proper shutdown handling
+- [x] **Created `tests/integration/nexus-bootstrap-wiring.test.ts`** - 19 tests passing
+  - Event Bus wiring tests (13 tests)
+  - Event Flow integration tests (3 tests)
+  - Subscription management tests (3 tests)
+  - All TypeScript types correctly aligned with payload definitions
+  - Commit: `935150d`
 
-### Remaining Task 4 Work:
-- [ ] Update `main/index.ts` to use NexusBootstrap instead of manual wiring
-- [ ] Create integration tests for the wiring
+**[TASK 4 COMPLETE]** - Proceeding to Task 5
+
+### Task 5: Wire Genesis Complete Path - IN PROGRESS
 
 ---
 
