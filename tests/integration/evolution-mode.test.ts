@@ -460,7 +460,7 @@ describe('Evolution Mode - Complete Flow Integration', () => {
         projectId,
         category: 'functional' as const,
         content: 'Add dark mode toggle to settings page',
-        priority: 'must' as const,
+        priority: 'high' as const,
         source: 'interview' as const,
         createdAt: new Date(),
         updatedAt: new Date(),
