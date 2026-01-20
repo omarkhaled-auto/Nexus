@@ -70,88 +70,12 @@ function mapQAStatus(qaStatus: unknown): QAStep[] {
   return defaultSteps;
 }
 
-// ============================================================================
-// Mock Data (will be replaced with real data from stores/IPC)
-// ============================================================================
-
-const mockAgents: AgentData[] = [
-  {
-    id: 'agent-1',
-    type: 'coder',
-    status: 'working',
-    model: 'claude-sonnet-4-5-20250929',
-    currentTask: {
-      id: 'task-1',
-      name: 'Implementing auth middleware',
-      progress: 65,
-    },
-    iteration: {
-      current: 3,
-      max: 50,
-    },
-    metrics: { tokensUsed: 12450, duration: 45000 },
-    currentFile: 'src/auth/middleware.ts',
-  },
-  {
-    id: 'agent-2',
-    type: 'reviewer',
-    status: 'working',
-    model: 'gemini-2.5-pro',
-    currentTask: {
-      id: 'task-2',
-      name: 'Reviewing database schema',
-      progress: 30,
-    },
-    iteration: {
-      current: 1,
-      max: 10,
-    },
-    metrics: { tokensUsed: 3200, duration: 15000 },
-    currentFile: 'src/database/schema.ts',
-  },
-  {
-    id: 'agent-3',
-    type: 'planner',
-    status: 'idle',
-    model: 'claude-opus-4-5-20251101',
-  },
-  {
-    id: 'agent-4',
-    type: 'tester',
-    status: 'idle',
-    model: 'claude-sonnet-4-5-20250929',
-  },
-  {
-    id: 'agent-5',
-    type: 'merger',
-    status: 'idle',
-    model: 'claude-sonnet-4-5-20250929',
-  },
-];
-
-const mockQASteps: QAStep[] = [
-  { type: 'build', status: 'success', duration: 2300 },
-  { type: 'lint', status: 'success', duration: 1100 },
-  { type: 'test', status: 'running', testCounts: { passed: 47, failed: 0, skipped: 2 } },
+// Default QA steps (used when no data from backend yet)
+const defaultQASteps: QAStep[] = [
+  { type: 'build', status: 'pending' },
+  { type: 'lint', status: 'pending' },
+  { type: 'test', status: 'pending' },
   { type: 'review', status: 'pending' },
-];
-
-const mockAgentOutput = [
-  '$ Starting implementation...',
-  'Analyzing auth requirements from specification',
-  'Creating authMiddleware.ts in src/auth/',
-  'Adding JWT validation logic',
-  '  - Importing jsonwebtoken library',
-  '  - Adding token verification function',
-  '  - Implementing refresh token rotation',
-  'Running TypeScript compilation check...',
-  '> No errors found in authMiddleware.ts',
-  'Adding unit tests for auth middleware...',
-  '  - Testing valid token verification',
-  '  - Testing expired token handling',
-  '  - Testing invalid signature detection',
-  'Running tests...',
-  '> All 3 tests passed',
 ];
 
 // ============================================================================
@@ -168,14 +92,14 @@ const mockAgentOutput = [
  * - QA pipeline status
  */
 export default function AgentsPage(): ReactElement {
-  // State for agents and UI
-  const [agents, setAgents] = useState<AgentData[]>(mockAgents);
-  const [qaSteps, setQASteps] = useState<QAStep[]>(mockQASteps);
-  const [iteration, setIteration] = useState<{ current: number; max: number }>({ current: 3, max: 50 });
-  const [agentOutput, setAgentOutput] = useState<string[]>(mockAgentOutput);
-  const [selectedAgentId, setSelectedAgentId] = useState<string | null>('agent-1');
+  // State for agents and UI - initialized empty, loaded from backend
+  const [agents, setAgents] = useState<AgentData[]>([]);
+  const [qaSteps, setQASteps] = useState<QAStep[]>(defaultQASteps);
+  const [iteration, setIteration] = useState<{ current: number; max: number }>({ current: 0, max: 50 });
+  const [agentOutput, setAgentOutput] = useState<string[]>([]);
+  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
   const [isPaused, setIsPaused] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true); // Start loading
   const [error, setError] = useState<string | null>(null);
 
   // Get selected agent from current agents state
@@ -183,7 +107,11 @@ export default function AgentsPage(): ReactElement {
 
   // Load real data from backend API
   const loadRealData = useCallback(async () => {
-    if (!isElectronEnvironment()) return;
+    if (!isElectronEnvironment()) {
+      setError('Backend not available. Please run in Electron.');
+      setIsLoading(false);
+      return;
+    }
     setIsLoading(true);
     setError(null);
     try {
@@ -192,9 +120,15 @@ export default function AgentsPage(): ReactElement {
         api.getAgents(),
         api.getQAStatus(),
       ]);
-      if (agentsData && Array.isArray(agentsData) && agentsData.length > 0) {
+      // Set agents (empty array if none)
+      if (agentsData && Array.isArray(agentsData)) {
         setAgents(agentsData.map(mapBackendAgent));
+        // Auto-select first agent if none selected
+        if (agentsData.length > 0 && !selectedAgentId) {
+          setSelectedAgentId((agentsData[0] as { id: string }).id);
+        }
       }
+      // Set QA status
       if (qaStatusData) {
         const qa = qaStatusData as { iteration?: number; maxIterations?: number };
         setQASteps(mapQAStatus(qaStatusData));
@@ -202,15 +136,16 @@ export default function AgentsPage(): ReactElement {
           setIteration({ current: qa.iteration, max: qa.maxIterations });
         }
       }
+      // Load output for selected agent
       if (selectedAgentId) {
         try {
           const output = await api.getAgentOutput(selectedAgentId);
-          if (output && output.length > 0) setAgentOutput(output);
+          if (output && Array.isArray(output)) setAgentOutput(output);
         } catch { /* Ignore output fetch errors */ }
       }
     } catch (err) {
       console.error('Failed to load agent data:', err);
-      setError('Failed to load agent data. Using demo data.');
+      setError('Failed to load agent data from backend.');
     } finally {
       setIsLoading(false);
     }
@@ -259,10 +194,12 @@ export default function AgentsPage(): ReactElement {
 
   const handleAgentSelect = (agentId: string) => {
     setSelectedAgentId(agentId);
+    setAgentOutput([]); // Clear previous output
     if (isElectronEnvironment()) {
       void window.nexusAPI.getAgentOutput(agentId).then((output) => {
-        if (output && output.length > 0) setAgentOutput(output);
-        else setAgentOutput(mockAgentOutput);
+        if (output && Array.isArray(output)) setAgentOutput(output);
+      }).catch(() => {
+        // Keep empty output on error
       });
     }
   };
@@ -351,17 +288,29 @@ export default function AgentsPage(): ReactElement {
               <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider">
                 Active Agents
               </h2>
-              <div className="space-y-3">
-                {agents.map((agent) => (
-                  <AgentCard
-                    key={agent.id}
-                    agent={agent}
-                    selected={agent.id === selectedAgentId}
-                    onClick={() => handleAgentSelect(agent.id)}
-                    data-testid={`agent-card-${agent.id}`}
-                  />
-                ))}
-              </div>
+              {agents.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <div className="h-12 w-12 rounded-full bg-bg-tertiary flex items-center justify-center mb-3">
+                    <Bot className="h-6 w-6 text-text-tertiary" />
+                  </div>
+                  <p className="text-text-secondary text-sm">No agents active</p>
+                  <p className="text-text-tertiary text-xs mt-1">
+                    Agents will appear here when a task is being processed
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {agents.map((agent) => (
+                    <AgentCard
+                      key={agent.id}
+                      agent={agent}
+                      selected={agent.id === selectedAgentId}
+                      onClick={() => handleAgentSelect(agent.id)}
+                      data-testid={`agent-card-${agent.id}`}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Selected Agent Details */}
