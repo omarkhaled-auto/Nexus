@@ -60,8 +60,48 @@
   - `src/renderer/src/pages/DashboardPage.tsx`
 - **Commit**: `7ca9340 feat(dashboard): add getHistoricalProgress IPC handler for ProgressChart`
 
+### Iteration 5 (2024-01-20)
+- **Task**: Add per-agent model configuration to settings schema
+- **Status**: COMPLETED
+- **Changes**:
+  - Added `AgentType`, `AgentProviderType`, `AgentModelConfig`, and `AgentModelAssignments` types to `src/shared/types/settings.ts`
+  - Added `DEFAULT_AGENT_MODEL_ASSIGNMENTS` constant with optimized model selection per agent:
+    - Planner/Architect: Claude Opus for complex planning
+    - Coder/Tester/Merger/Debugger: Claude Sonnet for implementation
+    - Reviewer: Gemini Pro for diverse code review perspective
+    - Documenter: Gemini Flash for fast documentation
+  - Added `qaIterationLimit` field to `AgentSettings` interface
+  - Updated `settingsService.ts` schema to persist agent model assignments
+  - Updated `SettingsPage.tsx` to load/save agent models from backend instead of local React state
+  - Updated `settingsStore.test.ts` with new required fields (all 15 tests pass)
+- **Files Modified**:
+  - `src/shared/types/settings.ts`
+  - `src/main/services/settingsService.ts`
+  - `src/renderer/src/pages/SettingsPage.tsx`
+  - `src/renderer/src/stores/settingsStore.test.ts`
+- **Commit**: `f7da547 feat(settings): add per-agent model configuration to settings schema`
+
+### Iteration 6 (2024-01-20)
+- **Task**: Wire Complete Interview button to backend in InterviewPage
+- **Status**: COMPLETED
+- **Changes**:
+  - Added `sessionId` to interviewStore for cross-component session tracking
+  - Added `setSessionId` action and `useSessionId` selector hook to store
+  - Updated ChatPanel to use store sessionId instead of local state
+  - Wired `handleComplete` in InterviewPage to:
+    - Call `window.nexusAPI.interview.end(sessionId)` to finalize session
+    - Call `completeInterviewStore()` to emit INTERVIEW_COMPLETED event
+    - Navigate to tasks page with requirements context via `navigate('/tasks', { state: { requirements } })`
+  - Added `isCompleting` loading state with spinner UI for Complete button
+  - Handle errors gracefully - interview completes and navigates even if backend call fails
+- **Files Modified**:
+  - `src/renderer/src/stores/interviewStore.ts`
+  - `src/renderer/src/components/interview/ChatPanel.tsx`
+  - `src/renderer/src/pages/InterviewPage.tsx`
+- **Commit**: `fec4585 feat(interview): wire Complete Interview button to backend`
+
 ### Remaining Tasks:
-1. Add per-agent model configuration to settings schema
+(Continue from Phase 17B implementation plan)
 
 ---
 
