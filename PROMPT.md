@@ -611,43 +611,90 @@ stopExecution: () => ipcRenderer.invoke('execution:stop')
 ### Objective
 Verify tasks go through QA loop after agent completes coding.
 
-### Requirements
+### STATUS: COMPLETE - CRITICAL GAP IDENTIFIED
+
+### Audit Findings
 
 #### Part A: Trace Task Execution Flow
 
-```bash
-grep -rn "RalphStyleIterator\|QALoop\|qa-loop" src/
-grep -rn "task:completed\|taskCompleted" src/
+**Components Found:**
+1. **RalphStyleIterator** (`src/execution/iteration/RalphStyleIterator.ts`)
+   - Full implementation with `execute()` method
+   - Runs: Build -> Lint -> Test -> Review
+   - Handles pass/fail/escalate scenarios
+   - Has `pause()`, `resume()`, `abort()` methods
+
+2. **QARunner Interface** (`src/execution/iteration/types.ts`)
+   - Simple interface with `build?`, `lint?`, `test?`, `review?` methods
+   - Each returns respective result type
+
+3. **QARunnerFactory** (`src/execution/qa/QARunnerFactory.ts`)
+   - Creates QARunner with BuildRunner, LintRunner, TestRunner, ReviewRunner
+   - Creates real runners that execute TypeScript build, ESLint, Vitest, AI review
+
+- [x] RalphStyleIterator/QALoop found
+- [x] Task completion event traced
+
+#### Part B: CRITICAL GAP - Interface Mismatch
+
+**The Problem:**
+In `NexusCoordinator.executeTask()` (line 583):
+```typescript
+const result = await this.qaEngine.run(
+  { id: task.id, name: task.name, description: task.description, files: task.files ?? [], worktree: worktreePath },
+  null // coder would be passed here
+);
 ```
 
-- [ ] RalphStyleIterator/QALoop found
-- [ ] Task completion event traced
-
-#### Part B: Verify QA Loop Integration
-
-The flow should be:
-```
-Agent completes coding
-    |
-    v
-RalphStyleIterator.run(task)
-    |
-    v
-Build -> Lint -> Test -> Review
-    |
-    v
-Pass? -> Merge to main
-Fail? -> Retry or escalate
+But `qaEngine` is a `QARunner` which has:
+```typescript
+interface QARunner {
+  build?: (taskId: string) => Promise<BuildResult>;
+  lint?: (taskId: string) => Promise<LintResult>;
+  test?: (taskId: string) => Promise<TestResult>;
+  review?: (taskId: string) => Promise<ReviewResult>;
+}
 ```
 
-- [ ] QA loop is called after agent coding
-- [ ] Build/Lint/Test/Review steps run
-- [ ] Pass/Fail handling works
+**There is NO `run()` method on QARunner!**
+
+The code expects a different interface with a `run(task, coder)` method that:
+1. Takes a task object with `id`, `name`, `description`, `files`, `worktree`
+2. Takes a coder (agent) to do the work
+3. Returns `{ success: boolean, escalated?: boolean, reason?: string }`
+
+But `QARunnerFactory.create()` returns a `QARunner` which doesn't have this method.
+
+**Root Cause:**
+The architecture has TWO different QA systems:
+1. `RalphStyleIterator` - Full iteration loop (agent codes -> QA -> retry/escalate)
+2. `QARunner` - Just the QA steps (build/lint/test/review)
+
+`NexusCoordinator` expects system #1 (`run()` method) but is given system #2 (`QARunner`).
+
+#### Fix Required for Task 9
+
+**Option A: Create QALoopEngine adapter**
+Create a class that wraps `RalphStyleIterator` and provides the `run(task, coder)` method.
+
+**Option B: Fix NexusCoordinator to use RalphStyleIterator directly**
+Update `executeTask()` to use `RalphStyleIterator.execute()` instead of `qaEngine.run()`.
+
+**Option C: Add `run()` method to QARunnerFactory**
+Create a wrapper that implements the expected interface.
+
+**Recommended: Option B** - Most straightforward, RalphStyleIterator already exists and works.
+
+- [x] QA loop exists (RalphStyleIterator)
+- [x] Build/Lint/Test/Review steps implemented
+- [x] Pass/Fail handling exists in RalphStyleIterator
+- [x] **GAP: NexusCoordinator calls qaEngine.run() but QARunner doesn't have run()**
 
 ### Task 8 Completion Checklist
-- [ ] Execution -> QA flow traced
-- [ ] QA loop integration verified
-- [ ] Pass/Fail paths documented
+- [x] Execution -> QA flow traced
+- [x] QA loop integration verified (EXISTS but NOT WIRED correctly)
+- [x] Pass/Fail paths documented
+- [x] **Critical gap identified: Interface mismatch between NexusCoordinator and QARunner**
 
 **[TASK 8 COMPLETE]**
 
@@ -882,7 +929,7 @@ npm test            # Should pass
 - [x] `[TASK 5 COMPLETE]` - Interview->Tasks integration tested
 - [x] `[TASK 6 COMPLETE]` - Planning->Execution audited
 - [x] `[TASK 7 COMPLETE]` - Execution start wired
-- [ ] `[TASK 8 COMPLETE]` - Execution->QA audited
+- [x] `[TASK 8 COMPLETE]` - Execution->QA audited (GAP: qaEngine.run() not wired)
 - [ ] `[TASK 9 COMPLETE]` - QA completion wired
 - [ ] `[TASK 10 COMPLETE]` - Project completion wired
 - [ ] `[TASK 11 COMPLETE]` - E2E Genesis tested
