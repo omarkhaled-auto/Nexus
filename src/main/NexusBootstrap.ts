@@ -32,6 +32,7 @@ import type { PlanningTask } from '../planning/types';
 import type { OrchestrationFeature } from '../orchestration/types';
 import { RepoMapGenerator } from '../infrastructure/analysis/RepoMapGenerator';
 import type { EvolutionContext } from '../interview/InterviewEngine';
+import { features, tasks } from '../persistence/database/schema';
 
 // ============================================================================
 // Types
@@ -373,22 +374,50 @@ export class NexusBootstrap {
           .join('\n');
 
         // Decompose requirements into tasks
-        const tasks = await decomposer.decompose(featureDescription);
-        console.log(`[NexusBootstrap] Decomposed into ${tasks.length} tasks`);
+        const decomposedTasks = await decomposer.decompose(featureDescription);
+        console.log(`[NexusBootstrap] Decomposed into ${decomposedTasks.length} tasks`);
+
+        // Store decomposition to database (Phase 20 Task 3)
+        const { featureCount, taskCount } = await this.storeDecomposition(projectId, decomposedTasks);
+        console.log(`[NexusBootstrap] Stored ${featureCount} features and ${taskCount} tasks to database`);
 
         // Resolve dependencies and calculate waves
-        const waves = resolver.calculateWaves(tasks);
+        const waves = resolver.calculateWaves(decomposedTasks);
         console.log(`[NexusBootstrap] Calculated ${waves.length} execution waves`);
 
         // Estimate total time using the estimateTotal method
-        const totalMinutes = await this.nexus!.planning.estimator.estimateTotal(tasks);
+        const totalMinutes = await this.nexus!.planning.estimator.estimateTotal(decomposedTasks);
         console.log(`[NexusBootstrap] Estimated ${totalMinutes} minutes total`);
+
+        // Emit planning:completed event (Phase 20 Task 4)
+        await this.eventBus.emit('project:status-changed', {
+          projectId,
+          previousStatus: 'planning' as const,
+          newStatus: 'executing' as const,
+          reason: `Planning complete: ${taskCount} tasks created`,
+        });
+
+        // Forward planning completed to UI
+        if (mainWindowRef && !mainWindowRef.isDestroyed()) {
+          mainWindowRef.webContents.send('nexus-event', {
+            type: 'planning:completed',
+            payload: {
+              projectId,
+              featureCount,
+              taskCount,
+              totalMinutes,
+              waveCount: waves.length,
+            },
+            timestamp: new Date().toISOString(),
+          });
+          console.log(`[NexusBootstrap] Forwarded planning:completed to UI`);
+        }
 
         // Initialize coordinator with project config
         coordinator.initialize({
           projectId,
           projectPath: this.config.workingDir,
-          features: this.tasksToFeatures(tasks, projectId),
+          features: this.tasksToFeatures(decomposedTasks, projectId),
           mode: 'genesis',
         });
 
@@ -534,6 +563,77 @@ export class NexusBootstrap {
       updatedAt: new Date(),
       projectId,
     }));
+  }
+
+  /**
+   * Store decomposed features and tasks in the database
+   * Phase 20 Task 3: Wire TaskDecomposer Output to Database
+   */
+  private async storeDecomposition(
+    projectId: string,
+    planningTasks: PlanningTask[]
+  ): Promise<{ featureCount: number; taskCount: number }> {
+    if (!this.databaseClient) {
+      throw new Error('DatabaseClient not initialized');
+    }
+
+    console.log('[NexusBootstrap] Storing decomposition for project:', projectId);
+    const now = new Date();
+    let featureCount = 0;
+    let taskCount = 0;
+
+    // Create a single feature to represent the project requirements
+    const featureId = `feature-${projectId}-${Date.now()}`;
+
+    try {
+      // Insert the feature
+      this.databaseClient.db.insert(features).values({
+        id: featureId,
+        projectId: projectId,
+        name: 'Project Requirements',
+        description: 'Auto-generated feature from interview requirements',
+        priority: 'must',
+        status: 'backlog',
+        complexity: 'complex',
+        estimatedTasks: planningTasks.length,
+        completedTasks: 0,
+        createdAt: now,
+        updatedAt: now,
+      }).run();
+      featureCount = 1;
+      console.log('[NexusBootstrap] Stored feature:', featureId);
+
+      // Insert all tasks
+      for (const task of planningTasks) {
+        const taskId = task.id || `task-${projectId}-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+
+        this.databaseClient.db.insert(tasks).values({
+          id: taskId,
+          projectId: projectId,
+          featureId: featureId,
+          name: task.name,
+          description: task.description,
+          type: task.type || 'auto',
+          status: 'pending',
+          size: task.size === 'large' || task.size === 'medium' ? 'small' : task.size,
+          priority: 5,
+          tags: JSON.stringify(task.files || []),
+          notes: JSON.stringify(task.testCriteria || []),
+          dependsOn: JSON.stringify(task.dependsOn || []),
+          estimatedMinutes: task.estimatedMinutes || 15,
+          createdAt: now,
+          updatedAt: now,
+        }).run();
+        taskCount++;
+      }
+
+      console.log('[NexusBootstrap] Stored', taskCount, 'tasks for feature', featureId);
+
+      return { featureCount, taskCount };
+    } catch (error) {
+      console.error('[NexusBootstrap] Failed to store decomposition:', error);
+      throw error;
+    }
   }
 
   /**
