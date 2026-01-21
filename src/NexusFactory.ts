@@ -26,6 +26,7 @@ import { DependencyResolver } from './planning/dependencies/DependencyResolver';
 import { TimeEstimator } from './planning/estimation/TimeEstimator';
 import { AgentPool } from './orchestration/agents/AgentPool';
 import { QARunnerFactory } from './execution/qa/QARunnerFactory';
+import { QALoopEngine } from './execution/qa/QALoopEngine';
 import { NexusCoordinator, type NexusCoordinatorOptions } from './orchestration/coordinator/NexusCoordinator';
 import { TaskQueue } from './orchestration/queue/TaskQueue';
 import { EventBus } from './orchestration/events/EventBus';
@@ -132,6 +133,8 @@ export interface NexusFactoryConfig {
     testTimeout?: number;
     /** Enable auto-fix for linting (default: false) */
     autoFixLint?: boolean;
+    /** Maximum QA iterations before escalation (default: 3) */
+    maxIterations?: number;
   };
 
   // ==========================================================================
@@ -316,6 +319,16 @@ export class NexusFactory {
     });
 
     // ========================================================================
+    // 5b. Wrap QARunner in QALoopEngine to provide run() interface
+    // ========================================================================
+    const qaEngine = new QALoopEngine({
+      qaRunner,
+      maxIterations: config.qaConfig?.maxIterations ?? 3,
+      stopOnFirstFailure: true,
+      workingDir: config.workingDir,
+    });
+
+    // ========================================================================
     // 6. Initialize Task Queue and Event Bus
     // ========================================================================
     const taskQueue = new TaskQueue();
@@ -341,7 +354,7 @@ export class NexusFactory {
       decomposer: taskDecomposer,
       resolver: dependencyResolver,
       estimator: timeEstimator,
-      qaEngine: qaRunner,
+      qaEngine,
       worktreeManager,
       checkpointManager,
     };
@@ -473,6 +486,14 @@ export class NexusFactory {
           geminiClient,
         });
 
+    // Wrap QARunner in QALoopEngine to provide run() interface
+    const qaEngine = new QALoopEngine({
+      qaRunner,
+      maxIterations: 3,
+      stopOnFirstFailure: true,
+      workingDir: config.workingDir,
+    });
+
     // ========================================================================
     // 6. Initialize Task Queue and Event Bus
     // ========================================================================
@@ -499,7 +520,7 @@ export class NexusFactory {
       decomposer: taskDecomposer,
       resolver: dependencyResolver,
       estimator: timeEstimator,
-      qaEngine: qaRunner,
+      qaEngine,
       worktreeManager,
       checkpointManager,
     });

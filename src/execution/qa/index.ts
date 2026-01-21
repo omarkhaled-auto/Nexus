@@ -39,6 +39,14 @@ export type {
   QuickQARunnerConfig,
 } from './QARunnerFactory';
 
+// QA Loop Engine (adapter for NexusCoordinator)
+export { QALoopEngine, createQALoopEngine } from './QALoopEngine';
+export type {
+  QALoopTask,
+  QALoopResult,
+  QALoopEngineConfig,
+} from './QALoopEngine';
+
 // Re-export types from iteration/types for convenience
 export type {
   QARunner,
