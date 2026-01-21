@@ -1,13 +1,13 @@
-import { c as createLucideIcon, r as reactExports, j as jsxRuntimeExports, a as cn, u as useMessages, b as useIsInterviewing, d as useInterviewStore, e as useSessionId, f as useProjectStore, L as LoaderCircle, S as Sparkles, B as Bot, C as ChevronDown, g as useRequirements, h as useInterviewStage, i as useNavigate, t as toast } from "./index-DYpqpDPF.js";
-import { C as CircleAlert } from "./circle-alert-DalvgsL5.js";
-import { Z as Zap, F as FileText } from "./zap-BU8g-71X.js";
-import { C as Cpu, S as Save, R as RotateCcw } from "./save-BKjY4etK.js";
-import { L as Layers } from "./layers-D9ZOuPXB.js";
-import { C as CircleCheck } from "./circle-check-CZr1TaIC.js";
-import { C as Circle, A as AnimatedPage } from "./AnimatedPage-D7ZjgBT9.js";
-import { T as Trash2 } from "./trash-2-Bz-uxWsr.js";
-import { D as Download } from "./download-CWcZWjeM.js";
-import { A as ArrowLeft } from "./arrow-left-B63aoFAR.js";
+import { c as createLucideIcon, r as reactExports, j as jsxRuntimeExports, a as cn, u as useMessages, b as useIsInterviewing, d as useInterviewStore, e as useSessionId, f as useProjectStore, L as LoaderCircle, S as Sparkles, B as Bot, C as ChevronDown, g as useRequirements, h as useInterviewStage, i as useNavigate, t as toast } from "./index-D31omQuS.js";
+import { C as CircleAlert } from "./circle-alert-CkvgYtnI.js";
+import { Z as Zap, F as FileText } from "./zap-oC8qjpiQ.js";
+import { C as Cpu, S as Save, R as RotateCcw } from "./save-bXx-Vc5E.js";
+import { L as Layers } from "./layers-DLf3UADF.js";
+import { C as CircleCheck } from "./circle-check-aE6UDedW.js";
+import { C as Circle, A as AnimatedPage } from "./AnimatedPage-BTybAGMP.js";
+import { T as Trash2 } from "./trash-2-BNO2rFn_.js";
+import { D as Download } from "./download-D4OqJT23.js";
+import { A as ArrowLeft } from "./arrow-left-QX4MbbmV.js";
 /**
  * @license lucide-react v0.562.0 - ISC
  *
@@ -393,7 +393,8 @@ function ChatPanel({ className }) {
       }
     } catch (err) {
       console.error("Failed to initialize interview session:", err);
-      setError("Failed to start interview session. Please try again.");
+      const errorMessage = err instanceof Error ? err.message : "Failed to start interview session. Please try again.";
+      setError(errorMessage);
     } finally {
       isInitializing.current = false;
     }

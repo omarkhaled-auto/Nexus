@@ -110,6 +110,9 @@ export interface BootstrappedNexus {
   /** HumanReviewService instance for IPC handler registration */
   humanReviewService: HumanReviewService;
 
+  /** DatabaseClient instance for IPC handler registration */
+  databaseClient: DatabaseClient;
+
   /** Shutdown all components */
   shutdown: () => Promise<void>;
 }
@@ -265,6 +268,7 @@ export class NexusBootstrap {
       listCheckpoints: (projectId) => this.listCheckpointsForProject(projectId),
       checkpointManager: this.checkpointManager,
       humanReviewService: this.humanReviewService,
+      databaseClient: this.databaseClient!,
       shutdown: () => this.shutdown(),
     };
 

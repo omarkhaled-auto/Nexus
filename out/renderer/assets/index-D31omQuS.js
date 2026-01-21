@@ -1,4 +1,4 @@
-const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["./InterviewPage-Wbm8JgPt.js","./circle-alert-DalvgsL5.js","./zap-BU8g-71X.js","./save-BKjY4etK.js","./layers-D9ZOuPXB.js","./circle-check-CZr1TaIC.js","./AnimatedPage-D7ZjgBT9.js","./trash-2-Bz-uxWsr.js","./download-CWcZWjeM.js","./arrow-left-B63aoFAR.js","./KanbanPage-DTbVgvlS.js","./featureStore-wBaaOCqt.js","./clock-BQBgQxoU.js","./circle-x-CtY7q2bK.js","./Input-DqruNAXx.js","./eye-DMj_Ctt0.js","./DashboardPage-CnFFqKBs.js","./test-tube-diagonal-Bagt6Krl.js","./SettingsPage-C63ZMQeI.js","./Header-BGGKOQPc.js","./circle-check-big-ClpwStLI.js","./info-DB-wLqkR.js","./AgentsPage-COR1i5mN.js","./ExecutionPage-Ch7s4tNc.js"])))=>i.map(i=>d[i]);
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["./InterviewPage-WSGqqKbe.js","./circle-alert-CkvgYtnI.js","./zap-oC8qjpiQ.js","./save-bXx-Vc5E.js","./layers-DLf3UADF.js","./circle-check-aE6UDedW.js","./AnimatedPage-BTybAGMP.js","./trash-2-BNO2rFn_.js","./download-D4OqJT23.js","./arrow-left-QX4MbbmV.js","./KanbanPage-C1qtKZYx.js","./clock-Doeygd_g.js","./circle-x-C7HpNJvN.js","./Input-CJLgTE4C.js","./eye-off-Dw8xmgIG.js","./eye-BYbze7HZ.js","./DashboardPage-C8MZBjFb.js","./test-tube-diagonal-BWauQmuU.js","./SettingsPage-BEiwH2WH.js","./Header-B3aaX7Zy.js","./circle-check-big-YJpUoM5v.js","./info-BknFdaPD.js","./AgentsPage-BPWi9arG.js","./ExecutionPage-Bry_OV2T.js"])))=>i.map(i=>d[i]);
 function _mergeNamespaces(n, m) {
   for (var i = 0; i < m.length; i++) {
     const e = m[i];
@@ -27459,7 +27459,7 @@ const initialState = {
   interviewStartTime: null,
   sessionId: null
 };
-function emitEvent(method, payload) {
+function emitEvent$1(method, payload) {
   if (window.nexusAPI) {
     try {
       const fn = window.nexusAPI[method];
@@ -27477,7 +27477,7 @@ const useInterviewStore = create()((set, get) => ({
     set((state) => ({
       messages: [...state.messages, message]
     }));
-    emitEvent("emitInterviewMessage", {
+    emitEvent$1("emitInterviewMessage", {
       messageId: message.id,
       role: message.role,
       content: message.content
@@ -27492,7 +27492,7 @@ const useInterviewStore = create()((set, get) => ({
     set((state) => ({
       requirements: [...state.requirements, requirement]
     }));
-    emitEvent("emitInterviewRequirement", {
+    emitEvent$1("emitInterviewRequirement", {
       requirementId: requirement.id,
       category: requirement.category,
       text: requirement.text,
@@ -27522,7 +27522,7 @@ const useInterviewStore = create()((set, get) => ({
       stage: "welcome",
       interviewStartTime: Date.now()
     });
-    emitEvent("emitInterviewStarted", {
+    emitEvent$1("emitInterviewStarted", {
       projectName: state.projectName,
       mode: "genesis"
     });
@@ -27535,7 +27535,7 @@ const useInterviewStore = create()((set, get) => ({
       isInterviewing: false,
       stage: "complete"
     });
-    emitEvent("emitInterviewCompleted", {
+    emitEvent$1("emitInterviewCompleted", {
       requirementCount: state.requirements.length,
       categories,
       duration
@@ -27738,6 +27738,395 @@ function useNexusEvents() {
     addToast
   ]);
 }
+const WIP_LIMIT = 3;
+function emitEvent(channel, payload) {
+  if (window.nexusAPI?.emitEvent) {
+    try {
+      void window.nexusAPI.emitEvent(channel, payload);
+    } catch {
+    }
+  }
+}
+const useFeatureStore = create()((set, get) => ({
+  features: [],
+  selectedFeatureId: null,
+  filter: {
+    search: "",
+    priority: null,
+    status: null
+  },
+  setFeatures: (features) => {
+    set({ features });
+  },
+  addFeature: (feature) => {
+    set((state) => ({
+      features: [...state.features, feature]
+    }));
+    emitEvent("feature:created", {
+      feature: {
+        id: feature.id,
+        projectId: "current",
+        name: feature.title,
+        description: feature.description,
+        priority: feature.priority === "critical" ? "must" : feature.priority === "high" ? "should" : feature.priority === "medium" ? "could" : "wont",
+        status: mapToEventFeatureStatus(feature.status),
+        complexity: feature.complexity === "moderate" ? "simple" : feature.complexity,
+        subFeatures: [],
+        estimatedTasks: feature.tasks.length,
+        completedTasks: 0,
+        createdAt: new Date(feature.createdAt),
+        updatedAt: new Date(feature.updatedAt)
+      },
+      projectId: "current"
+    });
+  },
+  updateFeature: (id, update) => {
+    set((state) => ({
+      features: state.features.map((f) => f.id === id ? { ...f, ...update } : f)
+    }));
+  },
+  removeFeature: (id) => {
+    set((state) => ({
+      features: state.features.filter((f) => f.id !== id)
+    }));
+  },
+  moveFeature: (id, newStatus) => {
+    const state = get();
+    const feature = state.features.find((f) => f.id === id);
+    if (!feature) return false;
+    const oldStatus = feature.status;
+    if (oldStatus === newStatus) return true;
+    if (newStatus === "in_progress" && oldStatus !== "in_progress") {
+      const inProgressCount = state.features.filter((f) => f.status === "in_progress").length;
+      if (inProgressCount >= WIP_LIMIT) {
+        return false;
+      }
+    }
+    set((state2) => ({
+      features: state2.features.map(
+        (f) => f.id === id ? {
+          ...f,
+          status: newStatus,
+          updatedAt: (/* @__PURE__ */ new Date()).toISOString()
+        } : f
+      )
+    }));
+    if (window.nexusAPI?.updateFeature) {
+      window.nexusAPI.updateFeature(id, { status: newStatus }).catch((error) => {
+        console.error("Failed to persist feature status change:", error);
+        set((state2) => ({
+          features: state2.features.map(
+            (f) => f.id === id ? {
+              ...f,
+              status: oldStatus,
+              updatedAt: (/* @__PURE__ */ new Date()).toISOString()
+            } : f
+          )
+        }));
+      });
+    }
+    emitEvent("feature:status-changed", {
+      featureId: id,
+      projectId: "current",
+      previousStatus: mapToEventFeatureStatus(oldStatus),
+      newStatus: mapToEventFeatureStatus(newStatus)
+    });
+    if (newStatus === "done") {
+      emitEvent("feature:completed", {
+        featureId: id,
+        projectId: "current",
+        tasksCompleted: feature.tasks.length,
+        duration: 0
+        // Would need actual time tracking
+      });
+    }
+    return true;
+  },
+  reorderFeatures: (columnId, oldIndex, newIndex) => {
+    set((state) => {
+      const columnFeatures = state.features.filter((f) => f.status === columnId);
+      state.features.filter((f) => f.status !== columnId);
+      if (oldIndex < 0 || newIndex < 0 || oldIndex >= columnFeatures.length || newIndex >= columnFeatures.length) {
+        return state;
+      }
+      if (oldIndex === newIndex) {
+        return state;
+      }
+      const reordered = [...columnFeatures];
+      const [removed] = reordered.splice(oldIndex, 1);
+      reordered.splice(newIndex, 0, removed);
+      const result = [];
+      let columnIdx = 0;
+      for (const feature of state.features) {
+        if (feature.status === columnId) {
+          result.push(reordered[columnIdx]);
+          columnIdx++;
+        } else {
+          result.push(feature);
+        }
+      }
+      return { features: result };
+    });
+  },
+  selectFeature: (id) => {
+    set({ selectedFeatureId: id });
+  },
+  setSearchFilter: (search) => {
+    set((state) => ({
+      filter: { ...state.filter, search }
+    }));
+  },
+  setPriorityFilter: (priorities) => {
+    set((state) => ({
+      filter: { ...state.filter, priority: priorities }
+    }));
+  },
+  setStatusFilter: (statuses) => {
+    set((state) => ({
+      filter: { ...state.filter, status: statuses }
+    }));
+  },
+  clearFilters: () => {
+    set({
+      filter: {
+        search: "",
+        priority: null,
+        status: null
+      }
+    });
+  },
+  reset: () => {
+    set({
+      features: [],
+      selectedFeatureId: null,
+      filter: {
+        search: "",
+        priority: null,
+        status: null
+      }
+    });
+  }
+}));
+function mapToEventFeatureStatus(status) {
+  const map = {
+    backlog: "backlog",
+    planning: "backlog",
+    // planning maps to backlog in core types
+    in_progress: "in-progress",
+    ai_review: "ai-review",
+    human_review: "human-review",
+    done: "done"
+  };
+  return map[status];
+}
+const useFeatureCount = () => useFeatureStore((s) => s.features.length);
+function useRealTimeUpdates() {
+  const isSubscribed = reactExports.useRef(false);
+  const setOverview = useMetricsStore((s) => s.setOverview);
+  const addTimelineEvent = useMetricsStore((s) => s.addTimelineEvent);
+  const setCosts = useMetricsStore((s) => s.setCosts);
+  const updateAgentMetrics = useMetricsStore((s) => s.updateAgentMetrics);
+  const setAgents = useMetricsStore((s) => s.setAgents);
+  const setAgentStatus = useAgentStore((s) => s.setAgentStatus);
+  const updateAgent = useAgentStore((s) => s.updateAgent);
+  const updateFeature = useFeatureStore((s) => s.updateFeature);
+  reactExports.useEffect(() => {
+    if (isSubscribed.current) return;
+    if (typeof window.nexusAPI === "undefined") {
+      console.warn("[useRealTimeUpdates] nexusAPI not available, skipping subscriptions");
+      return;
+    }
+    console.log("[useRealTimeUpdates] Setting up real-time event subscriptions");
+    isSubscribed.current = true;
+    const unsubscribers = [];
+    if (typeof window.nexusAPI.onMetricsUpdate === "function") {
+      const unsubMetrics = window.nexusAPI.onMetricsUpdate((metrics) => {
+        console.log("[useRealTimeUpdates] Metrics update received", metrics);
+        try {
+          const payload = metrics;
+          setOverview(payload);
+        } catch (error) {
+          console.error("[useRealTimeUpdates] Error processing metrics update:", error);
+        }
+      });
+      unsubscribers.push(unsubMetrics);
+    }
+    if (typeof window.nexusAPI.onTimelineEvent === "function") {
+      const unsubTimeline = window.nexusAPI.onTimelineEvent((event) => {
+        console.log("[useRealTimeUpdates] Timeline event received", event);
+        try {
+          const payload = event;
+          const timelineEvent = {
+            id: payload.id,
+            type: payload.type,
+            title: payload.title,
+            description: payload.description,
+            severity: payload.severity || "info",
+            timestamp: new Date(payload.timestamp),
+            metadata: payload.metadata
+          };
+          addTimelineEvent(timelineEvent);
+        } catch (error) {
+          console.error("[useRealTimeUpdates] Error processing timeline event:", error);
+        }
+      });
+      unsubscribers.push(unsubTimeline);
+    }
+    if (typeof window.nexusAPI.onCostUpdate === "function") {
+      const unsubCosts = window.nexusAPI.onCostUpdate((costs) => {
+        console.log("[useRealTimeUpdates] Cost update received", costs);
+        try {
+          const payload = costs;
+          const costMetrics = {
+            totalTokensUsed: payload.totalTokensUsed,
+            inputTokens: payload.inputTokens,
+            outputTokens: payload.outputTokens,
+            estimatedCostUSD: payload.estimatedCostUSD,
+            totalCost: payload.totalCost,
+            breakdownByModel: (payload.breakdownByModel || []).map((m) => ({
+              model: m.model,
+              provider: m.provider,
+              inputTokens: m.inputTokens,
+              outputTokens: m.outputTokens,
+              costUSD: m.costUSD
+            })),
+            breakdownByAgent: (payload.breakdownByAgent || []).map((a) => ({
+              agentType: a.agentType,
+              tokensUsed: a.tokensUsed,
+              costUSD: a.costUSD,
+              taskCount: a.taskCount
+            })),
+            updatedAt: payload.updatedAt ? new Date(payload.updatedAt) : /* @__PURE__ */ new Date()
+          };
+          setCosts(costMetrics);
+        } catch (error) {
+          console.error("[useRealTimeUpdates] Error processing cost update:", error);
+        }
+      });
+      unsubscribers.push(unsubCosts);
+    }
+    if (typeof window.nexusAPI.onAgentStatusUpdate === "function") {
+      const unsubAgentMetrics = window.nexusAPI.onAgentStatusUpdate((status) => {
+        console.log("[useRealTimeUpdates] Agent metrics received", status);
+        try {
+          const payload = status;
+          updateAgentMetrics(payload.id, {
+            id: payload.id,
+            type: payload.type || "coder",
+            status: payload.status || "idle",
+            currentTaskId: payload.currentTaskId,
+            currentTaskName: payload.currentTaskName,
+            tasksCompleted: payload.tasksCompleted || 0,
+            tasksFailed: payload.tasksFailed || 0,
+            tokensUsed: payload.tokensUsed || 0,
+            lastActivity: /* @__PURE__ */ new Date(),
+            spawnedAt: /* @__PURE__ */ new Date()
+          });
+        } catch (error) {
+          console.error("[useRealTimeUpdates] Error processing agent metrics:", error);
+        }
+      });
+      unsubscribers.push(unsubAgentMetrics);
+    }
+    if (typeof window.nexusAPI.onAgentStatus === "function") {
+      const unsubAgentStatus = window.nexusAPI.onAgentStatus((status) => {
+        console.log("[useRealTimeUpdates] Agent status received", status);
+        try {
+          const payload = status;
+          const agentStatus = {
+            id: payload.id,
+            type: payload.type || "coder",
+            status: payload.status || "idle",
+            currentTaskId: payload.currentTaskId
+          };
+          setAgentStatus(agentStatus);
+        } catch (error) {
+          console.error("[useRealTimeUpdates] Error processing agent status:", error);
+        }
+      });
+      unsubscribers.push(unsubAgentStatus);
+    }
+    if (typeof window.nexusAPI.onExecutionProgress === "function") {
+      const unsubProgress = window.nexusAPI.onExecutionProgress((progress) => {
+        console.log("[useRealTimeUpdates] Execution progress received", progress);
+        try {
+          const payload = progress;
+          const currentOverview = useMetricsStore.getState().overview;
+          if (currentOverview) {
+            setOverview({
+              ...currentOverview,
+              completedTasks: payload.completedTasks,
+              totalTasks: payload.totalTasks,
+              estimatedRemainingMinutes: payload.estimatedRemainingMinutes ?? currentOverview.estimatedRemainingMinutes,
+              updatedAt: /* @__PURE__ */ new Date()
+            });
+          }
+        } catch (error) {
+          console.error("[useRealTimeUpdates] Error processing execution progress:", error);
+        }
+      });
+      unsubscribers.push(unsubProgress);
+    }
+    if (typeof window.nexusAPI.onExecutionLogUpdate === "function") {
+      const unsubLogs = window.nexusAPI.onExecutionLogUpdate((data) => {
+        console.log("[useRealTimeUpdates] Execution log received", data);
+        try {
+          const payload = data;
+          const logEvent = {
+            id: payload.log.id,
+            type: "task_started",
+            // Generic type for logs
+            title: `[${payload.stepType.toUpperCase()}] ${payload.log.message}`,
+            severity: payload.log.level === "error" ? "error" : payload.log.level === "warn" ? "warning" : "info",
+            timestamp: new Date(payload.log.timestamp),
+            metadata: { stepType: payload.stepType, details: payload.log.details }
+          };
+          addTimelineEvent(logEvent);
+        } catch (error) {
+          console.error("[useRealTimeUpdates] Error processing execution log:", error);
+        }
+      });
+      unsubscribers.push(unsubLogs);
+    }
+    if (typeof window.nexusAPI.onFeatureUpdate === "function") {
+      const unsubFeature = window.nexusAPI.onFeatureUpdate((feature) => {
+        console.log("[useRealTimeUpdates] Feature update received", feature);
+        try {
+          const payload = feature;
+          updateFeature(payload.id, {
+            title: payload.title,
+            status: payload.status,
+            description: payload.description,
+            priority: payload.priority,
+            complexity: payload.complexity
+          });
+        } catch (error) {
+          console.error("[useRealTimeUpdates] Error processing feature update:", error);
+        }
+      });
+      unsubscribers.push(unsubFeature);
+    }
+    return () => {
+      console.log("[useRealTimeUpdates] Cleaning up subscriptions");
+      isSubscribed.current = false;
+      unsubscribers.forEach((unsub) => {
+        try {
+          unsub();
+        } catch {
+        }
+      });
+    };
+  }, [
+    setOverview,
+    addTimelineEvent,
+    setCosts,
+    updateAgentMetrics,
+    setAgents,
+    setAgentStatus,
+    updateAgent,
+    updateFeature
+  ]);
+}
 function KeyboardShortcutsModal() {
   const showShortcuts = useUIStore((s) => s.showShortcuts);
   const setShowShortcuts = useUIStore((s) => s.setShowShortcuts);
@@ -27763,12 +28152,12 @@ function KeyboardShortcutsModal() {
     )) })
   ] }) });
 }
-const InterviewPage = reactExports.lazy(() => __vitePreload(() => import("./InterviewPage-Wbm8JgPt.js"), true ? __vite__mapDeps([0,1,2,3,4,5,6,7,8,9]) : void 0, import.meta.url));
-const KanbanPage = reactExports.lazy(() => __vitePreload(() => import("./KanbanPage-DTbVgvlS.js"), true ? __vite__mapDeps([10,11,6,12,7,13,5,4,14,1,15]) : void 0, import.meta.url));
-const DashboardPage = reactExports.lazy(() => __vitePreload(() => import("./DashboardPage-CnFFqKBs.js"), true ? __vite__mapDeps([16,2,17,15,6,5,13,1,14,11,12]) : void 0, import.meta.url));
-const SettingsPage = reactExports.lazy(() => __vitePreload(() => import("./SettingsPage-C63ZMQeI.js"), true ? __vite__mapDeps([18,19,9,11,1,3,20,21,15]) : void 0, import.meta.url));
-const AgentsPage = reactExports.lazy(() => __vitePreload(() => import("./AgentsPage-COR1i5mN.js"), true ? __vite__mapDeps([22,19,9,21,1,5,2,17,15,12,7,13]) : void 0, import.meta.url));
-const ExecutionPage = reactExports.lazy(() => __vitePreload(() => import("./ExecutionPage-Ch7s4tNc.js"), true ? __vite__mapDeps([23,19,9,8,7,13,20]) : void 0, import.meta.url));
+const InterviewPage = reactExports.lazy(() => __vitePreload(() => import("./InterviewPage-WSGqqKbe.js"), true ? __vite__mapDeps([0,1,2,3,4,5,6,7,8,9]) : void 0, import.meta.url));
+const KanbanPage = reactExports.lazy(() => __vitePreload(() => import("./KanbanPage-C1qtKZYx.js"), true ? __vite__mapDeps([10,6,11,7,12,5,4,13,1,14,15]) : void 0, import.meta.url));
+const DashboardPage = reactExports.lazy(() => __vitePreload(() => import("./DashboardPage-C8MZBjFb.js"), true ? __vite__mapDeps([16,2,17,15,6,5,12,1,13,14,11]) : void 0, import.meta.url));
+const SettingsPage = reactExports.lazy(() => __vitePreload(() => import("./SettingsPage-BEiwH2WH.js"), true ? __vite__mapDeps([18,19,9,1,3,20,21,14,15]) : void 0, import.meta.url));
+const AgentsPage = reactExports.lazy(() => __vitePreload(() => import("./AgentsPage-BPWi9arG.js"), true ? __vite__mapDeps([22,19,9,21,1,5,2,17,15,11,7,12]) : void 0, import.meta.url));
+const ExecutionPage = reactExports.lazy(() => __vitePreload(() => import("./ExecutionPage-Bry_OV2T.js"), true ? __vite__mapDeps([23,19,9,8,7,12,20]) : void 0, import.meta.url));
 function PageLoader() {
   return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex items-center justify-center min-h-screen bg-bg-dark", "data-testid": "page-loader", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col items-center gap-3", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-8 h-8 rounded-full border-2 border-accent-primary border-t-transparent animate-spin" }),
@@ -27820,6 +28209,7 @@ function SettingsInitializer({ children }) {
   }, [loadSettings]);
   useThemeEffect();
   useNexusEvents();
+  useRealTimeUpdates();
   return /* @__PURE__ */ jsxRuntimeExports.jsx(jsxRuntimeExports.Fragment, { children });
 }
 function App() {
@@ -27848,38 +28238,39 @@ root.render(
   /* @__PURE__ */ jsxRuntimeExports.jsx(reactExports.StrictMode, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(App, {}) })
 );
 export {
-  Terminal as $,
-  getDefaultExportFromCjs as A,
+  useSettingsDirty as $,
+  useCosts as A,
   Bot as B,
   ChevronDown as C,
   Dialog as D,
-  React$3 as E,
-  useAgentMetrics as F,
-  fo as G,
-  RefreshCw as H,
-  useTimeline as I,
-  useIsMetricsLoading as J,
-  useOverview as K,
+  clsx as E,
+  getDefaultExportFromCjs as F,
+  React$3 as G,
+  useAgentMetrics as H,
+  fo as I,
+  RefreshCw as J,
+  useTimeline as K,
   LoaderCircle as L,
   MessageSquare as M,
-  useMetricsStore as N,
-  FolderOpen as O,
+  useIsMetricsLoading as N,
+  useOverview as O,
   Plus as P,
-  Link as Q,
+  useMetricsStore as Q,
   React$2 as R,
   Sparkles as S,
   TriangleAlert as T,
-  ChevronRight as U,
-  cva as V,
-  useSettings as W,
-  X$1 as X,
-  useSettingsLoading as Y,
-  useSettingsDirty as Z,
-  useSettingsStore as _,
+  FolderOpen as U,
+  Link as V,
+  ChevronRight as W,
+  cva as X,
+  X$1 as Y,
+  useSettings as Z,
+  useSettingsLoading as _,
   cn as a,
-  CardDescription as a0,
-  useHasApiKey as a1,
-  create as a2,
+  useSettingsStore as a0,
+  Terminal as a1,
+  CardDescription as a2,
+  useHasApiKey as a3,
   useIsInterviewing as b,
   createLucideIcon as c,
   useInterviewStore as d,
@@ -27894,15 +28285,15 @@ export {
   CardHeader as m,
   CardTitle as n,
   CardContent as o,
-  DialogContent as p,
-  DialogHeader as q,
+  useFeatureStore as p,
+  DialogContent as q,
   reactExports as r,
-  DialogTitle as s,
+  DialogHeader as s,
   toast as t,
   useMessages as u,
-  DialogDescription as v,
-  DialogFooter as w,
-  Button as x,
-  useCosts as y,
-  clsx as z
+  DialogTitle as v,
+  DialogDescription as w,
+  DialogFooter as x,
+  Button as y,
+  useFeatureCount as z
 };

@@ -169,10 +169,11 @@ async function initializeNexusSystem(): Promise<void> {
     // (fallback handlers were registered early to handle race conditions)
     removeInterviewHandlers();
 
-    // Register interview handlers with the bootstrapped engine and session manager
+    // Register interview handlers with the bootstrapped engine, session manager, and database
     registerInterviewHandlers(
       nexusInstance.interviewEngine,
-      nexusInstance.sessionManager
+      nexusInstance.sessionManager,
+      nexusInstance.databaseClient
     );
 
     // Register checkpoint and review IPC handlers

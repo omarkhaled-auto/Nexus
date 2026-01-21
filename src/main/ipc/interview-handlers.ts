@@ -10,8 +10,11 @@
 
 import type { IpcMainInvokeEvent } from 'electron';
 import { ipcMain } from 'electron';
+import { eq } from 'drizzle-orm';
 import type { InterviewEngine, InterviewSession, ProcessMessageResult } from '../../interview';
 import type { InterviewSessionManager } from '../../interview';
+import type { DatabaseClient } from '../../persistence/database/DatabaseClient';
+import { projects } from '../../persistence/database/schema';
 
 /**
  * Error thrown when interview operations are attempted but Nexus is not initialized.
@@ -39,14 +42,53 @@ function validateSender(event: IpcMainInvokeEvent): boolean {
 }
 
 /**
+ * Ensure a project exists in the database before creating a session.
+ * Creates a minimal project record if one doesn't exist.
+ *
+ * @param db The DatabaseClient instance
+ * @param projectId The project ID to ensure exists
+ * @param mode The interview mode ('genesis' or 'evolution')
+ */
+function ensureProjectExists(
+  db: DatabaseClient,
+  projectId: string,
+  mode: 'genesis' | 'evolution' = 'genesis'
+): void {
+  // Check if project already exists
+  const existing = db.db
+    .select()
+    .from(projects)
+    .where(eq(projects.id, projectId))
+    .get();
+
+  if (!existing) {
+    // Create minimal project record for the interview session
+    const now = new Date();
+    db.db.insert(projects).values({
+      id: projectId,
+      name: `New ${mode === 'genesis' ? 'Genesis' : 'Evolution'} Project`,
+      mode: mode,
+      status: 'interview',
+      rootPath: process.cwd(), // Default to current working directory
+      createdAt: now,
+      updatedAt: now,
+    }).run();
+
+    console.log(`[InterviewHandlers] Created project record: ${projectId}`);
+  }
+}
+
+/**
  * Register IPC handlers for interview operations
  *
  * @param interviewEngine The InterviewEngine instance
  * @param sessionManager The InterviewSessionManager instance
+ * @param db The DatabaseClient instance for project creation
  */
 export function registerInterviewHandlers(
   interviewEngine: InterviewEngine,
-  sessionManager: InterviewSessionManager
+  sessionManager: InterviewSessionManager,
+  db: DatabaseClient
 ): void {
   // ========================================
   // Start new interview
@@ -60,6 +102,10 @@ export function registerInterviewHandlers(
       if (typeof projectId !== 'string' || !projectId) {
         throw new Error('Invalid projectId');
       }
+
+      // Ensure project exists in database before creating session
+      // This prevents FK constraint failures when saving the session
+      ensureProjectExists(db, projectId, 'genesis');
 
       const session = interviewEngine.startSession(projectId);
       sessionManager.startAutoSave(session);

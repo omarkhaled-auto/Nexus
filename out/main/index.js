@@ -1,6 +1,8 @@
 import { app, session, ipcMain, BrowserWindow, safeStorage, shell } from "electron";
 import { resolve, extname, posix, relative, basename, join as join$1 } from "path";
 import { webcrypto, randomFillSync, randomUUID } from "node:crypto";
+import { relations, eq, and, desc } from "drizzle-orm";
+import { sqliteTable, integer, text, real, blob } from "drizzle-orm/sqlite-core";
 import Store from "electron-store";
 import { spawn } from "child_process";
 import Anthropic from "@anthropic-ai/sdk";
@@ -10,8 +12,6 @@ import { simpleGit } from "simple-git";
 import { normalize, join, dirname } from "pathe";
 import fse, { ensureDirSync } from "fs-extra";
 import { execaCommand } from "execa";
-import { relations, eq, and, desc } from "drizzle-orm";
-import { sqliteTable, integer, text, real, blob } from "drizzle-orm/sqlite-core";
 import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import { migrate } from "drizzle-orm/better-sqlite3/migrator";
@@ -1382,6 +1382,301 @@ function mapUIStatusToCoreStatus(status) {
   };
   return map[status] || "pending";
 }
+const projects = sqliteTable("projects", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  mode: text("mode").$type().notNull(),
+  status: text("status").notNull(),
+  // ProjectStatus
+  rootPath: text("root_path").notNull(),
+  repositoryUrl: text("repository_url"),
+  settings: text("settings"),
+  // JSON: ProjectSettings
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  completedAt: integer("completed_at", { mode: "timestamp" })
+});
+const features = sqliteTable("features", {
+  id: text("id").primaryKey(),
+  projectId: text("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  description: text("description"),
+  priority: text("priority").$type().notNull().default("should"),
+  status: text("status").notNull().default("backlog"),
+  complexity: text("complexity").$type().notNull().default("simple"),
+  estimatedTasks: integer("estimated_tasks").default(0),
+  completedTasks: integer("completed_tasks").default(0),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull()
+});
+const subFeatures = sqliteTable("sub_features", {
+  id: text("id").primaryKey(),
+  featureId: text("feature_id").notNull().references(() => features.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  description: text("description"),
+  status: text("status").notNull().default("backlog"),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull()
+});
+const tasks = sqliteTable("tasks", {
+  id: text("id").primaryKey(),
+  projectId: text("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  featureId: text("feature_id").references(() => features.id),
+  subFeatureId: text("sub_feature_id").references(() => subFeatures.id),
+  name: text("name").notNull(),
+  description: text("description"),
+  type: text("type").$type().notNull().default("auto"),
+  status: text("status").notNull().default("pending"),
+  size: text("size").$type().notNull().default("small"),
+  priority: integer("priority").notNull().default(5),
+  // for sorting (1 = highest)
+  tags: text("tags"),
+  // JSON array for categorization
+  notes: text("notes"),
+  // JSON array of implementation notes
+  assignedAgent: text("assigned_agent"),
+  worktreePath: text("worktree_path"),
+  branchName: text("branch_name"),
+  dependsOn: text("depends_on"),
+  // JSON array of task IDs
+  blockedBy: text("blocked_by"),
+  qaIterations: integer("qa_iterations").default(0),
+  maxIterations: integer("max_iterations").default(50),
+  estimatedMinutes: integer("estimated_minutes").default(15),
+  actualMinutes: integer("actual_minutes"),
+  startedAt: integer("started_at", { mode: "timestamp" }),
+  completedAt: integer("completed_at", { mode: "timestamp" }),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull()
+});
+const agents = sqliteTable("agents", {
+  id: text("id").primaryKey(),
+  type: text("type").$type().notNull(),
+  status: text("status").notNull().default("idle"),
+  // Model configuration
+  modelProvider: text("model_provider").$type().notNull().default("anthropic"),
+  modelName: text("model_name").notNull().default("claude-sonnet-4"),
+  temperature: real("temperature").notNull().default(0.3),
+  maxTokens: integer("max_tokens").notNull().default(8e3),
+  systemPrompt: text("system_prompt"),
+  // path to prompt file or content
+  tools: text("tools"),
+  // JSON array of tool names
+  // Current work
+  currentTaskId: text("current_task_id"),
+  worktreePath: text("worktree_path"),
+  branchName: text("branch_name"),
+  tokensUsed: integer("tokens_used").default(0),
+  tasksCompleted: integer("tasks_completed").default(0),
+  tasksFailed: integer("tasks_failed").default(0),
+  spawnedAt: integer("spawned_at", { mode: "timestamp" }).notNull(),
+  lastActivityAt: integer("last_activity_at", { mode: "timestamp" }).notNull(),
+  terminatedAt: integer("terminated_at", { mode: "timestamp" }),
+  terminationReason: text("termination_reason")
+});
+const checkpoints = sqliteTable("checkpoints", {
+  id: text("id").primaryKey(),
+  projectId: text("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  name: text("name"),
+  reason: text("reason"),
+  state: text("state"),
+  // JSON blob of full state
+  gitCommit: text("git_commit"),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull()
+});
+const requirements = sqliteTable("requirements", {
+  id: text("id").primaryKey(),
+  projectId: text("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  category: text("category").notNull(),
+  description: text("description").notNull(),
+  priority: text("priority").notNull().default("medium"),
+  source: text("source"),
+  userStories: text("user_stories"),
+  // JSON array of user stories
+  acceptanceCriteria: text("acceptance_criteria"),
+  // JSON array of acceptance criteria
+  linkedFeatures: text("linked_features"),
+  // JSON array
+  validated: integer("validated", { mode: "boolean" }).default(false),
+  confidence: real("confidence").default(1),
+  // 0-1, AI confidence in extraction
+  tags: text("tags"),
+  // JSON array for filtering/categorization
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull()
+});
+const metrics = sqliteTable("metrics", {
+  id: text("id").primaryKey(),
+  projectId: text("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  agentId: text("agent_id"),
+  taskId: text("task_id"),
+  type: text("type").notNull(),
+  // 'token_usage', 'task_duration', 'qa_iterations'
+  value: real("value").notNull(),
+  metadata: text("metadata"),
+  // JSON
+  timestamp: integer("timestamp", { mode: "timestamp" }).notNull()
+});
+const sessions = sqliteTable("sessions", {
+  id: text("id").primaryKey(),
+  projectId: text("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  type: text("type").notNull(),
+  // 'interview', 'planning', 'execution'
+  status: text("status").notNull().default("active"),
+  data: text("data"),
+  // JSON blob
+  startedAt: integer("started_at", { mode: "timestamp" }).notNull(),
+  endedAt: integer("ended_at", { mode: "timestamp" })
+});
+const projectsRelations = relations(projects, ({ many }) => ({
+  features: many(features),
+  tasks: many(tasks),
+  checkpoints: many(checkpoints),
+  requirements: many(requirements),
+  metrics: many(metrics),
+  sessions: many(sessions),
+  episodes: many(episodes),
+  continuePoints: many(continuePoints)
+}));
+const featuresRelations = relations(features, ({ one, many }) => ({
+  project: one(projects, {
+    fields: [features.projectId],
+    references: [projects.id]
+  }),
+  subFeatures: many(subFeatures),
+  tasks: many(tasks)
+}));
+const subFeaturesRelations = relations(subFeatures, ({ one, many }) => ({
+  feature: one(features, {
+    fields: [subFeatures.featureId],
+    references: [features.id]
+  }),
+  tasks: many(tasks)
+}));
+const tasksRelations = relations(tasks, ({ one }) => ({
+  project: one(projects, {
+    fields: [tasks.projectId],
+    references: [projects.id]
+  }),
+  feature: one(features, {
+    fields: [tasks.featureId],
+    references: [features.id]
+  }),
+  subFeature: one(subFeatures, {
+    fields: [tasks.subFeatureId],
+    references: [subFeatures.id]
+  })
+}));
+const checkpointsRelations = relations(checkpoints, ({ one }) => ({
+  project: one(projects, {
+    fields: [checkpoints.projectId],
+    references: [projects.id]
+  })
+}));
+const requirementsRelations = relations(requirements, ({ one }) => ({
+  project: one(projects, {
+    fields: [requirements.projectId],
+    references: [projects.id]
+  })
+}));
+const metricsRelations = relations(metrics, ({ one }) => ({
+  project: one(projects, {
+    fields: [metrics.projectId],
+    references: [projects.id]
+  })
+}));
+const sessionsRelations = relations(sessions, ({ one }) => ({
+  project: one(projects, {
+    fields: [sessions.projectId],
+    references: [projects.id]
+  })
+}));
+const episodes = sqliteTable("episodes", {
+  id: text("id").primaryKey(),
+  projectId: text("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  type: text("type").$type().notNull(),
+  content: text("content").notNull(),
+  summary: text("summary"),
+  // Short summary for display
+  embedding: text("embedding"),
+  // JSON array of floats (1536 dimensions)
+  context: text("context"),
+  // JSON metadata
+  taskId: text("task_id"),
+  agentId: text("agent_id"),
+  importance: real("importance").default(1),
+  // For pruning priority
+  accessCount: integer("access_count").default(0),
+  lastAccessedAt: integer("last_accessed_at", { mode: "timestamp" }),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull()
+});
+const episodesRelations = relations(episodes, ({ one }) => ({
+  project: one(projects, {
+    fields: [episodes.projectId],
+    references: [projects.id]
+  })
+}));
+const continuePoints = sqliteTable("continue_points", {
+  id: text("id").primaryKey(),
+  projectId: text("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  taskId: text("task_id").notNull(),
+  lastAction: text("last_action").notNull(),
+  file: text("file"),
+  line: integer("line"),
+  functionName: text("function_name"),
+  nextSteps: text("next_steps"),
+  // JSON array
+  agentId: text("agent_id"),
+  iterationCount: integer("iteration_count").notNull().default(0),
+  savedAt: integer("saved_at", { mode: "timestamp" }).notNull()
+});
+const continuePointsRelations = relations(continuePoints, ({ one }) => ({
+  project: one(projects, {
+    fields: [continuePoints.projectId],
+    references: [projects.id]
+  })
+}));
+const codeChunks = sqliteTable("code_chunks", {
+  id: text("id").primaryKey(),
+  projectId: text("project_id").notNull(),
+  file: text("file").notNull(),
+  startLine: integer("start_line").notNull(),
+  endLine: integer("end_line").notNull(),
+  content: text("content").notNull(),
+  embedding: blob("embedding", { mode: "buffer" }),
+  // Binary blob of Float32Array
+  symbols: text("symbols", { mode: "json" }).$type(),
+  // JSON array of symbol names
+  chunkType: text("chunk_type").notNull(),
+  language: text("language").notNull(),
+  complexity: integer("complexity"),
+  hash: text("hash").notNull(),
+  indexedAt: integer("indexed_at", { mode: "timestamp" }).notNull()
+});
+const schema$1 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+  __proto__: null,
+  agents,
+  checkpoints,
+  checkpointsRelations,
+  codeChunks,
+  continuePoints,
+  continuePointsRelations,
+  episodes,
+  episodesRelations,
+  features,
+  featuresRelations,
+  metrics,
+  metricsRelations,
+  projects,
+  projectsRelations,
+  requirements,
+  requirementsRelations,
+  sessions,
+  sessionsRelations,
+  subFeatures,
+  subFeaturesRelations,
+  tasks,
+  tasksRelations
+}, Symbol.toStringTag, { value: "Module" }));
 class NexusNotInitializedError extends Error {
   constructor(initError) {
     const baseMessage = "Interview system is not available. ";
@@ -1394,7 +1689,24 @@ function validateSender$1(event) {
   const url = event.sender.getURL();
   return url.startsWith("http://localhost:") || url.startsWith("file://");
 }
-function registerInterviewHandlers(interviewEngine, sessionManager) {
+function ensureProjectExists(db, projectId, mode = "genesis") {
+  const existing = db.db.select().from(projects).where(eq(projects.id, projectId)).get();
+  if (!existing) {
+    const now = /* @__PURE__ */ new Date();
+    db.db.insert(projects).values({
+      id: projectId,
+      name: `New ${mode === "genesis" ? "Genesis" : "Evolution"} Project`,
+      mode,
+      status: "interview",
+      rootPath: process.cwd(),
+      // Default to current working directory
+      createdAt: now,
+      updatedAt: now
+    }).run();
+    console.log(`[InterviewHandlers] Created project record: ${projectId}`);
+  }
+}
+function registerInterviewHandlers(interviewEngine, sessionManager, db) {
   ipcMain.handle(
     "interview:start",
     (event, projectId) => {
@@ -1404,6 +1716,7 @@ function registerInterviewHandlers(interviewEngine, sessionManager) {
       if (typeof projectId !== "string" || !projectId) {
         throw new Error("Invalid projectId");
       }
+      ensureProjectExists(db, projectId, "genesis");
       const session2 = interviewEngine.startSession(projectId);
       sessionManager.startAutoSave(session2);
       return session2;
@@ -1680,7 +1993,7 @@ const defaults = {
     outputDirectory: ".nexus"
   }
 };
-const schema$1 = {
+const schema = {
   llm: {
     type: "object",
     properties: {
@@ -1794,7 +2107,7 @@ class SettingsService {
   constructor() {
     this.store = new Store({
       name: "nexus-settings",
-      schema: schema$1,
+      schema,
       defaults,
       clearInvalidConfig: true
     });
@@ -10176,301 +10489,6 @@ class InterviewEngine {
     });
   }
 }
-const projects = sqliteTable("projects", {
-  id: text("id").primaryKey(),
-  name: text("name").notNull(),
-  description: text("description"),
-  mode: text("mode").$type().notNull(),
-  status: text("status").notNull(),
-  // ProjectStatus
-  rootPath: text("root_path").notNull(),
-  repositoryUrl: text("repository_url"),
-  settings: text("settings"),
-  // JSON: ProjectSettings
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
-  completedAt: integer("completed_at", { mode: "timestamp" })
-});
-const features = sqliteTable("features", {
-  id: text("id").primaryKey(),
-  projectId: text("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
-  name: text("name").notNull(),
-  description: text("description"),
-  priority: text("priority").$type().notNull().default("should"),
-  status: text("status").notNull().default("backlog"),
-  complexity: text("complexity").$type().notNull().default("simple"),
-  estimatedTasks: integer("estimated_tasks").default(0),
-  completedTasks: integer("completed_tasks").default(0),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull()
-});
-const subFeatures = sqliteTable("sub_features", {
-  id: text("id").primaryKey(),
-  featureId: text("feature_id").notNull().references(() => features.id, { onDelete: "cascade" }),
-  name: text("name").notNull(),
-  description: text("description"),
-  status: text("status").notNull().default("backlog"),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull()
-});
-const tasks = sqliteTable("tasks", {
-  id: text("id").primaryKey(),
-  projectId: text("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
-  featureId: text("feature_id").references(() => features.id),
-  subFeatureId: text("sub_feature_id").references(() => subFeatures.id),
-  name: text("name").notNull(),
-  description: text("description"),
-  type: text("type").$type().notNull().default("auto"),
-  status: text("status").notNull().default("pending"),
-  size: text("size").$type().notNull().default("small"),
-  priority: integer("priority").notNull().default(5),
-  // for sorting (1 = highest)
-  tags: text("tags"),
-  // JSON array for categorization
-  notes: text("notes"),
-  // JSON array of implementation notes
-  assignedAgent: text("assigned_agent"),
-  worktreePath: text("worktree_path"),
-  branchName: text("branch_name"),
-  dependsOn: text("depends_on"),
-  // JSON array of task IDs
-  blockedBy: text("blocked_by"),
-  qaIterations: integer("qa_iterations").default(0),
-  maxIterations: integer("max_iterations").default(50),
-  estimatedMinutes: integer("estimated_minutes").default(15),
-  actualMinutes: integer("actual_minutes"),
-  startedAt: integer("started_at", { mode: "timestamp" }),
-  completedAt: integer("completed_at", { mode: "timestamp" }),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull()
-});
-const agents = sqliteTable("agents", {
-  id: text("id").primaryKey(),
-  type: text("type").$type().notNull(),
-  status: text("status").notNull().default("idle"),
-  // Model configuration
-  modelProvider: text("model_provider").$type().notNull().default("anthropic"),
-  modelName: text("model_name").notNull().default("claude-sonnet-4"),
-  temperature: real("temperature").notNull().default(0.3),
-  maxTokens: integer("max_tokens").notNull().default(8e3),
-  systemPrompt: text("system_prompt"),
-  // path to prompt file or content
-  tools: text("tools"),
-  // JSON array of tool names
-  // Current work
-  currentTaskId: text("current_task_id"),
-  worktreePath: text("worktree_path"),
-  branchName: text("branch_name"),
-  tokensUsed: integer("tokens_used").default(0),
-  tasksCompleted: integer("tasks_completed").default(0),
-  tasksFailed: integer("tasks_failed").default(0),
-  spawnedAt: integer("spawned_at", { mode: "timestamp" }).notNull(),
-  lastActivityAt: integer("last_activity_at", { mode: "timestamp" }).notNull(),
-  terminatedAt: integer("terminated_at", { mode: "timestamp" }),
-  terminationReason: text("termination_reason")
-});
-const checkpoints = sqliteTable("checkpoints", {
-  id: text("id").primaryKey(),
-  projectId: text("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
-  name: text("name"),
-  reason: text("reason"),
-  state: text("state"),
-  // JSON blob of full state
-  gitCommit: text("git_commit"),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull()
-});
-const requirements = sqliteTable("requirements", {
-  id: text("id").primaryKey(),
-  projectId: text("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
-  category: text("category").notNull(),
-  description: text("description").notNull(),
-  priority: text("priority").notNull().default("medium"),
-  source: text("source"),
-  userStories: text("user_stories"),
-  // JSON array of user stories
-  acceptanceCriteria: text("acceptance_criteria"),
-  // JSON array of acceptance criteria
-  linkedFeatures: text("linked_features"),
-  // JSON array
-  validated: integer("validated", { mode: "boolean" }).default(false),
-  confidence: real("confidence").default(1),
-  // 0-1, AI confidence in extraction
-  tags: text("tags"),
-  // JSON array for filtering/categorization
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull()
-});
-const metrics = sqliteTable("metrics", {
-  id: text("id").primaryKey(),
-  projectId: text("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
-  agentId: text("agent_id"),
-  taskId: text("task_id"),
-  type: text("type").notNull(),
-  // 'token_usage', 'task_duration', 'qa_iterations'
-  value: real("value").notNull(),
-  metadata: text("metadata"),
-  // JSON
-  timestamp: integer("timestamp", { mode: "timestamp" }).notNull()
-});
-const sessions = sqliteTable("sessions", {
-  id: text("id").primaryKey(),
-  projectId: text("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
-  type: text("type").notNull(),
-  // 'interview', 'planning', 'execution'
-  status: text("status").notNull().default("active"),
-  data: text("data"),
-  // JSON blob
-  startedAt: integer("started_at", { mode: "timestamp" }).notNull(),
-  endedAt: integer("ended_at", { mode: "timestamp" })
-});
-const projectsRelations = relations(projects, ({ many }) => ({
-  features: many(features),
-  tasks: many(tasks),
-  checkpoints: many(checkpoints),
-  requirements: many(requirements),
-  metrics: many(metrics),
-  sessions: many(sessions),
-  episodes: many(episodes),
-  continuePoints: many(continuePoints)
-}));
-const featuresRelations = relations(features, ({ one, many }) => ({
-  project: one(projects, {
-    fields: [features.projectId],
-    references: [projects.id]
-  }),
-  subFeatures: many(subFeatures),
-  tasks: many(tasks)
-}));
-const subFeaturesRelations = relations(subFeatures, ({ one, many }) => ({
-  feature: one(features, {
-    fields: [subFeatures.featureId],
-    references: [features.id]
-  }),
-  tasks: many(tasks)
-}));
-const tasksRelations = relations(tasks, ({ one }) => ({
-  project: one(projects, {
-    fields: [tasks.projectId],
-    references: [projects.id]
-  }),
-  feature: one(features, {
-    fields: [tasks.featureId],
-    references: [features.id]
-  }),
-  subFeature: one(subFeatures, {
-    fields: [tasks.subFeatureId],
-    references: [subFeatures.id]
-  })
-}));
-const checkpointsRelations = relations(checkpoints, ({ one }) => ({
-  project: one(projects, {
-    fields: [checkpoints.projectId],
-    references: [projects.id]
-  })
-}));
-const requirementsRelations = relations(requirements, ({ one }) => ({
-  project: one(projects, {
-    fields: [requirements.projectId],
-    references: [projects.id]
-  })
-}));
-const metricsRelations = relations(metrics, ({ one }) => ({
-  project: one(projects, {
-    fields: [metrics.projectId],
-    references: [projects.id]
-  })
-}));
-const sessionsRelations = relations(sessions, ({ one }) => ({
-  project: one(projects, {
-    fields: [sessions.projectId],
-    references: [projects.id]
-  })
-}));
-const episodes = sqliteTable("episodes", {
-  id: text("id").primaryKey(),
-  projectId: text("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
-  type: text("type").$type().notNull(),
-  content: text("content").notNull(),
-  summary: text("summary"),
-  // Short summary for display
-  embedding: text("embedding"),
-  // JSON array of floats (1536 dimensions)
-  context: text("context"),
-  // JSON metadata
-  taskId: text("task_id"),
-  agentId: text("agent_id"),
-  importance: real("importance").default(1),
-  // For pruning priority
-  accessCount: integer("access_count").default(0),
-  lastAccessedAt: integer("last_accessed_at", { mode: "timestamp" }),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull()
-});
-const episodesRelations = relations(episodes, ({ one }) => ({
-  project: one(projects, {
-    fields: [episodes.projectId],
-    references: [projects.id]
-  })
-}));
-const continuePoints = sqliteTable("continue_points", {
-  id: text("id").primaryKey(),
-  projectId: text("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
-  taskId: text("task_id").notNull(),
-  lastAction: text("last_action").notNull(),
-  file: text("file"),
-  line: integer("line"),
-  functionName: text("function_name"),
-  nextSteps: text("next_steps"),
-  // JSON array
-  agentId: text("agent_id"),
-  iterationCount: integer("iteration_count").notNull().default(0),
-  savedAt: integer("saved_at", { mode: "timestamp" }).notNull()
-});
-const continuePointsRelations = relations(continuePoints, ({ one }) => ({
-  project: one(projects, {
-    fields: [continuePoints.projectId],
-    references: [projects.id]
-  })
-}));
-const codeChunks = sqliteTable("code_chunks", {
-  id: text("id").primaryKey(),
-  projectId: text("project_id").notNull(),
-  file: text("file").notNull(),
-  startLine: integer("start_line").notNull(),
-  endLine: integer("end_line").notNull(),
-  content: text("content").notNull(),
-  embedding: blob("embedding", { mode: "buffer" }),
-  // Binary blob of Float32Array
-  symbols: text("symbols", { mode: "json" }).$type(),
-  // JSON array of symbol names
-  chunkType: text("chunk_type").notNull(),
-  language: text("language").notNull(),
-  complexity: integer("complexity"),
-  hash: text("hash").notNull(),
-  indexedAt: integer("indexed_at", { mode: "timestamp" }).notNull()
-});
-const schema = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
-  __proto__: null,
-  agents,
-  checkpoints,
-  checkpointsRelations,
-  codeChunks,
-  continuePoints,
-  continuePointsRelations,
-  episodes,
-  episodesRelations,
-  features,
-  featuresRelations,
-  metrics,
-  metricsRelations,
-  projects,
-  projectsRelations,
-  requirements,
-  requirementsRelations,
-  sessions,
-  sessionsRelations,
-  subFeatures,
-  subFeaturesRelations,
-  tasks,
-  tasksRelations
-}, Symbol.toStringTag, { value: "Module" }));
 const CATEGORY_MAPPING = {
   "functional": "functional",
   "non-functional": "non-functional",
@@ -10888,7 +10906,7 @@ class DatabaseClient {
     this.sqlite.pragma("foreign_keys = ON");
     this.sqlite.pragma("busy_timeout = 5000");
     this._db = drizzle(this.sqlite, {
-      schema,
+      schema: schema$1,
       logger: options.debug
     });
   }
@@ -14516,6 +14534,7 @@ class NexusBootstrap {
       listCheckpoints: (projectId) => this.listCheckpointsForProject(projectId),
       checkpointManager: this.checkpointManager,
       humanReviewService: this.humanReviewService,
+      databaseClient: this.databaseClient,
       shutdown: () => this.shutdown()
     };
     console.log("[NexusBootstrap] Initialization complete");
@@ -15041,7 +15060,8 @@ async function initializeNexusSystem() {
     removeInterviewHandlers();
     registerInterviewHandlers(
       nexusInstance.interviewEngine,
-      nexusInstance.sessionManager
+      nexusInstance.sessionManager,
+      nexusInstance.databaseClient
     );
     registerCheckpointReviewHandlers(
       nexusInstance.checkpointManager,
