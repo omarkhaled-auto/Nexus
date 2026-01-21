@@ -22,6 +22,8 @@ type PendingChanges = {
 interface SettingsState {
   /** Current settings from main process */
   settings: NexusSettingsPublic | null
+  /** Cached merged settings (settings + pendingChanges) */
+  mergedSettings: NexusSettingsPublic | null
   /** Loading state */
   isLoading: boolean
   /** Whether there are unsaved changes */
@@ -72,6 +74,7 @@ function getMergedSettings(
  */
 export const useSettingsStore = create<SettingsState>()((set, get) => ({
   settings: null,
+  mergedSettings: null,
   isLoading: false,
   isDirty: false,
   pendingChanges: {},
@@ -80,7 +83,9 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
     set({ isLoading: true })
     try {
       const settings = await window.nexusAPI.settings.getAll()
-      set({ settings, isLoading: false, isDirty: false, pendingChanges: {} })
+      // Compute merged settings once when loading
+      const mergedSettings = getMergedSettings(settings, {})
+      set({ settings, mergedSettings, isLoading: false, isDirty: false, pendingChanges: {} })
     } catch (error) {
       console.error('Failed to load settings:', error)
       set({ isLoading: false })
@@ -88,17 +93,23 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   },
 
   updateSetting: (category, key, value) => {
-    const { pendingChanges } = get()
+    const { pendingChanges, settings } = get()
     const categoryChanges = pendingChanges[category] ?? {}
 
+    const newPendingChanges = {
+      ...pendingChanges,
+      [category]: {
+        ...categoryChanges,
+        [key]: value
+      }
+    }
+
+    // Compute merged settings once when updating
+    const mergedSettings = getMergedSettings(settings, newPendingChanges)
+
     set({
-      pendingChanges: {
-        ...pendingChanges,
-        [category]: {
-          ...categoryChanges,
-          [key]: value
-        }
-      },
+      pendingChanges: newPendingChanges,
+      mergedSettings,
       isDirty: true
     })
   },
@@ -176,9 +187,9 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
 
 /**
  * Get current settings with pending changes applied
+ * Returns cached mergedSettings to prevent infinite re-renders
  */
-export const useSettings = () =>
-  useSettingsStore((s) => getMergedSettings(s.settings, s.pendingChanges))
+export const useSettings = () => useSettingsStore((s) => s.mergedSettings)
 
 /**
  * Get raw settings without pending changes
@@ -189,10 +200,7 @@ export const useRawSettings = () => useSettingsStore((s) => s.settings)
  * Get current theme setting
  */
 export const useThemeSetting = () =>
-  useSettingsStore((s) => {
-    const merged = getMergedSettings(s.settings, s.pendingChanges)
-    return merged?.ui.theme ?? 'system'
-  })
+  useSettingsStore((s) => s.mergedSettings?.ui.theme ?? 'system')
 
 /**
  * Check if a provider has an API key set
