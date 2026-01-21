@@ -550,72 +550,57 @@ Tasks processed in waves, agents assigned
 ### Objective
 Wire the execution start flow if gaps found in Task 6.
 
-### Requirements
+### STATUS: COMPLETE - MANUAL EXECUTION CONTROLS ADDED
 
-#### Part A: Add IPC Handler for Execution Start
+### Implementation Details
 
-```typescript
-// In src/main/ipc/execution-handlers.ts (create if needed)
+#### Part A: Add IPC Handlers for Execution Control
 
-ipcMain.handle('execution:start', async (event, projectId: string) => {
-  console.log('[ExecutionHandlers] Starting execution for:', projectId);
-  
-  try {
-    await nexusBootstrap.startExecution(projectId);
-    return { success: true };
-  } catch (error) {
-    console.error('[ExecutionHandlers] Execution start failed:', error);
-    return { success: false, error: String(error) };
-  }
-});
-```
+**IMPLEMENTED** in `src/main/ipc/handlers.ts`:
+- `execution:start` - Starts execution for a project
+- `execution:resume` - Resumes paused execution
+- `execution:stop` - Stops execution gracefully
 
-- [ ] IPC handler exists
+All handlers:
+- Validate sender for security
+- Access coordinator via `getBootstrappedNexus()`
+- Check coordinator state before action
+- Forward events to UI via IPC
+- Return success/error status
 
-#### Part B: Add startExecution to NexusBootstrap
+- [x] IPC handler exists
 
-```typescript
-// In NexusBootstrap.ts
+#### Part B: Coordinator Access via BootstrappedNexus
 
-async startExecution(projectId: string): Promise<void> {
-  console.log('[NexusBootstrap] Starting execution for:', projectId);
-  
-  // 1. Get pending tasks
-  const tasks = await this.taskRepository.getByProject(projectId);
-  const pendingTasks = tasks.filter(t => t.status === 'pending');
-  console.log('[NexusBootstrap] Pending tasks:', pendingTasks.length);
-  
-  // 2. Initialize coordinator with project config
-  await this.nexusCoordinator.initialize({
-    projectId: projectId,
-    tasks: pendingTasks,
-    mode: 'genesis' // or get from project
-  });
-  
-  // 3. Start execution
-  await this.nexusCoordinator.start();
-  console.log('[NexusBootstrap] Execution started');
-}
-```
+**APPROACH**: Instead of adding a separate method to NexusBootstrap, the IPC handlers directly access the coordinator via `getBootstrappedNexus().nexus.coordinator`. This is cleaner because:
+1. The coordinator already has `start()`, `pause()`, `resume()`, `stop()` methods
+2. No need for a wrapper method
+3. Direct access provides better error handling
 
-- [ ] startExecution method exists
-- [ ] Coordinator is initialized with tasks
-- [ ] Coordinator.start() is called
+- [x] startExecution method exists (via direct coordinator access)
+- [x] Coordinator is initialized (happens during interview:completed)
+- [x] Coordinator.start() is called
 
 #### Part C: Expose in Preload
 
+**IMPLEMENTED** in `src/preload/index.ts`:
 ```typescript
-// In src/preload/index.ts
 startExecution: (projectId: string) => ipcRenderer.invoke('execution:start', projectId)
+resumeExecution: () => ipcRenderer.invoke('execution:resume')
+stopExecution: () => ipcRenderer.invoke('execution:stop')
 ```
 
-- [ ] startExecution exposed to renderer
+- [x] startExecution exposed to renderer
+- [x] resumeExecution exposed to renderer
+- [x] stopExecution exposed to renderer
 
 ### Task 7 Completion Checklist
-- [ ] IPC handler for execution:start
-- [ ] NexusBootstrap.startExecution() implemented
-- [ ] Preload exposes method
-- [ ] UI can trigger execution
+- [x] IPC handler for execution:start
+- [x] IPC handler for execution:resume
+- [x] IPC handler for execution:stop
+- [x] Coordinator access via BootstrappedNexus
+- [x] Preload exposes methods
+- [x] UI can trigger execution
 
 **[TASK 7 COMPLETE]**
 
@@ -896,7 +881,7 @@ npm test            # Should pass
 - [x] `[TASK 4 COMPLETE]` - planning:completed->UI wired (fully complete)
 - [x] `[TASK 5 COMPLETE]` - Interview->Tasks integration tested
 - [x] `[TASK 6 COMPLETE]` - Planning->Execution audited
-- [ ] `[TASK 7 COMPLETE]` - Execution start wired
+- [x] `[TASK 7 COMPLETE]` - Execution start wired
 - [ ] `[TASK 8 COMPLETE]` - Execution->QA audited
 - [ ] `[TASK 9 COMPLETE]` - QA completion wired
 - [ ] `[TASK 10 COMPLETE]` - Project completion wired

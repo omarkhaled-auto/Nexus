@@ -990,6 +990,157 @@ export function registerIpcHandlers(): void {
     return { success: true }
   })
 
+  /**
+   * Start execution for a project
+   * Phase 20 Task 7: Wire manual execution start
+   * @param projectId - Project ID to start execution for
+   * @returns Promise with success status
+   */
+  ipcMain.handle('execution:start', async (event, projectId: string) => {
+    if (!validateSender(event)) {
+      throw new Error('Unauthorized IPC sender')
+    }
+    if (typeof projectId !== 'string' || !projectId) {
+      throw new Error('Invalid projectId')
+    }
+
+    console.log('[ExecutionHandlers] Starting execution for:', projectId)
+
+    try {
+      // Import the bootstrapped Nexus to access coordinator
+      const { getBootstrappedNexus } = await import('../NexusBootstrap')
+      const bootstrappedNexus = getBootstrappedNexus()
+
+      if (!bootstrappedNexus) {
+        throw new Error('Nexus not initialized')
+      }
+
+      // Start execution via the coordinator
+      const coordinator = bootstrappedNexus.nexus.coordinator
+      if (!coordinator) {
+        throw new Error('Coordinator not available')
+      }
+
+      // Check coordinator state
+      const status = coordinator.getStatus()
+      console.log('[ExecutionHandlers] Current coordinator status:', status.state)
+
+      // If already running, just return success
+      if (status.state === 'running') {
+        console.log('[ExecutionHandlers] Execution already running')
+        return { success: true, message: 'Execution already running' }
+      }
+
+      // If paused, resume instead of start
+      if (status.state === 'paused') {
+        coordinator.resume()
+        console.log('[ExecutionHandlers] Execution resumed')
+        return { success: true, message: 'Execution resumed' }
+      }
+
+      // Start execution
+      coordinator.start(projectId)
+      console.log('[ExecutionHandlers] Execution started successfully')
+
+      // Forward event to UI
+      if (eventForwardingWindow && !eventForwardingWindow.isDestroyed()) {
+        eventForwardingWindow.webContents.send('execution:started', { projectId })
+      }
+
+      return { success: true, message: 'Execution started' }
+    } catch (error) {
+      console.error('[ExecutionHandlers] Execution start failed:', error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      }
+    }
+  })
+
+  /**
+   * Resume execution for a paused project
+   * Phase 20 Task 7: Wire execution resume
+   * @returns Promise with success status
+   */
+  ipcMain.handle('execution:resume', async (event) => {
+    if (!validateSender(event)) {
+      throw new Error('Unauthorized IPC sender')
+    }
+
+    console.log('[ExecutionHandlers] Resuming execution')
+
+    try {
+      const { getBootstrappedNexus } = await import('../NexusBootstrap')
+      const bootstrappedNexus = getBootstrappedNexus()
+
+      if (!bootstrappedNexus) {
+        throw new Error('Nexus not initialized')
+      }
+
+      const coordinator = bootstrappedNexus.nexus.coordinator
+      if (!coordinator) {
+        throw new Error('Coordinator not available')
+      }
+
+      coordinator.resume()
+      console.log('[ExecutionHandlers] Execution resumed successfully')
+
+      if (eventForwardingWindow && !eventForwardingWindow.isDestroyed()) {
+        eventForwardingWindow.webContents.send('execution:resumed', {})
+      }
+
+      return { success: true }
+    } catch (error) {
+      console.error('[ExecutionHandlers] Resume failed:', error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      }
+    }
+  })
+
+  /**
+   * Stop execution gracefully
+   * Phase 20 Task 7: Wire execution stop
+   * @returns Promise with success status
+   */
+  ipcMain.handle('execution:stop', async (event) => {
+    if (!validateSender(event)) {
+      throw new Error('Unauthorized IPC sender')
+    }
+
+    console.log('[ExecutionHandlers] Stopping execution')
+
+    try {
+      const { getBootstrappedNexus } = await import('../NexusBootstrap')
+      const bootstrappedNexus = getBootstrappedNexus()
+
+      if (!bootstrappedNexus) {
+        throw new Error('Nexus not initialized')
+      }
+
+      const coordinator = bootstrappedNexus.nexus.coordinator
+      if (!coordinator) {
+        throw new Error('Coordinator not available')
+      }
+
+      coordinator.stop()
+      console.log('[ExecutionHandlers] Execution stopped successfully')
+
+      if (eventForwardingWindow && !eventForwardingWindow.isDestroyed()) {
+        eventForwardingWindow.webContents.send('execution:stopped', {})
+      }
+
+      return { success: true }
+    } catch (error) {
+      console.error('[ExecutionHandlers] Stop failed:', error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      }
+    }
+  })
+
   // ========================================
   // Interview Events (BUILD-014)
   // ========================================
