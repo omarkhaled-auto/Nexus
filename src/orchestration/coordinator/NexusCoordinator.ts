@@ -374,9 +374,49 @@ export class NexusCoordinator implements INexusCoordinator {
           await this.createWaveCheckpoint(waveIndex);
         }
       }
+
+      // Phase 20 Task 10: Emit project:completed when all tasks are done
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- stopRequested can be mutated during processWave
+      if (!this.stopRequested) {
+        const remainingTasks = this.totalTasks - this.completedTasks - this.failedTasks;
+
+        if (remainingTasks === 0 && this.completedTasks > 0) {
+          // All tasks completed (some may have failed)
+          this.currentPhase = 'completion';
+          this.state = 'idle';
+
+          console.log(`[NexusCoordinator] Project completed: ${this.completedTasks}/${this.totalTasks} tasks completed, ${this.failedTasks} failed`);
+
+          this.emitEvent('project:completed', {
+            projectId: this.projectConfig?.projectId,
+            totalTasks: this.totalTasks,
+            completedTasks: this.completedTasks,
+            failedTasks: this.failedTasks,
+            totalWaves: this.waves.length,
+          });
+        } else if (this.failedTasks > 0 && this.failedTasks === this.totalTasks) {
+          // All tasks failed - project failed
+          console.log(`[NexusCoordinator] Project failed: all ${this.failedTasks} tasks failed`);
+
+          this.emitEvent('project:failed', {
+            projectId: this.projectConfig?.projectId,
+            error: 'All tasks failed',
+            totalTasks: this.totalTasks,
+            failedTasks: this.failedTasks,
+            recoverable: true,
+          });
+        }
+      }
     } catch (error) {
       // Log error but don't crash
       console.error('Orchestration error:', error);
+
+      // Emit project:failed on orchestration error
+      this.emitEvent('project:failed', {
+        projectId: this.projectConfig?.projectId,
+        error: error instanceof Error ? error.message : String(error),
+        recoverable: false,
+      });
     }
   }
 

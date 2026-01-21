@@ -493,6 +493,35 @@ export class NexusBootstrap {
           iterations: Number(eventData.iterations ?? 1),
           lastError: String(eventData.lastError ?? ''),
         });
+      } else if (eventType === 'project:completed' && 'projectId' in eventData) {
+        // Phase 20 Task 10: Forward project:completed from coordinator to event bus
+        console.log(`[NexusBootstrap] Project completed: ${String(eventData.projectId)}`);
+        const totalTasks = Number(eventData.totalTasks ?? 0);
+        const completedTasks = Number(eventData.completedTasks ?? 0);
+        const failedTasks = Number(eventData.failedTasks ?? 0);
+
+        void this.eventBus.emit('project:completed', {
+          projectId: String(eventData.projectId),
+          totalDuration: 0, // TODO: Track actual duration in coordinator
+          metrics: {
+            tasksTotal: totalTasks,
+            tasksCompleted: completedTasks,
+            tasksFailed: failedTasks,
+            featuresTotal: 0, // TODO: Track features
+            featuresCompleted: 0,
+            estimatedTotalMinutes: 0,
+            actualTotalMinutes: 0,
+            averageQAIterations: 0,
+          },
+        });
+      } else if (eventType === 'project:failed' && 'projectId' in eventData) {
+        // Phase 20 Task 10: Forward project:failed from coordinator to event bus
+        console.log(`[NexusBootstrap] Project failed: ${String(eventData.projectId)}`);
+        void this.eventBus.emit('project:failed', {
+          projectId: String(eventData.projectId),
+          error: String(eventData.error ?? 'Unknown error'),
+          recoverable: Boolean(eventData.recoverable ?? false),
+        });
       }
     });
   }
