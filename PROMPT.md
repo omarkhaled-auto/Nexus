@@ -440,54 +440,106 @@ describe('Interview to Tasks Flow', () => {
 ### Objective
 Ensure tasks can be executed after planning completes.
 
-### Requirements
+### STATUS: COMPLETE - AUTO-START MECHANISM VERIFIED
+
+### Audit Findings
 
 #### Part A: Check Execution Start Trigger
 
-```bash
-grep -rn "startExecution\|execution:start\|coordinator.start" src/
+**Finding:** Execution is AUTO-STARTED after interview completion - no manual trigger needed!
+
+Location: `src/main/NexusBootstrap.ts:417-426`
+
+```typescript
+// Initialize coordinator with project config
+coordinator.initialize({
+  projectId,
+  projectPath: this.config.workingDir,
+  features: this.tasksToFeatures(decomposedTasks, projectId),
+  mode: 'genesis',
+});
+
+// Start execution
+coordinator.start(projectId);
+console.log(`[NexusBootstrap] Execution started for ${projectId}`);
 ```
 
-- [ ] Identified how execution is triggered
-- [ ] UI has button or auto-start mechanism
+- [x] Identified how execution is triggered: AUTO-START after interview:completed
+- [x] UI has button or auto-start mechanism: AUTO-START (no button needed)
 
 #### Part B: Check NexusCoordinator.start()
 
-```bash
-cat src/orchestration/coordinator/NexusCoordinator.ts | head -100
-grep -rn "start\|execute" src/orchestration/coordinator/NexusCoordinator.ts
+**Finding:** NexusCoordinator.start() is fully implemented.
+
+Location: `src/orchestration/coordinator/NexusCoordinator.ts:129-143`
+
+```typescript
+start(projectId: string): void {
+  if (!this.projectConfig) {
+    throw new Error('Coordinator not initialized');
+  }
+
+  this.state = 'running';
+  this.currentPhase = 'execution';
+  this.stopRequested = false;
+  this.pauseRequested = false;
+
+  this.emitEvent('coordinator:started', { projectId });
+
+  // Start the orchestration loop
+  this.orchestrationLoop = this.runOrchestrationLoop();
+}
 ```
 
-- [ ] NexusCoordinator.start() exists
-- [ ] start() fetches tasks and begins execution
+- [x] NexusCoordinator.start() exists
+- [x] start() sets state and begins orchestration loop
 
-#### Part C: Verify Wiring
+#### Part C: Verified Wiring
 
-The flow should be:
+**Actual Flow (AUTO-START):**
 ```
-User clicks "Start" OR auto-start after planning
+interview:completed event (from UI via IPC)
     |
     v
-IPC call: execution:start
+NexusBootstrap.wireEventListeners() handler (line 353)
     |
     v
-NexusBootstrap calls NexusCoordinator.start()
+1. Gets requirements from RequirementsDB
+2. Calls decomposer.decompose(featureDescription)
+3. Stores to database via storeDecomposition()
+4. Calls resolver.calculateWaves()
+5. Forwards planning:completed to UI
     |
     v
-Coordinator fetches pending tasks
+coordinator.initialize(config)
     |
     v
-Assigns tasks to agents
+coordinator.start(projectId) <- AUTO-START
+    |
+    v
+runOrchestrationLoop() begins
+    |
+    v
+Tasks processed in waves, agents assigned
 ```
 
-- [ ] Flow documented
-- [ ] Any gaps identified
+- [x] Flow documented
+- [x] Any gaps identified (see below)
+
+### Gaps Identified for Task 7
+
+1. **No manual execution:start IPC handler** - User cannot manually re-trigger execution
+2. **execution:pause exists but NOT wired to coordinator.pause()**
+3. **No execution:resume handler** - Cannot resume after pause
+4. **No execution:stop handler** - Cannot stop execution manually
+
+**Recommendation:** These gaps are minor for MVP since auto-start works. Task 7 can add manual controls for better UX.
 
 ### Task 6 Completion Checklist
-- [ ] Execution trigger identified
-- [ ] NexusCoordinator.start() verified
-- [ ] Flow documented
-- [ ] Gaps noted for Task 7
+- [x] Execution trigger identified (AUTO-START after interview)
+- [x] NexusCoordinator.start() verified (line 129)
+- [x] Flow documented (see above)
+- [x] Gaps noted for Task 7 (manual controls missing)
 
 **[TASK 6 COMPLETE]**
 
@@ -843,7 +895,7 @@ npm test            # Should pass
 - [x] `[TASK 3 COMPLETE]` - TaskDecomposer->Database wired
 - [x] `[TASK 4 COMPLETE]` - planning:completed->UI wired (fully complete)
 - [x] `[TASK 5 COMPLETE]` - Interview->Tasks integration tested
-- [ ] `[TASK 6 COMPLETE]` - Planning->Execution audited
+- [x] `[TASK 6 COMPLETE]` - Planning->Execution audited
 - [ ] `[TASK 7 COMPLETE]` - Execution start wired
 - [ ] `[TASK 8 COMPLETE]` - Execution->QA audited
 - [ ] `[TASK 9 COMPLETE]` - QA completion wired
