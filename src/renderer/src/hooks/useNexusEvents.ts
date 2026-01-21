@@ -2,12 +2,14 @@
  * useNexusEvents - Hook for subscribing to Nexus backend events
  *
  * Phase 19 Task 5: Wires Backend -> UI Events
+ * Phase 20 Task 4: Added planning:completed event handling
  *
  * This hook subscribes to all Nexus events from the main process via IPC
  * and dispatches them to the appropriate Zustand stores for real-time UI updates.
  *
  * Events handled:
  * - Interview events (interview:started, interview:completed, etc.)
+ * - Planning events (planning:completed) - Phase 20
  * - Task events (task:assigned, task:started, task:completed, task:failed, task:escalated)
  * - Project events (project:status-changed, project:completed, project:failed)
  * - QA events (qa:build-completed, qa:lint-completed, qa:test-completed, qa:review-completed)
@@ -16,6 +18,7 @@
 
 import { useEffect, useRef } from 'react';
 import { useTaskStore } from '../stores/taskStore';
+import { useFeatureStore } from '../stores/featureStore';
 import { useProjectStore } from '../stores/projectStore';
 import { useAgentStore } from '../stores/agentStore';
 import { useInterviewStore } from '../stores/interviewStore';
@@ -75,6 +78,12 @@ interface SystemEventPayload {
   recoverable?: boolean;
 }
 
+interface PlanningEventPayload {
+  projectId: string;
+  featureCount?: number;
+  taskCount?: number;
+}
+
 /**
  * Hook to subscribe to Nexus backend events
  *
@@ -87,6 +96,9 @@ export function useNexusEvents(): void {
   // Get store actions
   const updateTask = useTaskStore((s) => s.updateTask);
   const addTask = useTaskStore((s) => s.addTask);
+  const loadTasks = useTaskStore((s) => s.loadTasks);
+
+  const loadFeatures = useFeatureStore((s) => s.loadFeatures);
 
   const setProject = useProjectStore((s) => s.setProject);
 
@@ -245,6 +257,29 @@ export function useNexusEvents(): void {
           }
 
           // ========================================
+          // Planning Events (Phase 20 Task 4)
+          // ========================================
+          case 'planning:completed': {
+            const p = payload as PlanningEventPayload;
+            console.log('[useNexusEvents] Planning completed for project:', p.projectId);
+
+            // Refresh features and tasks from backend
+            void loadFeatures();
+            void loadTasks();
+
+            // Refresh metrics
+            void refreshMetrics();
+
+            // Show notification
+            addToast({
+              id: `planning-completed-${p.projectId}`,
+              type: 'success',
+              message: `Planning complete! ${p.taskCount ?? 0} tasks created across ${p.featureCount ?? 0} features.`,
+            });
+            break;
+          }
+
+          // ========================================
           // QA Events
           // ========================================
           case 'qa:build-completed':
@@ -307,6 +342,8 @@ export function useNexusEvents(): void {
   }, [
     updateTask,
     addTask,
+    loadTasks,
+    loadFeatures,
     setProject,
     updateAgent,
     setStage,

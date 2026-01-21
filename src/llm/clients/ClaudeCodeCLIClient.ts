@@ -111,8 +111,8 @@ export class ClaudeCodeCLIClient implements LLMClient {
     const prompt = this.messagesToPrompt(messages);
     const systemPrompt = this.extractSystemPrompt(messages);
 
-    const args = this.buildArgs(prompt, systemPrompt, options);
-    const result = await this.executeWithRetry(args);
+    const [args, stdinPrompt] = this.buildArgs(prompt, systemPrompt, options);
+    const result = await this.executeWithRetry(args, stdinPrompt);
 
     return this.parseResponse(result, options);
   }
@@ -164,7 +164,7 @@ export class ClaudeCodeCLIClient implements LLMClient {
     const prompt = this.messagesToPrompt(messages);
     const systemPrompt = this.extractSystemPrompt(messages);
 
-    const args = this.buildArgs(prompt, systemPrompt, options);
+    const [args, stdinPrompt] = this.buildArgs(prompt, systemPrompt, options);
 
     // Add allowed tools flag if tools provided
     if (tools.length > 0) {
@@ -177,7 +177,7 @@ export class ClaudeCodeCLIClient implements LLMClient {
       args.push('--allowedTools', cliToolNames.join(','));
     }
 
-    const result = await this.executeWithRetry(args);
+    const result = await this.executeWithRetry(args, stdinPrompt);
     return this.parseResponse(result, options);
   }
 
@@ -194,13 +194,11 @@ export class ClaudeCodeCLIClient implements LLMClient {
 
     // Resume existing conversation
     args.push('--resume', conversationId);
-    args.push('--message', message);
 
-    if (options?.maxTokens) {
-      args.push('--max-tokens', String(options.maxTokens));
-    }
+    // NOTE: Claude CLI doesn't support --max-tokens flag
 
-    const result = await this.executeWithRetry(args);
+    // Message passed via stdin to avoid shell escaping issues
+    const result = await this.executeWithRetry(args, message);
     return this.parseResponse(result, options);
   }
 
@@ -227,45 +225,53 @@ export class ClaudeCodeCLIClient implements LLMClient {
   // ============ Private Methods ============
 
   /**
-   * Build CLI arguments from prompt and options.
+   * Build CLI arguments from options (prompt is passed via stdin).
+   * Returns [args, prompt] tuple.
    */
-  private buildArgs(prompt: string, system?: string, options?: ChatOptions): string[] {
+  private buildArgs(prompt: string, system?: string, options?: ChatOptions): [string[], string] {
     const args = ['--print'];
 
     // Use JSON output for easier parsing
     args.push('--output-format', 'json');
 
-    // System prompt
-    if (system) {
-      args.push('--system-prompt', system);
-    }
+    // NOTE: System prompt is NOT added to CLI args (too long, shell escaping issues)
+    // Instead, it's prepended to stdin prompt below
 
-    // Max tokens
-    if (options?.maxTokens) {
-      args.push('--max-tokens', String(options.maxTokens));
-    }
+    // NOTE: Claude CLI doesn't support --max-tokens flag
+    // Token limits are managed by the CLI itself
 
-    // Add tools configuration if provided
-    if (options?.tools && options.tools.length > 0) {
+    // Handle tools configuration
+    if (options?.disableTools) {
+      // Explicitly disable all tools for chat-only mode (e.g., interviews)
+      // Use combined arg format for Windows shell compatibility
+      args.push('--tools=""');
+    } else if (options?.tools && options.tools.length > 0) {
+      // Specific tools requested
       const toolNames = this.mapToolNames(options.tools);
       args.push('--allowedTools', toolNames.join(','));
     }
+    // If neither disableTools nor tools specified, CLI uses default (all tools)
 
-    // The prompt itself (must be last)
-    args.push('--message', prompt);
-
-    return args;
+    // NOTE: Prompt is NOT added as positional arg anymore.
+    // It will be passed via stdin to avoid shell escaping issues with newlines.
+    // System prompt is also prepended to stdin (not CLI args) to avoid length issues.
+    const stdinPrompt = system
+      ? `<system>\n${system}\n</system>\n\n${prompt}`
+      : prompt;
+    return [args, stdinPrompt];
   }
 
   /**
    * Execute CLI command with retry logic.
+   * @param args CLI arguments
+   * @param stdinPrompt Optional prompt to pass via stdin (avoids shell escaping issues)
    */
-  private async executeWithRetry(args: string[]): Promise<string> {
+  private async executeWithRetry(args: string[], stdinPrompt?: string): Promise<string> {
     let lastError: Error | null = null;
 
     for (let attempt = 0; attempt <= this.config.maxRetries; attempt++) {
       try {
-        return await this.execute(args);
+        return await this.execute(args, stdinPrompt);
       } catch (error) {
         lastError = error as Error;
         this.config.logger?.warn(
@@ -285,10 +291,22 @@ export class ClaudeCodeCLIClient implements LLMClient {
 
   /**
    * Execute the Claude CLI command.
+   * @param args CLI arguments
+   * @param stdinPrompt Optional prompt to pass via stdin (avoids shell escaping issues)
    */
-  private execute(args: string[]): Promise<string> {
+  private execute(args: string[], stdinPrompt?: string): Promise<string> {
     return new Promise((resolve, reject) => {
       this.config.logger?.debug('Executing Claude CLI', { args: args.join(' ') });
+
+      // Enhanced debugging for troubleshooting
+      console.log('[ClaudeCodeCLIClient] ========== DEBUG START ==========');
+      console.log('[ClaudeCodeCLIClient] Full args:', args.join(' '));
+      console.log('[ClaudeCodeCLIClient] Using stdin for prompt:', stdinPrompt ? 'YES' : 'NO');
+      console.log('[ClaudeCodeCLIClient] Prompt length:', stdinPrompt?.length ?? 0);
+      console.log('[ClaudeCodeCLIClient] Prompt preview:', stdinPrompt?.substring(0, 100) ?? 'N/A');
+      console.log('[ClaudeCodeCLIClient] Working dir:', this.config.workingDirectory);
+      console.log('[ClaudeCodeCLIClient] Shell mode:', process.platform === 'win32');
+      console.log('[ClaudeCodeCLIClient] ========== DEBUG END ==========');
 
       const child = spawn(this.config.claudePath, args, {
         cwd: this.config.workingDirectory,
@@ -297,15 +315,28 @@ export class ClaudeCodeCLIClient implements LLMClient {
         shell: process.platform === 'win32', // Use shell on Windows for PATH resolution
       });
 
+      console.log('[ClaudeCodeCLIClient] Process spawned, PID:', child.pid);
+
+      // Write prompt to stdin if provided (avoids shell escaping issues with newlines)
+      if (stdinPrompt && child.stdin) {
+        child.stdin.write(stdinPrompt);
+        child.stdin.end();
+        console.log('[ClaudeCodeCLIClient] Prompt written to stdin and closed');
+      }
+
       let stdout = '';
       let stderr = '';
 
       child.stdout.on('data', (data: Buffer) => {
-        stdout += data.toString();
+        const chunk = data.toString();
+        stdout += chunk;
+        console.log('[ClaudeCodeCLIClient] stdout chunk:', chunk.substring(0, 200));
       });
 
       child.stderr.on('data', (data: Buffer) => {
-        stderr += data.toString();
+        const chunk = data.toString();
+        stderr += chunk;
+        console.log('[ClaudeCodeCLIClient] stderr chunk:', chunk.substring(0, 200));
       });
 
       // Timeout handling

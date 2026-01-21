@@ -3,7 +3,8 @@ import type {
   Feature,
   FeatureStatus,
   ColumnCounts,
-  FeaturePriority
+  FeaturePriority,
+  FeatureTask
 } from '../types/feature'
 
 // WIP Limit for in_progress column
@@ -30,10 +31,48 @@ interface FeatureFilter {
   status: FeatureStatus[] | null
 }
 
+/**
+ * Map backend status to frontend FeatureStatus
+ */
+function mapBackendStatus(status: string): FeatureStatus {
+  const statusMap: Record<string, FeatureStatus> = {
+    'backlog': 'backlog',
+    'planning': 'planning',
+    'in-progress': 'in_progress',
+    'in_progress': 'in_progress',
+    'ai-review': 'ai_review',
+    'ai_review': 'ai_review',
+    'human-review': 'human_review',
+    'human_review': 'human_review',
+    'done': 'done',
+    'completed': 'done',
+    'pending': 'backlog'
+  };
+  return statusMap[status] ?? 'backlog';
+}
+
+/**
+ * Map backend priority to frontend FeaturePriority
+ */
+function mapBackendPriority(priority: string): FeaturePriority {
+  const priorityMap: Record<string, FeaturePriority> = {
+    'must': 'critical',
+    'should': 'high',
+    'could': 'medium',
+    'wont': 'low',
+    'critical': 'critical',
+    'high': 'high',
+    'medium': 'medium',
+    'low': 'low'
+  };
+  return priorityMap[priority] ?? 'medium';
+}
+
 interface FeatureState {
   features: Feature[]
   selectedFeatureId: string | null
   filter: FeatureFilter
+  isLoading: boolean
 
   // Actions
   setFeatures: (features: Feature[]) => void
@@ -47,6 +86,7 @@ interface FeatureState {
   setPriorityFilter: (priorities: FeaturePriority[] | null) => void
   setStatusFilter: (statuses: FeatureStatus[] | null) => void
   clearFilters: () => void
+  loadFeatures: () => Promise<void>
   reset: () => void
 }
 
@@ -58,6 +98,7 @@ export const useFeatureStore = create<FeatureState>()((set, get) => ({
     priority: null,
     status: null
   },
+  isLoading: false,
 
   setFeatures: (features) => { set({ features }); },
 
@@ -238,6 +279,62 @@ export const useFeatureStore = create<FeatureState>()((set, get) => ({
       }
     }); },
 
+  loadFeatures: async () => {
+    // Load features from backend via IPC
+    set({ isLoading: true });
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- defensive check for non-Electron environments
+      if (window.nexusAPI?.getFeatures) {
+        const rawFeatures = await window.nexusAPI.getFeatures() as unknown[];
+        // Map backend features to frontend Feature type
+        const features: Feature[] = rawFeatures.map((f: unknown) => {
+          const raw = f as Record<string, unknown>;
+          // Map tasks - backend may return string[] of IDs or FeatureTask[]
+          const rawTasks = raw.tasks as unknown[] | undefined;
+          const tasks: FeatureTask[] = Array.isArray(rawTasks)
+            ? rawTasks.map((t: unknown, idx: number) => {
+                if (typeof t === 'string') {
+                  // Backend returned task ID string, create minimal task
+                  return {
+                    id: t,
+                    title: `Task ${idx + 1}`,
+                    status: 'pending' as const
+                  };
+                }
+                // Backend returned full task object
+                const taskObj = t as Record<string, unknown>;
+                return {
+                  id: String(taskObj.id ?? `task-${idx}`),
+                  title: String(taskObj.title ?? taskObj.name ?? `Task ${idx + 1}`),
+                  status: (taskObj.status as FeatureTask['status']) ?? 'pending',
+                  estimatedMinutes: taskObj.estimatedMinutes as number | undefined
+                };
+              })
+            : [];
+          return {
+            id: String(raw.id ?? ''),
+            title: String(raw.name ?? raw.title ?? ''),
+            description: String(raw.description ?? ''),
+            status: mapBackendStatus(String(raw.status ?? 'backlog')),
+            priority: mapBackendPriority(String(raw.priority ?? 'medium')),
+            complexity: (raw.complexity as 'simple' | 'moderate' | 'complex') ?? 'moderate',
+            tasks,
+            createdAt: String(raw.createdAt ?? new Date().toISOString()),
+            updatedAt: String(raw.updatedAt ?? new Date().toISOString())
+          };
+        });
+        console.log('[featureStore] Loaded features from backend:', features.length);
+        set({ features, isLoading: false });
+      } else {
+        console.warn('[featureStore] nexusAPI.getFeatures not available');
+        set({ isLoading: false });
+      }
+    } catch (error) {
+      console.error('[featureStore] Failed to load features:', error);
+      set({ isLoading: false });
+    }
+  },
+
   reset: () =>
     { set({
       features: [],
@@ -246,7 +343,8 @@ export const useFeatureStore = create<FeatureState>()((set, get) => ({
         search: '',
         priority: null,
         status: null
-      }
+      },
+      isLoading: false
     }); }
 }))
 

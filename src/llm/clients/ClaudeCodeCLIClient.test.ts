@@ -22,13 +22,22 @@ function createMockChildProcess(options: {
 }) {
   const mockStdout = new EventEmitter();
   const mockStderr = new EventEmitter();
+  // Create mock stdin with write and end methods to capture what's written
+  const stdinData: string[] = [];
+  const mockStdin = {
+    write: vi.fn((data: string) => { stdinData.push(data); }),
+    end: vi.fn(),
+    data: stdinData,
+  };
   const mockProcess = new EventEmitter() as EventEmitter & {
     stdout: EventEmitter;
     stderr: EventEmitter;
+    stdin: typeof mockStdin;
     kill: ReturnType<typeof vi.fn>;
   };
   mockProcess.stdout = mockStdout;
   mockProcess.stderr = mockStderr;
+  mockProcess.stdin = mockStdin;
   mockProcess.kill = vi.fn();
 
   // Schedule events
@@ -167,23 +176,21 @@ describe('ClaudeCodeCLIClient', () => {
   });
 
   describe('chat()', () => {
-    it('should convert messages to prompt format', async () => {
+    it('should convert messages to prompt format and send via stdin', async () => {
       const client = new ClaudeCodeCLIClient();
-      mockSpawn.mockReturnValue(
-        createMockChildProcess({
-          stdout: '{"result": "Hello!"}',
-          exitCode: 0,
-        })
-      );
+      const mockProcess = createMockChildProcess({
+        stdout: '{"result": "Hello!"}',
+        exitCode: 0,
+      });
+      mockSpawn.mockReturnValue(mockProcess);
 
       const messages: Message[] = [{ role: 'user', content: 'Hi' }];
       await client.chat(messages);
 
-      expect(mockSpawn).toHaveBeenCalledWith(
-        'claude',
-        expect.arrayContaining(['--message', expect.stringContaining('Human: Hi')]),
-        expect.any(Object)
-      );
+      // Prompt should be written to stdin, not passed as arg
+      expect(mockProcess.stdin.write).toHaveBeenCalled();
+      expect(mockProcess.stdin.data.join('')).toContain('Human: Hi');
+      expect(mockProcess.stdin.end).toHaveBeenCalled();
     });
 
     it('should include --print and --output-format json flags', async () => {
@@ -278,14 +285,13 @@ describe('ClaudeCodeCLIClient', () => {
       );
     });
 
-    it('should handle multi-turn conversation', async () => {
+    it('should handle multi-turn conversation via stdin', async () => {
       const client = new ClaudeCodeCLIClient();
-      mockSpawn.mockReturnValue(
-        createMockChildProcess({
-          stdout: '{"result": "I remember you said hello!"}',
-          exitCode: 0,
-        })
-      );
+      const mockProcess = createMockChildProcess({
+        stdout: '{"result": "I remember you said hello!"}',
+        exitCode: 0,
+      });
+      mockSpawn.mockReturnValue(mockProcess);
 
       const messages: Message[] = [
         { role: 'user', content: 'Hello' },
@@ -294,14 +300,9 @@ describe('ClaudeCodeCLIClient', () => {
       ];
       await client.chat(messages);
 
-      expect(mockSpawn).toHaveBeenCalledWith(
-        'claude',
-        expect.arrayContaining([
-          '--message',
-          expect.stringContaining('Human: Hello'),
-        ]),
-        expect.any(Object)
-      );
+      // Prompt should be written to stdin
+      expect(mockProcess.stdin.write).toHaveBeenCalled();
+      expect(mockProcess.stdin.data.join('')).toContain('Human: Hello');
     });
   });
 
@@ -379,6 +380,42 @@ describe('ClaudeCodeCLIClient', () => {
         expect.arrayContaining(['--allowedTools', 'custom_tool']),
         expect.any(Object)
       );
+    });
+
+    it('should disable all tools when disableTools is true', async () => {
+      const client = new ClaudeCodeCLIClient();
+      mockSpawn.mockReturnValue(
+        createMockChildProcess({
+          stdout: '{"result": "Chat response"}',
+          exitCode: 0,
+        })
+      );
+
+      // Use disableTools for chat-only mode (e.g., interviews)
+      await client.chat([{ role: 'user', content: 'Just chat' }], { disableTools: true });
+
+      expect(mockSpawn).toHaveBeenCalledWith(
+        'claude',
+        expect.arrayContaining(['--tools', '']),
+        expect.any(Object)
+      );
+    });
+
+    it('should use default tools when neither tools nor disableTools specified', async () => {
+      const client = new ClaudeCodeCLIClient();
+      mockSpawn.mockReturnValue(
+        createMockChildProcess({
+          stdout: '{"result": "Response"}',
+          exitCode: 0,
+        })
+      );
+
+      await client.chat([{ role: 'user', content: 'Hello' }]);
+
+      // Should NOT have --tools or --allowedTools in args
+      const callArgs = mockSpawn.mock.calls[0][1] as string[];
+      expect(callArgs).not.toContain('--tools');
+      expect(callArgs).not.toContain('--allowedTools');
     });
   });
 
@@ -704,22 +741,22 @@ describe('ClaudeCodeCLIClient', () => {
   });
 
   describe('continueConversation()', () => {
-    it('should use --resume flag with conversation ID', async () => {
+    it('should use --resume flag with conversation ID and send message via stdin', async () => {
       const client = new ClaudeCodeCLIClient();
-      mockSpawn.mockReturnValue(
-        createMockChildProcess({
-          stdout: '{"result": "continued"}',
-          exitCode: 0,
-        })
-      );
+      const mockProcess = createMockChildProcess({
+        stdout: '{"result": "continued"}',
+        exitCode: 0,
+      });
+      mockSpawn.mockReturnValue(mockProcess);
 
       await client.continueConversation('conv-123', 'Next message');
 
-      expect(mockSpawn).toHaveBeenCalledWith(
-        'claude',
-        expect.arrayContaining(['--resume', 'conv-123', '--message', 'Next message']),
-        expect.any(Object)
-      );
+      const callArgs = mockSpawn.mock.calls[0][1] as string[];
+      expect(callArgs).toContain('--resume');
+      expect(callArgs).toContain('conv-123');
+      // Message should be sent via stdin, not as positional arg
+      expect(mockProcess.stdin.write).toHaveBeenCalled();
+      expect(mockProcess.stdin.data.join('')).toBe('Next message');
     });
 
     it('should include max tokens if specified', async () => {

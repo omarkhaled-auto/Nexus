@@ -1,4 +1,4 @@
-import { c as createLucideIcon } from "./index-D31omQuS.js";
+import { c as createLucideIcon } from "./index-BX2rC_Ui.js";
 /**
  * @license lucide-react v0.562.0 - ISC
  *
@@ -7,10 +7,10 @@ import { c as createLucideIcon } from "./index-D31omQuS.js";
  */
 const __iconNode = [
   ["circle", { cx: "12", cy: "12", r: "10", key: "1mglay" }],
-  ["path", { d: "M12 16v-4", key: "1dtifu" }],
-  ["path", { d: "M12 8h.01", key: "e9boi3" }]
+  ["path", { d: "m15 9-6 6", key: "1uzhvr" }],
+  ["path", { d: "m9 9 6 6", key: "z0biqf" }]
 ];
-const Info = createLucideIcon("info", __iconNode);
+const CircleX = createLucideIcon("circle-x", __iconNode);
 export {
-  Info as I
+  CircleX as C
 };

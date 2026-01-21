@@ -259,10 +259,18 @@ export class InterviewEngine {
     // 2. Build messages for LLM
     const llmMessages = this.buildLLMMessages(session);
 
-    // 3. Call LLM
+    this.logger?.debug('Calling LLM', {
+      sessionId,
+      messageCount: llmMessages.length,
+      clientType: this.llmClient.constructor.name,
+    });
+
+    // 3. Call LLM in chat-only mode (no tools)
+    // Interview is pure conversation - we don't want Claude trying to create files
     const options: ChatOptions = {
       maxTokens: 2048,
       temperature: 0.7,
+      disableTools: true, // Chat-only mode for interview
     };
 
     const llmResponse = await this.llmClient.chat(llmMessages, options);

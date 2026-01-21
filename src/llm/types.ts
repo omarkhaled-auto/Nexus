@@ -103,6 +103,13 @@ export interface ChatOptions {
   tools?: ToolDefinition[];
   stopSequences?: string[];
   thinking?: ThinkingConfig;
+  /**
+   * Disable all tools for this request (chat-only mode).
+   * When true, passes --tools "" to Claude CLI to prevent any tool use.
+   * Use this for conversational interactions like interviews where
+   * tool use (file creation, etc.) is not desired.
+   */
+  disableTools?: boolean;
 }
 
 /**

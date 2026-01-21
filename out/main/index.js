@@ -2613,8 +2613,8 @@ class ClaudeCodeCLIClient {
   async chat(messages, options) {
     const prompt = this.messagesToPrompt(messages);
     const systemPrompt = this.extractSystemPrompt(messages);
-    const args = this.buildArgs(prompt, systemPrompt, options);
-    const result = await this.executeWithRetry(args);
+    const [args, stdinPrompt] = this.buildArgs(prompt, systemPrompt, options);
+    const result = await this.executeWithRetry(args, stdinPrompt);
     return this.parseResponse(result, options);
   }
   /**
@@ -2648,7 +2648,7 @@ class ClaudeCodeCLIClient {
   async executeWithTools(messages, tools, options) {
     const prompt = this.messagesToPrompt(messages);
     const systemPrompt = this.extractSystemPrompt(messages);
-    const args = this.buildArgs(prompt, systemPrompt, options);
+    const [args, stdinPrompt] = this.buildArgs(prompt, systemPrompt, options);
     if (tools.length > 0) {
       const allowedToolsIdx = args.indexOf("--allowedTools");
       if (allowedToolsIdx !== -1) {
@@ -2657,7 +2657,7 @@ class ClaudeCodeCLIClient {
       const cliToolNames = tools.map((t) => this.mapToolName(t.name));
       args.push("--allowedTools", cliToolNames.join(","));
     }
-    const result = await this.executeWithRetry(args);
+    const result = await this.executeWithRetry(args, stdinPrompt);
     return this.parseResponse(result, options);
   }
   /**
@@ -2667,11 +2667,7 @@ class ClaudeCodeCLIClient {
   async continueConversation(conversationId, message, options) {
     const args = ["--print", "--output-format", "json"];
     args.push("--resume", conversationId);
-    args.push("--message", message);
-    if (options?.maxTokens) {
-      args.push("--max-tokens", String(options.maxTokens));
-    }
-    const result = await this.executeWithRetry(args);
+    const result = await this.executeWithRetry(args, message);
     return this.parseResponse(result, options);
   }
   /**
@@ -2694,32 +2690,35 @@ class ClaudeCodeCLIClient {
   }
   // ============ Private Methods ============
   /**
-   * Build CLI arguments from prompt and options.
+   * Build CLI arguments from options (prompt is passed via stdin).
+   * Returns [args, prompt] tuple.
    */
   buildArgs(prompt, system, options) {
     const args = ["--print"];
     args.push("--output-format", "json");
-    if (system) {
-      args.push("--system-prompt", system);
-    }
-    if (options?.maxTokens) {
-      args.push("--max-tokens", String(options.maxTokens));
-    }
-    if (options?.tools && options.tools.length > 0) {
+    if (options?.disableTools) {
+      args.push('--tools=""');
+    } else if (options?.tools && options.tools.length > 0) {
       const toolNames = this.mapToolNames(options.tools);
       args.push("--allowedTools", toolNames.join(","));
     }
-    args.push("--message", prompt);
-    return args;
+    const stdinPrompt = system ? `<system>
+${system}
+</system>
+
+${prompt}` : prompt;
+    return [args, stdinPrompt];
   }
   /**
    * Execute CLI command with retry logic.
+   * @param args CLI arguments
+   * @param stdinPrompt Optional prompt to pass via stdin (avoids shell escaping issues)
    */
-  async executeWithRetry(args) {
+  async executeWithRetry(args, stdinPrompt) {
     let lastError = null;
     for (let attempt = 0; attempt <= this.config.maxRetries; attempt++) {
       try {
-        return await this.execute(args);
+        return await this.execute(args, stdinPrompt);
       } catch (error) {
         lastError = error;
         this.config.logger?.warn(
@@ -2735,10 +2734,20 @@ class ClaudeCodeCLIClient {
   }
   /**
    * Execute the Claude CLI command.
+   * @param args CLI arguments
+   * @param stdinPrompt Optional prompt to pass via stdin (avoids shell escaping issues)
    */
-  execute(args) {
+  execute(args, stdinPrompt) {
     return new Promise((resolve2, reject) => {
       this.config.logger?.debug("Executing Claude CLI", { args: args.join(" ") });
+      console.log("[ClaudeCodeCLIClient] ========== DEBUG START ==========");
+      console.log("[ClaudeCodeCLIClient] Full args:", args.join(" "));
+      console.log("[ClaudeCodeCLIClient] Using stdin for prompt:", stdinPrompt ? "YES" : "NO");
+      console.log("[ClaudeCodeCLIClient] Prompt length:", stdinPrompt?.length ?? 0);
+      console.log("[ClaudeCodeCLIClient] Prompt preview:", stdinPrompt?.substring(0, 100) ?? "N/A");
+      console.log("[ClaudeCodeCLIClient] Working dir:", this.config.workingDirectory);
+      console.log("[ClaudeCodeCLIClient] Shell mode:", process.platform === "win32");
+      console.log("[ClaudeCodeCLIClient] ========== DEBUG END ==========");
       const child = spawn(this.config.claudePath, args, {
         cwd: this.config.workingDirectory,
         env: { ...process.env },
@@ -2746,13 +2755,23 @@ class ClaudeCodeCLIClient {
         shell: process.platform === "win32"
         // Use shell on Windows for PATH resolution
       });
+      console.log("[ClaudeCodeCLIClient] Process spawned, PID:", child.pid);
+      if (stdinPrompt && child.stdin) {
+        child.stdin.write(stdinPrompt);
+        child.stdin.end();
+        console.log("[ClaudeCodeCLIClient] Prompt written to stdin and closed");
+      }
       let stdout = "";
       let stderr = "";
       child.stdout.on("data", (data) => {
-        stdout += data.toString();
+        const chunk = data.toString();
+        stdout += chunk;
+        console.log("[ClaudeCodeCLIClient] stdout chunk:", chunk.substring(0, 200));
       });
       child.stderr.on("data", (data) => {
-        stderr += data.toString();
+        const chunk = data.toString();
+        stderr += chunk;
+        console.log("[ClaudeCodeCLIClient] stderr chunk:", chunk.substring(0, 200));
       });
       const timeout = setTimeout(() => {
         child.kill("SIGTERM");
@@ -10292,9 +10311,16 @@ class InterviewEngine {
     });
     this.emitMessageEvent(session2, userMsg);
     const llmMessages = this.buildLLMMessages(session2);
+    this.logger?.debug("Calling LLM", {
+      sessionId,
+      messageCount: llmMessages.length,
+      clientType: this.llmClient.constructor.name
+    });
     const options = {
       maxTokens: 2048,
-      temperature: 0.7
+      temperature: 0.7,
+      disableTools: true
+      // Chat-only mode for interview
     };
     const llmResponse = await this.llmClient.chat(llmMessages, options);
     const responseContent = llmResponse.content;

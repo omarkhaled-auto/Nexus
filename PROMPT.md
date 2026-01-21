@@ -315,60 +315,34 @@ private forwardToUI(eventType: string, data: unknown): void {
 
 #### Part B: Handle Event in useNexusEvents Hook
 
-```typescript
-// In src/renderer/src/hooks/useNexusEvents.ts
+**IMPLEMENTED** in `src/renderer/src/hooks/useNexusEvents.ts`:
+- Added `planning:completed` case handler
+- Calls `loadFeatures()` and `loadTasks()` to refresh stores
+- Calls `refreshMetrics()` to update progress metrics
+- Shows toast notification with feature and task counts
 
-case 'planning:completed':
-  console.log('[useNexusEvents] Planning completed:', event.data);
-  
-  // Refresh features/tasks from backend
-  await useFeatureStore.getState().loadFeatures(event.data.projectId);
-  await useTaskStore.getState().loadTasks(event.data.projectId);
-  
-  // Update project status
-  useProjectStore.getState().setStatus(event.data.projectId, 'ready');
-  
-  // Show notification
-  toast.success('Planning complete! ' + event.data.taskCount + ' tasks created.');
-  break;
-```
-
-- [ ] useNexusEvents handles planning:completed
-- [ ] Feature store is refreshed
-- [ ] Task store is refreshed
-- [ ] Toast notification shown
+- [x] useNexusEvents handles planning:completed
+- [x] Feature store is refreshed
+- [x] Task store is refreshed
+- [x] Toast notification shown
 
 #### Part C: Verify Stores Have Load Methods
 
-```bash
-grep -rn "loadFeatures\|loadTasks" src/renderer/src/stores/
-```
+**IMPLEMENTED**:
+- `featureStore.loadFeatures()` - Added async method that fetches from backend via IPC
+- `taskStore.loadTasks()` - Added async method that fetches from backend via IPC
+- Both include proper type mapping between backend and frontend types
+- Both IPC methods (`tasks:list`, `features:list`) already exist in main process
 
-If load methods don't exist, implement them:
-
-```typescript
-// In featureStore.ts
-loadFeatures: async (projectId: string) => {
-  const features = await window.electronAPI.getFeatures(projectId);
-  set({ features });
-}
-
-// In taskStore.ts
-loadTasks: async (projectId: string) => {
-  const tasks = await window.electronAPI.getTasks(projectId);
-  set({ tasks });
-}
-```
-
-- [ ] featureStore.loadFeatures() exists
-- [ ] taskStore.loadTasks() exists
-- [ ] IPC methods getFeatures/getTasks exist
+- [x] featureStore.loadFeatures() exists
+- [x] taskStore.loadTasks() exists
+- [x] IPC methods getFeatures/getTasks exist
 
 ### Task 4 Completion Checklist
 - [x] forwardToUI helper implemented (using mainWindowRef.webContents.send)
 - [x] planning:completed forwarded to renderer
-- [ ] useNexusEvents handles planning:completed
-- [ ] Stores refresh data correctly
+- [x] useNexusEvents handles planning:completed
+- [x] Stores refresh data correctly
 
 **[TASK 4 COMPLETE]**
 
@@ -858,7 +832,7 @@ npm test            # Should pass
 - [x] `[TASK 1 COMPLETE]` - Debug flow traced
 - [x] `[TASK 2 COMPLETE]` - Interview->TaskDecomposer wired
 - [x] `[TASK 3 COMPLETE]` - TaskDecomposer->Database wired
-- [x] `[TASK 4 COMPLETE]` - planning:completed->UI wired (partial - backend done)
+- [x] `[TASK 4 COMPLETE]` - planning:completed->UI wired (fully complete)
 - [ ] `[TASK 5 COMPLETE]` - Interview->Tasks integration tested
 - [ ] `[TASK 6 COMPLETE]` - Planning->Execution audited
 - [ ] `[TASK 7 COMPLETE]` - Execution start wired

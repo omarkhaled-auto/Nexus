@@ -1,4 +1,4 @@
-const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["./InterviewPage-WSGqqKbe.js","./circle-alert-CkvgYtnI.js","./zap-oC8qjpiQ.js","./save-bXx-Vc5E.js","./layers-DLf3UADF.js","./circle-check-aE6UDedW.js","./AnimatedPage-BTybAGMP.js","./trash-2-BNO2rFn_.js","./download-D4OqJT23.js","./arrow-left-QX4MbbmV.js","./KanbanPage-C1qtKZYx.js","./clock-Doeygd_g.js","./circle-x-C7HpNJvN.js","./Input-CJLgTE4C.js","./eye-off-Dw8xmgIG.js","./eye-BYbze7HZ.js","./DashboardPage-C8MZBjFb.js","./test-tube-diagonal-BWauQmuU.js","./SettingsPage-BEiwH2WH.js","./Header-B3aaX7Zy.js","./circle-check-big-YJpUoM5v.js","./info-BknFdaPD.js","./AgentsPage-BPWi9arG.js","./ExecutionPage-Bry_OV2T.js"])))=>i.map(i=>d[i]);
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["./InterviewPage-DnW5_qqx.js","./circle-alert-CGw4XaIP.js","./zap-BM3AjHaK.js","./save-CzjBgXJw.js","./layers-C0IPhOjt.js","./circle-check-BqKNmVQx.js","./AnimatedPage-nqnFWhSG.js","./trash-2-CuL6AZV4.js","./download-Q2JbeO7Q.js","./arrow-left-DKMkPiIn.js","./KanbanPage-Cs6ZV9wg.js","./clock-qeA2XYLg.js","./circle-x-G4cI0Tku.js","./Input-B27AvBJg.js","./eye-off-BJBJRlas.js","./eye-BPN0s3mY.js","./DashboardPage-hvCkmjOg.js","./test-tube-diagonal-D_zI2n-f.js","./SettingsPage-BP3JFosU.js","./Header-YZ1gk7Kd.js","./circle-check-big-Ch_7hqC8.js","./info-D9RN2w1t.js","./AgentsPage-BqpRvSUf.js","./ExecutionPage-CMbQkNcr.js"])))=>i.map(i=>d[i]);
 function _mergeNamespaces(n, m) {
   for (var i = 0; i < m.length; i++) {
     const e = m[i];
@@ -27327,6 +27327,7 @@ function getMergedSettings(settings, pendingChanges) {
 }
 const useSettingsStore = create()((set, get) => ({
   settings: null,
+  mergedSettings: null,
   isLoading: false,
   isDirty: false,
   pendingChanges: {},
@@ -27334,23 +27335,27 @@ const useSettingsStore = create()((set, get) => ({
     set({ isLoading: true });
     try {
       const settings = await window.nexusAPI.settings.getAll();
-      set({ settings, isLoading: false, isDirty: false, pendingChanges: {} });
+      const mergedSettings = getMergedSettings(settings, {});
+      set({ settings, mergedSettings, isLoading: false, isDirty: false, pendingChanges: {} });
     } catch (error) {
       console.error("Failed to load settings:", error);
       set({ isLoading: false });
     }
   },
   updateSetting: (category, key, value) => {
-    const { pendingChanges } = get();
+    const { pendingChanges, settings } = get();
     const categoryChanges = pendingChanges[category] ?? {};
+    const newPendingChanges = {
+      ...pendingChanges,
+      [category]: {
+        ...categoryChanges,
+        [key]: value
+      }
+    };
+    const mergedSettings = getMergedSettings(settings, newPendingChanges);
     set({
-      pendingChanges: {
-        ...pendingChanges,
-        [category]: {
-          ...categoryChanges,
-          [key]: value
-        }
-      },
+      pendingChanges: newPendingChanges,
+      mergedSettings,
       isDirty: true
     });
   },
@@ -27408,7 +27413,7 @@ const useSettingsStore = create()((set, get) => ({
     }
   }
 }));
-const useSettings = () => useSettingsStore((s) => getMergedSettings(s.settings, s.pendingChanges));
+const useSettings = () => useSettingsStore((s) => s.mergedSettings);
 const useHasApiKey = (provider) => useSettingsStore((s) => {
   if (!s.settings) return false;
   switch (provider) {
@@ -28152,12 +28157,12 @@ function KeyboardShortcutsModal() {
     )) })
   ] }) });
 }
-const InterviewPage = reactExports.lazy(() => __vitePreload(() => import("./InterviewPage-WSGqqKbe.js"), true ? __vite__mapDeps([0,1,2,3,4,5,6,7,8,9]) : void 0, import.meta.url));
-const KanbanPage = reactExports.lazy(() => __vitePreload(() => import("./KanbanPage-C1qtKZYx.js"), true ? __vite__mapDeps([10,6,11,7,12,5,4,13,1,14,15]) : void 0, import.meta.url));
-const DashboardPage = reactExports.lazy(() => __vitePreload(() => import("./DashboardPage-C8MZBjFb.js"), true ? __vite__mapDeps([16,2,17,15,6,5,12,1,13,14,11]) : void 0, import.meta.url));
-const SettingsPage = reactExports.lazy(() => __vitePreload(() => import("./SettingsPage-BEiwH2WH.js"), true ? __vite__mapDeps([18,19,9,1,3,20,21,14,15]) : void 0, import.meta.url));
-const AgentsPage = reactExports.lazy(() => __vitePreload(() => import("./AgentsPage-BPWi9arG.js"), true ? __vite__mapDeps([22,19,9,21,1,5,2,17,15,11,7,12]) : void 0, import.meta.url));
-const ExecutionPage = reactExports.lazy(() => __vitePreload(() => import("./ExecutionPage-Bry_OV2T.js"), true ? __vite__mapDeps([23,19,9,8,7,12,20]) : void 0, import.meta.url));
+const InterviewPage = reactExports.lazy(() => __vitePreload(() => import("./InterviewPage-DnW5_qqx.js"), true ? __vite__mapDeps([0,1,2,3,4,5,6,7,8,9]) : void 0, import.meta.url));
+const KanbanPage = reactExports.lazy(() => __vitePreload(() => import("./KanbanPage-Cs6ZV9wg.js"), true ? __vite__mapDeps([10,6,11,7,12,5,4,13,1,14,15]) : void 0, import.meta.url));
+const DashboardPage = reactExports.lazy(() => __vitePreload(() => import("./DashboardPage-hvCkmjOg.js"), true ? __vite__mapDeps([16,2,17,15,6,5,12,1,13,14,11]) : void 0, import.meta.url));
+const SettingsPage = reactExports.lazy(() => __vitePreload(() => import("./SettingsPage-BP3JFosU.js"), true ? __vite__mapDeps([18,19,9,1,3,20,21,14,15]) : void 0, import.meta.url));
+const AgentsPage = reactExports.lazy(() => __vitePreload(() => import("./AgentsPage-BqpRvSUf.js"), true ? __vite__mapDeps([22,19,9,21,1,5,2,17,15,11,7,12]) : void 0, import.meta.url));
+const ExecutionPage = reactExports.lazy(() => __vitePreload(() => import("./ExecutionPage-CMbQkNcr.js"), true ? __vite__mapDeps([23,19,9,8,7,12,20]) : void 0, import.meta.url));
 function PageLoader() {
   return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex items-center justify-center min-h-screen bg-bg-dark", "data-testid": "page-loader", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col items-center gap-3", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-8 h-8 rounded-full border-2 border-accent-primary border-t-transparent animate-spin" }),

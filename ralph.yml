@@ -9,7 +9,7 @@ agent_priority:
   - qchat
   - acp
 prompt_file: PROMPT.md
-max_iterations: 100
+max_iterations: 20
 max_runtime: 14400
 verbose: false
 

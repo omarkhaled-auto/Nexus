@@ -42,6 +42,7 @@ export function useMCPServers() {
   const [globalJsonValue, setGlobalJsonValue] = useState('');
   const autoTestedServersRef = useRef<Set<string>>(new Set());
   const pendingSyncServerIdsRef = useRef<Set<string>>(new Set());
+  const hasInitiallyLoadedRef = useRef(false);
 
   // Security warning dialog state
   const [isSecurityWarningOpen, setIsSecurityWarningOpen] = useState(false);
@@ -65,9 +66,14 @@ export function useMCPServers() {
 
   // Auto-load MCP servers from settings file on mount
   useEffect(() => {
-    loadMCPServersFromServer().catch((error) => {
-      logger.error('Failed to load MCP servers on mount:', error);
-    });
+    loadMCPServersFromServer()
+      .then(() => {
+        hasInitiallyLoadedRef.current = true;
+      })
+      .catch((error) => {
+        logger.error('Failed to load MCP servers on mount:', error);
+        hasInitiallyLoadedRef.current = true;
+      });
   }, []);
 
   // Test a single server (extracted for reuse)
@@ -127,6 +133,11 @@ export function useMCPServers() {
 
   // Auto-test all enabled servers on mount (skip servers pending sync)
   useEffect(() => {
+    // Skip auto-testing until initial load is complete to prevent infinite loop
+    if (!hasInitiallyLoadedRef.current) {
+      return;
+    }
+
     const enabledServers = mcpServers.filter((s) => s.enabled !== false);
     const serversToTest = enabledServers.filter(
       (s) => !autoTestedServersRef.current.has(s.id) && !pendingSyncServerIdsRef.current.has(s.id)
