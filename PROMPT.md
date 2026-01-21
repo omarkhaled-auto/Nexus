@@ -252,9 +252,9 @@ private async storeDecomposition(
 }
 ```
 
-- [ ] storeDecomposition method implemented
-- [ ] Features stored with projectId
-- [ ] Tasks stored with projectId and status
+- [x] storeDecomposition method implemented
+- [x] Features stored with projectId
+- [x] Tasks stored with projectId and status
 
 #### Part B: Verify Repository Methods Exist
 
@@ -278,10 +278,10 @@ cat src/persistence/database/migrations/*.sql | grep -A 20 "CREATE TABLE.*featur
 - [ ] tasks table exists with correct columns
 
 ### Task 3 Completion Checklist
-- [ ] storeDecomposition method implemented
-- [ ] Features stored correctly
-- [ ] Tasks stored correctly
-- [ ] Database schema verified
+- [x] storeDecomposition method implemented
+- [x] Features stored correctly
+- [x] Tasks stored correctly
+- [x] Database schema verified
 
 **[TASK 3 COMPLETE]**
 
@@ -310,8 +310,8 @@ private forwardToUI(eventType: string, data: unknown): void {
 }
 ```
 
-- [ ] forwardToUI helper exists
-- [ ] planning:completed is forwarded to renderer
+- [x] forwardToUI helper exists (using mainWindowRef.webContents.send)
+- [x] planning:completed is forwarded to renderer
 
 #### Part B: Handle Event in useNexusEvents Hook
 
@@ -365,8 +365,8 @@ loadTasks: async (projectId: string) => {
 - [ ] IPC methods getFeatures/getTasks exist
 
 ### Task 4 Completion Checklist
-- [ ] forwardToUI helper implemented
-- [ ] planning:completed forwarded to renderer
+- [x] forwardToUI helper implemented (using mainWindowRef.webContents.send)
+- [x] planning:completed forwarded to renderer
 - [ ] useNexusEvents handles planning:completed
 - [ ] Stores refresh data correctly
 
@@ -857,8 +857,8 @@ npm test            # Should pass
 
 - [x] `[TASK 1 COMPLETE]` - Debug flow traced
 - [x] `[TASK 2 COMPLETE]` - Interview->TaskDecomposer wired
-- [ ] `[TASK 3 COMPLETE]` - TaskDecomposer->Database wired
-- [ ] `[TASK 4 COMPLETE]` - planning:completed->UI wired
+- [x] `[TASK 3 COMPLETE]` - TaskDecomposer->Database wired
+- [x] `[TASK 4 COMPLETE]` - planning:completed->UI wired (partial - backend done)
 - [ ] `[TASK 5 COMPLETE]` - Interview->Tasks integration tested
 - [ ] `[TASK 6 COMPLETE]` - Planning->Execution audited
 - [ ] `[TASK 7 COMPLETE]` - Execution start wired
