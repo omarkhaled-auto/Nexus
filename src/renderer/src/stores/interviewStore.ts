@@ -27,6 +27,7 @@ interface InterviewState {
   setSessionId: (sessionId: string | null) => void
   startInterview: () => void
   completeInterview: () => void
+  restoreSession: (messages: InterviewMessage[], requirements: Requirement[]) => void
   reset: () => void
 }
 
@@ -141,6 +142,18 @@ export const useInterviewStore = create<InterviewState>()((set, get) => ({
       requirementCount: state.requirements.length,
       categories,
       duration
+    })
+  },
+
+  restoreSession: (messages, requirements) => {
+    // Restore messages and requirements from a resumed session
+    // This is used when loading an existing session from the database
+    // Use 'functional' as the default stage for restored sessions with messages
+    // (we're continuing mid-interview, likely discussing features/requirements)
+    set({
+      messages,
+      requirements,
+      stage: messages.length > 0 ? 'functional' : 'welcome'
     })
   },
 

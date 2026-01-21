@@ -166,6 +166,7 @@ export function ChatPanel({ className }: ChatPanelProps): ReactElement {
   const addMessage = useInterviewStore((s) => s.addMessage);
   const addRequirement = useInterviewStore((s) => s.addRequirement);
   const setSessionId = useInterviewStore((s) => s.setSessionId);
+  const restoreSession = useInterviewStore((s) => s.restoreSession);
   const sessionId = useSessionId();
   const currentProject = useProjectStore((s) => s.currentProject);
 
@@ -219,6 +220,30 @@ export function ChatPanel({ className }: ChatPanelProps): ReactElement {
             content: greeting,
             timestamp: Date.now(),
           });
+        } else {
+          // Restore existing session data (messages and requirements)
+          // Convert backend message format to frontend format
+          const restoredMessages: InterviewMessage[] = session.messages.map((msg: { id: string; role: 'user' | 'assistant'; content: string; timestamp: Date | string }) => ({
+            id: msg.id,
+            role: msg.role,
+            content: msg.content,
+            timestamp: typeof msg.timestamp === 'string' ? new Date(msg.timestamp).getTime() : msg.timestamp.getTime(),
+          }));
+
+          // Convert backend requirement format to frontend format
+          const restoredRequirements = (session.extractedRequirements || []).map((req: { id: string; category: string; text: string; priority: string }) => ({
+            id: req.id,
+            category: mapCategory(req.category),
+            text: req.text,
+            priority: mapPriority(req.priority),
+            source: 'interview' as const,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+          }));
+
+          // Restore session to the store
+          restoreSession(restoredMessages, restoredRequirements);
+          console.log(`[ChatPanel] Restored session with ${restoredMessages.length} messages and ${restoredRequirements.length} requirements`);
         }
       }
     } catch (err) {
@@ -229,7 +254,7 @@ export function ChatPanel({ className }: ChatPanelProps): ReactElement {
     } finally {
       isInitializing.current = false;
     }
-  }, [sessionId, currentProject?.id, addMessage, setSessionId]);
+  }, [sessionId, currentProject?.id, addMessage, setSessionId, restoreSession]);
 
   // Initialize session when interviewing starts
   useEffect(() => {

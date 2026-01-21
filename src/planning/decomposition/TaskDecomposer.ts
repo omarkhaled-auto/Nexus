@@ -139,6 +139,7 @@ export class TaskDecomposer implements ITaskDecomposer {
 
     // Call Claude for decomposition
     // System prompt is passed as a message with role 'system'
+    // disableTools: true for chat-only mode (prevents Claude CLI tool errors)
     const response = await this.llmClient.chat(
       [
         { role: 'system', content: DECOMPOSITION_SYSTEM_PROMPT },
@@ -147,6 +148,7 @@ export class TaskDecomposer implements ITaskDecomposer {
       {
         maxTokens: 4000,
         temperature: 0.3, // Lower temperature for more consistent structure
+        disableTools: true, // Chat-only mode for decomposition
       }
     );
 
@@ -218,6 +220,7 @@ export class TaskDecomposer implements ITaskDecomposer {
     const prompt = this.buildSplitPrompt(task);
 
     // System prompt is passed as a message with role 'system'
+    // disableTools: true for chat-only mode (prevents Claude CLI tool errors)
     const response = await this.llmClient.chat(
       [
         { role: 'system', content: SPLIT_SYSTEM_PROMPT },
@@ -226,6 +229,7 @@ export class TaskDecomposer implements ITaskDecomposer {
       {
         maxTokens: 2000,
         temperature: 0.3,
+        disableTools: true, // Chat-only mode for task splitting
       }
     );
 

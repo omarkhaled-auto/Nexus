@@ -8,7 +8,7 @@
  * - Event emission on save operations
  */
 
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, or } from 'drizzle-orm';
 import type { DatabaseClient } from '../persistence/database/DatabaseClient';
 import { sessions } from '../persistence/database/schema';
 import type { EventBus } from '../orchestration/events/EventBus';
@@ -169,12 +169,14 @@ export class InterviewSessionManager {
   }
 
   /**
-   * Load the active interview session for a project
+   * Load the active or paused interview session for a project
    *
    * @param projectId The project ID
-   * @returns The active session or null if none found
+   * @returns The resumable session or null if none found
    */
   loadByProject(projectId: string): InterviewSession | null {
+    // Load both 'active' and 'paused' sessions - both can be resumed
+    // Completed sessions should NOT be resumed (user must start new interview)
     const row = this.db.db
       .select()
       .from(sessions)
@@ -182,7 +184,10 @@ export class InterviewSessionManager {
         and(
           eq(sessions.projectId, projectId),
           eq(sessions.type, 'interview'),
-          eq(sessions.status, 'active')
+          or(
+            eq(sessions.status, 'active'),
+            eq(sessions.status, 'paused')
+          )
         )
       )
       .orderBy(desc(sessions.startedAt))
