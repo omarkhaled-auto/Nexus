@@ -18,12 +18,13 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import {
+import type {
   LocalEmbeddingsConfig,
   LocalEmbeddingResult,
   LocalEmbeddingsStats,
+  ILocalEmbeddingsService} from './LocalEmbeddingsService.types';
+import {
   LocalEmbeddingsErrorCode,
-  ILocalEmbeddingsService,
   MODEL_DIMENSIONS,
   DEFAULT_LOCAL_MODEL,
   DEFAULT_LOCAL_EMBEDDINGS_CONFIG,

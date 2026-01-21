@@ -1,4 +1,4 @@
-const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["./InterviewPage-DnW5_qqx.js","./circle-alert-CGw4XaIP.js","./zap-BM3AjHaK.js","./save-CzjBgXJw.js","./layers-C0IPhOjt.js","./circle-check-BqKNmVQx.js","./AnimatedPage-nqnFWhSG.js","./trash-2-CuL6AZV4.js","./download-Q2JbeO7Q.js","./arrow-left-DKMkPiIn.js","./KanbanPage-Cs6ZV9wg.js","./clock-qeA2XYLg.js","./circle-x-G4cI0Tku.js","./Input-B27AvBJg.js","./eye-off-BJBJRlas.js","./eye-BPN0s3mY.js","./DashboardPage-hvCkmjOg.js","./test-tube-diagonal-D_zI2n-f.js","./SettingsPage-BP3JFosU.js","./Header-YZ1gk7Kd.js","./circle-check-big-Ch_7hqC8.js","./info-D9RN2w1t.js","./AgentsPage-BqpRvSUf.js","./ExecutionPage-CMbQkNcr.js"])))=>i.map(i=>d[i]);
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["./InterviewPage-Ds5YAUF_.js","./circle-alert-Bq2SZuv_.js","./zap-BiHqKb82.js","./save-BRXWbv48.js","./layers-BC576AtS.js","./circle-check-D8bQKBkt.js","./AnimatedPage-kxF8xqL7.js","./trash-2-DkjKaby1.js","./download-DbppfHfC.js","./arrow-left-WcIZj86O.js","./KanbanPage-7wU46MJT.js","./clock-Cfj-dkBa.js","./circle-x-DmGWgNdE.js","./Input-D8Acil3U.js","./eye-off-CPyjqvte.js","./eye-DcIDhFBq.js","./DashboardPage-Dt1IKblh.js","./test-tube-diagonal-5-nv2NFY.js","./SettingsPage-HtGWm6Rg.js","./Header-DAWwnyOR.js","./circle-check-big-dPNue94m.js","./info-DSCMbBbf.js","./AgentsPage-COwA44Ya.js","./ExecutionPage-rO-h_6G5.js"])))=>i.map(i=>d[i]);
 function _mergeNamespaces(n, m) {
   for (var i = 0; i < m.length; i++) {
     const e = m[i];
@@ -19350,6 +19350,7 @@ const useProjectStore = create()((set) => ({
 const useTaskStore = create()((set, get) => ({
   tasks: [],
   selectedTaskId: null,
+  isLoading: false,
   setTasks: (tasks) => {
     set({ tasks });
   },
@@ -19370,8 +19371,24 @@ const useTaskStore = create()((set, get) => ({
     set({ selectedTaskId: id });
   },
   getTask: (id) => get().tasks.find((t) => t.id === id),
+  loadTasks: async () => {
+    set({ isLoading: true });
+    try {
+      if (window.nexusAPI?.getTasks) {
+        const tasks = await window.nexusAPI.getTasks();
+        console.log("[taskStore] Loaded tasks from backend:", tasks.length);
+        set({ tasks, isLoading: false });
+      } else {
+        console.warn("[taskStore] nexusAPI.getTasks not available");
+        set({ isLoading: false });
+      }
+    } catch (error) {
+      console.error("[taskStore] Failed to load tasks:", error);
+      set({ isLoading: false });
+    }
+  },
   reset: () => {
-    set({ tasks: [], selectedTaskId: null });
+    set({ tasks: [], selectedTaskId: null, isLoading: false });
   }
 }));
 const useAgentStore = create()((set, get) => ({
@@ -27455,6 +27472,266 @@ function useThemeEffect() {
     };
   }, [theme]);
 }
+const WIP_LIMIT = 3;
+function emitEvent$1(channel, payload) {
+  if (window.nexusAPI?.emitEvent) {
+    try {
+      void window.nexusAPI.emitEvent(channel, payload);
+    } catch {
+    }
+  }
+}
+function mapBackendStatus(status) {
+  const statusMap = {
+    "backlog": "backlog",
+    "planning": "planning",
+    "in-progress": "in_progress",
+    "in_progress": "in_progress",
+    "ai-review": "ai_review",
+    "ai_review": "ai_review",
+    "human-review": "human_review",
+    "human_review": "human_review",
+    "done": "done",
+    "completed": "done",
+    "pending": "backlog"
+  };
+  return statusMap[status] ?? "backlog";
+}
+function mapBackendPriority(priority) {
+  const priorityMap = {
+    "must": "critical",
+    "should": "high",
+    "could": "medium",
+    "wont": "low",
+    "critical": "critical",
+    "high": "high",
+    "medium": "medium",
+    "low": "low"
+  };
+  return priorityMap[priority] ?? "medium";
+}
+const useFeatureStore = create()((set, get) => ({
+  features: [],
+  selectedFeatureId: null,
+  filter: {
+    search: "",
+    priority: null,
+    status: null
+  },
+  isLoading: false,
+  setFeatures: (features) => {
+    set({ features });
+  },
+  addFeature: (feature) => {
+    set((state) => ({
+      features: [...state.features, feature]
+    }));
+    emitEvent$1("feature:created", {
+      feature: {
+        id: feature.id,
+        projectId: "current",
+        name: feature.title,
+        description: feature.description,
+        priority: feature.priority === "critical" ? "must" : feature.priority === "high" ? "should" : feature.priority === "medium" ? "could" : "wont",
+        status: mapToEventFeatureStatus(feature.status),
+        complexity: feature.complexity === "moderate" ? "simple" : feature.complexity,
+        subFeatures: [],
+        estimatedTasks: feature.tasks.length,
+        completedTasks: 0,
+        createdAt: new Date(feature.createdAt),
+        updatedAt: new Date(feature.updatedAt)
+      },
+      projectId: "current"
+    });
+  },
+  updateFeature: (id, update) => {
+    set((state) => ({
+      features: state.features.map((f) => f.id === id ? { ...f, ...update } : f)
+    }));
+  },
+  removeFeature: (id) => {
+    set((state) => ({
+      features: state.features.filter((f) => f.id !== id)
+    }));
+  },
+  moveFeature: (id, newStatus) => {
+    const state = get();
+    const feature = state.features.find((f) => f.id === id);
+    if (!feature) return false;
+    const oldStatus = feature.status;
+    if (oldStatus === newStatus) return true;
+    if (newStatus === "in_progress" && oldStatus !== "in_progress") {
+      const inProgressCount = state.features.filter((f) => f.status === "in_progress").length;
+      if (inProgressCount >= WIP_LIMIT) {
+        return false;
+      }
+    }
+    set((state2) => ({
+      features: state2.features.map(
+        (f) => f.id === id ? {
+          ...f,
+          status: newStatus,
+          updatedAt: (/* @__PURE__ */ new Date()).toISOString()
+        } : f
+      )
+    }));
+    if (window.nexusAPI?.updateFeature) {
+      window.nexusAPI.updateFeature(id, { status: newStatus }).catch((error) => {
+        console.error("Failed to persist feature status change:", error);
+        set((state2) => ({
+          features: state2.features.map(
+            (f) => f.id === id ? {
+              ...f,
+              status: oldStatus,
+              updatedAt: (/* @__PURE__ */ new Date()).toISOString()
+            } : f
+          )
+        }));
+      });
+    }
+    emitEvent$1("feature:status-changed", {
+      featureId: id,
+      projectId: "current",
+      previousStatus: mapToEventFeatureStatus(oldStatus),
+      newStatus: mapToEventFeatureStatus(newStatus)
+    });
+    if (newStatus === "done") {
+      emitEvent$1("feature:completed", {
+        featureId: id,
+        projectId: "current",
+        tasksCompleted: feature.tasks.length,
+        duration: 0
+        // Would need actual time tracking
+      });
+    }
+    return true;
+  },
+  reorderFeatures: (columnId, oldIndex, newIndex) => {
+    set((state) => {
+      const columnFeatures = state.features.filter((f) => f.status === columnId);
+      state.features.filter((f) => f.status !== columnId);
+      if (oldIndex < 0 || newIndex < 0 || oldIndex >= columnFeatures.length || newIndex >= columnFeatures.length) {
+        return state;
+      }
+      if (oldIndex === newIndex) {
+        return state;
+      }
+      const reordered = [...columnFeatures];
+      const [removed] = reordered.splice(oldIndex, 1);
+      reordered.splice(newIndex, 0, removed);
+      const result = [];
+      let columnIdx = 0;
+      for (const feature of state.features) {
+        if (feature.status === columnId) {
+          result.push(reordered[columnIdx]);
+          columnIdx++;
+        } else {
+          result.push(feature);
+        }
+      }
+      return { features: result };
+    });
+  },
+  selectFeature: (id) => {
+    set({ selectedFeatureId: id });
+  },
+  setSearchFilter: (search) => {
+    set((state) => ({
+      filter: { ...state.filter, search }
+    }));
+  },
+  setPriorityFilter: (priorities) => {
+    set((state) => ({
+      filter: { ...state.filter, priority: priorities }
+    }));
+  },
+  setStatusFilter: (statuses) => {
+    set((state) => ({
+      filter: { ...state.filter, status: statuses }
+    }));
+  },
+  clearFilters: () => {
+    set({
+      filter: {
+        search: "",
+        priority: null,
+        status: null
+      }
+    });
+  },
+  loadFeatures: async () => {
+    set({ isLoading: true });
+    try {
+      if (window.nexusAPI?.getFeatures) {
+        const rawFeatures = await window.nexusAPI.getFeatures();
+        const features = rawFeatures.map((f) => {
+          const raw = f;
+          const rawTasks = raw.tasks;
+          const tasks = Array.isArray(rawTasks) ? rawTasks.map((t, idx) => {
+            if (typeof t === "string") {
+              return {
+                id: t,
+                title: `Task ${idx + 1}`,
+                status: "pending"
+              };
+            }
+            const taskObj = t;
+            return {
+              id: String(taskObj.id ?? `task-${idx}`),
+              title: String(taskObj.title ?? taskObj.name ?? `Task ${idx + 1}`),
+              status: taskObj.status ?? "pending",
+              estimatedMinutes: taskObj.estimatedMinutes
+            };
+          }) : [];
+          return {
+            id: String(raw.id ?? ""),
+            title: String(raw.name ?? raw.title ?? ""),
+            description: String(raw.description ?? ""),
+            status: mapBackendStatus(String(raw.status ?? "backlog")),
+            priority: mapBackendPriority(String(raw.priority ?? "medium")),
+            complexity: raw.complexity ?? "moderate",
+            tasks,
+            createdAt: String(raw.createdAt ?? (/* @__PURE__ */ new Date()).toISOString()),
+            updatedAt: String(raw.updatedAt ?? (/* @__PURE__ */ new Date()).toISOString())
+          };
+        });
+        console.log("[featureStore] Loaded features from backend:", features.length);
+        set({ features, isLoading: false });
+      } else {
+        console.warn("[featureStore] nexusAPI.getFeatures not available");
+        set({ isLoading: false });
+      }
+    } catch (error) {
+      console.error("[featureStore] Failed to load features:", error);
+      set({ isLoading: false });
+    }
+  },
+  reset: () => {
+    set({
+      features: [],
+      selectedFeatureId: null,
+      filter: {
+        search: "",
+        priority: null,
+        status: null
+      },
+      isLoading: false
+    });
+  }
+}));
+function mapToEventFeatureStatus(status) {
+  const map = {
+    backlog: "backlog",
+    planning: "backlog",
+    // planning maps to backlog in core types
+    in_progress: "in-progress",
+    ai_review: "ai-review",
+    human_review: "human-review",
+    done: "done"
+  };
+  return map[status];
+}
+const useFeatureCount = () => useFeatureStore((s) => s.features.length);
 const initialState = {
   stage: "welcome",
   messages: [],
@@ -27464,7 +27741,7 @@ const initialState = {
   interviewStartTime: null,
   sessionId: null
 };
-function emitEvent$1(method, payload) {
+function emitEvent(method, payload) {
   if (window.nexusAPI) {
     try {
       const fn = window.nexusAPI[method];
@@ -27482,7 +27759,7 @@ const useInterviewStore = create()((set, get) => ({
     set((state) => ({
       messages: [...state.messages, message]
     }));
-    emitEvent$1("emitInterviewMessage", {
+    emitEvent("emitInterviewMessage", {
       messageId: message.id,
       role: message.role,
       content: message.content
@@ -27497,7 +27774,7 @@ const useInterviewStore = create()((set, get) => ({
     set((state) => ({
       requirements: [...state.requirements, requirement]
     }));
-    emitEvent$1("emitInterviewRequirement", {
+    emitEvent("emitInterviewRequirement", {
       requirementId: requirement.id,
       category: requirement.category,
       text: requirement.text,
@@ -27527,7 +27804,7 @@ const useInterviewStore = create()((set, get) => ({
       stage: "welcome",
       interviewStartTime: Date.now()
     });
-    emitEvent$1("emitInterviewStarted", {
+    emitEvent("emitInterviewStarted", {
       projectName: state.projectName,
       mode: "genesis"
     });
@@ -27540,7 +27817,7 @@ const useInterviewStore = create()((set, get) => ({
       isInterviewing: false,
       stage: "complete"
     });
-    emitEvent$1("emitInterviewCompleted", {
+    emitEvent("emitInterviewCompleted", {
       requirementCount: state.requirements.length,
       categories,
       duration
@@ -27565,6 +27842,8 @@ function useNexusEvents() {
   const isSubscribed = reactExports.useRef(false);
   const updateTask = useTaskStore((s) => s.updateTask);
   const addTask = useTaskStore((s) => s.addTask);
+  const loadTasks = useTaskStore((s) => s.loadTasks);
+  const loadFeatures = useFeatureStore((s) => s.loadFeatures);
   const setProject = useProjectStore((s) => s.setProject);
   const updateAgent = useAgentStore((s) => s.updateAgent);
   const setStage = useInterviewStore((s) => s.setStage);
@@ -27685,6 +27964,19 @@ function useNexusEvents() {
             }
             break;
           }
+          case "planning:completed": {
+            const p = payload;
+            console.log("[useNexusEvents] Planning completed for project:", p.projectId);
+            void loadFeatures();
+            void loadTasks();
+            void refreshMetrics();
+            addToast({
+              id: `planning-completed-${p.projectId}`,
+              type: "success",
+              message: `Planning complete! ${p.taskCount ?? 0} tasks created across ${p.featureCount ?? 0} features.`
+            });
+            break;
+          }
           case "qa:build-completed":
           case "qa:lint-completed":
           case "qa:test-completed":
@@ -27735,6 +28027,8 @@ function useNexusEvents() {
   }, [
     updateTask,
     addTask,
+    loadTasks,
+    loadFeatures,
     setProject,
     updateAgent,
     setStage,
@@ -27743,188 +28037,6 @@ function useNexusEvents() {
     addToast
   ]);
 }
-const WIP_LIMIT = 3;
-function emitEvent(channel, payload) {
-  if (window.nexusAPI?.emitEvent) {
-    try {
-      void window.nexusAPI.emitEvent(channel, payload);
-    } catch {
-    }
-  }
-}
-const useFeatureStore = create()((set, get) => ({
-  features: [],
-  selectedFeatureId: null,
-  filter: {
-    search: "",
-    priority: null,
-    status: null
-  },
-  setFeatures: (features) => {
-    set({ features });
-  },
-  addFeature: (feature) => {
-    set((state) => ({
-      features: [...state.features, feature]
-    }));
-    emitEvent("feature:created", {
-      feature: {
-        id: feature.id,
-        projectId: "current",
-        name: feature.title,
-        description: feature.description,
-        priority: feature.priority === "critical" ? "must" : feature.priority === "high" ? "should" : feature.priority === "medium" ? "could" : "wont",
-        status: mapToEventFeatureStatus(feature.status),
-        complexity: feature.complexity === "moderate" ? "simple" : feature.complexity,
-        subFeatures: [],
-        estimatedTasks: feature.tasks.length,
-        completedTasks: 0,
-        createdAt: new Date(feature.createdAt),
-        updatedAt: new Date(feature.updatedAt)
-      },
-      projectId: "current"
-    });
-  },
-  updateFeature: (id, update) => {
-    set((state) => ({
-      features: state.features.map((f) => f.id === id ? { ...f, ...update } : f)
-    }));
-  },
-  removeFeature: (id) => {
-    set((state) => ({
-      features: state.features.filter((f) => f.id !== id)
-    }));
-  },
-  moveFeature: (id, newStatus) => {
-    const state = get();
-    const feature = state.features.find((f) => f.id === id);
-    if (!feature) return false;
-    const oldStatus = feature.status;
-    if (oldStatus === newStatus) return true;
-    if (newStatus === "in_progress" && oldStatus !== "in_progress") {
-      const inProgressCount = state.features.filter((f) => f.status === "in_progress").length;
-      if (inProgressCount >= WIP_LIMIT) {
-        return false;
-      }
-    }
-    set((state2) => ({
-      features: state2.features.map(
-        (f) => f.id === id ? {
-          ...f,
-          status: newStatus,
-          updatedAt: (/* @__PURE__ */ new Date()).toISOString()
-        } : f
-      )
-    }));
-    if (window.nexusAPI?.updateFeature) {
-      window.nexusAPI.updateFeature(id, { status: newStatus }).catch((error) => {
-        console.error("Failed to persist feature status change:", error);
-        set((state2) => ({
-          features: state2.features.map(
-            (f) => f.id === id ? {
-              ...f,
-              status: oldStatus,
-              updatedAt: (/* @__PURE__ */ new Date()).toISOString()
-            } : f
-          )
-        }));
-      });
-    }
-    emitEvent("feature:status-changed", {
-      featureId: id,
-      projectId: "current",
-      previousStatus: mapToEventFeatureStatus(oldStatus),
-      newStatus: mapToEventFeatureStatus(newStatus)
-    });
-    if (newStatus === "done") {
-      emitEvent("feature:completed", {
-        featureId: id,
-        projectId: "current",
-        tasksCompleted: feature.tasks.length,
-        duration: 0
-        // Would need actual time tracking
-      });
-    }
-    return true;
-  },
-  reorderFeatures: (columnId, oldIndex, newIndex) => {
-    set((state) => {
-      const columnFeatures = state.features.filter((f) => f.status === columnId);
-      state.features.filter((f) => f.status !== columnId);
-      if (oldIndex < 0 || newIndex < 0 || oldIndex >= columnFeatures.length || newIndex >= columnFeatures.length) {
-        return state;
-      }
-      if (oldIndex === newIndex) {
-        return state;
-      }
-      const reordered = [...columnFeatures];
-      const [removed] = reordered.splice(oldIndex, 1);
-      reordered.splice(newIndex, 0, removed);
-      const result = [];
-      let columnIdx = 0;
-      for (const feature of state.features) {
-        if (feature.status === columnId) {
-          result.push(reordered[columnIdx]);
-          columnIdx++;
-        } else {
-          result.push(feature);
-        }
-      }
-      return { features: result };
-    });
-  },
-  selectFeature: (id) => {
-    set({ selectedFeatureId: id });
-  },
-  setSearchFilter: (search) => {
-    set((state) => ({
-      filter: { ...state.filter, search }
-    }));
-  },
-  setPriorityFilter: (priorities) => {
-    set((state) => ({
-      filter: { ...state.filter, priority: priorities }
-    }));
-  },
-  setStatusFilter: (statuses) => {
-    set((state) => ({
-      filter: { ...state.filter, status: statuses }
-    }));
-  },
-  clearFilters: () => {
-    set({
-      filter: {
-        search: "",
-        priority: null,
-        status: null
-      }
-    });
-  },
-  reset: () => {
-    set({
-      features: [],
-      selectedFeatureId: null,
-      filter: {
-        search: "",
-        priority: null,
-        status: null
-      }
-    });
-  }
-}));
-function mapToEventFeatureStatus(status) {
-  const map = {
-    backlog: "backlog",
-    planning: "backlog",
-    // planning maps to backlog in core types
-    in_progress: "in-progress",
-    ai_review: "ai-review",
-    human_review: "human-review",
-    done: "done"
-  };
-  return map[status];
-}
-const useFeatureCount = () => useFeatureStore((s) => s.features.length);
 function useRealTimeUpdates() {
   const isSubscribed = reactExports.useRef(false);
   const setOverview = useMetricsStore((s) => s.setOverview);
@@ -28157,12 +28269,12 @@ function KeyboardShortcutsModal() {
     )) })
   ] }) });
 }
-const InterviewPage = reactExports.lazy(() => __vitePreload(() => import("./InterviewPage-DnW5_qqx.js"), true ? __vite__mapDeps([0,1,2,3,4,5,6,7,8,9]) : void 0, import.meta.url));
-const KanbanPage = reactExports.lazy(() => __vitePreload(() => import("./KanbanPage-Cs6ZV9wg.js"), true ? __vite__mapDeps([10,6,11,7,12,5,4,13,1,14,15]) : void 0, import.meta.url));
-const DashboardPage = reactExports.lazy(() => __vitePreload(() => import("./DashboardPage-hvCkmjOg.js"), true ? __vite__mapDeps([16,2,17,15,6,5,12,1,13,14,11]) : void 0, import.meta.url));
-const SettingsPage = reactExports.lazy(() => __vitePreload(() => import("./SettingsPage-BP3JFosU.js"), true ? __vite__mapDeps([18,19,9,1,3,20,21,14,15]) : void 0, import.meta.url));
-const AgentsPage = reactExports.lazy(() => __vitePreload(() => import("./AgentsPage-BqpRvSUf.js"), true ? __vite__mapDeps([22,19,9,21,1,5,2,17,15,11,7,12]) : void 0, import.meta.url));
-const ExecutionPage = reactExports.lazy(() => __vitePreload(() => import("./ExecutionPage-CMbQkNcr.js"), true ? __vite__mapDeps([23,19,9,8,7,12,20]) : void 0, import.meta.url));
+const InterviewPage = reactExports.lazy(() => __vitePreload(() => import("./InterviewPage-Ds5YAUF_.js"), true ? __vite__mapDeps([0,1,2,3,4,5,6,7,8,9]) : void 0, import.meta.url));
+const KanbanPage = reactExports.lazy(() => __vitePreload(() => import("./KanbanPage-7wU46MJT.js"), true ? __vite__mapDeps([10,6,11,7,12,5,4,13,1,14,15]) : void 0, import.meta.url));
+const DashboardPage = reactExports.lazy(() => __vitePreload(() => import("./DashboardPage-Dt1IKblh.js"), true ? __vite__mapDeps([16,2,17,15,6,5,12,1,13,14,11]) : void 0, import.meta.url));
+const SettingsPage = reactExports.lazy(() => __vitePreload(() => import("./SettingsPage-HtGWm6Rg.js"), true ? __vite__mapDeps([18,19,9,1,3,20,21,14,15]) : void 0, import.meta.url));
+const AgentsPage = reactExports.lazy(() => __vitePreload(() => import("./AgentsPage-COwA44Ya.js"), true ? __vite__mapDeps([22,19,9,21,1,5,2,17,15,11,7,12]) : void 0, import.meta.url));
+const ExecutionPage = reactExports.lazy(() => __vitePreload(() => import("./ExecutionPage-rO-h_6G5.js"), true ? __vite__mapDeps([23,19,9,8,7,12,20]) : void 0, import.meta.url));
 function PageLoader() {
   return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex items-center justify-center min-h-screen bg-bg-dark", "data-testid": "page-loader", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col items-center gap-3", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-8 h-8 rounded-full border-2 border-accent-primary border-t-transparent animate-spin" }),

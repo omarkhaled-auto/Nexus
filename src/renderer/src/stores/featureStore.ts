@@ -285,7 +285,7 @@ export const useFeatureStore = create<FeatureState>()((set, get) => ({
     try {
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- defensive check for non-Electron environments
       if (window.nexusAPI?.getFeatures) {
-        const rawFeatures = await window.nexusAPI.getFeatures() as unknown[];
+        const rawFeatures = await window.nexusAPI.getFeatures();
         // Map backend features to frontend Feature type
         const features: Feature[] = rawFeatures.map((f: unknown) => {
           const raw = f as Record<string, unknown>;

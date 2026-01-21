@@ -15,8 +15,7 @@
  * - No `--system-prompt` support (prepend to prompt)
  */
 
-import type { ChildProcess } from 'child_process';
-import { spawn } from 'child_process';
+import { spawn, type ChildProcess } from 'child_process';
 import type {
   Message,
   ChatOptions,
@@ -26,7 +25,7 @@ import type {
   LLMClient,
   FinishReason,
 } from '../types';
-import { LLMError, TimeoutError } from './ClaudeClient';
+import { LLMError } from './ClaudeClient';
 import type {
   GeminiCLIConfig,
   GeminiCLIRawResponse,
@@ -234,7 +233,7 @@ export class GeminiCLIClient implements LLMClient {
   /**
    * Build CLI arguments for non-streaming request.
    */
-  private buildArgs(prompt: string, options?: ChatOptions): string[] {
+  private buildArgs(prompt: string, _options?: ChatOptions): string[] {
     const args: string[] = [];
 
     // Non-interactive mode
@@ -531,7 +530,7 @@ export class GeminiCLIClient implements LLMClient {
 
       // Check exit code after stream ends
       if (exitCode !== 0) {
-        throw new GeminiCLIError(`Gemini CLI exited with code ${exitCode}: ${stderr}`, exitCode);
+        throw new GeminiCLIError(`Gemini CLI exited with code ${exitCode?.toString() ?? 'unknown'}: ${stderr}`, exitCode);
       }
     } finally {
       clearTimeout(timeoutId);

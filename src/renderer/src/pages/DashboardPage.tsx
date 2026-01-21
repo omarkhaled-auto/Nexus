@@ -229,7 +229,7 @@ export default function DashboardPage(): ReactElement {
   const navigate = useNavigate()
   const isLoading = useIsMetricsLoading()
   const overview = useOverview()
-  const agents = useAgentMetrics()
+  const _agents = useAgentMetrics()
   const { setOverview, setAgents, setCosts, setLoading, addTimelineEvent, updateAgentMetrics } =
     useMetricsStore.getState()
 
@@ -384,7 +384,7 @@ export default function DashboardPage(): ReactElement {
     setCreateError(null)
 
     try {
-      const result = await window.nexusAPI.createProject({
+      await window.nexusAPI.createProject({
         name: createProjectName.trim(),
         mode: createProjectMode
       })

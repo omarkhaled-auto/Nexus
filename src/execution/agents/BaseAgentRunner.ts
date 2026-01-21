@@ -291,7 +291,7 @@ export abstract class BaseAgentRunner {
         agentId,
         taskId,
         action: 'iteration',
-        details: `Iteration ${payload.iteration ?? 0}`,
+        details: `Iteration ${String(payload.iteration ?? 0)}`,
       });
     } else if (type === 'agent:completed') {
       this.eventBus.emit('task:completed', {

@@ -1023,6 +1023,107 @@ ${"-".repeat(40)}
     }
     return { success: true };
   });
+  ipcMain.handle("execution:start", async (event, projectId) => {
+    if (!validateSender$2(event)) {
+      throw new Error("Unauthorized IPC sender");
+    }
+    if (typeof projectId !== "string" || !projectId) {
+      throw new Error("Invalid projectId");
+    }
+    console.log("[ExecutionHandlers] Starting execution for:", projectId);
+    try {
+      const { getBootstrappedNexus: getBootstrappedNexus2 } = await Promise.resolve().then(() => NexusBootstrap$1);
+      const bootstrappedNexus2 = getBootstrappedNexus2();
+      if (!bootstrappedNexus2) {
+        throw new Error("Nexus not initialized");
+      }
+      const coordinator = bootstrappedNexus2.nexus.coordinator;
+      if (!coordinator) {
+        throw new Error("Coordinator not available");
+      }
+      const status = coordinator.getStatus();
+      console.log("[ExecutionHandlers] Current coordinator status:", status.state);
+      if (status.state === "running") {
+        console.log("[ExecutionHandlers] Execution already running");
+        return { success: true, message: "Execution already running" };
+      }
+      if (status.state === "paused") {
+        coordinator.resume();
+        console.log("[ExecutionHandlers] Execution resumed");
+        return { success: true, message: "Execution resumed" };
+      }
+      coordinator.start(projectId);
+      console.log("[ExecutionHandlers] Execution started successfully");
+      if (eventForwardingWindow && !eventForwardingWindow.isDestroyed()) {
+        eventForwardingWindow.webContents.send("execution:started", { projectId });
+      }
+      return { success: true, message: "Execution started" };
+    } catch (error) {
+      console.error("[ExecutionHandlers] Execution start failed:", error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  });
+  ipcMain.handle("execution:resume", async (event) => {
+    if (!validateSender$2(event)) {
+      throw new Error("Unauthorized IPC sender");
+    }
+    console.log("[ExecutionHandlers] Resuming execution");
+    try {
+      const { getBootstrappedNexus: getBootstrappedNexus2 } = await Promise.resolve().then(() => NexusBootstrap$1);
+      const bootstrappedNexus2 = getBootstrappedNexus2();
+      if (!bootstrappedNexus2) {
+        throw new Error("Nexus not initialized");
+      }
+      const coordinator = bootstrappedNexus2.nexus.coordinator;
+      if (!coordinator) {
+        throw new Error("Coordinator not available");
+      }
+      coordinator.resume();
+      console.log("[ExecutionHandlers] Execution resumed successfully");
+      if (eventForwardingWindow && !eventForwardingWindow.isDestroyed()) {
+        eventForwardingWindow.webContents.send("execution:resumed", {});
+      }
+      return { success: true };
+    } catch (error) {
+      console.error("[ExecutionHandlers] Resume failed:", error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  });
+  ipcMain.handle("execution:stop", async (event) => {
+    if (!validateSender$2(event)) {
+      throw new Error("Unauthorized IPC sender");
+    }
+    console.log("[ExecutionHandlers] Stopping execution");
+    try {
+      const { getBootstrappedNexus: getBootstrappedNexus2 } = await Promise.resolve().then(() => NexusBootstrap$1);
+      const bootstrappedNexus2 = getBootstrappedNexus2();
+      if (!bootstrappedNexus2) {
+        throw new Error("Nexus not initialized");
+      }
+      const coordinator = bootstrappedNexus2.nexus.coordinator;
+      if (!coordinator) {
+        throw new Error("Coordinator not available");
+      }
+      coordinator.stop();
+      console.log("[ExecutionHandlers] Execution stopped successfully");
+      if (eventForwardingWindow && !eventForwardingWindow.isDestroyed()) {
+        eventForwardingWindow.webContents.send("execution:stopped", {});
+      }
+      return { success: true };
+    } catch (error) {
+      console.error("[ExecutionHandlers] Stop failed:", error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  });
   ipcMain.handle(
     "interview:emit-started",
     (event, payload) => {
@@ -3073,7 +3174,7 @@ class GeminiCLIClient {
   /**
    * Build CLI arguments for non-streaming request.
    */
-  buildArgs(prompt, options) {
+  buildArgs(prompt, _options) {
     const args = [];
     args.push("--yolo");
     args.push("-o", "json");
@@ -3290,7 +3391,7 @@ ${results}`;
       }
       await processEndPromise;
       if (exitCode !== 0) {
-        throw new GeminiCLIError(`Gemini CLI exited with code ${exitCode}: ${stderr}`, exitCode);
+        throw new GeminiCLIError(`Gemini CLI exited with code ${exitCode?.toString() ?? "unknown"}: ${stderr}`, exitCode);
       }
     } finally {
       clearTimeout(timeoutId);
@@ -5457,7 +5558,7 @@ class BaseAgentRunner {
         agentId,
         taskId,
         action: "iteration",
-        details: `Iteration ${payload.iteration ?? 0}`
+        details: `Iteration ${String(payload.iteration ?? 0)}`
       });
     } else if (type === "agent:completed") {
       this.eventBus.emit("task:completed", {
@@ -7131,14 +7232,14 @@ class LintRunner {
         timeout: this.config.timeout
       });
       let stdout = "";
-      let stderr = "";
+      let _stderr = "";
       proc.stdout?.on("data", (data) => {
         stdout += data.toString();
       });
       proc.stderr?.on("data", (data) => {
-        stderr += data.toString();
+        _stderr += data.toString();
       });
-      proc.on("close", (code) => {
+      proc.on("close", (_code) => {
         const parsed = this.parseJsonOutput(stdout);
         const fixable = parsed.fixableErrors + parsed.fixableWarnings;
         resolve2({
@@ -7448,7 +7549,6 @@ class TestRunner {
     let failed = 0;
     let skipped = 0;
     const errors = [];
-    let coverage;
     try {
       const jsonResult = this.parseJsonOutput(stdout);
       if (jsonResult) {
@@ -7474,8 +7574,8 @@ class TestRunner {
     }
     const failureErrors = this.parseFailureDetails(output);
     errors.push(...failureErrors);
-    coverage = this.parseCoverage(output);
-    return { passed, failed, skipped, errors, coverage };
+    const coverageResult = this.parseCoverage(output);
+    return { passed, failed, skipped, errors, coverage: coverageResult };
   }
   /**
    * Parse JSON reporter output
@@ -7502,10 +7602,10 @@ class TestRunner {
               failed++;
               errors.push(
                 this.createErrorEntry(
-                  test.failureMessages?.join("\n") || `Test failed: ${test.fullName || test.title}`,
+                  test.failureMessages?.join("\n") || `Test failed: ${String(test.fullName || test.title || "Unknown test")}`,
                   "error",
                   void 0,
-                  file.name,
+                  String(file.name || "unknown"),
                   void 0,
                   void 0,
                   test.failureMessages?.join("\n")
@@ -8383,6 +8483,194 @@ class QARunnerFactory {
     return result;
   }
 }
+class QALoopEngine {
+  qaRunner;
+  maxIterations;
+  stopOnFirstFailure;
+  workingDir;
+  constructor(config) {
+    this.qaRunner = config.qaRunner;
+    this.maxIterations = config.maxIterations ?? 3;
+    this.stopOnFirstFailure = config.stopOnFirstFailure ?? true;
+    this.workingDir = config.workingDir;
+  }
+  /**
+   * Run the QA loop on a task
+   *
+   * This is the main method that NexusCoordinator calls. It:
+   * 1. Runs build step (if available)
+   * 2. Runs lint step (if available)
+   * 3. Runs test step (if available)
+   * 4. Runs review step (if available)
+   * 5. Returns success if all pass
+   * 6. Tracks iterations and escalates if max reached
+   *
+   * @param task - Task to run QA on
+   * @param _coder - Agent that did the coding (currently unused, for future use)
+   * @returns QA loop result
+   */
+  async run(task, _coder) {
+    let iteration = 0;
+    let lastBuild;
+    let lastLint;
+    let lastTest;
+    let lastReview;
+    console.log(`[QALoopEngine] Starting QA loop for task ${task.id}: ${task.name}`);
+    while (iteration < this.maxIterations) {
+      iteration++;
+      console.log(`[QALoopEngine] Iteration ${iteration}/${this.maxIterations}`);
+      let allPassed = true;
+      const failureReasons = [];
+      if (this.qaRunner.build) {
+        console.log(`[QALoopEngine] Running build step...`);
+        try {
+          lastBuild = await this.qaRunner.build(task.id);
+          if (!lastBuild.success) {
+            allPassed = false;
+            failureReasons.push(`Build failed with ${lastBuild.errors.length} errors`);
+            console.log(`[QALoopEngine] Build failed: ${lastBuild.errors.length} errors`);
+            if (this.stopOnFirstFailure) {
+              continue;
+            }
+          } else {
+            console.log(`[QALoopEngine] Build passed`);
+          }
+        } catch (error) {
+          allPassed = false;
+          failureReasons.push(`Build error: ${error instanceof Error ? error.message : String(error)}`);
+          console.error(`[QALoopEngine] Build error:`, error);
+          if (this.stopOnFirstFailure) {
+            continue;
+          }
+        }
+      }
+      if (this.qaRunner.lint && (allPassed || !this.stopOnFirstFailure)) {
+        console.log(`[QALoopEngine] Running lint step...`);
+        try {
+          lastLint = await this.qaRunner.lint(task.id);
+          if (!lastLint.success || lastLint.errors.length > 0) {
+            allPassed = false;
+            failureReasons.push(`Lint failed with ${lastLint.errors.length} errors`);
+            console.log(`[QALoopEngine] Lint failed: ${lastLint.errors.length} errors`);
+            if (this.stopOnFirstFailure) {
+              continue;
+            }
+          } else {
+            console.log(`[QALoopEngine] Lint passed`);
+          }
+        } catch (error) {
+          allPassed = false;
+          failureReasons.push(`Lint error: ${error instanceof Error ? error.message : String(error)}`);
+          console.error(`[QALoopEngine] Lint error:`, error);
+          if (this.stopOnFirstFailure) {
+            continue;
+          }
+        }
+      }
+      if (this.qaRunner.test && (allPassed || !this.stopOnFirstFailure)) {
+        console.log(`[QALoopEngine] Running test step...`);
+        try {
+          lastTest = await this.qaRunner.test(task.id);
+          if (!lastTest.success) {
+            allPassed = false;
+            failureReasons.push(`Tests failed: ${lastTest.failed}/${lastTest.passed + lastTest.failed} failed`);
+            console.log(`[QALoopEngine] Tests failed: ${lastTest.failed} failed, ${lastTest.passed} passed`);
+            if (this.stopOnFirstFailure) {
+              continue;
+            }
+          } else {
+            console.log(`[QALoopEngine] Tests passed: ${lastTest.passed} tests`);
+          }
+        } catch (error) {
+          allPassed = false;
+          failureReasons.push(`Test error: ${error instanceof Error ? error.message : String(error)}`);
+          console.error(`[QALoopEngine] Test error:`, error);
+          if (this.stopOnFirstFailure) {
+            continue;
+          }
+        }
+      }
+      if (this.qaRunner.review && (allPassed || !this.stopOnFirstFailure)) {
+        console.log(`[QALoopEngine] Running review step...`);
+        try {
+          lastReview = await this.qaRunner.review(task.id);
+          if (!lastReview.approved) {
+            allPassed = false;
+            failureReasons.push(`Review not approved: ${lastReview.blockers.length} blockers`);
+            console.log(`[QALoopEngine] Review not approved: ${lastReview.blockers.join(", ")}`);
+            if (this.stopOnFirstFailure) {
+              continue;
+            }
+          } else {
+            console.log(`[QALoopEngine] Review approved`);
+          }
+        } catch (error) {
+          allPassed = false;
+          failureReasons.push(`Review error: ${error instanceof Error ? error.message : String(error)}`);
+          console.error(`[QALoopEngine] Review error:`, error);
+          if (this.stopOnFirstFailure) {
+            continue;
+          }
+        }
+      }
+      if (allPassed) {
+        console.log(`[QALoopEngine] All QA steps passed for task ${task.id}`);
+        return {
+          success: true,
+          escalated: false,
+          iterations: iteration,
+          lastBuild,
+          lastLint,
+          lastTest,
+          lastReview
+        };
+      }
+      console.log(`[QALoopEngine] Iteration ${iteration} failed: ${failureReasons.join("; ")}`);
+    }
+    console.log(`[QALoopEngine] Max iterations (${this.maxIterations}) reached for task ${task.id}, escalating`);
+    return {
+      success: false,
+      escalated: true,
+      reason: "Max QA iterations exceeded",
+      iterations: iteration,
+      lastBuild,
+      lastLint,
+      lastTest,
+      lastReview
+    };
+  }
+  /**
+   * Run a single QA cycle without iteration (for testing/debugging)
+   */
+  async runOnce(task) {
+    const results = { allPassed: true };
+    if (this.qaRunner.build) {
+      results.build = await this.qaRunner.build(task.id);
+      if (!results.build.success) {
+        results.allPassed = false;
+      }
+    }
+    if (this.qaRunner.lint) {
+      results.lint = await this.qaRunner.lint(task.id);
+      if (!results.lint.success || results.lint.errors.length > 0) {
+        results.allPassed = false;
+      }
+    }
+    if (this.qaRunner.test) {
+      results.test = await this.qaRunner.test(task.id);
+      if (!results.test.success) {
+        results.allPassed = false;
+      }
+    }
+    if (this.qaRunner.review) {
+      results.review = await this.qaRunner.review(task.id);
+      if (!results.review.approved) {
+        results.allPassed = false;
+      }
+    }
+    return results;
+  }
+}
 class NexusCoordinator {
   // Dependencies
   taskQueue;
@@ -8635,8 +8923,37 @@ class NexusCoordinator {
           await this.createWaveCheckpoint(waveIndex);
         }
       }
+      if (!this.stopRequested) {
+        const remainingTasks = this.totalTasks - this.completedTasks - this.failedTasks;
+        if (remainingTasks === 0 && this.completedTasks > 0) {
+          this.currentPhase = "completion";
+          this.state = "idle";
+          console.log(`[NexusCoordinator] Project completed: ${this.completedTasks}/${this.totalTasks} tasks completed, ${this.failedTasks} failed`);
+          this.emitEvent("project:completed", {
+            projectId: this.projectConfig?.projectId,
+            totalTasks: this.totalTasks,
+            completedTasks: this.completedTasks,
+            failedTasks: this.failedTasks,
+            totalWaves: this.waves.length
+          });
+        } else if (this.failedTasks > 0 && this.failedTasks === this.totalTasks) {
+          console.log(`[NexusCoordinator] Project failed: all ${this.failedTasks} tasks failed`);
+          this.emitEvent("project:failed", {
+            projectId: this.projectConfig?.projectId,
+            error: "All tasks failed",
+            totalTasks: this.totalTasks,
+            failedTasks: this.failedTasks,
+            recoverable: true
+          });
+        }
+      }
     } catch (error) {
       console.error("Orchestration error:", error);
+      this.emitEvent("project:failed", {
+        projectId: this.projectConfig?.projectId,
+        error: error instanceof Error ? error.message : String(error),
+        recoverable: false
+      });
     }
   }
   /**
@@ -9448,6 +9765,12 @@ class NexusFactory {
         timeout: config.qaConfig?.testTimeout
       }
     });
+    const qaEngine = new QALoopEngine({
+      qaRunner,
+      maxIterations: config.qaConfig?.maxIterations ?? 3,
+      stopOnFirstFailure: true,
+      workingDir: config.workingDir
+    });
     const taskQueue = new TaskQueue();
     const eventBus = EventBus.getInstance();
     const worktreeManager = new WorktreeManager({
@@ -9462,7 +9785,7 @@ class NexusFactory {
       decomposer: taskDecomposer,
       resolver: dependencyResolver,
       estimator: timeEstimator,
-      qaEngine: qaRunner,
+      qaEngine,
       worktreeManager,
       checkpointManager
     };
@@ -9552,6 +9875,12 @@ class NexusFactory {
       workingDir: config.workingDir,
       geminiClient
     });
+    const qaEngine = new QALoopEngine({
+      qaRunner,
+      maxIterations: 3,
+      stopOnFirstFailure: true,
+      workingDir: config.workingDir
+    });
     const taskQueue = new TaskQueue();
     const eventBus = EventBus.getInstance();
     const gitService = new GitService({ baseDir: config.workingDir });
@@ -9567,7 +9896,7 @@ class NexusFactory {
       decomposer: taskDecomposer,
       resolver: dependencyResolver,
       estimator: timeEstimator,
-      qaEngine: qaRunner,
+      qaEngine,
       worktreeManager,
       checkpointManager
     });
@@ -14578,6 +14907,47 @@ class NexusBootstrap {
     }
     const { coordinator } = this.nexus;
     const { decomposer, resolver } = this.nexus.planning;
+    const requirementCapturedUnsub = this.eventBus.on("interview:requirement-captured", (event) => {
+      const { projectId, requirement } = event.payload;
+      console.log(`[NexusBootstrap] Requirement captured for ${projectId}: ${requirement.content.substring(0, 50)}...`);
+      try {
+        const categoryMap = {
+          functional: "functional",
+          technical: "technical",
+          ui: "functional",
+          performance: "non-functional",
+          security: "non-functional",
+          "non-functional": "non-functional"
+        };
+        const mappedCategory = categoryMap[requirement.category] ?? "functional";
+        const priorityMap = {
+          critical: "must",
+          high: "should",
+          medium: "could",
+          low: "wont",
+          must: "must",
+          should: "should",
+          could: "could",
+          wont: "wont"
+        };
+        const mappedPriority = priorityMap[requirement.priority] ?? "should";
+        if (this.requirementsDB) {
+          this.requirementsDB.addRequirement(projectId, {
+            category: mappedCategory,
+            description: requirement.content,
+            // Map content to description
+            priority: mappedPriority,
+            source: requirement.source,
+            confidence: 0.8,
+            tags: []
+          });
+          console.log(`[NexusBootstrap] Requirement saved to DB for project ${projectId}`);
+        }
+      } catch (error) {
+        console.warn(`[NexusBootstrap] Failed to save requirement: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    });
+    this.unsubscribers.push(requirementCapturedUnsub);
     const interviewCompletedUnsub = this.eventBus.on("interview:completed", async (event) => {
       const { projectId, totalRequirements } = event.payload;
       console.log(`[NexusBootstrap] Interview completed for ${projectId} with ${totalRequirements} requirements`);
@@ -14591,16 +14961,38 @@ class NexusBootstrap {
         const requirements2 = this.requirementsDB.getRequirements(projectId);
         console.log(`[NexusBootstrap] Retrieved ${requirements2.length} requirements for decomposition`);
         const featureDescription = requirements2.map((r) => `- [${r.priority}] ${r.description}`).join("\n");
-        const tasks2 = await decomposer.decompose(featureDescription);
-        console.log(`[NexusBootstrap] Decomposed into ${tasks2.length} tasks`);
-        const waves = resolver.calculateWaves(tasks2);
+        const decomposedTasks = await decomposer.decompose(featureDescription);
+        console.log(`[NexusBootstrap] Decomposed into ${decomposedTasks.length} tasks`);
+        const { featureCount, taskCount } = await this.storeDecomposition(projectId, decomposedTasks);
+        console.log(`[NexusBootstrap] Stored ${featureCount} features and ${taskCount} tasks to database`);
+        const waves = resolver.calculateWaves(decomposedTasks);
         console.log(`[NexusBootstrap] Calculated ${waves.length} execution waves`);
-        const totalMinutes = await this.nexus.planning.estimator.estimateTotal(tasks2);
+        const totalMinutes = await this.nexus.planning.estimator.estimateTotal(decomposedTasks);
         console.log(`[NexusBootstrap] Estimated ${totalMinutes} minutes total`);
+        await this.eventBus.emit("project:status-changed", {
+          projectId,
+          previousStatus: "planning",
+          newStatus: "executing",
+          reason: `Planning complete: ${taskCount} tasks created`
+        });
+        if (mainWindowRef && !mainWindowRef.isDestroyed()) {
+          mainWindowRef.webContents.send("nexus-event", {
+            type: "planning:completed",
+            payload: {
+              projectId,
+              featureCount,
+              taskCount,
+              totalMinutes,
+              waveCount: waves.length
+            },
+            timestamp: (/* @__PURE__ */ new Date()).toISOString()
+          });
+          console.log(`[NexusBootstrap] Forwarded planning:completed to UI`);
+        }
         coordinator.initialize({
           projectId,
           projectPath: this.config.workingDir,
-          features: this.tasksToFeatures(tasks2, projectId),
+          features: this.tasksToFeatures(decomposedTasks, projectId),
           mode: "genesis"
         });
         coordinator.start(projectId);
@@ -14659,6 +15051,34 @@ class NexusBootstrap {
           reason: String(eventData.reason ?? "Max iterations exceeded"),
           iterations: Number(eventData.iterations ?? 1),
           lastError: String(eventData.lastError ?? "")
+        });
+      } else if (eventType === "project:completed" && "projectId" in eventData) {
+        console.log(`[NexusBootstrap] Project completed: ${String(eventData.projectId)}`);
+        const totalTasks = Number(eventData.totalTasks ?? 0);
+        const completedTasks = Number(eventData.completedTasks ?? 0);
+        const failedTasks = Number(eventData.failedTasks ?? 0);
+        void this.eventBus.emit("project:completed", {
+          projectId: String(eventData.projectId),
+          totalDuration: 0,
+          // TODO: Track actual duration in coordinator
+          metrics: {
+            tasksTotal: totalTasks,
+            tasksCompleted: completedTasks,
+            tasksFailed: failedTasks,
+            featuresTotal: 0,
+            // TODO: Track features
+            featuresCompleted: 0,
+            estimatedTotalMinutes: 0,
+            actualTotalMinutes: 0,
+            averageQAIterations: 0
+          }
+        });
+      } else if (eventType === "project:failed" && "projectId" in eventData) {
+        console.log(`[NexusBootstrap] Project failed: ${String(eventData.projectId)}`);
+        void this.eventBus.emit("project:failed", {
+          projectId: String(eventData.projectId),
+          error: String(eventData.error ?? "Unknown error"),
+          recoverable: Boolean(eventData.recoverable ?? false)
         });
       }
     });
@@ -14724,6 +15144,63 @@ class NexusBootstrap {
       updatedAt: /* @__PURE__ */ new Date(),
       projectId
     }));
+  }
+  /**
+   * Store decomposed features and tasks in the database
+   * Phase 20 Task 3: Wire TaskDecomposer Output to Database
+   */
+  async storeDecomposition(projectId, planningTasks) {
+    if (!this.databaseClient) {
+      throw new Error("DatabaseClient not initialized");
+    }
+    console.log("[NexusBootstrap] Storing decomposition for project:", projectId);
+    const now = /* @__PURE__ */ new Date();
+    let featureCount = 0;
+    let taskCount = 0;
+    const featureId = `feature-${projectId}-${Date.now()}`;
+    try {
+      this.databaseClient.db.insert(features).values({
+        id: featureId,
+        projectId,
+        name: "Project Requirements",
+        description: "Auto-generated feature from interview requirements",
+        priority: "must",
+        status: "backlog",
+        complexity: "complex",
+        estimatedTasks: planningTasks.length,
+        completedTasks: 0,
+        createdAt: now,
+        updatedAt: now
+      }).run();
+      featureCount = 1;
+      console.log("[NexusBootstrap] Stored feature:", featureId);
+      for (const task of planningTasks) {
+        const taskId = task.id || `task-${projectId}-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+        this.databaseClient.db.insert(tasks).values({
+          id: taskId,
+          projectId,
+          featureId,
+          name: task.name,
+          description: task.description,
+          type: task.type || "auto",
+          status: "pending",
+          size: task.size === "large" || task.size === "medium" ? "small" : task.size,
+          priority: 5,
+          tags: JSON.stringify(task.files || []),
+          notes: JSON.stringify(task.testCriteria || []),
+          dependsOn: JSON.stringify(task.dependsOn || []),
+          estimatedMinutes: task.estimatedMinutes || 15,
+          createdAt: now,
+          updatedAt: now
+        }).run();
+        taskCount++;
+      }
+      console.log("[NexusBootstrap] Stored", taskCount, "tasks for feature", featureId);
+      return { featureCount, taskCount };
+    } catch (error) {
+      console.error("[NexusBootstrap] Failed to store decomposition:", error);
+      throw error;
+    }
   }
   /**
    * Start Genesis mode (new project from scratch)
@@ -15003,12 +15480,23 @@ async function initializeNexus(config) {
   const bootstrap = new NexusBootstrap(config);
   return bootstrap.initialize();
 }
+function getBootstrappedNexus() {
+  return bootstrappedNexus;
+}
 function setMainWindow(window) {
   mainWindowRef = window;
 }
 function clearMainWindow() {
   mainWindowRef = null;
 }
+const NexusBootstrap$1 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+  __proto__: null,
+  NexusBootstrap,
+  clearMainWindow,
+  getBootstrappedNexus,
+  initializeNexus,
+  setMainWindow
+}, Symbol.toStringTag, { value: "Module" }));
 let mainWindow = null;
 let nexusInstance = null;
 function getWorkingDir() {

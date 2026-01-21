@@ -376,7 +376,7 @@ export class NexusCoordinator implements INexusCoordinator {
       }
 
       // Phase 20 Task 10: Emit project:completed when all tasks are done
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- stopRequested can be mutated during processWave
+       
       if (!this.stopRequested) {
         const remainingTasks = this.totalTasks - this.completedTasks - this.failedTasks;
 

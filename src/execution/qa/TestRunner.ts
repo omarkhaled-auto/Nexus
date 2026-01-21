@@ -307,8 +307,6 @@ export class TestRunner {
     let failed = 0;
     let skipped = 0;
     const errors: ErrorEntry[] = [];
-    let coverage: CoverageResult | undefined;
-
     // Try to parse JSON output first
     try {
       const jsonResult = this.parseJsonOutput(stdout);
@@ -348,9 +346,9 @@ export class TestRunner {
     errors.push(...failureErrors);
 
     // Parse coverage if available
-    coverage = this.parseCoverage(output);
+    const coverageResult = this.parseCoverage(output);
 
-    return { passed, failed, skipped, errors, coverage };
+    return { passed, failed, skipped, errors, coverage: coverageResult };
   }
 
   /**
@@ -391,10 +389,10 @@ export class TestRunner {
               errors.push(
                 this.createErrorEntry(
                   test.failureMessages?.join('\n') ||
-                    `Test failed: ${test.fullName || test.title}`,
+                    `Test failed: ${String(test.fullName || test.title || 'Unknown test')}`,
                   'error',
                   undefined,
-                  file.name,
+                  String(file.name || 'unknown'),
                   undefined,
                   undefined,
                   test.failureMessages?.join('\n')

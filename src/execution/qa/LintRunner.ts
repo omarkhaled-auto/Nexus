@@ -130,7 +130,7 @@ export class LintRunner {
    * @returns LintResult with success status and parsed errors/warnings
    */
   async run(workingDir: string, fix?: boolean): Promise<LintResult> {
-    const startTime = Date.now();
+    const _startTime = Date.now();
     const shouldFix = fix ?? this.config.autoFix;
 
     return new Promise((resolve) => {
@@ -143,17 +143,17 @@ export class LintRunner {
       });
 
       let stdout = '';
-      let stderr = '';
+      let _stderr = '';
 
       proc.stdout?.on('data', (data) => {
         stdout += data.toString();
       });
 
       proc.stderr?.on('data', (data) => {
-        stderr += data.toString();
+        _stderr += data.toString();
       });
 
-      proc.on('close', (code) => {
+      proc.on('close', (_code) => {
         const parsed = this.parseJsonOutput(stdout);
 
         // Calculate fixable count

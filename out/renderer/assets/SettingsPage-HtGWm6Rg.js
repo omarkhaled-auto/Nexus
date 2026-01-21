@@ -1,12 +1,12 @@
-import { c as createLucideIcon, r as reactExports, Z as useSettings, _ as useSettingsLoading, $ as useSettingsDirty, a0 as useSettingsStore, j as jsxRuntimeExports, y as Button, a as cn, S as Sparkles, B as Bot, a1 as Terminal, l as Card, m as CardHeader, n as CardTitle, a2 as CardDescription, o as CardContent, a3 as useHasApiKey, C as ChevronDown } from "./index-BX2rC_Ui.js";
-import { H as Header } from "./Header-YZ1gk7Kd.js";
-import { C as CircleAlert } from "./circle-alert-CGw4XaIP.js";
-import { R as RotateCcw, S as Save, C as Cpu } from "./save-CzjBgXJw.js";
-import { C as CircleCheckBig } from "./circle-check-big-Ch_7hqC8.js";
-import { I as Info } from "./info-D9RN2w1t.js";
-import { E as EyeOff } from "./eye-off-BJBJRlas.js";
-import { E as Eye } from "./eye-BPN0s3mY.js";
-import "./arrow-left-DKMkPiIn.js";
+import { c as createLucideIcon, r as reactExports, Z as useSettings, _ as useSettingsLoading, $ as useSettingsDirty, a0 as useSettingsStore, j as jsxRuntimeExports, y as Button, a as cn, S as Sparkles, B as Bot, a1 as Terminal, l as Card, m as CardHeader, n as CardTitle, a2 as CardDescription, o as CardContent, a3 as useHasApiKey, C as ChevronDown } from "./index-C-P9gv8r.js";
+import { H as Header } from "./Header-DAWwnyOR.js";
+import { C as CircleAlert } from "./circle-alert-Bq2SZuv_.js";
+import { R as RotateCcw, S as Save, C as Cpu } from "./save-BRXWbv48.js";
+import { C as CircleCheckBig } from "./circle-check-big-dPNue94m.js";
+import { I as Info } from "./info-DSCMbBbf.js";
+import { E as EyeOff } from "./eye-off-CPyjqvte.js";
+import { E as Eye } from "./eye-DcIDhFBq.js";
+import "./arrow-left-WcIZj86O.js";
 /**
  * @license lucide-react v0.562.0 - ISC
  *
@@ -347,7 +347,7 @@ function BackendToggle({ label, value, options, onChange, status }) {
     ] })
   ] });
 }
-function ModelDropdown({ label, value, models, onChange, description }) {
+function ModelDropdown({ label, value, models, onChange, description: _description }) {
   const selectedModel = models.find((m) => m.id === value);
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-2", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-sm font-medium text-text-primary", children: label }),

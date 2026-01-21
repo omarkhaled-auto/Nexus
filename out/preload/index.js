@@ -317,6 +317,22 @@ const nexusAPI = {
    */
   pauseExecution: (reason) => electron.ipcRenderer.invoke("execution:pause", reason),
   /**
+   * Start execution for a project (Phase 20 Task 7)
+   * @param projectId - Project ID to start execution for
+   * @returns Promise with success status and message
+   */
+  startExecution: (projectId) => electron.ipcRenderer.invoke("execution:start", projectId),
+  /**
+   * Resume execution from paused state (Phase 20 Task 7)
+   * @returns Promise with success status
+   */
+  resumeExecution: () => electron.ipcRenderer.invoke("execution:resume"),
+  /**
+   * Stop execution gracefully (Phase 20 Task 7)
+   * @returns Promise with success status
+   */
+  stopExecution: () => electron.ipcRenderer.invoke("execution:stop"),
+  /**
    * Get execution logs for a specific QA step
    * @param stepType - The step type: 'build', 'lint', 'test', or 'review'
    * @returns Promise with array of log entries

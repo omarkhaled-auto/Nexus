@@ -15,7 +15,6 @@ import { useState, useEffect, type ReactElement } from 'react'
 import {
   Eye,
   EyeOff,
-  Key,
   Bot,
   Save,
   RotateCcw,
@@ -37,7 +36,6 @@ import {
 import { cn } from '@renderer/lib/utils'
 import { Button } from '@renderer/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@renderer/components/ui/card'
-import { AnimatedPage } from '@renderer/components/AnimatedPage'
 import { Header } from '@renderer/components/layout/Header'
 import {
   useSettingsStore,
@@ -49,9 +47,6 @@ import {
 import type { NexusSettingsPublic, LLMProvider, LLMBackendType, EmbeddingsBackendType, AgentType, AgentProviderType, AgentModelConfig, AgentModelAssignments } from '../../../shared/types/settings'
 import { DEFAULT_AGENT_MODEL_ASSIGNMENTS } from '../../../shared/types/settings'
 import {
-  CLAUDE_MODELS,
-  GEMINI_MODELS,
-  LOCAL_EMBEDDING_MODELS,
   DEFAULT_CLAUDE_MODEL,
   DEFAULT_GEMINI_MODEL,
   DEFAULT_LOCAL_EMBEDDING_MODEL,
@@ -266,7 +261,7 @@ interface ModelDropdownProps {
   description?: string
 }
 
-function ModelDropdown({ label, value, models, onChange, description }: ModelDropdownProps): ReactElement {
+function ModelDropdown({ label, value, models, onChange, description: _description }: ModelDropdownProps): ReactElement {
   const selectedModel = models.find(m => m.id === value)
 
   return (

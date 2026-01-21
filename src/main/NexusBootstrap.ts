@@ -18,7 +18,8 @@
 import type { BrowserWindow } from 'electron';
 import { app } from 'electron';
 import { join } from 'path';
-import { EventBus, getEventBus } from '../orchestration/events/EventBus';
+import type { EventBus} from '../orchestration/events/EventBus';
+import { getEventBus } from '../orchestration/events/EventBus';
 import { NexusFactory, type NexusInstance, type NexusFactoryConfig } from '../NexusFactory';
 import { InterviewEngine, type InterviewEngineOptions } from '../interview/InterviewEngine';
 import { InterviewSessionManager, type InterviewSessionManagerOptions } from '../interview/InterviewSessionManager';
@@ -269,7 +270,7 @@ export class NexusBootstrap {
       listCheckpoints: (projectId) => this.listCheckpointsForProject(projectId),
       checkpointManager: this.checkpointManager,
       humanReviewService: this.humanReviewService,
-      databaseClient: this.databaseClient!,
+      databaseClient: this.databaseClient,
       shutdown: () => this.shutdown(),
     };
 
