@@ -291,8 +291,64 @@ export class NexusBootstrap {
     const { decomposer, resolver } = this.nexus.planning;
 
     // =========================================================================
+    // CRITICAL WIRING: Save Requirements as They Are Captured
+    // =========================================================================
+    const requirementCapturedUnsub = this.eventBus.on('interview:requirement-captured', (event) => {
+      const { projectId, requirement } = event.payload;
+
+      console.log(`[NexusBootstrap] Requirement captured for ${projectId}: ${requirement.content.substring(0, 50)}...`);
+
+      try {
+        // Map category - handle both core event types and UI event types
+        type RequirementCategory = 'functional' | 'non-functional' | 'technical';
+        const categoryMap: Record<string, RequirementCategory> = {
+          functional: 'functional',
+          technical: 'technical',
+          ui: 'functional',
+          performance: 'non-functional',
+          security: 'non-functional',
+          'non-functional': 'non-functional',
+        };
+        const mappedCategory = categoryMap[requirement.category] ?? 'functional';
+
+        // Map priority - handle both MoSCoW and severity-based priorities
+        type RequirementPriority = 'must' | 'should' | 'could' | 'wont';
+        const priorityMap: Record<string, RequirementPriority> = {
+          critical: 'must',
+          high: 'should',
+          medium: 'could',
+          low: 'wont',
+          must: 'must',
+          should: 'should',
+          could: 'could',
+          wont: 'wont',
+        };
+        const mappedPriority = priorityMap[requirement.priority] ?? 'should';
+
+        // Add to RequirementsDB
+        if (this.requirementsDB) {
+          this.requirementsDB.addRequirement(projectId, {
+            category: mappedCategory,
+            description: requirement.content, // Map content to description
+            priority: mappedPriority,
+            source: requirement.source,
+            confidence: 0.8,
+            tags: [],
+          });
+          console.log(`[NexusBootstrap] Requirement saved to DB for project ${projectId}`);
+        }
+      } catch (error) {
+        // Log but don't fail - duplicate detection may throw
+        console.warn(`[NexusBootstrap] Failed to save requirement: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    });
+
+    this.unsubscribers.push(requirementCapturedUnsub);
+
+    // =========================================================================
     // CRITICAL WIRING: Interview Complete -> Task Decomposition -> Execution
     // =========================================================================
+
     const interviewCompletedUnsub = this.eventBus.on('interview:completed', async (event) => {
       const { projectId, totalRequirements } = event.payload;
 
