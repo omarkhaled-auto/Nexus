@@ -8,6 +8,7 @@
 export {
   registerIpcHandlers,
   registerCheckpointReviewHandlers,
+  registerDatabaseHandlers,
   setupEventForwarding,
   forwardTaskUpdate,
   forwardAgentStatus,

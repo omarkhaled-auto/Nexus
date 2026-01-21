@@ -1,7 +1,7 @@
 import { app, session, ipcMain, BrowserWindow, safeStorage, shell } from "electron";
 import { resolve, extname, posix, relative, basename, join as join$1 } from "path";
 import { webcrypto, randomFillSync, randomUUID } from "node:crypto";
-import { relations, eq, and, desc } from "drizzle-orm";
+import { relations, eq, and, or, desc } from "drizzle-orm";
 import { sqliteTable, integer, text, real, blob } from "drizzle-orm/sqlite-core";
 import Store from "electron-store";
 import { spawn } from "child_process";
@@ -407,6 +407,7 @@ const state = {
 };
 let checkpointManagerRef = null;
 let humanReviewServiceRef = null;
+let databaseClientRef = null;
 function registerCheckpointReviewHandlers(checkpointManager, humanReviewService) {
   checkpointManagerRef = checkpointManager;
   humanReviewServiceRef = humanReviewService;
@@ -521,6 +522,10 @@ function registerCheckpointReviewHandlers(checkpointManager, humanReviewService)
       await humanReviewServiceRef.rejectReview(reviewId, feedback);
     }
   );
+}
+function registerDatabaseHandlers(databaseClient) {
+  databaseClientRef = databaseClient;
+  console.log("[IPC] Database handlers registered");
 }
 function registerIpcHandlers() {
   ipcMain.handle("mode:genesis", (event) => {
@@ -654,10 +659,29 @@ function registerIpcHandlers() {
       return { id };
     }
   );
-  ipcMain.handle("tasks:list", (event) => {
+  ipcMain.handle("tasks:list", async (event) => {
     if (!validateSender$2(event)) {
       throw new Error("Unauthorized IPC sender");
     }
+    if (databaseClientRef) {
+      try {
+        const { tasks: tasks2 } = await Promise.resolve().then(() => schema$1);
+        const dbTasks = databaseClientRef.db.select().from(tasks2).all();
+        const uiTasks = dbTasks.map((t) => ({
+          id: t.id,
+          name: t.name,
+          status: t.status,
+          featureId: t.featureId,
+          description: t.description,
+          estimatedMinutes: t.estimatedMinutes
+        }));
+        console.log("[IPC] tasks:list returning", uiTasks.length, "tasks from database");
+        return uiTasks;
+      } catch (error) {
+        console.error("[IPC] tasks:list database query failed:", error);
+      }
+    }
+    console.log("[IPC] tasks:list returning", state.tasks.size, "tasks from memory");
     return Array.from(state.tasks.values());
   });
   ipcMain.handle(
@@ -904,10 +928,41 @@ ${"-".repeat(40)}
     currentExecutionTaskId = id;
     currentExecutionTaskName = name;
   };
-  ipcMain.handle("features:list", (event) => {
+  ipcMain.handle("features:list", async (event) => {
     if (!validateSender$2(event)) {
       throw new Error("Unauthorized IPC sender");
     }
+    if (databaseClientRef) {
+      try {
+        const { features: features2, tasks: tasks2 } = await Promise.resolve().then(() => schema$1);
+        const dbFeatures = databaseClientRef.db.select().from(features2).all();
+        const dbTasks = databaseClientRef.db.select().from(tasks2).all();
+        const uiFeatures = dbFeatures.map((f) => {
+          const featureTasks = dbTasks.filter((t) => t.featureId === f.id).map((t) => ({
+            id: t.id,
+            title: t.name,
+            status: t.status
+          }));
+          return {
+            id: f.id,
+            title: f.name,
+            description: f.description || "",
+            status: f.status,
+            priority: f.priority,
+            complexity: f.complexity,
+            progress: f.estimatedTasks && f.estimatedTasks > 0 ? Math.round((f.completedTasks || 0) / f.estimatedTasks * 100) : 0,
+            tasks: featureTasks,
+            createdAt: f.createdAt instanceof Date ? f.createdAt.toISOString() : String(f.createdAt),
+            updatedAt: f.updatedAt instanceof Date ? f.updatedAt.toISOString() : String(f.updatedAt)
+          };
+        });
+        console.log("[IPC] features:list returning", uiFeatures.length, "features from database");
+        return uiFeatures;
+      } catch (error) {
+        console.error("[IPC] features:list database query failed:", error);
+      }
+    }
+    console.log("[IPC] features:list returning", state.features.size, "features from memory");
     return Array.from(state.features.values());
   });
   ipcMain.handle("feature:get", (event, id) => {
@@ -4577,8 +4632,10 @@ class TaskDecomposer {
       ],
       {
         maxTokens: 4e3,
-        temperature: 0.3
+        temperature: 0.3,
         // Lower temperature for more consistent structure
+        disableTools: true
+        // Chat-only mode for decomposition
       }
     );
     const rawTasks = this.parseJsonResponse(response.content);
@@ -4632,7 +4689,9 @@ class TaskDecomposer {
       ],
       {
         maxTokens: 2e3,
-        temperature: 0.3
+        temperature: 0.3,
+        disableTools: true
+        // Chat-only mode for task splitting
       }
     );
     const rawTasks = this.parseJsonResponse(response.content);
@@ -8970,7 +9029,8 @@ class NexusCoordinator {
     if (mode === "genesis") {
       this.emitEvent("orchestration:mode", { mode: "genesis", reason: "Full decomposition from requirements" });
       for (const feature of features2) {
-        const tasks2 = await this.decomposer.decompose(feature);
+        const featureDesc = this.featureToDescription(feature);
+        const tasks2 = await this.decomposer.decompose(featureDesc);
         allTasks.push(...tasks2);
       }
       if (allTasks.length === 0) {
@@ -8988,13 +9048,15 @@ class NexusCoordinator {
           updatedAt: /* @__PURE__ */ new Date(),
           projectId: config.projectId
         };
-        const tasks2 = await this.decomposer.decompose(mockFeature);
+        const mockFeatureDesc = this.featureToDescription(mockFeature);
+        const tasks2 = await this.decomposer.decompose(mockFeatureDesc);
         allTasks.push(...tasks2);
       }
     } else {
       this.emitEvent("orchestration:mode", { mode: "evolution", reason: "Targeted changes to existing codebase" });
       for (const feature of features2) {
-        const tasks2 = await this.decomposer.decompose(feature);
+        const featureDesc = this.featureToDescription(feature);
+        const tasks2 = await this.decomposer.decompose(featureDesc);
         for (const task of tasks2) {
           task.testCriteria.push("Evolution: Verify compatibility with existing code");
         }
@@ -9002,6 +9064,18 @@ class NexusCoordinator {
       }
     }
     return allTasks;
+  }
+  /**
+   * Convert a Feature object to a string description for decomposition
+   * Fix: TaskDecomposer expects string, not Feature object
+   */
+  featureToDescription(feature) {
+    let desc2 = `## Feature: ${feature.name}
+`;
+    desc2 += `Priority: ${feature.priority}
+`;
+    desc2 += `Description: ${feature.description}`;
+    return desc2;
   }
   /**
    * Create checkpoint after wave completion
@@ -10916,17 +10990,20 @@ class InterviewSessionManager {
     return this.deserializeSession(row.data);
   }
   /**
-   * Load the active interview session for a project
+   * Load the active or paused interview session for a project
    *
    * @param projectId The project ID
-   * @returns The active session or null if none found
+   * @returns The resumable session or null if none found
    */
   loadByProject(projectId) {
     const row = this.db.db.select().from(sessions).where(
       and(
         eq(sessions.projectId, projectId),
         eq(sessions.type, "interview"),
-        eq(sessions.status, "active")
+        or(
+          eq(sessions.status, "active"),
+          eq(sessions.status, "paused")
+        )
       )
     ).orderBy(desc(sessions.startedAt)).get();
     if (!row || !row.data) {
@@ -15581,6 +15658,7 @@ async function initializeNexusSystem() {
       nexusInstance.checkpointManager,
       nexusInstance.humanReviewService
     );
+    registerDatabaseHandlers(nexusInstance.databaseClient);
     console.log("[Main] Nexus system initialized successfully");
     console.log(`[Main] Working directory: ${config.workingDir}`);
     console.log(`[Main] Data directory: ${config.dataDir}`);

@@ -20,7 +20,7 @@
 import { app, BrowserWindow, shell } from 'electron';
 import { join } from 'path';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
-import { registerIpcHandlers, registerCheckpointReviewHandlers, registerSettingsHandlers, registerInterviewHandlers, registerFallbackInterviewHandlers, removeInterviewHandlers, setupEventForwarding } from './ipc';
+import { registerIpcHandlers, registerCheckpointReviewHandlers, registerDatabaseHandlers, registerSettingsHandlers, registerInterviewHandlers, registerFallbackInterviewHandlers, removeInterviewHandlers, setupEventForwarding } from './ipc';
 import {
   initializeNexus,
   setMainWindow,
@@ -181,6 +181,9 @@ async function initializeNexusSystem(): Promise<void> {
       nexusInstance.checkpointManager,
       nexusInstance.humanReviewService
     );
+
+    // Register database handlers for feature/task queries
+    registerDatabaseHandlers(nexusInstance.databaseClient);
 
     console.log('[Main] Nexus system initialized successfully');
     console.log(`[Main] Working directory: ${config.workingDir}`);

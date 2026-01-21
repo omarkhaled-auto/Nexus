@@ -20,6 +20,7 @@ import type {
   Checkpoint,
   ITaskQueue,
   IAgentPool,
+  OrchestrationFeature,
 } from '../types';
 import type {
   ITaskDecomposer,
@@ -438,8 +439,8 @@ export class NexusCoordinator implements INexusCoordinator {
       this.emitEvent('orchestration:mode', { mode: 'genesis', reason: 'Full decomposition from requirements' });
 
       for (const feature of features) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Feature type mismatch with decomposer
-        const tasks = await this.decomposer.decompose(feature as any);
+        const featureDesc = this.featureToDescription(feature);
+        const tasks = await this.decomposer.decompose(featureDesc);
         allTasks.push(...tasks);
       }
 
@@ -459,8 +460,8 @@ export class NexusCoordinator implements INexusCoordinator {
           updatedAt: new Date(),
           projectId: config.projectId,
         };
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Mock feature type mismatch with decomposer
-        const tasks = await this.decomposer.decompose(mockFeature as any);
+        const mockFeatureDesc = this.featureToDescription(mockFeature as OrchestrationFeature);
+        const tasks = await this.decomposer.decompose(mockFeatureDesc);
         allTasks.push(...tasks);
       }
     } else {
@@ -471,8 +472,8 @@ export class NexusCoordinator implements INexusCoordinator {
       // TODO: In future, implement analyzeExistingCode() to understand current state
       // For now, use same decomposition but flag for evolution-aware handling
       for (const feature of features) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Feature type mismatch with decomposer
-        const tasks = await this.decomposer.decompose(feature as any);
+        const featureDesc = this.featureToDescription(feature);
+        const tasks = await this.decomposer.decompose(featureDesc);
 
         // Tag tasks as evolution-mode for downstream handling
         for (const task of tasks) {
@@ -485,6 +486,17 @@ export class NexusCoordinator implements INexusCoordinator {
     }
 
     return allTasks;
+  }
+
+  /**
+   * Convert a Feature object to a string description for decomposition
+   * Fix: TaskDecomposer expects string, not Feature object
+   */
+  private featureToDescription(feature: OrchestrationFeature): string {
+    let desc = `## Feature: ${feature.name}\n`;
+    desc += `Priority: ${feature.priority}\n`;
+    desc += `Description: ${feature.description}`;
+    return desc;
   }
 
   /**

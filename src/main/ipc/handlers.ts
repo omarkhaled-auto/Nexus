@@ -71,6 +71,10 @@ const state: OrchestrationState = {
 let checkpointManagerRef: CheckpointManager | null = null
 let humanReviewServiceRef: HumanReviewService | null = null
 
+// Database client reference for feature/task queries
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- DatabaseClient type import would cause circular dependency
+let databaseClientRef: { db: any } | null = null
+
 /**
  * Register checkpoint and review IPC handlers
  * Called after services are initialized
@@ -216,6 +220,16 @@ export function registerCheckpointReviewHandlers(
       await humanReviewServiceRef.rejectReview(reviewId, feedback)
     }
   )
+}
+
+/**
+ * Register database client for feature/task queries
+ * Called after DatabaseClient is initialized
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- DatabaseClient type import would cause circular dependency
+export function registerDatabaseHandlers(databaseClient: any): void {
+  databaseClientRef = databaseClient
+  console.log('[IPC] Database handlers registered')
 }
 
 /**
@@ -412,11 +426,44 @@ export function registerIpcHandlers(): void {
   )
 
   // Task operations
-  ipcMain.handle('tasks:list', (event) => {
+  ipcMain.handle('tasks:list', async (event) => {
     if (!validateSender(event)) {
       throw new Error('Unauthorized IPC sender')
     }
 
+    // Query database if available, otherwise fall back to in-memory state
+    if (databaseClientRef) {
+      try {
+        const { tasks } = await import('../../persistence/database/schema')
+
+        const dbTasks = databaseClientRef.db.select().from(tasks).all() as Array<{
+          id: string
+          featureId: string | null
+          name: string
+          description: string | null
+          status: string
+          estimatedMinutes: number | null
+        }>
+
+        // Map to UI format
+        const uiTasks = dbTasks.map(t => ({
+          id: t.id,
+          name: t.name,
+          status: t.status,
+          featureId: t.featureId,
+          description: t.description,
+          estimatedMinutes: t.estimatedMinutes
+        }))
+
+        console.log('[IPC] tasks:list returning', uiTasks.length, 'tasks from database')
+        return uiTasks
+      } catch (error) {
+        console.error('[IPC] tasks:list database query failed:', error)
+        // Fall back to in-memory state
+      }
+    }
+
+    console.log('[IPC] tasks:list returning', state.tasks.size, 'tasks from memory')
     return Array.from(state.tasks.values())
   })
 
@@ -821,11 +868,75 @@ export function registerIpcHandlers(): void {
    * List all features (for Kanban board)
    * @returns Array of features with their tasks
    */
-  ipcMain.handle('features:list', (event) => {
+  ipcMain.handle('features:list', async (event) => {
     if (!validateSender(event)) {
       throw new Error('Unauthorized IPC sender')
     }
 
+    // Query database if available, otherwise fall back to in-memory state
+    if (databaseClientRef) {
+      try {
+        // Import schema dynamically to avoid circular dependency
+        const { features, tasks } = await import('../../persistence/database/schema')
+
+        // Query all features from database
+        const dbFeatures = databaseClientRef.db.select().from(features).all() as Array<{
+          id: string
+          projectId: string
+          name: string
+          description: string | null
+          priority: string
+          status: string
+          complexity: string
+          estimatedTasks: number | null
+          completedTasks: number | null
+          createdAt: Date
+          updatedAt: Date
+        }>
+
+        // Query all tasks to associate with features
+        const dbTasks = databaseClientRef.db.select().from(tasks).all() as Array<{
+          id: string
+          featureId: string | null
+          name: string
+          status: string
+        }>
+
+        // Map to UI format with tasks
+        const uiFeatures: UIFeature[] = dbFeatures.map(f => {
+          const featureTasks = dbTasks
+            .filter(t => t.featureId === f.id)
+            .map(t => ({
+              id: t.id,
+              title: t.name,
+              status: t.status
+            }))
+
+          return {
+            id: f.id,
+            title: f.name,
+            description: f.description || '',
+            status: f.status,
+            priority: f.priority,
+            complexity: f.complexity,
+            progress: f.estimatedTasks && f.estimatedTasks > 0
+              ? Math.round((f.completedTasks || 0) / f.estimatedTasks * 100)
+              : 0,
+            tasks: featureTasks,
+            createdAt: f.createdAt instanceof Date ? f.createdAt.toISOString() : String(f.createdAt),
+            updatedAt: f.updatedAt instanceof Date ? f.updatedAt.toISOString() : String(f.updatedAt)
+          }
+        })
+
+        console.log('[IPC] features:list returning', uiFeatures.length, 'features from database')
+        return uiFeatures
+      } catch (error) {
+        console.error('[IPC] features:list database query failed:', error)
+        // Fall back to in-memory state
+      }
+    }
+
+    console.log('[IPC] features:list returning', state.features.size, 'features from memory')
     return Array.from(state.features.values())
   })
 
