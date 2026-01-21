@@ -14,6 +14,6 @@ export {
   forwardExecutionProgress,
 } from './handlers'
 
-export { registerInterviewHandlers } from './interview-handlers'
+export { registerInterviewHandlers, registerFallbackInterviewHandlers, removeInterviewHandlers } from './interview-handlers'
 
 export { registerSettingsHandlers } from './settingsHandlers'

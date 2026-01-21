@@ -16,6 +16,8 @@
  */
 
 import type { BrowserWindow } from 'electron';
+import { app } from 'electron';
+import { join } from 'path';
 import { EventBus, getEventBus } from '../orchestration/events/EventBus';
 import { NexusFactory, type NexusInstance, type NexusFactoryConfig } from '../NexusFactory';
 import { InterviewEngine, type InterviewEngineOptions } from '../interview/InterviewEngine';
@@ -183,8 +185,16 @@ export class NexusBootstrap {
 
     // 3. Initialize database client using static factory method
     const dbPath = `${this.config.dataDir}/nexus.db`;
+    // In development, migrations are in src/persistence/database/migrations
+    // In production, they should be bundled with the app
+    const isDev = !app.isPackaged;
+    const migrationsDir = isDev
+      ? join(process.cwd(), 'src', 'persistence', 'database', 'migrations')
+      : join(app.getAppPath(), 'migrations');
+
     this.databaseClient = DatabaseClient.create({
       path: dbPath,
+      migrationsDir,
     });
 
     // 4. Initialize RequirementsDB

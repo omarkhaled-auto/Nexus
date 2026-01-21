@@ -32,7 +32,11 @@
       "Bash(pnpm dev)",
       "Bash(pnpm dev:electron:*)",
       "Bash(tasklist:*)",
-      "Bash(findstr:*)"
+      "Bash(findstr:*)",
+      "Bash(git remote:*)",
+      "Bash(git remote add:*)",
+      "Bash(git push:*)",
+      "Bash(git tag:*)"
     ]
   }
 }

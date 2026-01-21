@@ -223,7 +223,9 @@ export function ChatPanel({ className }: ChatPanelProps): ReactElement {
       }
     } catch (err) {
       console.error('Failed to initialize interview session:', err);
-      setError('Failed to start interview session. Please try again.');
+      // Show the actual error message if available, otherwise show generic message
+      const errorMessage = err instanceof Error ? err.message : 'Failed to start interview session. Please try again.';
+      setError(errorMessage);
     } finally {
       isInitializing.current = false;
     }

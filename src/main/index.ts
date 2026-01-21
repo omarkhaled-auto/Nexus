@@ -20,7 +20,7 @@
 import { app, BrowserWindow, shell } from 'electron';
 import { join } from 'path';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
-import { registerIpcHandlers, registerCheckpointReviewHandlers, registerSettingsHandlers, registerInterviewHandlers, setupEventForwarding } from './ipc';
+import { registerIpcHandlers, registerCheckpointReviewHandlers, registerSettingsHandlers, registerInterviewHandlers, registerFallbackInterviewHandlers, removeInterviewHandlers, setupEventForwarding } from './ipc';
 import {
   initializeNexus,
   setMainWindow,
@@ -165,6 +165,10 @@ async function initializeNexusSystem(): Promise<void> {
     // Initialize Nexus via bootstrap
     nexusInstance = await initializeNexus(config);
 
+    // Remove fallback handlers before registering real ones
+    // (fallback handlers were registered early to handle race conditions)
+    removeInterviewHandlers();
+
     // Register interview handlers with the bootstrapped engine and session manager
     registerInterviewHandlers(
       nexusInstance.interviewEngine,
@@ -186,6 +190,12 @@ async function initializeNexusSystem(): Promise<void> {
     console.error('[Main] Failed to initialize Nexus system:', error);
     // Don't crash the app - allow it to run with limited functionality
     // User can still use the UI, just without backend functionality
+
+    // Fallback handlers were already registered early (before window creation)
+    // to handle race conditions. Update them with the specific error message.
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    removeInterviewHandlers();
+    registerFallbackInterviewHandlers(errorMessage);
   }
 }
 
@@ -197,6 +207,12 @@ void app.whenReady().then(async () => {
   // Register basic IPC handlers before Nexus initialization
   registerIpcHandlers();
   registerSettingsHandlers();
+
+  // Register fallback interview handlers BEFORE window creation
+  // This prevents "No handler registered" errors if the renderer tries to
+  // call interview APIs before Nexus finishes initializing.
+  // These will be replaced with real handlers when Nexus initializes successfully.
+  registerFallbackInterviewHandlers('Nexus is still initializing...');
 
   // Default open or close DevTools by F12 in development
   // and ignore CommandOrControl + R in production.

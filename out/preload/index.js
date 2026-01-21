@@ -450,6 +450,48 @@ const nexusAPI = {
    * @returns Promise that resolves on success
    */
   reviewReject: (reviewId, feedback) => electron.ipcRenderer.invoke("review:reject", reviewId, feedback),
+  /**
+   * Subscribe to review request events
+   * @param callback - Called when a review is requested
+   * @returns Unsubscribe function
+   */
+  onReviewRequested: (callback) => {
+    const handler = (_event, payload) => {
+      callback(payload);
+    };
+    electron.ipcRenderer.on("review:requested", handler);
+    return () => {
+      electron.ipcRenderer.removeListener("review:requested", handler);
+    };
+  },
+  /**
+   * Subscribe to review approved events
+   * @param callback - Called when a review is approved
+   * @returns Unsubscribe function
+   */
+  onReviewApproved: (callback) => {
+    const handler = (_event, payload) => {
+      callback(payload);
+    };
+    electron.ipcRenderer.on("review:approved", handler);
+    return () => {
+      electron.ipcRenderer.removeListener("review:approved", handler);
+    };
+  },
+  /**
+   * Subscribe to review rejected events
+   * @param callback - Called when a review is rejected
+   * @returns Unsubscribe function
+   */
+  onReviewRejected: (callback) => {
+    const handler = (_event, payload) => {
+      callback(payload);
+    };
+    electron.ipcRenderer.on("review:rejected", handler);
+    return () => {
+      electron.ipcRenderer.removeListener("review:rejected", handler);
+    };
+  },
   // ========================================
   // Event Subscriptions
   // ========================================

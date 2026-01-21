@@ -1,5 +1,5 @@
 import { app, session, ipcMain, BrowserWindow, safeStorage, shell } from "electron";
-import { join as join$1 } from "path";
+import { resolve, extname, posix, relative, basename, join as join$1 } from "path";
 import { webcrypto, randomFillSync, randomUUID } from "node:crypto";
 import Store from "electron-store";
 import { spawn } from "child_process";
@@ -15,6 +15,8 @@ import { sqliteTable, integer, text, real, blob } from "drizzle-orm/sqlite-core"
 import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import { migrate } from "drizzle-orm/better-sqlite3/migrator";
+import { readFile, stat } from "fs/promises";
+import fg from "fast-glob";
 import __cjs_mod__ from "node:module";
 const __filename = import.meta.filename;
 const __dirname = import.meta.dirname;
@@ -403,6 +405,123 @@ const state = {
   agents: /* @__PURE__ */ new Map(),
   features: /* @__PURE__ */ new Map()
 };
+let checkpointManagerRef = null;
+let humanReviewServiceRef = null;
+function registerCheckpointReviewHandlers(checkpointManager, humanReviewService) {
+  checkpointManagerRef = checkpointManager;
+  humanReviewServiceRef = humanReviewService;
+  ipcMain.handle("checkpoint:list", (event, projectId) => {
+    if (!validateSender$2(event)) {
+      throw new Error("Unauthorized IPC sender");
+    }
+    if (typeof projectId !== "string" || !projectId) {
+      throw new Error("Invalid projectId");
+    }
+    if (!checkpointManagerRef) {
+      throw new Error("CheckpointManager not initialized");
+    }
+    return checkpointManagerRef.listCheckpoints(projectId);
+  });
+  ipcMain.handle(
+    "checkpoint:create",
+    async (event, projectId, reason) => {
+      if (!validateSender$2(event)) {
+        throw new Error("Unauthorized IPC sender");
+      }
+      if (typeof projectId !== "string" || !projectId) {
+        throw new Error("Invalid projectId");
+      }
+      if (typeof reason !== "string" || !reason) {
+        throw new Error("Invalid reason");
+      }
+      if (!checkpointManagerRef) {
+        throw new Error("CheckpointManager not initialized");
+      }
+      return await checkpointManagerRef.createCheckpoint(projectId, reason);
+    }
+  );
+  ipcMain.handle(
+    "checkpoint:restore",
+    async (event, checkpointId, restoreGit) => {
+      if (!validateSender$2(event)) {
+        throw new Error("Unauthorized IPC sender");
+      }
+      if (typeof checkpointId !== "string" || !checkpointId) {
+        throw new Error("Invalid checkpointId");
+      }
+      if (!checkpointManagerRef) {
+        throw new Error("CheckpointManager not initialized");
+      }
+      await checkpointManagerRef.restoreCheckpoint(checkpointId, { restoreGit });
+    }
+  );
+  ipcMain.handle("checkpoint:delete", (event, checkpointId) => {
+    if (!validateSender$2(event)) {
+      throw new Error("Unauthorized IPC sender");
+    }
+    if (typeof checkpointId !== "string" || !checkpointId) {
+      throw new Error("Invalid checkpointId");
+    }
+    if (!checkpointManagerRef) {
+      throw new Error("CheckpointManager not initialized");
+    }
+    checkpointManagerRef.deleteCheckpoint(checkpointId);
+  });
+  ipcMain.handle("review:list", (event) => {
+    if (!validateSender$2(event)) {
+      throw new Error("Unauthorized IPC sender");
+    }
+    if (!humanReviewServiceRef) {
+      throw new Error("HumanReviewService not initialized");
+    }
+    return humanReviewServiceRef.listPendingReviews();
+  });
+  ipcMain.handle("review:get", (event, reviewId) => {
+    if (!validateSender$2(event)) {
+      throw new Error("Unauthorized IPC sender");
+    }
+    if (typeof reviewId !== "string" || !reviewId) {
+      throw new Error("Invalid reviewId");
+    }
+    if (!humanReviewServiceRef) {
+      throw new Error("HumanReviewService not initialized");
+    }
+    return humanReviewServiceRef.getReview(reviewId);
+  });
+  ipcMain.handle(
+    "review:approve",
+    async (event, reviewId, resolution) => {
+      if (!validateSender$2(event)) {
+        throw new Error("Unauthorized IPC sender");
+      }
+      if (typeof reviewId !== "string" || !reviewId) {
+        throw new Error("Invalid reviewId");
+      }
+      if (!humanReviewServiceRef) {
+        throw new Error("HumanReviewService not initialized");
+      }
+      await humanReviewServiceRef.approveReview(reviewId, resolution);
+    }
+  );
+  ipcMain.handle(
+    "review:reject",
+    async (event, reviewId, feedback) => {
+      if (!validateSender$2(event)) {
+        throw new Error("Unauthorized IPC sender");
+      }
+      if (typeof reviewId !== "string" || !reviewId) {
+        throw new Error("Invalid reviewId");
+      }
+      if (typeof feedback !== "string" || !feedback) {
+        throw new Error("Invalid feedback");
+      }
+      if (!humanReviewServiceRef) {
+        throw new Error("HumanReviewService not initialized");
+      }
+      await humanReviewServiceRef.rejectReview(reviewId, feedback);
+    }
+  );
+}
 function registerIpcHandlers() {
   ipcMain.handle("mode:genesis", (event) => {
     if (!validateSender$2(event)) {
@@ -1182,6 +1301,62 @@ function setupEventForwarding(mainWindow2) {
       metadata: {}
     });
   });
+  eventBus.on("system:checkpoint-restored", (event) => {
+    forwardTimelineEvent({
+      id: event.id,
+      type: "checkpoint_restored",
+      title: `Checkpoint restored: ${event.payload.checkpointId}`,
+      timestamp: event.timestamp,
+      metadata: {
+        checkpointId: event.payload.checkpointId,
+        projectId: event.payload.projectId
+      }
+    });
+  });
+  eventBus.on("review:requested", (event) => {
+    forwardTimelineEvent({
+      id: event.id,
+      type: "review_requested",
+      title: `Human review requested for task ${event.payload.taskId}`,
+      timestamp: event.timestamp,
+      metadata: {
+        reviewId: event.payload.reviewId,
+        taskId: event.payload.taskId,
+        reason: event.payload.reason
+      }
+    });
+    if (eventForwardingWindow && !eventForwardingWindow.isDestroyed()) {
+      eventForwardingWindow.webContents.send("review:requested", event.payload);
+    }
+  });
+  eventBus.on("review:approved", (event) => {
+    forwardTimelineEvent({
+      id: event.id,
+      type: "review_approved",
+      title: `Review approved: ${event.payload.reviewId}`,
+      timestamp: event.timestamp,
+      metadata: {
+        reviewId: event.payload.reviewId
+      }
+    });
+    if (eventForwardingWindow && !eventForwardingWindow.isDestroyed()) {
+      eventForwardingWindow.webContents.send("review:approved", event.payload);
+    }
+  });
+  eventBus.on("review:rejected", (event) => {
+    forwardTimelineEvent({
+      id: event.id,
+      type: "review_rejected",
+      title: `Review rejected: ${event.payload.reviewId}`,
+      timestamp: event.timestamp,
+      metadata: {
+        reviewId: event.payload.reviewId
+      }
+    });
+    if (eventForwardingWindow && !eventForwardingWindow.isDestroyed()) {
+      eventForwardingWindow.webContents.send("review:rejected", event.payload);
+    }
+  });
 }
 let eventForwardingWindow = null;
 function forwardAgentMetrics(agentMetrics) {
@@ -1206,6 +1381,14 @@ function mapUIStatusToCoreStatus(status) {
     done: "completed"
   };
   return map[status] || "pending";
+}
+class NexusNotInitializedError extends Error {
+  constructor(initError) {
+    const baseMessage = "Interview system is not available. ";
+    const hint = initError ? `Initialization failed: ${initError}. Please check Settings to configure your LLM provider (Claude CLI or API key).` : "Please configure your LLM provider in Settings (Claude CLI or API key).";
+    super(baseMessage + hint);
+    this.name = "NexusNotInitializedError";
+  }
 }
 function validateSender$1(event) {
   const url = event.sender.getURL();
@@ -1329,6 +1512,74 @@ function registerInterviewHandlers(interviewEngine, sessionManager) {
       return interviewEngine.getInitialGreeting();
     }
   );
+}
+const INTERVIEW_CHANNELS = [
+  "interview:start",
+  "interview:sendMessage",
+  "interview:getSession",
+  "interview:resume",
+  "interview:resumeByProject",
+  "interview:end",
+  "interview:pause",
+  "interview:getGreeting"
+];
+function removeInterviewHandlers() {
+  for (const channel of INTERVIEW_CHANNELS) {
+    ipcMain.removeHandler(channel);
+  }
+  console.log("[InterviewHandlers] Removed existing interview handlers");
+}
+function registerFallbackInterviewHandlers(initError) {
+  const error = new NexusNotInitializedError(initError);
+  ipcMain.handle(
+    "interview:start",
+    () => {
+      throw error;
+    }
+  );
+  ipcMain.handle(
+    "interview:sendMessage",
+    () => {
+      throw error;
+    }
+  );
+  ipcMain.handle(
+    "interview:getSession",
+    () => {
+      throw error;
+    }
+  );
+  ipcMain.handle(
+    "interview:resume",
+    () => {
+      throw error;
+    }
+  );
+  ipcMain.handle(
+    "interview:resumeByProject",
+    () => {
+      throw error;
+    }
+  );
+  ipcMain.handle(
+    "interview:end",
+    () => {
+      throw error;
+    }
+  );
+  ipcMain.handle(
+    "interview:pause",
+    () => {
+      throw error;
+    }
+  );
+  ipcMain.handle(
+    "interview:getGreeting",
+    () => {
+      throw error;
+    }
+  );
+  console.log("[InterviewHandlers] Registered fallback handlers (Nexus not initialized)");
 }
 const DEFAULT_CLAUDE_MODEL = "claude-sonnet-4-5-20250929";
 const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";
@@ -2173,7 +2424,7 @@ class ClaudeCodeCLIClient {
    * Execute the Claude CLI command.
    */
   execute(args) {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve2, reject) => {
       this.config.logger?.debug("Executing Claude CLI", { args: args.join(" ") });
       const child = spawn(this.config.claudePath, args, {
         cwd: this.config.workingDirectory,
@@ -2198,7 +2449,7 @@ class ClaudeCodeCLIClient {
         clearTimeout(timeout);
         if (code === 0) {
           this.config.logger?.debug("Claude CLI completed successfully");
-          resolve(stdout);
+          resolve2(stdout);
         } else {
           reject(new CLIError(`Claude CLI exited with code ${String(code)}: ${stderr}`, code));
         }
@@ -2323,7 +2574,7 @@ ${results}`;
    * Sleep utility for retry delays.
    */
   sleep(ms) {
-    return new Promise((resolve) => setTimeout(resolve, ms));
+    return new Promise((resolve2) => setTimeout(resolve2, ms));
   }
 }
 const DEFAULT_GEMINI_CLI_CONFIG = {
@@ -2608,7 +2859,7 @@ ${results}`;
    * Execute the Gemini CLI command.
    */
   execute(args) {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve2, reject) => {
       this.config.logger?.debug("Executing Gemini CLI", { args: args.join(" ") });
       const child = spawn(this.config.cliPath, args, {
         cwd: this.config.workingDirectory,
@@ -2633,7 +2884,7 @@ ${results}`;
         clearTimeout(timeout);
         if (code === 0) {
           this.config.logger?.debug("Gemini CLI completed successfully");
-          resolve(stdout);
+          resolve2(stdout);
         } else {
           const error = new GeminiCLIError(
             `Gemini CLI exited with code ${String(code)}: ${stderr}`,
@@ -2670,11 +2921,11 @@ ${results}`;
     child.stderr?.on("data", (data) => {
       stderr += data.toString();
     });
-    const processEndPromise = new Promise((resolve) => {
+    const processEndPromise = new Promise((resolve2) => {
       child.on("close", (code) => {
         processEnded = true;
         exitCode = code;
-        resolve();
+        resolve2();
       });
       child.on("error", (error) => {
         processEnded = true;
@@ -2762,7 +3013,7 @@ ${results}`;
    * Sleep utility for retry delays.
    */
   sleep(ms) {
-    return new Promise((resolve) => setTimeout(resolve, ms));
+    return new Promise((resolve2) => setTimeout(resolve2, ms));
   }
 }
 function validateSender(event) {
@@ -6354,7 +6605,7 @@ class BuildRunner {
    */
   async run(workingDir) {
     const startTime = Date.now();
-    return new Promise((resolve) => {
+    return new Promise((resolve2) => {
       const args = this.buildTscArgs();
       const proc = spawn("npx", args, {
         cwd: workingDir,
@@ -6373,7 +6624,7 @@ class BuildRunner {
         const output = stdout + stderr;
         const errors = this.parseErrors(output);
         const warnings = this.parseWarnings(output);
-        resolve({
+        resolve2({
           success: code === 0,
           errors,
           warnings,
@@ -6381,7 +6632,7 @@ class BuildRunner {
         });
       });
       proc.on("error", (err) => {
-        resolve({
+        resolve2({
           success: false,
           errors: [
             this.createErrorEntry(
@@ -6540,7 +6791,7 @@ class LintRunner {
    */
   async run(workingDir, fix) {
     const shouldFix = fix ?? this.config.autoFix;
-    return new Promise((resolve) => {
+    return new Promise((resolve2) => {
       const args = this.buildEslintArgs(shouldFix);
       const proc = spawn("npx", args, {
         cwd: workingDir,
@@ -6558,7 +6809,7 @@ class LintRunner {
       proc.on("close", (code) => {
         const parsed = this.parseJsonOutput(stdout);
         const fixable = parsed.fixableErrors + parsed.fixableWarnings;
-        resolve({
+        resolve2({
           success: parsed.errors.length === 0,
           errors: parsed.errors,
           warnings: parsed.warnings,
@@ -6566,7 +6817,7 @@ class LintRunner {
         });
       });
       proc.on("error", (err) => {
-        resolve({
+        resolve2({
           success: false,
           errors: [
             this.createErrorEntry(
@@ -6785,7 +7036,7 @@ class TestRunner {
    */
   async executeVitest(workingDir, files) {
     const startTime = Date.now();
-    return new Promise((resolve) => {
+    return new Promise((resolve2) => {
       const args = this.buildVitestArgs(files);
       const proc = spawn("npx", args, {
         cwd: workingDir,
@@ -6803,7 +7054,7 @@ class TestRunner {
       proc.on("close", (code) => {
         const parsed = this.parseOutput(stdout, stderr);
         const duration = Date.now() - startTime;
-        resolve({
+        resolve2({
           success: code === 0 && parsed.failed === 0,
           passed: parsed.passed,
           failed: parsed.failed,
@@ -6813,7 +7064,7 @@ class TestRunner {
         });
       });
       proc.on("error", (err) => {
-        resolve({
+        resolve2({
           success: false,
           passed: 0,
           failed: 1,
@@ -7880,7 +8131,7 @@ class NexusCoordinator {
     }
     this.pauseRequested = true;
     this.pauseReason = reason;
-    await new Promise((resolve) => setTimeout(resolve, 10));
+    await new Promise((resolve2) => setTimeout(resolve2, 10));
     this.state = "paused";
     this.emitEvent("coordinator:paused", { reason });
   }
@@ -7908,7 +8159,7 @@ class NexusCoordinator {
     if (this.orchestrationLoop) {
       await Promise.race([
         this.orchestrationLoop,
-        new Promise((resolve) => setTimeout(resolve, 1e3))
+        new Promise((resolve2) => setTimeout(resolve2, 1e3))
       ]);
       this.orchestrationLoop = void 0;
     }
@@ -8140,7 +8391,7 @@ class NexusCoordinator {
       if (this.pauseRequested) {
         await Promise.all(runningTasks.values());
         while (this.pauseRequested && !this.stopRequested) {
-          await new Promise((resolve) => setTimeout(resolve, 50));
+          await new Promise((resolve2) => setTimeout(resolve2, 50));
         }
         if (this.stopRequested) break;
       }
@@ -8179,7 +8430,7 @@ class NexusCoordinator {
           runningTasks.delete(dequeuedTask.id);
         });
       }
-      await new Promise((resolve) => setTimeout(resolve, 50));
+      await new Promise((resolve2) => setTimeout(resolve2, 50));
     }
     await Promise.all(runningTasks.values());
   }
@@ -8519,7 +8770,7 @@ class WorktreeManager {
             throw new WorktreeError("Failed to acquire registry lock");
           }
         }
-        await new Promise((resolve) => setTimeout(resolve, LOCK_RETRY_INTERVAL));
+        await new Promise((resolve2) => setTimeout(resolve2, LOCK_RETRY_INTERVAL));
       }
     }
   }
@@ -9400,6 +9651,46 @@ const INITIAL_GREETING = `Hello! I'm here to help you define the requirements fo
 Let's start with the big picture: What are you building, and what problem does it solve?
 
 Feel free to describe your vision in your own words - I'll ask follow-up questions to make sure I understand everything correctly.`;
+const EVOLUTION_INITIAL_GREETING = `Hello! I see you want to enhance an existing project.
+
+I've analyzed your codebase and have context about its structure. What changes or features would you like to add?
+
+You can describe:
+- New features to add
+- Existing functionality to modify
+- Bugs to fix
+- Performance improvements
+- Refactoring goals
+
+I'll help translate your ideas into actionable requirements that work with your existing code.`;
+function getEvolutionSystemPrompt(repoMapContext) {
+  return `${INTERVIEWER_SYSTEM_PROMPT}
+
+---
+
+EVOLUTION MODE: You are enhancing an existing project, not creating one from scratch.
+
+EXISTING CODEBASE CONTEXT:
+${repoMapContext}
+
+Additional Evolution Mode Guidelines:
+- Reference existing files, functions, and patterns when discussing changes
+- Consider backward compatibility with existing code
+- Identify potential conflicts with current implementation
+- Suggest integration points based on the existing architecture
+- Extract requirements that account for existing functionality
+- Mark requirements that modify existing code vs add new code
+
+When extracting requirements in Evolution mode, add this field:
+<modification_type>add|modify|extend|refactor|fix</modification_type>
+
+Where:
+- add: Completely new functionality
+- modify: Changes to existing behavior
+- extend: Building on existing features
+- refactor: Code improvement without behavior change
+- fix: Bug fixes or corrections`;
+}
 function getGapSuggestionPrompt(gaps) {
   if (gaps.length === 0) return "";
   const topGaps = gaps.slice(0, 3);
@@ -9610,14 +9901,22 @@ class InterviewEngine {
    * Start a new interview session
    *
    * @param projectId The project to conduct interview for
+   * @param options Optional session configuration (mode, evolution context)
    * @returns The new interview session
    */
-  startSession(projectId) {
+  startSession(projectId, options) {
     const now = /* @__PURE__ */ new Date();
+    const mode = options?.mode ?? "genesis";
+    const evolutionContext = options?.evolutionContext;
+    if (mode === "evolution" && !evolutionContext) {
+      this.logger?.warn("Evolution mode started without context", { projectId });
+    }
     const session2 = {
       id: nanoid(),
       projectId,
       status: "active",
+      mode,
+      evolutionContext,
       messages: [],
       extractedRequirements: [],
       exploredAreas: [],
@@ -9627,13 +9926,15 @@ class InterviewEngine {
     this.sessions.set(session2.id, session2);
     this.logger?.info("Started interview session", {
       sessionId: session2.id,
-      projectId
+      projectId,
+      mode,
+      hasEvolutionContext: !!evolutionContext
     });
     void this.eventBus.emit("interview:started", {
       projectId,
       projectName: projectId,
       // Will be resolved from DB if needed
-      mode: "genesis"
+      mode
     });
     return session2;
   }
@@ -9809,16 +10110,21 @@ class InterviewEngine {
   }
   /**
    * Get the initial greeting for a new session
+   * @param mode The interview mode (genesis or evolution)
    */
-  getInitialGreeting() {
-    return INITIAL_GREETING;
+  getInitialGreeting(mode = "genesis") {
+    return mode === "evolution" ? EVOLUTION_INITIAL_GREETING : INITIAL_GREETING;
   }
   /**
    * Build messages array for LLM call
    */
   buildLLMMessages(session2) {
+    let systemPrompt = INTERVIEWER_SYSTEM_PROMPT;
+    if (session2.mode === "evolution" && session2.evolutionContext) {
+      systemPrompt = getEvolutionSystemPrompt(session2.evolutionContext.repoMapContext);
+    }
     const messages = [
-      { role: "system", content: INTERVIEWER_SYSTEM_PROMPT }
+      { role: "system", content: systemPrompt }
     ];
     for (const msg of session2.messages) {
       messages.push({
@@ -10344,6 +10650,8 @@ class InterviewSessionManager {
       id: session2.id,
       projectId: session2.projectId,
       status: session2.status,
+      mode: session2.mode,
+      evolutionContext: session2.evolutionContext,
       messages: session2.messages.map((msg) => ({
         id: msg.id,
         role: msg.role,
@@ -10366,6 +10674,9 @@ class InterviewSessionManager {
       id: parsed.id,
       projectId: parsed.projectId,
       status: parsed.status,
+      mode: parsed.mode ?? "genesis",
+      // Default to genesis for backward compatibility
+      evolutionContext: parsed.evolutionContext,
       messages: parsed.messages.map((msg) => ({
         id: msg.id,
         role: msg.role,
@@ -11032,6 +11343,3080 @@ class CheckpointManager {
     return toDelete.length;
   }
 }
+class ReviewNotFoundError extends Error {
+  reviewId;
+  constructor(reviewId) {
+    super(`Review not found: ${reviewId}`);
+    this.name = "ReviewNotFoundError";
+    this.reviewId = reviewId;
+    Object.setPrototypeOf(this, new.target.prototype);
+  }
+}
+class HumanReviewService {
+  db;
+  eventBus;
+  checkpointManager;
+  logger;
+  /** In-memory cache of pending reviews */
+  pendingReviews = /* @__PURE__ */ new Map();
+  constructor(options) {
+    this.db = options.db;
+    this.eventBus = options.eventBus;
+    this.checkpointManager = options.checkpointManager;
+    this.logger = options.logger;
+    this.loadPendingReviews();
+  }
+  /**
+   * Log a message if logger is available
+   */
+  log(level, message, ...args) {
+    if (this.logger) {
+      this.logger[level](message, ...args);
+    }
+  }
+  /**
+   * Load pending reviews from database into memory cache
+   */
+  loadPendingReviews() {
+    this.log("debug", "Loading pending reviews from database");
+    const rows = this.db.db.select().from(sessions).where(
+      and(
+        eq(sessions.type, "review"),
+        eq(sessions.status, "pending")
+      )
+    ).all();
+    for (const row of rows) {
+      if (row.data) {
+        try {
+          const review = this.deserializeReview(row.data);
+          if (review.status === "pending") {
+            this.pendingReviews.set(review.id, review);
+          }
+        } catch (err) {
+          this.log("warn", "Failed to deserialize review", {
+            sessionId: row.id,
+            error: err instanceof Error ? err.message : "Unknown error"
+          });
+        }
+      }
+    }
+    this.log("info", `Loaded ${String(this.pendingReviews.size)} pending reviews`);
+  }
+  /**
+   * Create a new review request
+   */
+  async requestReview(options) {
+    const reviewId = v4();
+    const now = /* @__PURE__ */ new Date();
+    const review = {
+      id: reviewId,
+      taskId: options.taskId,
+      projectId: options.projectId,
+      reason: options.reason,
+      context: options.context ?? {},
+      status: "pending",
+      createdAt: now
+    };
+    const serialized = this.serializeReview(review);
+    this.db.db.insert(sessions).values({
+      id: reviewId,
+      projectId: options.projectId,
+      type: "review",
+      status: "pending",
+      data: serialized,
+      startedAt: now
+    }).run();
+    this.log("info", "Created review request", {
+      reviewId,
+      taskId: options.taskId,
+      reason: options.reason
+    });
+    if (this.checkpointManager) {
+      try {
+        await this.checkpointManager.createCheckpoint(
+          options.projectId,
+          `Review requested: ${options.reason}`
+        );
+        this.log("debug", "Created safety checkpoint for review", { reviewId });
+      } catch (err) {
+        this.log("warn", "Failed to create safety checkpoint", {
+          reviewId,
+          error: err instanceof Error ? err.message : "Unknown error"
+        });
+      }
+    }
+    this.pendingReviews.set(reviewId, review);
+    void this.eventBus.emit(
+      "review:requested",
+      {
+        reviewId,
+        taskId: options.taskId,
+        reason: options.reason,
+        context: review.context
+      },
+      { source: "HumanReviewService" }
+    );
+    return review;
+  }
+  /**
+   * Approve a pending review
+   */
+  approveReview(reviewId, resolution) {
+    const review = this.pendingReviews.get(reviewId);
+    if (!review) {
+      return Promise.reject(new ReviewNotFoundError(reviewId));
+    }
+    const now = /* @__PURE__ */ new Date();
+    review.status = "approved";
+    review.resolvedAt = now;
+    review.resolution = resolution;
+    const serialized = this.serializeReview(review);
+    this.db.db.update(sessions).set({
+      status: "approved",
+      data: serialized,
+      endedAt: now
+    }).where(eq(sessions.id, reviewId)).run();
+    this.log("info", "Review approved", { reviewId, resolution });
+    this.pendingReviews.delete(reviewId);
+    void this.eventBus.emit(
+      "review:approved",
+      {
+        reviewId,
+        resolution
+      },
+      { source: "HumanReviewService" }
+    );
+    return Promise.resolve();
+  }
+  /**
+   * Reject a pending review
+   */
+  rejectReview(reviewId, feedback) {
+    const review = this.pendingReviews.get(reviewId);
+    if (!review) {
+      return Promise.reject(new ReviewNotFoundError(reviewId));
+    }
+    const now = /* @__PURE__ */ new Date();
+    review.status = "rejected";
+    review.resolvedAt = now;
+    review.resolution = feedback;
+    const serialized = this.serializeReview(review);
+    this.db.db.update(sessions).set({
+      status: "rejected",
+      data: serialized,
+      endedAt: now
+    }).where(eq(sessions.id, reviewId)).run();
+    this.log("info", "Review rejected", { reviewId, feedback });
+    this.pendingReviews.delete(reviewId);
+    void this.eventBus.emit(
+      "review:rejected",
+      {
+        reviewId,
+        feedback
+      },
+      { source: "HumanReviewService" }
+    );
+    return Promise.resolve();
+  }
+  /**
+   * List all pending reviews
+   */
+  listPendingReviews() {
+    return Array.from(this.pendingReviews.values());
+  }
+  /**
+   * Get a specific review by ID
+   */
+  getReview(reviewId) {
+    return this.pendingReviews.get(reviewId);
+  }
+  /**
+   * Serialize a review for database storage
+   */
+  serializeReview(review) {
+    const serialized = {
+      id: review.id,
+      taskId: review.taskId,
+      projectId: review.projectId,
+      reason: review.reason,
+      context: review.context,
+      status: review.status,
+      createdAt: review.createdAt.toISOString(),
+      resolvedAt: review.resolvedAt?.toISOString(),
+      resolution: review.resolution
+    };
+    return JSON.stringify(serialized);
+  }
+  /**
+   * Deserialize a review from database storage
+   */
+  deserializeReview(data) {
+    const parsed = JSON.parse(data);
+    return {
+      id: parsed.id,
+      taskId: parsed.taskId,
+      projectId: parsed.projectId,
+      reason: parsed.reason,
+      context: parsed.context,
+      status: parsed.status,
+      createdAt: new Date(parsed.createdAt),
+      resolvedAt: parsed.resolvedAt ? new Date(parsed.resolvedAt) : void 0,
+      resolution: parsed.resolution
+    };
+  }
+}
+const DEFAULT_REPO_MAP_OPTIONS = {
+  includePatterns: ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx"],
+  excludePatterns: [
+    "node_modules/**",
+    "dist/**",
+    "build/**",
+    ".git/**",
+    "coverage/**",
+    "**/*.test.*",
+    "**/*.spec.*",
+    "**/*.d.ts"
+  ],
+  maxFiles: 500,
+  maxTokens: 4e3,
+  languages: ["typescript", "javascript"],
+  extractDocs: true,
+  countReferences: true,
+  basePath: ""
+};
+const DEFAULT_FORMAT_OPTIONS = {
+  maxTokens: 4e3,
+  includeSignatures: true,
+  includeDocstrings: false,
+  rankByReferences: true,
+  groupByFile: true,
+  includeDependencies: false,
+  style: "compact"
+};
+class TreeSitterParser {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  Parser = null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  languages = /* @__PURE__ */ new Map();
+  initialized = false;
+  wasmBasePath;
+  /**
+   * Create a new TreeSitterParser
+   * @param wasmBasePath - Optional base path for WASM files (defaults to node_modules)
+   */
+  constructor(wasmBasePath) {
+    const defaultPath = resolve(process.cwd(), "node_modules");
+    this.wasmBasePath = wasmBasePath || defaultPath;
+  }
+  /**
+   * Initialize the parser by loading WASM modules
+   */
+  async initialize() {
+    if (this.initialized) return;
+    try {
+      const treeSitterModule = await import("web-tree-sitter");
+      const TreeSitter = treeSitterModule.default || treeSitterModule;
+      const treeSitterWasmPath = resolve(
+        this.wasmBasePath,
+        "web-tree-sitter",
+        "tree-sitter.wasm"
+      );
+      await TreeSitter.init({
+        locateFile: () => treeSitterWasmPath
+      });
+      this.Parser = TreeSitter;
+      const tsWasmPath = resolve(
+        this.wasmBasePath,
+        "tree-sitter-typescript",
+        "tree-sitter-typescript.wasm"
+      );
+      const typescriptLanguage = await TreeSitter.Language.load(tsWasmPath);
+      this.languages.set("typescript", typescriptLanguage);
+      const jsWasmPath = resolve(
+        this.wasmBasePath,
+        "tree-sitter-javascript",
+        "tree-sitter-javascript.wasm"
+      );
+      const javascriptLanguage = await TreeSitter.Language.load(jsWasmPath);
+      this.languages.set("javascript", javascriptLanguage);
+      this.initialized = true;
+    } catch (error) {
+      throw new Error(
+        `Failed to initialize TreeSitterParser: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+  }
+  /**
+   * Check if the parser is ready
+   */
+  isReady() {
+    return this.initialized;
+  }
+  /**
+   * Get list of supported languages
+   */
+  getSupportedLanguages() {
+    return ["typescript", "javascript"];
+  }
+  /**
+   * Detect language from file extension
+   */
+  detectLanguage(filePath) {
+    const ext = extname(filePath).toLowerCase();
+    switch (ext) {
+      case ".ts":
+      case ".tsx":
+      case ".mts":
+        return "typescript";
+      case ".js":
+      case ".jsx":
+      case ".mjs":
+        return "javascript";
+      default:
+        return null;
+    }
+  }
+  /**
+   * Parse a single file
+   */
+  async parseFile(filePath, content) {
+    const startTime = Date.now();
+    const language = this.detectLanguage(filePath);
+    if (!language) {
+      return {
+        success: false,
+        file: filePath,
+        symbols: [],
+        imports: [],
+        exports: [],
+        errors: [
+          {
+            message: `Unsupported file type: ${extname(filePath)}`,
+            line: 1,
+            column: 0
+          }
+        ],
+        parseTime: Date.now() - startTime
+      };
+    }
+    if (!this.initialized || !this.Parser) {
+      await this.initialize();
+    }
+    const languageModule = this.languages.get(language);
+    if (!languageModule) {
+      return {
+        success: false,
+        file: filePath,
+        symbols: [],
+        imports: [],
+        exports: [],
+        errors: [{ message: `Language not loaded: ${language}`, line: 1, column: 0 }],
+        parseTime: Date.now() - startTime
+      };
+    }
+    try {
+      const parser = new this.Parser();
+      parser.setLanguage(languageModule);
+      const tree = parser.parse(content);
+      const rootNode = tree.rootNode;
+      const symbols = this.extractSymbols(rootNode, filePath);
+      const imports = this.extractImports(rootNode);
+      const exports$1 = this.extractExports(rootNode);
+      const errors = this.findErrors(rootNode);
+      return {
+        success: errors.length === 0,
+        file: filePath,
+        symbols,
+        imports,
+        exports: exports$1,
+        errors,
+        parseTime: Date.now() - startTime
+      };
+    } catch (error) {
+      return {
+        success: false,
+        file: filePath,
+        symbols: [],
+        imports: [],
+        exports: [],
+        errors: [
+          {
+            message: `Parse error: ${error instanceof Error ? error.message : String(error)}`,
+            line: 1,
+            column: 0
+          }
+        ],
+        parseTime: Date.now() - startTime
+      };
+    }
+  }
+  /**
+   * Parse multiple files
+   */
+  async parseFiles(files) {
+    const results = [];
+    for (const file of files) {
+      const result = await this.parseFile(file.path, file.content);
+      results.push(result);
+    }
+    return results;
+  }
+  // ============================================================================
+  // Symbol Extraction
+  // ============================================================================
+  /**
+   * Extract symbols from AST
+   */
+  extractSymbols(rootNode, filePath, parentId) {
+    const symbols = [];
+    this.walkNode(rootNode, filePath, symbols, parentId);
+    return symbols;
+  }
+  /**
+   * Walk AST nodes recursively
+   */
+  walkNode(node, filePath, symbols, parentId) {
+    const symbol = this.nodeToSymbol(node, filePath, parentId);
+    if (symbol) {
+      symbols.push(symbol);
+      if (symbol.kind === "class" || symbol.kind === "interface" || symbol.kind === "enum") {
+        for (const child of node.namedChildren) {
+          this.walkNode(child, filePath, symbols, symbol.id);
+        }
+        return;
+      }
+    }
+    for (const child of node.namedChildren) {
+      this.walkNode(child, filePath, symbols, parentId);
+    }
+  }
+  /**
+   * Convert AST node to SymbolEntry if applicable
+   */
+  nodeToSymbol(node, filePath, parentId) {
+    const kind = this.getSymbolKind(node);
+    if (!kind) return null;
+    const name = this.getSymbolName(node, kind);
+    if (!name) return null;
+    const line = node.startPosition.row + 1;
+    const endLine = node.endPosition.row + 1;
+    const column = node.startPosition.column;
+    const id = `${filePath}#${name}#${line}`;
+    const modifiers = this.extractModifiers(node);
+    const exported = this.isExported(node);
+    const signature = this.buildSignature(node, kind, name);
+    const documentation = this.extractDocumentation(node);
+    return {
+      id,
+      name,
+      kind,
+      file: filePath,
+      line,
+      endLine,
+      column,
+      signature,
+      documentation,
+      references: 0,
+      exported,
+      parentId,
+      modifiers
+    };
+  }
+  /**
+   * Get symbol kind from node type
+   */
+  getSymbolKind(node) {
+    switch (node.type) {
+      case "function_declaration":
+      case "function":
+        return "function";
+      case "arrow_function":
+        if (node.parent?.type === "variable_declarator" || node.parent?.type === "lexical_declaration") {
+          return null;
+        }
+        return null;
+      case "method_definition":
+      case "method_signature":
+        return "method";
+      case "class_declaration":
+      case "class":
+        return "class";
+      case "interface_declaration":
+        return "interface";
+      case "type_alias_declaration":
+        return "type";
+      case "enum_declaration":
+        return "enum";
+      case "enum_assignment":
+        return "enum_member";
+      case "variable_declarator": {
+        const init = node.childForFieldName("value");
+        if (init?.type === "arrow_function" || init?.type === "function") {
+          return "function";
+        }
+        const declaration = node.parent;
+        if (declaration?.type === "lexical_declaration") {
+          const keyword = declaration.children[0]?.text;
+          if (keyword === "const") {
+            return "constant";
+          }
+        }
+        return "variable";
+      }
+      case "property_signature":
+      case "property_definition":
+      case "public_field_definition":
+        return "property";
+      case "namespace_declaration":
+      case "internal_module":
+        return "namespace";
+      case "module":
+        return "module";
+      default:
+        return null;
+    }
+  }
+  /**
+   * Get symbol name from node
+   */
+  getSymbolName(node, _kind) {
+    const nameNode = node.childForFieldName("name");
+    if (nameNode) {
+      return nameNode.text;
+    }
+    if (node.type === "variable_declarator") {
+      const name = node.childForFieldName("name");
+      if (name) return name.text;
+      if (node.namedChildren[0]?.type === "identifier") {
+        return node.namedChildren[0].text;
+      }
+    }
+    if (node.type === "method_definition" || node.type === "method_signature") {
+      const propName = node.childForFieldName("name");
+      if (propName) return propName.text;
+    }
+    if (node.type === "property_signature" || node.type === "property_definition" || node.type === "public_field_definition") {
+      const propName = node.childForFieldName("name");
+      if (propName) return propName.text;
+      if (node.namedChildren[0]) {
+        return node.namedChildren[0].text;
+      }
+    }
+    if (node.type === "enum_assignment") {
+      if (node.namedChildren[0]) {
+        return node.namedChildren[0].text;
+      }
+    }
+    return null;
+  }
+  /**
+   * Extract modifiers from node
+   */
+  extractModifiers(node) {
+    const modifiers = [];
+    if (this.isExported(node)) {
+      modifiers.push("export");
+    }
+    for (const child of node.children) {
+      switch (child.text) {
+        case "async":
+          modifiers.push("async");
+          break;
+        case "static":
+          modifiers.push("static");
+          break;
+        case "private":
+          modifiers.push("private");
+          break;
+        case "protected":
+          modifiers.push("protected");
+          break;
+        case "public":
+          modifiers.push("public");
+          break;
+        case "readonly":
+          modifiers.push("readonly");
+          break;
+        case "abstract":
+          modifiers.push("abstract");
+          break;
+        case "override":
+          modifiers.push("override");
+          break;
+        case "default":
+          modifiers.push("default");
+          break;
+      }
+    }
+    const accessibility = node.childForFieldName("accessibility");
+    if (accessibility) {
+      if (accessibility.text === "private" || accessibility.text === "protected" || accessibility.text === "public") {
+        if (!modifiers.includes(accessibility.text)) {
+          modifiers.push(accessibility.text);
+        }
+      }
+    }
+    return modifiers;
+  }
+  /**
+   * Check if node is exported
+   */
+  isExported(node) {
+    const parent = node.parent;
+    if (parent?.type === "export_statement") {
+      return true;
+    }
+    if (node.children[0]?.text === "export") {
+      return true;
+    }
+    if (node.type === "variable_declarator") {
+      const declaration = node.parent;
+      if (declaration?.parent?.type === "export_statement") {
+        return true;
+      }
+    }
+    return false;
+  }
+  /**
+   * Build signature string for symbol
+   */
+  buildSignature(node, kind, name) {
+    switch (kind) {
+      case "function": {
+        const params = this.extractParameters(node);
+        const returnType = this.extractReturnType(node);
+        return `${name}(${params})${returnType ? `: ${returnType}` : ""}`;
+      }
+      case "method": {
+        const params = this.extractParameters(node);
+        const returnType = this.extractReturnType(node);
+        return `${name}(${params})${returnType ? `: ${returnType}` : ""}`;
+      }
+      case "class": {
+        const heritage = this.extractClassHeritage(node);
+        return `class ${name}${heritage}`;
+      }
+      case "interface": {
+        const extends_ = this.extractInterfaceExtends(node);
+        return `interface ${name}${extends_}`;
+      }
+      case "type": {
+        const typeValue = this.extractTypeValue(node);
+        return `type ${name} = ${typeValue}`;
+      }
+      case "enum":
+        return `enum ${name}`;
+      case "constant":
+      case "variable": {
+        const type = this.extractVariableType(node);
+        return `${kind === "constant" ? "const" : "let"} ${name}${type ? `: ${type}` : ""}`;
+      }
+      case "property": {
+        const type = this.extractPropertyType(node);
+        return `${name}${type ? `: ${type}` : ""}`;
+      }
+      default:
+        return name;
+    }
+  }
+  /**
+   * Extract function/method parameters
+   */
+  extractParameters(node) {
+    const params = node.childForFieldName("parameters");
+    if (params) {
+      const text2 = params.text;
+      return text2.slice(1, -1);
+    }
+    return "";
+  }
+  /**
+   * Extract return type annotation
+   */
+  extractReturnType(node) {
+    const returnType = node.childForFieldName("return_type");
+    if (returnType) {
+      return returnType.text.replace(/^:\s*/, "");
+    }
+    return null;
+  }
+  /**
+   * Extract class heritage (extends/implements)
+   */
+  extractClassHeritage(node) {
+    const parts = [];
+    const heritage = node.childForFieldName("heritage");
+    if (heritage) {
+      for (const child of heritage.namedChildren) {
+        if (child.type === "extends_clause") {
+          parts.push(` extends ${child.namedChildren.map((n) => n.text).join(", ")}`);
+        }
+        if (child.type === "implements_clause") {
+          parts.push(` implements ${child.namedChildren.map((n) => n.text).join(", ")}`);
+        }
+      }
+    }
+    for (const child of node.namedChildren) {
+      if (child.type === "class_heritage") {
+        for (const clause of child.namedChildren) {
+          if (clause.type === "extends_clause") {
+            const types = clause.namedChildren.filter((n) => n.type !== "extends").map((n) => n.text);
+            if (types.length) parts.push(` extends ${types.join(", ")}`);
+          }
+          if (clause.type === "implements_clause") {
+            const types = clause.namedChildren.filter((n) => n.type !== "implements").map((n) => n.text);
+            if (types.length) parts.push(` implements ${types.join(", ")}`);
+          }
+        }
+      }
+    }
+    return parts.join("");
+  }
+  /**
+   * Extract interface extends clause
+   */
+  extractInterfaceExtends(node) {
+    for (const child of node.namedChildren) {
+      if (child.type === "extends_type_clause" || child.type === "extends_clause") {
+        const types = child.namedChildren.map((n) => n.text);
+        return types.length ? ` extends ${types.join(", ")}` : "";
+      }
+    }
+    return "";
+  }
+  /**
+   * Extract type alias value (truncated)
+   */
+  extractTypeValue(node) {
+    const value = node.childForFieldName("value");
+    if (value) {
+      const text2 = value.text;
+      return text2.length > 50 ? text2.slice(0, 50) + "..." : text2;
+    }
+    return "...";
+  }
+  /**
+   * Extract variable type annotation
+   */
+  extractVariableType(node) {
+    const type = node.childForFieldName("type");
+    if (type) {
+      return type.text.replace(/^:\s*/, "");
+    }
+    return null;
+  }
+  /**
+   * Extract property type annotation
+   */
+  extractPropertyType(node) {
+    const type = node.childForFieldName("type");
+    if (type) {
+      return type.text.replace(/^:\s*/, "");
+    }
+    return null;
+  }
+  /**
+   * Extract JSDoc documentation
+   */
+  extractDocumentation(node) {
+    const nodeToCheck = node.parent?.type === "export_statement" ? node.parent : node;
+    let sibling = nodeToCheck.previousSibling;
+    while (sibling) {
+      if (sibling.type === "comment") {
+        const text2 = sibling.text;
+        if (text2.startsWith("/**") && text2.endsWith("*/")) {
+          return text2.slice(3, -2).split("\n").map(
+            (line) => line.trim().replace(/^\*\s?/, "").trim()
+          ).filter((line) => line.length > 0 && !line.startsWith("@")).join(" ").trim();
+        }
+        break;
+      }
+      if (sibling.type !== "comment" && sibling.isNamed) {
+        break;
+      }
+      sibling = sibling.previousSibling;
+    }
+    return void 0;
+  }
+  // ============================================================================
+  // Import Extraction
+  // ============================================================================
+  /**
+   * Extract all import statements
+   */
+  extractImports(rootNode) {
+    const imports = [];
+    const importNodes = rootNode.descendantsOfType("import_statement");
+    for (const node of importNodes) {
+      const importStatement = this.parseImportStatement(node);
+      if (importStatement) {
+        imports.push(importStatement);
+      }
+    }
+    const callNodes = rootNode.descendantsOfType("call_expression");
+    for (const node of callNodes) {
+      const func = node.childForFieldName("function");
+      if (func?.text === "require") {
+        const args = node.childForFieldName("arguments");
+        if (args && args.namedChildren[0]) {
+          const source = args.namedChildren[0].text.replace(/['"]/g, "");
+          imports.push({
+            type: "require",
+            source,
+            symbols: [],
+            line: node.startPosition.row + 1,
+            typeOnly: false
+          });
+        }
+      }
+    }
+    const dynamicImports = rootNode.descendantsOfType("import");
+    for (const node of dynamicImports) {
+      if (node.parent?.type === "call_expression") {
+        const args = node.parent.childForFieldName("arguments");
+        if (args && args.namedChildren[0]) {
+          const source = args.namedChildren[0].text.replace(/['"]/g, "");
+          imports.push({
+            type: "dynamic",
+            source,
+            symbols: [],
+            line: node.startPosition.row + 1,
+            typeOnly: false
+          });
+        }
+      }
+    }
+    return imports;
+  }
+  /**
+   * Parse a single import statement
+   */
+  parseImportStatement(node) {
+    const line = node.startPosition.row + 1;
+    const typeOnly = node.children.some((c) => c.text === "type");
+    const source = node.childForFieldName("source");
+    if (!source) return null;
+    const sourceText = source.text.replace(/['"]/g, "");
+    if (node.namedChildCount === 1) {
+      return {
+        type: "side_effect",
+        source: sourceText,
+        symbols: [],
+        line,
+        typeOnly: false
+      };
+    }
+    const symbols = [];
+    let importType = "named";
+    for (const child of node.namedChildren) {
+      if (child.type === "identifier") {
+        importType = "default";
+        symbols.push({ local: child.text });
+      }
+      if (child.type === "namespace_import") {
+        importType = "namespace";
+        const alias = child.firstNamedChild;
+        if (alias && alias.type === "identifier") {
+          symbols.push({ local: alias.text, imported: "*" });
+        }
+      }
+      if (child.type === "named_imports") {
+        for (const specifier of child.namedChildren) {
+          if (specifier.type === "import_specifier") {
+            const name = specifier.childForFieldName("name");
+            const alias = specifier.childForFieldName("alias");
+            if (name) {
+              symbols.push({
+                local: alias?.text || name.text,
+                imported: name.text
+              });
+            }
+          }
+        }
+      }
+      if (child.type === "import_clause") {
+        for (const clauseChild of child.namedChildren) {
+          if (clauseChild.type === "identifier") {
+            importType = "default";
+            symbols.push({ local: clauseChild.text });
+          }
+          if (clauseChild.type === "namespace_import") {
+            importType = "namespace";
+            const alias = clauseChild.firstNamedChild;
+            if (alias && alias.type === "identifier") {
+              symbols.push({ local: alias.text, imported: "*" });
+            }
+          }
+          if (clauseChild.type === "named_imports") {
+            importType = "named";
+            for (const specifier of clauseChild.namedChildren) {
+              if (specifier.type === "import_specifier") {
+                const name = specifier.childForFieldName("name");
+                const alias = specifier.childForFieldName("alias");
+                if (name) {
+                  symbols.push({
+                    local: alias?.text || name.text,
+                    imported: name.text
+                  });
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    return {
+      type: importType,
+      source: sourceText,
+      symbols,
+      line,
+      typeOnly
+    };
+  }
+  // ============================================================================
+  // Export Extraction
+  // ============================================================================
+  /**
+   * Extract all export statements
+   */
+  extractExports(rootNode) {
+    const exports$1 = [];
+    const exportNodes = rootNode.descendantsOfType("export_statement");
+    for (const node of exportNodes) {
+      const exportStatement = this.parseExportStatement(node);
+      if (exportStatement) {
+        exports$1.push(exportStatement);
+      }
+    }
+    return exports$1;
+  }
+  /**
+   * Parse a single export statement
+   */
+  parseExportStatement(node) {
+    const line = node.startPosition.row + 1;
+    const symbols = [];
+    let exportType = "named";
+    let source;
+    const sourceNode = node.childForFieldName("source");
+    if (sourceNode) {
+      source = sourceNode.text.replace(/['"]/g, "");
+    }
+    for (const child of node.namedChildren) {
+      if (child.type === "identifier" && node.children.some((c) => c.text === "default")) {
+        exportType = "default";
+        symbols.push({ local: child.text });
+      }
+      if ((child.type === "function_declaration" || child.type === "class_declaration") && node.children.some((c) => c.text === "default")) {
+        exportType = "default";
+        const name = child.childForFieldName("name");
+        symbols.push({ local: name?.text || "default" });
+      }
+      if (child.type === "export_clause") {
+        for (const specifier of child.namedChildren) {
+          if (specifier.type === "export_specifier") {
+            const name = specifier.childForFieldName("name");
+            const alias = specifier.childForFieldName("alias");
+            if (name) {
+              symbols.push({
+                local: name.text,
+                exported: alias?.text
+              });
+            }
+          }
+        }
+        exportType = source ? "re_export" : "named";
+      }
+      if (child.type === "namespace_export" || child.text === "*") {
+        exportType = "all";
+        symbols.push({ local: "*" });
+      }
+      if (child.type === "function_declaration" || child.type === "class_declaration" || child.type === "lexical_declaration") {
+        const name = child.childForFieldName("name");
+        if (name) {
+          symbols.push({ local: name.text });
+        } else if (child.type === "lexical_declaration") {
+          for (const declarator of child.namedChildren) {
+            if (declarator.type === "variable_declarator") {
+              const varName = declarator.childForFieldName("name");
+              if (varName) {
+                symbols.push({ local: varName.text });
+              }
+            }
+          }
+        }
+      }
+      if (child.type === "type_alias_declaration" || child.type === "interface_declaration") {
+        const name = child.childForFieldName("name");
+        if (name) {
+          symbols.push({ local: name.text });
+        }
+      }
+    }
+    if (source && symbols.length === 0) {
+      const hasNamespaceExport = node.children.some(
+        (c) => c.type === "namespace_export" || c.text === "*"
+      );
+      if (hasNamespaceExport) {
+        exportType = "all";
+        symbols.push({ local: "*" });
+      }
+    }
+    if (symbols.length === 0) return null;
+    return {
+      type: exportType,
+      symbols,
+      source,
+      line
+    };
+  }
+  // ============================================================================
+  // Error Detection
+  // ============================================================================
+  /**
+   * Find parse errors in AST
+   */
+  findErrors(rootNode) {
+    const errors = [];
+    const walk = (node) => {
+      if (node.type === "ERROR" || node.hasError) {
+        errors.push({
+          message: `Syntax error: unexpected ${node.type}`,
+          line: node.startPosition.row + 1,
+          column: node.startPosition.column,
+          nodeType: node.type
+        });
+      }
+      for (const child of node.children) {
+        walk(child);
+      }
+    };
+    walk(rootNode);
+    return errors;
+  }
+}
+class SymbolExtractor {
+  // ============================================================================
+  // Processing Methods
+  // ============================================================================
+  /**
+   * Process symbols from multiple parse results into a Map
+   * @param parseResults - Array of parse results
+   * @returns Map keyed by unique symbol ID
+   */
+  processSymbols(parseResults) {
+    const symbolMap = /* @__PURE__ */ new Map();
+    for (const result of parseResults) {
+      for (const symbol of result.symbols) {
+        const key = this.createSymbolKey(symbol);
+        symbolMap.set(key, symbol);
+      }
+    }
+    return symbolMap;
+  }
+  /**
+   * Create a unique key for a symbol
+   * @param symbol - Symbol entry
+   * @returns Unique key string
+   */
+  createSymbolKey(symbol) {
+    return `${symbol.file}#${symbol.name}#${String(symbol.line)}`;
+  }
+  // ============================================================================
+  // Filtering Methods
+  // ============================================================================
+  /**
+   * Filter symbols by kind
+   * @param symbols - Array of symbols
+   * @param kind - Symbol kind to filter by
+   * @returns Filtered symbols
+   */
+  filterByKind(symbols, kind) {
+    return symbols.filter((s) => s.kind === kind);
+  }
+  /**
+   * Get only exported symbols
+   * @param symbols - Array of symbols
+   * @returns Exported symbols only
+   */
+  getExportedSymbols(symbols) {
+    return symbols.filter((s) => s.exported);
+  }
+  /**
+   * Get top-level symbols (no parent)
+   * @param symbols - Array of symbols
+   * @returns Top-level symbols
+   */
+  getTopLevelSymbols(symbols) {
+    return symbols.filter((s) => !s.parentId);
+  }
+  /**
+   * Get child symbols of a parent
+   * @param symbols - Array of symbols
+   * @param parentId - Parent symbol ID
+   * @returns Child symbols
+   */
+  getChildSymbols(symbols, parentId) {
+    return symbols.filter((s) => s.parentId === parentId);
+  }
+  // ============================================================================
+  // Hierarchy Methods
+  // ============================================================================
+  /**
+   * Build a hierarchy tree from flat symbol list
+   * @param symbols - Array of symbols
+   * @returns Tree structure of symbols
+   */
+  buildHierarchy(symbols) {
+    const symbolMap = /* @__PURE__ */ new Map();
+    const childrenMap = /* @__PURE__ */ new Map();
+    for (const symbol of symbols) {
+      symbolMap.set(symbol.id, symbol);
+      if (symbol.parentId) {
+        const children = childrenMap.get(symbol.parentId) || [];
+        children.push(symbol);
+        childrenMap.set(symbol.parentId, children);
+      }
+    }
+    const buildNode = (symbol) => {
+      const children = childrenMap.get(symbol.id) || [];
+      return {
+        symbol,
+        children: children.map(buildNode)
+      };
+    };
+    const topLevel = symbols.filter((s) => !s.parentId);
+    return topLevel.map(buildNode);
+  }
+  // ============================================================================
+  // Grouping Methods
+  // ============================================================================
+  /**
+   * Group symbols by file path
+   * @param symbols - Array of symbols
+   * @returns Map grouped by file
+   */
+  groupByFile(symbols) {
+    const groups = /* @__PURE__ */ new Map();
+    for (const symbol of symbols) {
+      const existing = groups.get(symbol.file) || [];
+      existing.push(symbol);
+      groups.set(symbol.file, existing);
+    }
+    return groups;
+  }
+  /**
+   * Group symbols by kind
+   * @param symbols - Array of symbols
+   * @returns Map grouped by kind
+   */
+  groupByKind(symbols) {
+    const groups = /* @__PURE__ */ new Map();
+    for (const symbol of symbols) {
+      const existing = groups.get(symbol.kind) || [];
+      existing.push(symbol);
+      groups.set(symbol.kind, existing);
+    }
+    return groups;
+  }
+  // ============================================================================
+  // Search Methods
+  // ============================================================================
+  /**
+   * Search symbols by name (case-insensitive partial match)
+   * @param symbols - Array of symbols
+   * @param query - Search query
+   * @returns Matching symbols
+   */
+  searchByName(symbols, query) {
+    const lowerQuery = query.toLowerCase();
+    return symbols.filter((s) => s.name.toLowerCase().includes(lowerQuery));
+  }
+  /**
+   * Find symbols by exact name match
+   * @param symbols - Array of symbols
+   * @param name - Exact name to match
+   * @returns Matching symbols (may be multiple across files)
+   */
+  findByName(symbols, name) {
+    return symbols.filter((s) => s.name === name);
+  }
+  /**
+   * Find symbol at specific file and line location
+   * @param symbols - Array of symbols
+   * @param file - File path
+   * @param line - Line number
+   * @returns Symbol at location or undefined
+   */
+  findAtLocation(symbols, file, line) {
+    return symbols.find(
+      (s) => s.file === file && line >= s.line && line <= s.endLine
+    );
+  }
+  // ============================================================================
+  // Statistics Methods
+  // ============================================================================
+  /**
+   * Get statistics about symbols
+   * @param symbols - Array of symbols
+   * @returns Symbol statistics
+   */
+  getStatistics(symbols) {
+    const byKind = {
+      class: 0,
+      interface: 0,
+      function: 0,
+      method: 0,
+      property: 0,
+      variable: 0,
+      constant: 0,
+      type: 0,
+      enum: 0,
+      enum_member: 0,
+      namespace: 0,
+      module: 0
+    };
+    const byFile = {};
+    let exported = 0;
+    let documented = 0;
+    for (const symbol of symbols) {
+      byKind[symbol.kind]++;
+      byFile[symbol.file] = (byFile[symbol.file] || 0) + 1;
+      if (symbol.exported) {
+        exported++;
+      }
+      if (symbol.documentation) {
+        documented++;
+      }
+    }
+    const total = symbols.length;
+    const documentationCoverage = total > 0 ? documented / total : 0;
+    return {
+      total,
+      byKind,
+      byFile,
+      exported,
+      documented,
+      documentationCoverage
+    };
+  }
+  // ============================================================================
+  // Sorting Methods
+  // ============================================================================
+  /**
+   * Sort symbols by specified criteria
+   * @param symbols - Array of symbols
+   * @param criteria - Sort criteria
+   * @returns New sorted array
+   */
+  sortSymbols(symbols, criteria) {
+    const sorted = [...symbols];
+    switch (criteria) {
+      case "name":
+        sorted.sort((a, b) => a.name.localeCompare(b.name));
+        break;
+      case "file":
+        sorted.sort((a, b) => {
+          const fileCompare = a.file.localeCompare(b.file);
+          if (fileCompare !== 0) return fileCompare;
+          return a.line - b.line;
+        });
+        break;
+      case "references":
+        sorted.sort((a, b) => b.references - a.references);
+        break;
+      case "line":
+        sorted.sort((a, b) => {
+          const fileCompare = a.file.localeCompare(b.file);
+          if (fileCompare !== 0) return fileCompare;
+          return a.line - b.line;
+        });
+        break;
+    }
+    return sorted;
+  }
+  // ============================================================================
+  // Deduplication Methods
+  // ============================================================================
+  /**
+   * Remove duplicate symbols based on symbol key
+   * @param symbols - Array of symbols
+   * @returns Deduplicated array
+   */
+  deduplicate(symbols) {
+    const seen = /* @__PURE__ */ new Set();
+    const result = [];
+    for (const symbol of symbols) {
+      const key = this.createSymbolKey(symbol);
+      if (!seen.has(key)) {
+        seen.add(key);
+        result.push(symbol);
+      }
+    }
+    return result;
+  }
+  /**
+   * Merge symbols from multiple parse results
+   * @param parseResults - Array of parse results
+   * @returns Merged and deduplicated symbols
+   */
+  mergeSymbols(parseResults) {
+    const allSymbols = [];
+    for (const result of parseResults) {
+      allSymbols.push(...result.symbols);
+    }
+    return this.deduplicate(allSymbols);
+  }
+}
+class DependencyGraphBuilder {
+  /** All dependency edges */
+  edges = [];
+  /** Map of file -> files that depend on it */
+  dependentsMap = /* @__PURE__ */ new Map();
+  /** Map of file -> files it depends on */
+  dependenciesMap = /* @__PURE__ */ new Map();
+  /** Path aliases for resolution (e.g., "@/" -> "src/") */
+  fileAliases = /* @__PURE__ */ new Map();
+  /** All known file paths (for resolution) */
+  knownFiles = /* @__PURE__ */ new Set();
+  // ============================================================================
+  // Main Build Method
+  // ============================================================================
+  /**
+   * Build dependency graph from parse results
+   * @param parseResults - Results from parsing files
+   * @param projectPath - Root project path for resolution
+   * @returns Array of dependency edges
+   */
+  build(parseResults, projectPath) {
+    this.edges = [];
+    this.dependentsMap.clear();
+    this.dependenciesMap.clear();
+    this.knownFiles.clear();
+    for (const result of parseResults) {
+      const normalizedPath = this.normalizePath(result.file);
+      this.knownFiles.add(normalizedPath);
+    }
+    for (const result of parseResults) {
+      const fromFile = this.normalizePath(result.file);
+      for (const imp of result.imports) {
+        const edge = this.createEdgeFromImport(imp, fromFile, projectPath);
+        if (edge) {
+          this.addEdge(edge);
+        }
+      }
+      for (const exp of result.exports) {
+        if (exp.source) {
+          const edge = this.createEdgeFromExport(exp, fromFile, projectPath);
+          if (edge) {
+            this.addEdge(edge);
+          }
+        }
+      }
+    }
+    return this.edges;
+  }
+  // ============================================================================
+  // Path Resolution
+  // ============================================================================
+  /**
+   * Resolve an import path to an absolute file path
+   * @param importPath - The import source path
+   * @param fromFile - File containing the import
+   * @param projectPath - Project root path
+   * @returns Resolved absolute path or null if external/not found
+   */
+  resolveImport(importPath, fromFile, projectPath) {
+    if (this.isExternalModule(importPath)) {
+      return null;
+    }
+    const normalizedFromFile = this.normalizePath(fromFile);
+    const normalizedProjectPath = this.normalizePath(projectPath);
+    let resolvedPath;
+    for (const [alias, target] of this.fileAliases) {
+      if (importPath.startsWith(alias)) {
+        const remainder = importPath.slice(alias.length);
+        const targetPath = posix.join(normalizedProjectPath, target, remainder);
+        const resolved = this.tryResolveFile(targetPath);
+        if (resolved) {
+          return resolved;
+        }
+      }
+    }
+    if (importPath.startsWith(".")) {
+      const fromDir = posix.dirname(normalizedFromFile);
+      resolvedPath = posix.resolve(fromDir, importPath);
+    } else {
+      resolvedPath = posix.resolve(normalizedProjectPath, importPath);
+    }
+    return this.tryResolveFile(resolvedPath);
+  }
+  /**
+   * Try to resolve a file path, checking extensions and index files
+   * @param basePath - Base path without extension
+   * @returns Resolved path or null
+   */
+  tryResolveFile(basePath) {
+    const normalizedBase = this.normalizePath(basePath);
+    if (this.knownFiles.has(normalizedBase)) {
+      return normalizedBase;
+    }
+    const extensions = [".ts", ".tsx", ".js", ".jsx", ".mts", ".mjs"];
+    for (const ext of extensions) {
+      const withExt = normalizedBase + ext;
+      if (this.knownFiles.has(withExt)) {
+        return withExt;
+      }
+    }
+    const indexExtensions = [
+      "/index.ts",
+      "/index.tsx",
+      "/index.js",
+      "/index.jsx"
+    ];
+    for (const indexExt of indexExtensions) {
+      const withIndex = normalizedBase + indexExt;
+      if (this.knownFiles.has(withIndex)) {
+        return withIndex;
+      }
+    }
+    return null;
+  }
+  /**
+   * Check if module is external (npm package)
+   * @param source - Import source
+   * @returns True if external module
+   */
+  isExternalModule(source) {
+    if (source.startsWith(".") || source.startsWith("/")) {
+      return false;
+    }
+    for (const alias of this.fileAliases.keys()) {
+      if (source.startsWith(alias)) {
+        return false;
+      }
+    }
+    if (source.startsWith("@")) {
+      if (source.startsWith("@/")) {
+        return false;
+      }
+      return true;
+    }
+    return true;
+  }
+  // ============================================================================
+  // Alias Management
+  // ============================================================================
+  /**
+   * Register a path alias for resolution
+   * @param alias - Alias pattern (e.g., "@/")
+   * @param target - Target path (e.g., "src/")
+   */
+  registerAlias(alias, target) {
+    this.fileAliases.set(alias, target);
+  }
+  /**
+   * Clear all registered aliases
+   */
+  clearAliases() {
+    this.fileAliases.clear();
+  }
+  // ============================================================================
+  // Graph Queries
+  // ============================================================================
+  /**
+   * Get files that import the given file
+   * @param filePath - File to check
+   * @returns Array of importing file paths
+   */
+  getDependents(filePath) {
+    const normalized = this.normalizePath(filePath);
+    const dependents = this.dependentsMap.get(normalized);
+    return dependents ? Array.from(dependents) : [];
+  }
+  /**
+   * Get files imported by the given file
+   * @param filePath - File to check
+   * @returns Array of imported file paths
+   */
+  getDependencies(filePath) {
+    const normalized = this.normalizePath(filePath);
+    const dependencies = this.dependenciesMap.get(normalized);
+    return dependencies ? Array.from(dependencies) : [];
+  }
+  /**
+   * Get all edges involving a file (both in and out)
+   * @param filePath - File to check
+   * @returns All edges involving the file
+   */
+  getEdgesForFile(filePath) {
+    const normalized = this.normalizePath(filePath);
+    return this.edges.filter(
+      (e) => e.from === normalized || e.to === normalized
+    );
+  }
+  /**
+   * Get all edges in the graph
+   * @returns All dependency edges
+   */
+  getAllEdges() {
+    return [...this.edges];
+  }
+  // ============================================================================
+  // Cycle Detection
+  // ============================================================================
+  /**
+   * Find circular dependencies in the graph
+   * @returns Array of cycles (each cycle is array of file paths)
+   */
+  findCircularDependencies() {
+    const cycles = [];
+    const visited = /* @__PURE__ */ new Set();
+    const recursionStack = /* @__PURE__ */ new Set();
+    const path = [];
+    const dfs = (node) => {
+      if (recursionStack.has(node)) {
+        const cycleStart = path.indexOf(node);
+        if (cycleStart !== -1) {
+          const cycle = path.slice(cycleStart);
+          cycle.push(node);
+          cycles.push(cycle);
+        }
+        return;
+      }
+      if (visited.has(node)) {
+        return;
+      }
+      visited.add(node);
+      recursionStack.add(node);
+      path.push(node);
+      const dependencies = this.dependenciesMap.get(node);
+      if (dependencies) {
+        for (const dep of dependencies) {
+          dfs(dep);
+        }
+      }
+      path.pop();
+      recursionStack.delete(node);
+    };
+    for (const file of this.knownFiles) {
+      if (!visited.has(file)) {
+        dfs(file);
+      }
+    }
+    return cycles;
+  }
+  // ============================================================================
+  // Analysis Methods
+  // ============================================================================
+  /**
+   * Get files sorted by total connection count
+   * @returns Files sorted by most connected first
+   */
+  getSortedByConnections() {
+    const connectionCounts = /* @__PURE__ */ new Map();
+    for (const file of this.knownFiles) {
+      const dependents = this.dependentsMap.get(file)?.size || 0;
+      const dependencies = this.dependenciesMap.get(file)?.size || 0;
+      connectionCounts.set(file, dependents + dependencies);
+    }
+    return Array.from(connectionCounts.entries()).map(([file, connections]) => ({ file, connections })).sort((a, b) => b.connections - a.connections);
+  }
+  /**
+   * Calculate the depth of dependencies from a file
+   * @param filePath - Starting file
+   * @returns Maximum depth of dependency chain
+   */
+  calculateDepth(filePath) {
+    const normalized = this.normalizePath(filePath);
+    const visited = /* @__PURE__ */ new Set();
+    const dfs = (node, depth) => {
+      if (visited.has(node)) {
+        return depth;
+      }
+      visited.add(node);
+      const dependencies = this.dependenciesMap.get(node);
+      if (!dependencies || dependencies.size === 0) {
+        return depth;
+      }
+      let maxDepth = depth;
+      for (const dep of dependencies) {
+        const depDepth = dfs(dep, depth + 1);
+        maxDepth = Math.max(maxDepth, depDepth);
+      }
+      return maxDepth;
+    };
+    return dfs(normalized, 0);
+  }
+  /**
+   * Get statistics about the dependency graph
+   * @returns Dependency graph statistics
+   */
+  getStatistics() {
+    const edgesByType = {
+      import: 0,
+      require: 0,
+      dynamic: 0,
+      export_from: 0,
+      type_import: 0,
+      side_effect: 0
+    };
+    for (const edge of this.edges) {
+      edgesByType[edge.type]++;
+    }
+    const circularDependencies = this.findCircularDependencies().length;
+    const mostConnectedFiles = this.getSortedByConnections().slice(0, 10);
+    return {
+      totalFiles: this.knownFiles.size,
+      totalEdges: this.edges.length,
+      edgesByType,
+      circularDependencies,
+      mostConnectedFiles
+    };
+  }
+  // ============================================================================
+  // Private Helpers
+  // ============================================================================
+  /**
+   * Create a dependency edge from an import statement
+   */
+  createEdgeFromImport(imp, fromFile, projectPath) {
+    const resolved = this.resolveImport(imp.source, fromFile, projectPath);
+    if (!resolved) {
+      return null;
+    }
+    let type;
+    switch (imp.type) {
+      case "require":
+        type = "require";
+        break;
+      case "dynamic":
+        type = "dynamic";
+        break;
+      case "side_effect":
+        type = "side_effect";
+        break;
+      default:
+        type = imp.typeOnly ? "type_import" : "import";
+    }
+    return {
+      from: fromFile,
+      to: resolved,
+      type,
+      symbols: imp.symbols.map((s) => s.local),
+      statement: this.buildStatementString(imp),
+      line: imp.line
+    };
+  }
+  /**
+   * Create a dependency edge from a re-export statement
+   */
+  createEdgeFromExport(exp, fromFile, projectPath) {
+    if (!exp.source) {
+      return null;
+    }
+    const resolved = this.resolveImport(exp.source, fromFile, projectPath);
+    if (!resolved) {
+      return null;
+    }
+    return {
+      from: fromFile,
+      to: resolved,
+      type: "export_from",
+      symbols: exp.symbols.map((s) => s.local),
+      statement: `export from '${exp.source}'`,
+      line: exp.line
+    };
+  }
+  /**
+   * Add an edge to the graph and update maps
+   */
+  addEdge(edge) {
+    this.edges.push(edge);
+    if (!this.dependentsMap.has(edge.to)) {
+      this.dependentsMap.set(edge.to, /* @__PURE__ */ new Set());
+    }
+    this.dependentsMap.get(edge.to)?.add(edge.from);
+    if (!this.dependenciesMap.has(edge.from)) {
+      this.dependenciesMap.set(edge.from, /* @__PURE__ */ new Set());
+    }
+    this.dependenciesMap.get(edge.from)?.add(edge.to);
+  }
+  /**
+   * Build a statement string from an import
+   */
+  buildStatementString(imp) {
+    switch (imp.type) {
+      case "default":
+        return `import ${imp.symbols[0]?.local || ""} from '${imp.source}'`;
+      case "namespace":
+        return `import * as ${imp.symbols[0]?.local || ""} from '${imp.source}'`;
+      case "named": {
+        const syms = imp.symbols.map(
+          (s) => s.imported && s.imported !== s.local ? `${s.imported} as ${s.local}` : s.local
+        ).join(", ");
+        return `import { ${syms} } from '${imp.source}'`;
+      }
+      case "side_effect":
+        return `import '${imp.source}'`;
+      case "require":
+        return `require('${imp.source}')`;
+      case "dynamic":
+        return `import('${imp.source}')`;
+      default:
+        return `import from '${imp.source}'`;
+    }
+  }
+  /**
+   * Normalize a file path for consistent comparisons
+   * Always uses forward slashes for cross-platform consistency
+   */
+  normalizePath(filePath) {
+    return filePath.replace(/\\/g, "/");
+  }
+}
+class ReferenceCounter {
+  /** Map of symbol key to reference count */
+  referenceCounts = /* @__PURE__ */ new Map();
+  /** Map of symbol key to importance score */
+  importanceScores = /* @__PURE__ */ new Map();
+  /** Index of symbol name -> symbol entries for fast lookup */
+  symbolIndex = /* @__PURE__ */ new Map();
+  /** Stored symbols for later queries */
+  symbols = [];
+  // ============================================================================
+  // Main Counting Method
+  // ============================================================================
+  /**
+   * Count references to symbols from imports
+   * @param symbols - All symbols in the codebase
+   * @param parseResults - Parse results with import information
+   * @returns Map of symbol key to reference count
+   */
+  count(symbols, parseResults) {
+    this.referenceCounts.clear();
+    this.symbolIndex.clear();
+    this.symbols = symbols;
+    for (const symbol of symbols) {
+      const existing = this.symbolIndex.get(symbol.name) || [];
+      existing.push(symbol);
+      this.symbolIndex.set(symbol.name, existing);
+      const key = this.createSymbolKey(symbol);
+      this.referenceCounts.set(key, 0);
+    }
+    for (const result of parseResults) {
+      for (const imp of result.imports) {
+        for (const importedSymbol of imp.symbols) {
+          const symbolName = importedSymbol.imported || importedSymbol.local;
+          this.incrementReferenceCount(symbolName, result.file);
+        }
+      }
+    }
+    for (const symbol of symbols) {
+      const key = this.createSymbolKey(symbol);
+      symbol.references = this.referenceCounts.get(key) || 0;
+    }
+    return new Map(this.referenceCounts);
+  }
+  // ============================================================================
+  // Top Referenced Query
+  // ============================================================================
+  /**
+   * Get top N most referenced symbols
+   * @param n - Number of symbols to return
+   * @returns Array of symbols sorted by reference count descending
+   */
+  getTopReferenced(n) {
+    const sorted = [...this.symbols].sort((a, b) => {
+      const aCount = this.getReferenceCount(a);
+      const bCount = this.getReferenceCount(b);
+      return bCount - aCount;
+    });
+    return sorted.slice(0, n);
+  }
+  // ============================================================================
+  // Importance Calculation
+  // ============================================================================
+  /**
+   * Calculate importance scores using PageRank-style algorithm
+   * Symbols referenced by important files are more important
+   * @param symbols - All symbols
+   * @param dependencies - Dependency edges
+   * @returns Map of symbol key to importance score (0-1)
+   */
+  calculateImportance(symbols, dependencies) {
+    this.importanceScores.clear();
+    if (symbols.length === 0) {
+      return /* @__PURE__ */ new Map();
+    }
+    const fileImportance = this.calculateFileImportance(dependencies);
+    const initialScore = 1 / symbols.length;
+    for (const symbol of symbols) {
+      const key = this.createSymbolKey(symbol);
+      this.importanceScores.set(key, initialScore);
+    }
+    const dampingFactor = 0.85;
+    const iterations = 20;
+    const symbolReferencers = this.buildSymbolReferencers(symbols, dependencies);
+    for (let i = 0; i < iterations; i++) {
+      const newScores = /* @__PURE__ */ new Map();
+      for (const symbol of symbols) {
+        const key = this.createSymbolKey(symbol);
+        const referencers = symbolReferencers.get(key) || [];
+        let incomingScore = 0;
+        for (const refFile of referencers) {
+          const fileScore = fileImportance.get(refFile) || 0;
+          const outgoingRefs = this.countOutgoingReferences(refFile, dependencies);
+          if (outgoingRefs > 0) {
+            incomingScore += fileScore / outgoingRefs;
+          }
+        }
+        const baseScore = (1 - dampingFactor) / symbols.length;
+        const newScore = baseScore + dampingFactor * incomingScore;
+        newScores.set(key, newScore);
+      }
+      for (const [key, score] of newScores) {
+        this.importanceScores.set(key, score);
+      }
+    }
+    this.normalizeScores();
+    return new Map(this.importanceScores);
+  }
+  // ============================================================================
+  // Ranked Symbols
+  // ============================================================================
+  /**
+   * Get symbols with combined ranking from references and importance
+   * @param symbols - All symbols
+   * @param dependencies - Dependency edges
+   * @returns Array of ranked symbols sorted by combined score
+   */
+  getRankedSymbols(symbols, dependencies) {
+    if (this.symbols.length === 0 || this.symbols !== symbols) {
+      this.count(symbols, []);
+    }
+    this.calculateImportance(symbols, dependencies);
+    const maxRefs = Math.max(
+      1,
+      ...symbols.map((s) => this.getReferenceCount(s))
+    );
+    const ranked = symbols.map((symbol) => {
+      const key = this.createSymbolKey(symbol);
+      const referenceCount = this.referenceCounts.get(key) || 0;
+      const importanceScore = this.importanceScores.get(key) || 0;
+      const normalizedRefs = referenceCount / maxRefs;
+      const combinedScore = 0.6 * normalizedRefs + 0.4 * importanceScore;
+      return {
+        symbol,
+        referenceCount,
+        importanceScore,
+        combinedScore
+      };
+    });
+    ranked.sort((a, b) => b.combinedScore - a.combinedScore);
+    return ranked;
+  }
+  // ============================================================================
+  // Query Methods
+  // ============================================================================
+  /**
+   * Get files that reference a symbol
+   * @param symbolKey - Symbol key
+   * @param dependencies - Dependency edges
+   * @returns List of file paths that reference this symbol
+   */
+  getReferencingSources(symbolKey, dependencies) {
+    const sources = /* @__PURE__ */ new Set();
+    const parts = symbolKey.split("#");
+    const symbolName = parts.length >= 2 ? parts[1] : symbolKey;
+    for (const edge of dependencies) {
+      if (edge.symbols.includes(symbolName)) {
+        sources.add(edge.from);
+      }
+    }
+    return Array.from(sources);
+  }
+  /**
+   * Calculate clustering coefficient for a symbol
+   * How interconnected are the files that reference this symbol?
+   * @param symbol - Symbol to analyze
+   * @param dependencies - Dependency edges
+   * @returns Clustering coefficient (0-1)
+   */
+  getClusteringCoefficient(symbol, dependencies) {
+    const key = this.createSymbolKey(symbol);
+    const referencers = this.getReferencingSources(key, dependencies);
+    if (referencers.length < 2) {
+      return 0;
+    }
+    let connections = 0;
+    const maxConnections = referencers.length * (referencers.length - 1) / 2;
+    for (let i = 0; i < referencers.length; i++) {
+      for (let j = i + 1; j < referencers.length; j++) {
+        const hasConnection = dependencies.some(
+          (e) => e.from === referencers[i] && e.to === referencers[j] || e.from === referencers[j] && e.to === referencers[i]
+        );
+        if (hasConnection) {
+          connections++;
+        }
+      }
+    }
+    return maxConnections > 0 ? connections / maxConnections : 0;
+  }
+  /**
+   * Get reference count for a symbol
+   * @param symbol - Symbol to check
+   * @returns Reference count
+   */
+  getReferenceCount(symbol) {
+    const key = this.createSymbolKey(symbol);
+    return this.referenceCounts.get(key) || 0;
+  }
+  /**
+   * Get importance score for a symbol
+   * @param symbol - Symbol to check
+   * @returns Importance score (0-1)
+   */
+  getImportanceScore(symbol) {
+    const key = this.createSymbolKey(symbol);
+    return this.importanceScores.get(key) || 0;
+  }
+  // ============================================================================
+  // Statistics
+  // ============================================================================
+  /**
+   * Get statistics about references
+   * @param symbols - Symbols to analyze
+   * @returns Reference statistics
+   */
+  getStatistics(symbols) {
+    if (symbols.length === 0) {
+      return {
+        totalReferences: 0,
+        averageReferences: 0,
+        maxReferences: 0,
+        symbolsWithReferences: 0,
+        orphanedExports: 0,
+        coveragePercent: 0
+      };
+    }
+    let totalReferences = 0;
+    let maxReferences = 0;
+    let symbolsWithReferences = 0;
+    let orphanedExports = 0;
+    for (const symbol of symbols) {
+      const refs = this.getReferenceCount(symbol);
+      totalReferences += refs;
+      maxReferences = Math.max(maxReferences, refs);
+      if (refs > 0) {
+        symbolsWithReferences++;
+      }
+      if (symbol.exported && refs === 0) {
+        orphanedExports++;
+      }
+    }
+    const averageReferences = totalReferences / symbols.length;
+    const coveragePercent = symbolsWithReferences / symbols.length * 100;
+    return {
+      totalReferences,
+      averageReferences,
+      maxReferences,
+      symbolsWithReferences,
+      orphanedExports,
+      coveragePercent
+    };
+  }
+  // ============================================================================
+  // Private Helpers
+  // ============================================================================
+  /**
+   * Create unique key for a symbol
+   */
+  createSymbolKey(symbol) {
+    return `${symbol.file}#${symbol.name}#${String(symbol.line)}`;
+  }
+  /**
+   * Increment reference count for a symbol by name
+   */
+  incrementReferenceCount(symbolName, _fromFile) {
+    const matchingSymbols = this.symbolIndex.get(symbolName);
+    if (!matchingSymbols) return;
+    for (const symbol of matchingSymbols) {
+      if (symbol.exported) {
+        const key = this.createSymbolKey(symbol);
+        const current = this.referenceCounts.get(key) || 0;
+        this.referenceCounts.set(key, current + 1);
+      }
+    }
+  }
+  /**
+   * Calculate importance of each file based on how many files depend on it
+   */
+  calculateFileImportance(dependencies) {
+    const fileCounts = /* @__PURE__ */ new Map();
+    for (const edge of dependencies) {
+      const current = fileCounts.get(edge.to) || 0;
+      fileCounts.set(edge.to, current + 1);
+    }
+    const maxCount = Math.max(1, ...Array.from(fileCounts.values()));
+    const normalized = /* @__PURE__ */ new Map();
+    for (const [file, count] of fileCounts) {
+      normalized.set(file, count / maxCount);
+    }
+    return normalized;
+  }
+  /**
+   * Build a map of symbol key -> files that reference that symbol
+   */
+  buildSymbolReferencers(symbols, dependencies) {
+    const referencers = /* @__PURE__ */ new Map();
+    for (const symbol of symbols) {
+      const key = this.createSymbolKey(symbol);
+      referencers.set(key, []);
+    }
+    for (const edge of dependencies) {
+      for (const importedName of edge.symbols) {
+        const matchingSymbols = this.symbolIndex.get(importedName);
+        if (!matchingSymbols) continue;
+        for (const symbol of matchingSymbols) {
+          if (symbol.exported) {
+            const key = this.createSymbolKey(symbol);
+            const refs = referencers.get(key) || [];
+            if (!refs.includes(edge.from)) {
+              refs.push(edge.from);
+              referencers.set(key, refs);
+            }
+          }
+        }
+      }
+    }
+    return referencers;
+  }
+  /**
+   * Count how many symbols a file references (outgoing edges)
+   */
+  countOutgoingReferences(filePath, dependencies) {
+    let count = 0;
+    for (const edge of dependencies) {
+      if (edge.from === filePath) {
+        count += edge.symbols.length;
+      }
+    }
+    return count;
+  }
+  /**
+   * Normalize importance scores to 0-1 range
+   */
+  normalizeScores() {
+    const scores = Array.from(this.importanceScores.values());
+    if (scores.length === 0) return;
+    const maxScore = Math.max(...scores);
+    if (maxScore === 0) return;
+    for (const [key, score] of this.importanceScores) {
+      this.importanceScores.set(key, score / maxScore);
+    }
+  }
+}
+class RepoMapFormatter {
+  /**
+   * Approximate characters per token for GPT-like models
+   * This is a conservative estimate (actual varies by content)
+   */
+  static CHARS_PER_TOKEN = 4;
+  /**
+   * Maximum signature length before truncation
+   */
+  static MAX_SIGNATURE_LENGTH = 80;
+  /**
+   * Symbol prefixes for visual differentiation
+   */
+  static SYMBOL_PREFIXES = {
+    class: "⊕",
+    // ⊕
+    interface: "◇",
+    // ◇
+    function: "ƒ",
+    // ƒ
+    method: "·",
+    // ·
+    property: ".",
+    // .
+    variable: "→",
+    // →
+    constant: "∷",
+    // ∷
+    type: "⊤",
+    // ⊤
+    enum: "⊞",
+    // ⊞
+    enum_member: "▪",
+    // ▪
+    namespace: "N",
+    module: "M"
+  };
+  // ============================================================================
+  // Main Format Methods
+  // ============================================================================
+  /**
+   * Format repository map as string
+   * @param repoMap - Repository map to format
+   * @param options - Formatting options
+   * @returns Formatted string
+   */
+  format(repoMap, options) {
+    const mergedOptions = {
+      ...DEFAULT_FORMAT_OPTIONS,
+      ...options
+    };
+    switch (mergedOptions.style) {
+      case "compact":
+        return this.formatCompact(repoMap, mergedOptions);
+      case "detailed":
+        return this.formatDetailed(repoMap, mergedOptions);
+      case "tree":
+        return this.formatTree(repoMap, mergedOptions);
+      default:
+        return this.formatCompact(repoMap, mergedOptions);
+    }
+  }
+  // ============================================================================
+  // Compact Format
+  // ============================================================================
+  /**
+   * Format in compact style - maximum info density, minimal tokens
+   * @param repoMap - Repository map
+   * @param options - Format options
+   * @returns Compact formatted string
+   */
+  formatCompact(repoMap, options) {
+    const lines = [];
+    let currentTokens = 0;
+    const header = this.buildCompactHeader(repoMap);
+    lines.push(...header);
+    currentTokens += this.estimateTokens(header.join("\n"));
+    const symbolsToShow = this.selectSymbolsForBudget(
+      repoMap.symbols,
+      options.maxTokens - currentTokens,
+      options.includeSignatures
+    );
+    if (options.groupByFile) {
+      const byFile = this.groupByFile(symbolsToShow);
+      const sortedFiles = this.sortFilesByImportance(byFile, repoMap);
+      for (const { file, symbols } of sortedFiles) {
+        const relativePath = relative(repoMap.projectPath, file);
+        const fileHeader = `
+## ${this.normalizePath(relativePath)}`;
+        if (currentTokens + this.estimateTokens(fileHeader) > options.maxTokens) {
+          lines.push("\n... (truncated)");
+          break;
+        }
+        lines.push(fileHeader);
+        currentTokens += this.estimateTokens(fileHeader);
+        const sortedSymbols = this.sortSymbols(symbols, options.rankByReferences);
+        for (const symbol of sortedSymbols) {
+          const formattedLine = this.formatSymbolCompact(
+            symbol,
+            options.includeSignatures,
+            options.rankByReferences
+          );
+          if (currentTokens + this.estimateTokens(formattedLine) > options.maxTokens) {
+            lines.push("  ... (truncated)");
+            break;
+          }
+          lines.push(formattedLine);
+          currentTokens += this.estimateTokens(formattedLine);
+        }
+      }
+    } else {
+      const sortedSymbols = this.sortSymbols(symbolsToShow, options.rankByReferences);
+      for (const symbol of sortedSymbols) {
+        const formattedLine = this.formatSymbolCompact(
+          symbol,
+          options.includeSignatures,
+          options.rankByReferences
+        );
+        if (currentTokens + this.estimateTokens(formattedLine) > options.maxTokens) {
+          lines.push("... (truncated)");
+          break;
+        }
+        lines.push(formattedLine);
+        currentTokens += this.estimateTokens(formattedLine);
+      }
+    }
+    return lines.join("\n");
+  }
+  /**
+   * Build compact header section
+   */
+  buildCompactHeader(repoMap) {
+    return [
+      "# Repository Map",
+      "",
+      `Files: ${String(repoMap.stats.totalFiles)} | Symbols: ${String(repoMap.stats.totalSymbols)} | Dependencies: ${String(repoMap.stats.totalDependencies)}`,
+      ""
+    ];
+  }
+  /**
+   * Format a single symbol in compact style
+   */
+  formatSymbolCompact(symbol, includeSignatures, rankByReferences) {
+    const prefix = this.getSymbolPrefix(symbol.kind);
+    const exportMark = symbol.exported ? "ε" : "";
+    const indent = symbol.parentId ? "  " : "";
+    const refCount = rankByReferences && symbol.references > 0 ? ` (${String(symbol.references)})` : "";
+    let content;
+    if (includeSignatures && symbol.signature !== symbol.name) {
+      content = this.truncateSignature(
+        symbol.signature,
+        RepoMapFormatter.MAX_SIGNATURE_LENGTH
+      );
+    } else {
+      content = symbol.name;
+    }
+    return `${indent}${prefix}${exportMark}${content}${refCount}`;
+  }
+  // ============================================================================
+  // Detailed Format
+  // ============================================================================
+  /**
+   * Format in detailed style - verbose with documentation
+   * @param repoMap - Repository map
+   * @param options - Format options
+   * @returns Detailed formatted string
+   */
+  formatDetailed(repoMap, options) {
+    const lines = [];
+    let currentTokens = 0;
+    lines.push("# Repository Map (Detailed)");
+    lines.push("");
+    lines.push(`## Summary`);
+    lines.push(`- **Project:** ${repoMap.projectPath}`);
+    lines.push(`- **Generated:** ${repoMap.generatedAt.toISOString()}`);
+    lines.push(`- **Files:** ${String(repoMap.stats.totalFiles)}`);
+    lines.push(`- **Symbols:** ${String(repoMap.stats.totalSymbols)}`);
+    lines.push(`- **Dependencies:** ${String(repoMap.stats.totalDependencies)}`);
+    lines.push("");
+    currentTokens = this.estimateTokens(lines.join("\n"));
+    lines.push("## Symbol Breakdown");
+    for (const [kind, count] of Object.entries(repoMap.stats.symbolBreakdown)) {
+      if (count > 0) {
+        lines.push(`- ${kind}: ${String(count)}`);
+      }
+    }
+    lines.push("");
+    if (options.includeDependencies && repoMap.dependencies.length > 0) {
+      lines.push("## Key Dependencies");
+      const depLines = [];
+      const bySource = /* @__PURE__ */ new Map();
+      for (const dep of repoMap.dependencies.slice(0, 20)) {
+        const from = relative(repoMap.projectPath, dep.from);
+        const to = relative(repoMap.projectPath, dep.to);
+        if (!bySource.has(from)) {
+          bySource.set(from, []);
+        }
+        bySource.get(from)?.push(to);
+      }
+      for (const [from, targets] of bySource) {
+        depLines.push(`- \`${this.normalizePath(from)}\` imports:`);
+        for (const target of targets.slice(0, 5)) {
+          depLines.push(`  - \`${this.normalizePath(target)}\``);
+        }
+        if (targets.length > 5) {
+          depLines.push(`  - ... and ${String(targets.length - 5)} more`);
+        }
+      }
+      lines.push(...depLines);
+      lines.push("");
+    }
+    currentTokens = this.estimateTokens(lines.join("\n"));
+    lines.push("## Files");
+    lines.push("");
+    const byFile = this.groupByFile(repoMap.symbols);
+    const sortedFiles = this.sortFilesByImportance(byFile, repoMap);
+    for (const { file, symbols } of sortedFiles) {
+      const relativePath = this.normalizePath(relative(repoMap.projectPath, file));
+      const fileEntry = repoMap.files.find((f) => f.path === file);
+      const fileHeader = [`### ${relativePath}`];
+      if (fileEntry) {
+        fileHeader.push(`*${String(fileEntry.lineCount)} lines, ${String(fileEntry.symbolCount)} symbols*`);
+      }
+      fileHeader.push("");
+      if (currentTokens + this.estimateTokens(fileHeader.join("\n")) > options.maxTokens) {
+        lines.push("### ... (truncated)");
+        break;
+      }
+      lines.push(...fileHeader);
+      currentTokens += this.estimateTokens(fileHeader.join("\n"));
+      const sortedSymbols = this.sortSymbols(symbols, options.rankByReferences);
+      for (const symbol of sortedSymbols) {
+        const symbolLines = this.formatSymbolDetailed(
+          symbol,
+          options.includeDocstrings,
+          options.rankByReferences
+        );
+        if (currentTokens + this.estimateTokens(symbolLines.join("\n")) > options.maxTokens) {
+          lines.push("*... (truncated)*");
+          break;
+        }
+        lines.push(...symbolLines);
+        currentTokens += this.estimateTokens(symbolLines.join("\n"));
+      }
+      lines.push("");
+    }
+    return lines.join("\n");
+  }
+  /**
+   * Format a single symbol in detailed style
+   */
+  formatSymbolDetailed(symbol, includeDocstrings, rankByReferences) {
+    const lines = [];
+    const prefix = this.getSymbolPrefix(symbol.kind);
+    const exportMark = symbol.exported ? " (exported)" : "";
+    const refCount = rankByReferences && symbol.references > 0 ? ` [refs: ${String(symbol.references)}]` : "";
+    const indent = symbol.parentId ? "  " : "";
+    lines.push(`${indent}- ${prefix} **${symbol.name}**${exportMark}${refCount}`);
+    if (symbol.signature !== symbol.name) {
+      lines.push(`${indent}  \`${symbol.signature}\``);
+    }
+    if (includeDocstrings && symbol.documentation) {
+      const docLines = symbol.documentation.split("\n");
+      const doc = docLines[0] ?? "";
+      if (doc.length > 100) {
+        lines.push(`${indent}  *${doc.substring(0, 100)}...*`);
+      } else if (doc.length > 0) {
+        lines.push(`${indent}  *${doc}*`);
+      }
+    }
+    return lines;
+  }
+  // ============================================================================
+  // Tree Format
+  // ============================================================================
+  /**
+   * Format in tree style - directory tree structure
+   * @param repoMap - Repository map
+   * @param options - Format options
+   * @returns Tree formatted string
+   */
+  formatTree(repoMap, options) {
+    const lines = [];
+    let currentTokens = 0;
+    lines.push("# Repository Map (Tree)");
+    lines.push("");
+    lines.push(`${String(repoMap.stats.totalFiles)} files, ${String(repoMap.stats.totalSymbols)} symbols`);
+    lines.push("");
+    currentTokens = this.estimateTokens(lines.join("\n"));
+    const root = this.buildDirectoryTree(repoMap);
+    const treeLines = this.renderDirectoryTree(
+      root,
+      "",
+      true,
+      options,
+      currentTokens,
+      options.maxTokens
+    );
+    lines.push(...treeLines);
+    return lines.join("\n");
+  }
+  /**
+   * Build directory tree structure from repo map
+   */
+  buildDirectoryTree(repoMap) {
+    const root = {
+      name: basename(repoMap.projectPath) || "root",
+      path: "",
+      children: /* @__PURE__ */ new Map(),
+      files: []
+    };
+    const symbolsByFile = this.groupByFile(repoMap.symbols);
+    for (const file of repoMap.files) {
+      const relativePath = this.normalizePath(relative(repoMap.projectPath, file.path));
+      const parts = relativePath.split("/");
+      const fileName = parts.pop() ?? "";
+      let current = root;
+      let currentPath = "";
+      for (const part of parts) {
+        currentPath = currentPath ? `${currentPath}/${part}` : part;
+        if (!current.children.has(part)) {
+          current.children.set(part, {
+            name: part,
+            path: currentPath,
+            children: /* @__PURE__ */ new Map(),
+            files: []
+          });
+        }
+        current = current.children.get(part) ?? current;
+      }
+      current.files.push({
+        name: fileName,
+        file,
+        symbols: symbolsByFile.get(file.path) || []
+      });
+    }
+    return root;
+  }
+  /**
+   * Render directory tree as string array
+   */
+  renderDirectoryTree(node, prefix, isLast, options, currentTokens, maxTokens) {
+    const lines = [];
+    let tokens = currentTokens;
+    const dirs = Array.from(node.children.values()).sort(
+      (a, b) => a.name.localeCompare(b.name)
+    );
+    const files = [...node.files].sort((a, b) => a.name.localeCompare(b.name));
+    const items = [
+      ...dirs.map((d) => ({ type: "dir", item: d })),
+      ...files.map((f) => ({ type: "file", item: f }))
+    ];
+    for (const [i, currentItem] of items.entries()) {
+      const { type, item } = currentItem;
+      const isLastItem = i === items.length - 1;
+      const connector = isLastItem ? "└──" : "├──";
+      const childPrefix = prefix + (isLastItem ? "    " : "│   ");
+      if (type === "dir") {
+        const dir = item;
+        const line = `${prefix}${connector} ${dir.name}/`;
+        if (tokens + this.estimateTokens(line) > maxTokens) {
+          lines.push(`${prefix}... (truncated)`);
+          break;
+        }
+        lines.push(line);
+        tokens += this.estimateTokens(line);
+        const childLines = this.renderDirectoryTree(
+          dir,
+          childPrefix,
+          isLastItem,
+          options,
+          tokens,
+          maxTokens
+        );
+        lines.push(...childLines);
+        tokens += this.estimateTokens(childLines.join("\n"));
+      } else {
+        const fileItem = item;
+        const line = `${prefix}${connector} ${fileItem.name}`;
+        if (tokens + this.estimateTokens(line) > maxTokens) {
+          lines.push(`${prefix}... (truncated)`);
+          break;
+        }
+        lines.push(line);
+        tokens += this.estimateTokens(line);
+        if (options.includeSignatures && fileItem.symbols.length > 0) {
+          const sortedSymbols = this.sortSymbols(fileItem.symbols, options.rankByReferences);
+          const topLevelSymbols = sortedSymbols.filter((s) => !s.parentId);
+          for (const symbol of topLevelSymbols.slice(0, 10)) {
+            const symbolPrefix = this.getSymbolPrefix(symbol.kind);
+            const exportMark = symbol.exported ? "ε" : "";
+            const refCount = options.rankByReferences && symbol.references > 0 ? ` (${String(symbol.references)})` : "";
+            const symbolLine = `${childPrefix}    ${symbolPrefix}${exportMark}${symbol.name}${refCount}`;
+            if (tokens + this.estimateTokens(symbolLine) > maxTokens) {
+              lines.push(`${childPrefix}    ... (truncated)`);
+              break;
+            }
+            lines.push(symbolLine);
+            tokens += this.estimateTokens(symbolLine);
+          }
+          if (topLevelSymbols.length > 10) {
+            lines.push(`${childPrefix}    ... +${String(topLevelSymbols.length - 10)} more`);
+          }
+        }
+      }
+    }
+    return lines;
+  }
+  // ============================================================================
+  // Token Management
+  // ============================================================================
+  /**
+   * Estimate token count for text
+   * @param text - Text to estimate
+   * @returns Estimated token count
+   */
+  estimateTokens(text2) {
+    return Math.ceil(text2.length / RepoMapFormatter.CHARS_PER_TOKEN);
+  }
+  /**
+   * Truncate output to fit token budget
+   * @param repoMap - Repository map
+   * @param maxTokens - Maximum tokens
+   * @returns Truncated formatted string
+   */
+  truncateToFit(repoMap, maxTokens) {
+    return this.format(repoMap, {
+      ...DEFAULT_FORMAT_OPTIONS,
+      maxTokens,
+      style: "compact"
+    });
+  }
+  /**
+   * Select symbols that fit within token budget
+   * @param symbols - All symbols
+   * @param maxTokens - Token budget
+   * @param includeSignatures - Whether to include signatures
+   * @returns Selected symbols
+   */
+  selectSymbolsForBudget(symbols, maxTokens, includeSignatures) {
+    const sorted = [...symbols].sort((a, b) => {
+      if (b.references !== a.references) return b.references - a.references;
+      if (a.exported && !b.exported) return -1;
+      if (!a.exported && b.exported) return 1;
+      if (!a.parentId && b.parentId) return -1;
+      if (a.parentId && !b.parentId) return 1;
+      return a.name.localeCompare(b.name);
+    });
+    const selected = [];
+    let currentTokens = 0;
+    for (const symbol of sorted) {
+      const content = includeSignatures ? symbol.signature : symbol.name;
+      const estimatedTokens = this.estimateTokens(content) + 2;
+      if (currentTokens + estimatedTokens > maxTokens) {
+        break;
+      }
+      selected.push(symbol);
+      currentTokens += estimatedTokens;
+    }
+    return selected;
+  }
+  // ============================================================================
+  // Statistics Formatting
+  // ============================================================================
+  /**
+   * Format statistics as string
+   * @param repoMap - Repository map
+   * @returns Formatted statistics
+   */
+  formatStats(repoMap) {
+    const stats = repoMap.stats;
+    const lines = [];
+    lines.push("# Repository Statistics");
+    lines.push("");
+    lines.push("## Overview");
+    lines.push(`- **Total Files:** ${String(stats.totalFiles)}`);
+    lines.push(`- **Total Symbols:** ${String(stats.totalSymbols)}`);
+    lines.push(`- **Total Dependencies:** ${String(stats.totalDependencies)}`);
+    lines.push(`- **Generation Time:** ${String(stats.generationTime)}ms`);
+    lines.push("");
+    lines.push("## Language Breakdown");
+    for (const [lang, count] of Object.entries(stats.languageBreakdown)) {
+      if (count > 0) {
+        lines.push(`- **${lang}:** ${String(count)} files`);
+      }
+    }
+    lines.push("");
+    lines.push("## Symbol Breakdown");
+    for (const [kind, count] of Object.entries(stats.symbolBreakdown)) {
+      if (count > 0) {
+        lines.push(`- **${kind}:** ${String(count)}`);
+      }
+    }
+    lines.push("");
+    if (stats.mostReferencedSymbols.length > 0) {
+      lines.push("## Most Referenced Symbols");
+      for (const { name, references } of stats.mostReferencedSymbols.slice(0, 10)) {
+        lines.push(`- **${name}:** ${String(references)} references`);
+      }
+      lines.push("");
+    }
+    if (stats.mostConnectedFiles.length > 0) {
+      lines.push("## Most Connected Files");
+      for (const { file, connections } of stats.mostConnectedFiles.slice(0, 10)) {
+        const relativePath = relative(repoMap.projectPath, file);
+        lines.push(`- **${this.normalizePath(relativePath)}:** ${String(connections)} connections`);
+      }
+      lines.push("");
+    }
+    if (stats.largestFiles.length > 0) {
+      lines.push("## Largest Files");
+      for (const file of stats.largestFiles.slice(0, 10)) {
+        lines.push(`- ${this.normalizePath(file)}`);
+      }
+      lines.push("");
+    }
+    return lines.join("\n");
+  }
+  // ============================================================================
+  // Private Helpers
+  // ============================================================================
+  /**
+   * Get symbol prefix for kind
+   */
+  getSymbolPrefix(kind) {
+    return RepoMapFormatter.SYMBOL_PREFIXES[kind] || "?";
+  }
+  /**
+   * Truncate signature if too long
+   */
+  truncateSignature(signature, maxLength) {
+    if (signature.length <= maxLength) {
+      return signature;
+    }
+    return signature.substring(0, maxLength - 3) + "...";
+  }
+  /**
+   * Group symbols by file
+   */
+  groupByFile(symbols) {
+    const byFile = /* @__PURE__ */ new Map();
+    for (const symbol of symbols) {
+      const normalizedFile = this.normalizePath(symbol.file);
+      if (!byFile.has(normalizedFile)) {
+        byFile.set(normalizedFile, []);
+      }
+      byFile.get(normalizedFile)?.push(symbol);
+    }
+    return byFile;
+  }
+  /**
+   * Sort files by importance (total references in file)
+   */
+  sortFilesByImportance(byFile, _repoMap) {
+    const filesWithRefs = Array.from(byFile.entries()).map(([file, symbols]) => ({
+      file,
+      symbols,
+      totalRefs: symbols.reduce((sum, s) => sum + s.references, 0)
+    }));
+    filesWithRefs.sort((a, b) => b.totalRefs - a.totalRefs);
+    return filesWithRefs;
+  }
+  /**
+   * Sort symbols by importance
+   */
+  sortSymbols(symbols, rankByReferences) {
+    return [...symbols].sort((a, b) => {
+      if (!a.parentId && b.parentId) return -1;
+      if (a.parentId && !b.parentId) return 1;
+      if (rankByReferences) {
+        if (b.references !== a.references) return b.references - a.references;
+      }
+      if (a.exported && !b.exported) return -1;
+      if (!a.exported && b.exported) return 1;
+      return a.name.localeCompare(b.name);
+    });
+  }
+  /**
+   * Normalize file path for consistent display
+   */
+  normalizePath(filePath) {
+    return filePath.replace(/\\/g, "/");
+  }
+}
+class RepoMapGenerator {
+  /** TreeSitter parser instance */
+  parser;
+  /** Symbol extractor instance */
+  symbolExtractor;
+  /** Dependency graph builder instance */
+  dependencyBuilder;
+  /** Reference counter instance */
+  referenceCounter;
+  /** Repository map formatter instance */
+  formatter;
+  /** Current generated map */
+  currentMap = null;
+  /** Whether the generator has been initialized */
+  initialized = false;
+  /** Parse results cache for incremental updates */
+  parseResultsCache = /* @__PURE__ */ new Map();
+  /**
+   * Create a new RepoMapGenerator
+   * @param wasmBasePath - Optional base path for WASM files
+   */
+  constructor(wasmBasePath) {
+    this.parser = new TreeSitterParser(wasmBasePath);
+    this.symbolExtractor = new SymbolExtractor();
+    this.dependencyBuilder = new DependencyGraphBuilder();
+    this.referenceCounter = new ReferenceCounter();
+    this.formatter = new RepoMapFormatter();
+  }
+  // ============================================================================
+  // Initialization
+  // ============================================================================
+  /**
+   * Initialize the generator
+   */
+  async initialize() {
+    if (this.initialized) return;
+    await this.parser.initialize();
+    this.initialized = true;
+  }
+  // ============================================================================
+  // Main Generation Methods
+  // ============================================================================
+  /**
+   * Generate a complete repository map
+   * @param projectPath - Root project path
+   * @param options - Generation options
+   * @returns Complete repository map
+   */
+  async generate(projectPath, options) {
+    const startTime = Date.now();
+    const mergedOptions = {
+      ...DEFAULT_REPO_MAP_OPTIONS,
+      ...options
+    };
+    if (!this.initialized) {
+      await this.initialize();
+    }
+    const normalizedProjectPath = this.normalizePath(resolve(projectPath));
+    const files = await this.findFiles(normalizedProjectPath, mergedOptions);
+    const parseResults = await this.parseAllFiles(
+      files,
+      mergedOptions.maxFiles
+    );
+    this.parseResultsCache.clear();
+    for (const result of parseResults) {
+      this.parseResultsCache.set(this.normalizePath(result.file), result);
+    }
+    const fileEntries = await this.buildFileEntries(
+      files.slice(0, mergedOptions.maxFiles),
+      normalizedProjectPath,
+      parseResults
+    );
+    const symbols = this.symbolExtractor.mergeSymbols(parseResults);
+    this.dependencyBuilder.registerAlias("@/", "src/");
+    const dependencies = this.dependencyBuilder.build(
+      parseResults,
+      normalizedProjectPath
+    );
+    if (mergedOptions.countReferences) {
+      this.referenceCounter.count(symbols, parseResults);
+    }
+    const generationTime = Date.now() - startTime;
+    const stats = this.calculateStats(
+      fileEntries,
+      symbols,
+      dependencies,
+      generationTime
+    );
+    this.currentMap = {
+      projectPath: normalizedProjectPath,
+      generatedAt: /* @__PURE__ */ new Date(),
+      files: fileEntries,
+      symbols,
+      dependencies,
+      stats
+    };
+    return this.currentMap;
+  }
+  /**
+   * Generate incremental update for changed files
+   * @param projectPath - Root project path
+   * @param changedFiles - Files that changed
+   * @returns Updated repository map
+   */
+  async generateIncremental(projectPath, changedFiles) {
+    if (!this.currentMap) {
+      return this.generate(projectPath);
+    }
+    const startTime = Date.now();
+    const normalizedProjectPath = this.normalizePath(resolve(projectPath));
+    const normalizedChangedFiles = changedFiles.map(
+      (f) => this.normalizePath(resolve(f))
+    );
+    const changedParseResults = [];
+    for (const filePath of normalizedChangedFiles) {
+      try {
+        const content = await readFile(filePath, "utf-8");
+        const result = await this.parser.parseFile(filePath, content);
+        changedParseResults.push(result);
+        this.parseResultsCache.set(filePath, result);
+      } catch {
+        this.parseResultsCache.delete(filePath);
+      }
+    }
+    const allParseResults = Array.from(this.parseResultsCache.values());
+    const fileEntries = await this.buildFileEntries(
+      Array.from(this.parseResultsCache.keys()),
+      normalizedProjectPath,
+      allParseResults
+    );
+    const symbols = this.symbolExtractor.mergeSymbols(allParseResults);
+    const dependencies = this.dependencyBuilder.build(
+      allParseResults,
+      normalizedProjectPath
+    );
+    this.referenceCounter.count(symbols, allParseResults);
+    const generationTime = Date.now() - startTime;
+    const stats = this.calculateStats(
+      fileEntries,
+      symbols,
+      dependencies,
+      generationTime
+    );
+    this.currentMap = {
+      projectPath: normalizedProjectPath,
+      generatedAt: /* @__PURE__ */ new Date(),
+      files: fileEntries,
+      symbols,
+      dependencies,
+      stats
+    };
+    return this.currentMap;
+  }
+  // ============================================================================
+  // Query Methods
+  // ============================================================================
+  /**
+   * Find symbols by name
+   * @param name - Symbol name to search
+   * @returns Matching symbols
+   */
+  findSymbol(name) {
+    if (!this.currentMap) return [];
+    return this.symbolExtractor.findByName(this.currentMap.symbols, name);
+  }
+  /**
+   * Find usages of a symbol
+   * @param symbolName - Symbol name
+   * @returns Usage locations
+   */
+  findUsages(symbolName) {
+    if (!this.currentMap) return [];
+    const usages = [];
+    for (const edge of this.currentMap.dependencies) {
+      if (edge.symbols.includes(symbolName)) {
+        usages.push({
+          file: edge.from,
+          line: edge.line || 1,
+          context: edge.statement || `import ${symbolName}`,
+          usageType: "import"
+        });
+      }
+    }
+    return usages;
+  }
+  /**
+   * Find implementations of an interface
+   * @param interfaceName - Interface name
+   * @returns Implementing classes
+   */
+  findImplementations(interfaceName) {
+    if (!this.currentMap) return [];
+    return this.currentMap.symbols.filter((symbol) => {
+      if (symbol.kind !== "class") return false;
+      return symbol.signature.includes(`implements ${interfaceName}`);
+    });
+  }
+  /**
+   * Get files imported by a file
+   * @param file - File path
+   * @returns Array of imported file paths
+   */
+  getDependencies(file) {
+    return this.dependencyBuilder.getDependencies(file);
+  }
+  /**
+   * Get files that import a file
+   * @param file - File path
+   * @returns Array of importing file paths
+   */
+  getDependents(file) {
+    return this.dependencyBuilder.getDependents(file);
+  }
+  // ============================================================================
+  // Formatting Methods
+  // ============================================================================
+  /**
+   * Format map for context window
+   * @param options - Format options
+   * @returns Formatted string
+   */
+  formatForContext(options) {
+    if (!this.currentMap) {
+      throw new Error("No repo map generated. Call generate() first.");
+    }
+    return this.formatter.format(this.currentMap, options);
+  }
+  /**
+   * Get estimated token count for formatted output
+   * @returns Token count
+   */
+  getTokenCount() {
+    if (!this.currentMap) {
+      return 0;
+    }
+    const formatted = this.formatter.format(this.currentMap);
+    return this.formatter.estimateTokens(formatted);
+  }
+  // ============================================================================
+  // Cache Management
+  // ============================================================================
+  /**
+   * Get current repository map
+   * @returns Current map or null
+   */
+  getCurrentMap() {
+    return this.currentMap;
+  }
+  /**
+   * Clear cached data
+   */
+  clearCache() {
+    this.currentMap = null;
+    this.parseResultsCache.clear();
+  }
+  // ============================================================================
+  // Private Helpers - File Discovery
+  // ============================================================================
+  /**
+   * Find files matching patterns
+   * @param projectPath - Project root
+   * @param options - Generation options
+   * @returns Array of absolute file paths
+   */
+  async findFiles(projectPath, options) {
+    const patterns = options.includePatterns.map(
+      (p) => this.normalizePath(`${projectPath}/${p}`)
+    );
+    const ignorePatterns = options.excludePatterns.map(
+      (p) => this.normalizePath(p)
+    );
+    const files = await fg(patterns, {
+      ignore: ignorePatterns,
+      onlyFiles: true,
+      absolute: true,
+      cwd: projectPath
+    });
+    if (options.languages.length > 0) {
+      return files.filter((file) => {
+        const lang = this.parser.detectLanguage(file);
+        return lang !== null && options.languages.includes(lang);
+      });
+    }
+    return files.map((f) => this.normalizePath(f));
+  }
+  /**
+   * Parse all files and return results
+   * @param files - File paths to parse
+   * @param maxFiles - Maximum files to parse
+   * @returns Array of parse results
+   */
+  async parseAllFiles(files, maxFiles) {
+    const filesToParse = files.slice(0, maxFiles);
+    const results = [];
+    for (const filePath of filesToParse) {
+      try {
+        const content = await readFile(filePath, "utf-8");
+        const result = await this.parser.parseFile(filePath, content);
+        results.push(result);
+      } catch (error) {
+        results.push({
+          success: false,
+          file: filePath,
+          symbols: [],
+          imports: [],
+          exports: [],
+          errors: [
+            {
+              message: `Failed to read file: ${error instanceof Error ? error.message : String(error)}`,
+              line: 1,
+              column: 0
+            }
+          ],
+          parseTime: 0
+        });
+      }
+    }
+    return results;
+  }
+  /**
+   * Build file entries with metadata
+   * @param files - File paths
+   * @param projectPath - Project root
+   * @param parseResults - Parse results for symbol counts
+   * @returns Array of file entries
+   */
+  async buildFileEntries(files, projectPath, parseResults) {
+    const entries = [];
+    const symbolCountMap = /* @__PURE__ */ new Map();
+    for (const result of parseResults) {
+      symbolCountMap.set(
+        this.normalizePath(result.file),
+        result.symbols.length
+      );
+    }
+    for (const filePath of files) {
+      try {
+        const normalizedPath = this.normalizePath(filePath);
+        const fileStat = await stat(filePath);
+        const content = await readFile(filePath, "utf-8");
+        const lineCount = content.split("\n").length;
+        const language = this.parser.detectLanguage(filePath);
+        if (!language) continue;
+        entries.push({
+          path: normalizedPath,
+          relativePath: this.normalizePath(relative(projectPath, filePath)),
+          language,
+          size: fileStat.size,
+          lastModified: fileStat.mtime,
+          symbolCount: symbolCountMap.get(normalizedPath) || 0,
+          lineCount
+        });
+      } catch {
+      }
+    }
+    return entries;
+  }
+  // ============================================================================
+  // Private Helpers - Statistics
+  // ============================================================================
+  /**
+   * Calculate repository map statistics
+   */
+  calculateStats(files, symbols, dependencies, generationTime) {
+    const languageBreakdown = {
+      typescript: 0,
+      javascript: 0
+    };
+    for (const file of files) {
+      languageBreakdown[file.language]++;
+    }
+    const symbolBreakdown = {
+      class: 0,
+      interface: 0,
+      function: 0,
+      method: 0,
+      property: 0,
+      variable: 0,
+      constant: 0,
+      type: 0,
+      enum: 0,
+      enum_member: 0,
+      namespace: 0,
+      module: 0
+    };
+    for (const symbol of symbols) {
+      symbolBreakdown[symbol.kind]++;
+    }
+    const sortedBySize = [...files].sort((a, b) => b.size - a.size);
+    const largestFiles = sortedBySize.slice(0, 10).map((f) => f.relativePath);
+    const sortedByRefs = [...symbols].filter((s) => s.references > 0).sort((a, b) => b.references - a.references);
+    const mostReferencedSymbols = sortedByRefs.slice(0, 10).map((s) => ({
+      name: s.name,
+      file: s.file,
+      references: s.references
+    }));
+    const mostConnectedFiles = this.dependencyBuilder.getSortedByConnections().slice(0, 10);
+    return {
+      totalFiles: files.length,
+      totalSymbols: symbols.length,
+      totalDependencies: dependencies.length,
+      languageBreakdown,
+      symbolBreakdown,
+      largestFiles,
+      mostReferencedSymbols,
+      mostConnectedFiles,
+      generationTime
+    };
+  }
+  /**
+   * Normalize file path for consistent comparisons
+   */
+  normalizePath(filePath) {
+    return filePath.replace(/\\/g, "/");
+  }
+}
 let bootstrappedNexus = null;
 let mainWindowRef = null;
 class NexusBootstrap {
@@ -11044,7 +14429,9 @@ class NexusBootstrap {
   databaseClient = null;
   stateManager = null;
   checkpointManager = null;
+  humanReviewService = null;
   gitService = null;
+  repoMapGenerator = null;
   unsubscribers = [];
   constructor(config) {
     this.config = config;
@@ -11074,8 +14461,11 @@ class NexusBootstrap {
       throw error;
     }
     const dbPath = `${this.config.dataDir}/nexus.db`;
+    const isDev = !app.isPackaged;
+    const migrationsDir = isDev ? join$1(process.cwd(), "src", "persistence", "database", "migrations") : join$1(app.getAppPath(), "migrations");
     this.databaseClient = DatabaseClient.create({
-      path: dbPath
+      path: dbPath,
+      migrationsDir
     });
     this.requirementsDB = new RequirementsDB(this.databaseClient);
     this.gitService = new GitService({ baseDir: this.config.workingDir });
@@ -11087,6 +14477,14 @@ class NexusBootstrap {
       eventBus: this.eventBus
     });
     console.log("[NexusBootstrap] CheckpointManager created");
+    this.humanReviewService = new HumanReviewService({
+      db: this.databaseClient,
+      eventBus: this.eventBus,
+      checkpointManager: this.checkpointManager
+    });
+    console.log("[NexusBootstrap] HumanReviewService created");
+    this.repoMapGenerator = new RepoMapGenerator();
+    console.log("[NexusBootstrap] RepoMapGenerator created");
     const interviewOptions = {
       llmClient: this.nexus.llm.claude,
       requirementsDB: this.requirementsDB,
@@ -11116,6 +14514,8 @@ class NexusBootstrap {
       createCheckpoint: (projectId, reason) => this.createCheckpointForProject(projectId, reason),
       restoreCheckpoint: (checkpointId, restoreGit) => this.restoreCheckpointById(checkpointId, restoreGit),
       listCheckpoints: (projectId) => this.listCheckpointsForProject(projectId),
+      checkpointManager: this.checkpointManager,
+      humanReviewService: this.humanReviewService,
       shutdown: () => this.shutdown()
     };
     console.log("[NexusBootstrap] Initialization complete");
@@ -11299,20 +14699,84 @@ class NexusBootstrap {
   }
   /**
    * Start Evolution mode (enhance existing project)
+   *
+   * Task 9: Wire Evolution Critical Path
+   * 1. Generate repo map from projectPath
+   * 2. Pass context to interview engine
+   * 3. Interview completion triggers same execution path as Genesis
    */
   async startEvolutionMode(projectPath, projectName) {
-    if (!this.interviewEngine || !this.sessionManager) {
+    if (!this.interviewEngine || !this.sessionManager || !this.repoMapGenerator) {
       throw new Error("NexusBootstrap not initialized");
     }
     const projectId = `evolution-${Date.now()}`;
-    const _name = projectName ?? `Evolution: ${projectPath}`;
-    console.log(`[NexusBootstrap] Starting Evolution mode: ${_name} (${projectId})`);
-    const session2 = this.interviewEngine.startSession(projectId);
+    const name = projectName ?? `Evolution: ${projectPath}`;
+    console.log(`[NexusBootstrap] Starting Evolution mode: ${name} (${projectId})`);
+    await this.eventBus.emit("project:status-changed", {
+      projectId,
+      previousStatus: "planning",
+      newStatus: "planning",
+      reason: "Starting Evolution mode - analyzing existing codebase"
+    });
+    console.log(`[NexusBootstrap] Generating repo map for: ${projectPath}`);
+    let evolutionContext;
+    try {
+      await this.repoMapGenerator.initialize();
+      const repoMap = await this.repoMapGenerator.generate(projectPath, {
+        maxFiles: 500,
+        // Reasonable limit for context
+        countReferences: true
+      });
+      const repoMapContext = this.repoMapGenerator.formatForContext({
+        maxTokens: 8e3,
+        // Limit for context window
+        includeSignatures: true,
+        rankByReferences: true,
+        groupByFile: true,
+        includeDependencies: true,
+        style: "compact"
+      });
+      console.log(`[NexusBootstrap] Repo map generated: ${repoMap.stats.totalFiles} files, ${repoMap.stats.totalSymbols} symbols`);
+      const projectSummary = this.buildProjectSummary(repoMap);
+      evolutionContext = {
+        projectPath,
+        repoMapContext,
+        projectSummary
+      };
+      console.log(`[NexusBootstrap] Evolution context prepared with ${repoMapContext.length} chars of context`);
+    } catch (error) {
+      console.error("[NexusBootstrap] Failed to generate repo map:", error);
+      console.log("[NexusBootstrap] Continuing Evolution mode without repo map context");
+    }
+    const session2 = this.interviewEngine.startSession(projectId, {
+      mode: "evolution",
+      evolutionContext
+    });
     this.sessionManager.startAutoSave(session2);
+    console.log(`[NexusBootstrap] Evolution session started: ${session2.id}`);
     return {
       projectId,
       sessionId: session2.id
     };
+  }
+  /**
+   * Build a human-readable summary of the project from the repo map
+   */
+  buildProjectSummary(repoMap) {
+    const stats = repoMap.stats;
+    const lines = [
+      `Project: ${repoMap.projectPath}`,
+      `Files: ${stats.totalFiles} (${stats.languageBreakdown.typescript} TypeScript, ${stats.languageBreakdown.javascript} JavaScript)`,
+      `Symbols: ${stats.totalSymbols} (${stats.symbolBreakdown.class} classes, ${stats.symbolBreakdown.function} functions, ${stats.symbolBreakdown.interface} interfaces)`,
+      `Dependencies: ${stats.totalDependencies} connections`
+    ];
+    if (stats.largestFiles.length > 0) {
+      lines.push(`Largest files: ${stats.largestFiles.slice(0, 5).join(", ")}`);
+    }
+    if (stats.mostConnectedFiles.length > 0) {
+      lines.push(`Key files (most connected): ${stats.mostConnectedFiles.slice(0, 5).join(", ")}`);
+    }
+    return lines.join("\n");
   }
   // =========================================================================
   // TASK 5: Wire Checkpoint Listeners
@@ -11482,7 +14946,9 @@ class NexusBootstrap {
     this.requirementsDB = null;
     this.stateManager = null;
     this.checkpointManager = null;
+    this.humanReviewService = null;
     this.gitService = null;
+    this.repoMapGenerator = null;
     this.databaseClient = null;
     bootstrappedNexus = null;
     console.log("[NexusBootstrap] Shutdown complete");
@@ -11538,27 +15004,48 @@ function createWindow() {
     void mainWindow.loadFile(join$1(__dirname, "../renderer/index.html"));
   }
 }
+function getNexusConfigFromSettings() {
+  const settings = settingsService.getAll();
+  const anthropicKey = process.env["ANTHROPIC_API_KEY"] ?? settingsService.getApiKey("claude");
+  const googleKey = process.env["GOOGLE_AI_API_KEY"] ?? settingsService.getApiKey("gemini");
+  const openaiKey = process.env["OPENAI_API_KEY"] ?? settingsService.getApiKey("openai");
+  const claudeWantsCli = settings.llm.claude.backend === "cli";
+  const geminiWantsCli = settings.llm.gemini.backend === "cli";
+  const useClaudeCli = claudeWantsCli || !claudeWantsCli && !anthropicKey;
+  const useGeminiCli = geminiWantsCli || !geminiWantsCli && !googleKey;
+  return {
+    workingDir: getWorkingDir(),
+    dataDir: getDataDir(),
+    apiKeys: {
+      anthropic: anthropicKey ?? void 0,
+      google: googleKey ?? void 0,
+      openai: openaiKey ?? void 0
+    },
+    useCli: {
+      claude: useClaudeCli,
+      gemini: useGeminiCli
+    }
+  };
+}
 async function initializeNexusSystem() {
   try {
     console.log("[Main] Initializing Nexus system...");
-    const config = {
-      workingDir: getWorkingDir(),
-      dataDir: getDataDir(),
-      apiKeys: {
-        anthropic: process.env["ANTHROPIC_API_KEY"],
-        google: process.env["GOOGLE_AI_API_KEY"],
-        openai: process.env["OPENAI_API_KEY"]
-      },
-      useCli: {
-        // Default to CLI if no API keys are set
-        claude: !process.env["ANTHROPIC_API_KEY"],
-        gemini: !process.env["GOOGLE_AI_API_KEY"]
-      }
-    };
+    const config = getNexusConfigFromSettings();
+    const settings = settingsService.getAll();
+    console.log("[Main] Configuration sources:");
+    console.log(`[Main]   Claude backend preference: ${settings.llm.claude.backend}`);
+    console.log(`[Main]   Claude API key: ${config.apiKeys.anthropic ? "present" : "not set"}`);
+    console.log(`[Main]   Gemini backend preference: ${settings.llm.gemini.backend}`);
+    console.log(`[Main]   Gemini API key: ${config.apiKeys.google ? "present" : "not set"}`);
     nexusInstance = await initializeNexus(config);
+    removeInterviewHandlers();
     registerInterviewHandlers(
       nexusInstance.interviewEngine,
       nexusInstance.sessionManager
+    );
+    registerCheckpointReviewHandlers(
+      nexusInstance.checkpointManager,
+      nexusInstance.humanReviewService
     );
     console.log("[Main] Nexus system initialized successfully");
     console.log(`[Main] Working directory: ${config.workingDir}`);
@@ -11567,12 +15054,16 @@ async function initializeNexusSystem() {
     console.log(`[Main] Gemini backend: ${config.useCli.gemini ? "CLI" : "API"}`);
   } catch (error) {
     console.error("[Main] Failed to initialize Nexus system:", error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    removeInterviewHandlers();
+    registerFallbackInterviewHandlers(errorMessage);
   }
 }
 void app.whenReady().then(async () => {
   electronApp.setAppUserModelId("com.nexus.app");
   registerIpcHandlers();
   registerSettingsHandlers();
+  registerFallbackInterviewHandlers("Nexus is still initializing...");
   app.on("browser-window-created", (_, window) => {
     optimizer.watchWindowShortcuts(window);
   });
