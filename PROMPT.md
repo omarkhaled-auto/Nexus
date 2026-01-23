@@ -1,24 +1,24 @@
-# Phase 22-FIX: Implement Debugging Audit Fixes
+# Phase 23: Create Playwright MCP E2E Testing Prompt for Claude Code
 
 ## Context
 
 - **Project:** Nexus AI Builder
 - **Repository:** https://github.com/omarkhaled-auto/Nexus
-- **Current State:** Phase 22 Debugging Audit complete - 22 issues identified
-- **Test Status:** 2357 tests passing - MUST MAINTAIN
-- **Reference:** DEBUGGING_AUDIT_REPORT.md and FIX_PRIORITIES.md
+- **Current State:** Phase 22-FIX complete, app launching, basic flows working
+- **Purpose:** Write a comprehensive Playwright MCP E2E testing prompt for Claude Code
+- **Reference:** PLAYWRIGHT_MCP_E2E_RESEARCH.md in project knowledge
 
 ---
 
-## Audit Summary
+## Mission Statement
 
-| Priority | Count | Description |
-|----------|-------|-------------|
-| **P0** | 2 | Critical - affects core functionality |
-| **P1** | 12 | Major - silent failures, missing validation |
-| **P2** | 8 | Minor - technical debt, type safety |
+You are Ralph. Your job is to:
 
-**Overall Assessment:** Core Genesis and Evolution flows are correctly wired. All 80+ IPC handlers registered. All events have listeners. Issues are fixable without architectural changes.
+1. **FIRST**: Analyze the Nexus codebase to understand ALL features, pages, components, and user flows
+2. **THEN**: Write a comprehensive Playwright MCP E2E testing prompt tailored to Nexus
+3. **OUTPUT**: A single markdown file that Claude Code will use to test Nexus end-to-end
+
+The testing prompt you create will be given to Claude Code with Playwright MCP. Claude Code will then execute the tests, and **fix any issues it encounters** before moving on. The goal is a WORKING Nexus app that can create a functional project.
 
 ---
 
@@ -26,538 +26,422 @@
 
 +============================================================================+
 |                                                                            |
-|  RULE 1: DO NOT BREAK EXISTING FUNCTIONALITY                               |
-|          - All 2357 tests MUST continue passing                            |
-|          - Run `npm test` after EACH batch of fixes                        |
-|          - If tests fail, revert and investigate                           |
+|  RULE 1: ANALYZE BEFORE WRITING                                            |
+|          - Read ALL relevant source files first                            |
+|          - Understand every page, component, and flow                      |
+|          - Map out the complete user journey                               |
 |                                                                            |
-|  RULE 2: FIX IN PRIORITY ORDER                                             |
-|          - P0 issues first (system unusable)                               |
-|          - P1 issues second (features broken)                              |
-|          - P2 issues last (code quality)                                   |
+|  RULE 2: THE TESTING PROMPT MUST BE SELF-CONTAINED                         |
+|          - Claude Code should be able to run it without asking questions   |
+|          - Include ALL necessary context about Nexus                       |
+|          - Specify exact selectors, paths, and expected behaviors          |
 |                                                                            |
-|  RULE 3: MINIMAL CHANGES                                                   |
-|          - Fix only what is needed                                         |
-|          - Do not refactor working code                                    |
-|          - Preserve existing patterns                                      |
+|  RULE 3: FIX ISSUES, DON'T JUST LOG THEM                                   |
+|          - The prompt must instruct Claude Code to FIX problems            |
+|          - Only stop for complete blockers requiring human help            |
+|          - Each fix should be verified before moving on                    |
 |                                                                            |
-|  RULE 4: ADD ERROR HANDLING, NOT COMPLEXITY                                |
-|          - Wrap risky operations in try-catch                              |
-|          - Add logging for debugging                                       |
-|          - Emit events for UI visibility                                   |
+|  RULE 4: END-TO-END MEANS END-TO-END                                       |
+|          - The test creates a REAL project using Nexus                     |
+|          - Goes through the ENTIRE Genesis flow                            |
+|          - Results in actual generated code/output                         |
 |                                                                            |
 +============================================================================+
 
 ---
 
-## Files NOT to Modify
-
-These files are working correctly - DO NOT CHANGE:
-
-| File | Reason |
-|------|--------|
-| `src/orchestration/events/EventBus.ts` | Core event system working |
-| `src/types/events.ts` | Type definitions complete |
-| `src/preload/index.ts` | All APIs properly exposed |
-| All test files (`*.test.ts`, `*.spec.ts`) | Tests should not be modified |
-
----
-
 # =============================================================================
-# TASK 1: Fix P0-001 - Incomplete Project Completion Metrics
+# TASK 1: Analyze Nexus Codebase
 # =============================================================================
 
 ## Objective
-Fix placeholder values in `project:completed` event to show actual metrics.
-
-## Location
-`src/main/NexusBootstrap.ts` lines 506-516
-
-## Current Code
-```typescript
-void this.eventBus.emit('project:completed', {
-  projectId: String(eventData.projectId),
-  totalDuration: 0, // TODO: Track actual duration
-  metrics: {
-    tasksTotal: totalTasks,
-    tasksCompleted: completedTasks,
-    tasksFailed: failedTasks,
-    featuresTotal: 0, // TODO: Track features
-    featuresCompleted: 0,
-    estimatedTotalMinutes: 0,
-    actualTotalMinutes: 0,
-    averageQAIterations: 0,
-  },
-});
-```
-
-## Fix Requirements
-
-- [ ] Add `projectStartTimes: Map<string, Date>` to NexusBootstrap class
-- [ ] Record start time when `NexusCoordinator.start()` is called (around line 426)
-- [ ] Calculate `totalDuration` from start time to completion
-- [ ] Get features count from coordinator's features data
-- [ ] Get estimated/actual minutes from task data
-
-## Implementation
-
-```typescript
-// Add to class properties (around line 50)
-private projectStartTimes: Map<string, Date> = new Map();
-
-// Add when starting execution (around line 426, after coordinator.start())
-this.projectStartTimes.set(String(projectId), new Date());
-
-// Update the project:completed handler to calculate real values
-const startTime = this.projectStartTimes.get(String(eventData.projectId));
-const totalDuration = startTime 
-  ? Math.round((Date.now() - startTime.getTime()) / 1000) 
-  : 0;
-
-// Clean up
-this.projectStartTimes.delete(String(eventData.projectId));
-
-void this.eventBus.emit('project:completed', {
-  projectId: String(eventData.projectId),
-  totalDuration,
-  metrics: {
-    tasksTotal: totalTasks,
-    tasksCompleted: completedTasks,
-    tasksFailed: failedTasks,
-    featuresTotal: features?.length ?? 0,
-    featuresCompleted: features?.filter(f => f.status === 'completed').length ?? 0,
-    estimatedTotalMinutes: tasks.reduce((sum, t) => sum + (t.estimatedMinutes ?? 0), 0),
-    actualTotalMinutes: Math.round(totalDuration / 60),
-    averageQAIterations: 0, // Keep as 0 for now - requires deeper tracking
-  },
-});
-```
-
-## Verification
-
-```bash
-grep -n "projectStartTimes" src/main/NexusBootstrap.ts
-grep -n "totalDuration" src/main/NexusBootstrap.ts
-npm run build
-npm test -- src/main/NexusBootstrap.test.ts
-```
-
-### Task 1 Completion Checklist
-- [x] Added projectStartTimes Map
-- [x] Recording start time when execution begins
-- [x] Calculating totalDuration from start time
-- [x] Getting features count
-- [x] Calculating estimated minutes from tasks (actualTotalMinutes calculated; estimatedTotalMinutes left as 0 - requires deeper tracking)
-- [x] TypeScript compiles
-- [x] Tests pass (2357 passed)
-
-**[TASK 1 COMPLETE]**
-
----
-
-# =============================================================================
-# TASK 2: Fix P0-002 - QA Max Iterations Configuration
-# =============================================================================
-
-## Objective
-Ensure QA loop uses correct max iterations (50) per specification.
-
-## Location
-`src/execution/qa/QALoopEngine.ts` line 105
-
-## Current Code
-```typescript
-this.maxIterations = config.maxIterations ?? 3;
-```
-
-## Fix Requirements
-
-- [ ] Find where QALoopEngine is instantiated
-- [ ] Verify if config passes maxIterations
-- [ ] Either fix instantiation to pass 50, OR change default to 50
-
-## Investigation
-
-```bash
-# Find where QALoopEngine is created
-grep -rn "new QALoopEngine\|QALoopEngine(" src/ --include="*.ts" | grep -v test
-
-# Check NexusFactory if it exists
-grep -rn "maxIterations" src/ --include="*.ts" | grep -v test
-```
-
-## Implementation Options
-
-**Option A: Change default to 50 (Recommended)**
-```typescript
-// In QALoopEngine.ts line 105
-this.maxIterations = config.maxIterations ?? 50;
-```
-
-**Option B: Ensure config passes 50**
-Find instantiation and add:
-```typescript
-const qaEngine = new QALoopEngine({
-  maxIterations: 50,
-  // ... other config
-});
-```
-
-## Verification
-
-```bash
-grep -n "maxIterations" src/execution/qa/QALoopEngine.ts
-npm run build
-npm test -- src/execution/qa/
-```
-
-### Task 2 Completion Checklist
-- [x] Investigated where QALoopEngine is instantiated (found in NexusFactory.ts lines 324, 490)
-- [x] Fixed max iterations to 50 (changed default in QALoopEngine.ts from 3 to 50)
-- [x] Updated NexusFactory.ts to use 50 instead of hardcoded 3
-- [x] TypeScript compiles
-- [x] Tests pass (2357 passed)
-
-**[TASK 2 COMPLETE]**
-
----
-
-# =============================================================================
-# TASK 3: Fix P1-001 - Silent Requirement Save Failure
-# =============================================================================
-
-## Objective
-Add visibility when requirement saves fail.
-
-## Location
-`src/main/NexusBootstrap.ts` lines 342-345
-
-## Current Code
-```typescript
-} catch (error) {
-  console.warn(`[NexusBootstrap] Failed to save requirement: ${error instanceof Error ? error.message : String(error)}`);
-}
-```
-
-## Fix Requirements
-
-- [ ] Emit a warning event for UI visibility
-- [ ] Keep the console.warn for logging
-- [ ] Do NOT throw - current behavior is intentional (duplicate detection)
-
-## Implementation
-
-```typescript
-} catch (error) {
-  const message = error instanceof Error ? error.message : String(error);
-  console.warn(`[NexusBootstrap] Failed to save requirement: ${message}`);
-  
-  // Emit warning for UI visibility (non-blocking)
-  void this.eventBus.emit('system:warning', {
-    component: 'NexusBootstrap',
-    message: `Failed to save requirement: ${message}`,
-    timestamp: new Date().toISOString(),
-  });
-}
-```
-
-## Verification
-
-```bash
-grep -n "system:warning" src/main/NexusBootstrap.ts
-npm run build
-npm test
-```
-
-### Task 3 Completion Checklist
-- [x] Added system:warning event emission
-- [x] Kept existing logging
-- [x] TypeScript compiles
-- [x] Tests pass (2357 passed)
-
-**[TASK 3 COMPLETE]**
-
----
-
-# =============================================================================
-# TASK 4: Fix P1-002 - Silent Planning Failure State
-# =============================================================================
-
-## Objective
-Ensure coordinator state is cleaned up on planning failure.
-
-## Location
-`src/main/NexusBootstrap.ts` lines 429-436
-
-## Current Code
-```typescript
-} catch (error) {
-  console.error('[NexusBootstrap] Planning failed:', error);
-  // Missing: coordinator state cleanup
-}
-```
-
-## Fix Requirements
-
-- [ ] Check coordinator state after planning failure
-- [ ] Reset coordinator if not in idle state
-- [ ] Emit project:failed event with details
-
-## Implementation
-
-```typescript
-} catch (error) {
-  const errorMessage = error instanceof Error ? error.message : String(error);
-  console.error('[NexusBootstrap] Planning failed:', errorMessage);
-  
-  // Ensure coordinator is in clean state
-  try {
-    const coordStatus = coordinator.getStatus();
-    if (coordStatus.state !== 'idle') {
-      await coordinator.stop();
-    }
-  } catch (stopError) {
-    console.error('[NexusBootstrap] Failed to stop coordinator:', stopError);
-  }
-  
-  // Emit failure event for UI
-  void this.eventBus.emit('project:failed', {
-    projectId: String(projectId),
-    error: errorMessage,
-    phase: 'planning',
-    recoverable: true,
-  });
-}
-```
-
-## Verification
-
-```bash
-grep -n "project:failed" src/main/NexusBootstrap.ts
-npm run build
-npm test
-```
-
-### Task 4 Completion Checklist
-- [x] Added coordinator state check
-- [x] Added coordinator.stop() call
-- [x] Added project:failed event emission (with [Planning] prefix for debugging)
-- [x] TypeScript compiles
-- [x] Tests pass (2357 passed)
-
-**[TASK 4 COMPLETE]**
-
----
-
-# =============================================================================
-# TASK 5: Fix P1-005 to P1-012 - JSON.parse Validation (High Risk)
-# =============================================================================
-
-## Objective
-Add try-catch wrappers to high-risk JSON.parse calls.
-
-## Locations (Priority Order)
-
-| # | File | Line | Context |
-|---|------|------|---------|
-| 1 | CheckpointManager.ts | 257 | State restoration |
-| 2 | GeminiCLIClient.ts | 330, 518 | LLM responses |
-| 3 | ClaudeCodeCLIClient.ts | 406 | LLM responses |
-| 4 | MergerAgent.ts | 341 | Agent parsing |
-| 5 | ReviewerAgent.ts | 306 | Agent parsing |
-| 6 | TaskDecomposer.ts | 339 | Planning |
-| 7 | WorktreeManager.ts | 301 | Git registry |
-| 8 | ConfigFileLoader.ts | 203 | Config loading |
-
-## Fix Template
-
-```typescript
-// BEFORE
-const parsed = JSON.parse(content);
-
-// AFTER
-let parsed: ExpectedType;
-try {
-  parsed = JSON.parse(content);
-} catch (parseError) {
-  const errorMsg = parseError instanceof Error ? parseError.message : String(parseError);
-  console.error(`[ComponentName] Failed to parse JSON: ${errorMsg}`);
-  throw new Error(`Invalid JSON format: ${errorMsg}`);
-}
-```
-
-## Fix Requirements
-
-- [ ] Fix CheckpointManager.ts:257
-- [ ] Fix GeminiCLIClient.ts:330
-- [ ] Fix GeminiCLIClient.ts:518
-- [ ] Fix ClaudeCodeCLIClient.ts:406
-- [ ] Fix MergerAgent.ts:341
-- [ ] Fix ReviewerAgent.ts:306
-- [ ] Fix TaskDecomposer.ts:339
-- [ ] Fix WorktreeManager.ts:301
-- [ ] Fix ConfigFileLoader.ts:203
-
-## Implementation Notes
-
-1. For LLM response parsing, return a descriptive error that includes what was expected
-2. For config/registry files, consider returning a default value instead of throwing
-3. Always log the error before throwing/returning
-
-## Verification
-
-```bash
-# Check each file was updated
-for file in CheckpointManager GeminiCLIClient ClaudeCodeCLIClient MergerAgent ReviewerAgent TaskDecomposer WorktreeManager ConfigFileLoader; do
-  echo "=== $file ===" 
-  grep -n "JSON.parse" src/**/*$file*.ts 2>/dev/null | head -5
-done
-
-npm run build
-npm test
-```
-
-### Task 5 Completion Checklist
-- [x] CheckpointManager.ts fixed (ALREADY HAS try-catch at lines 256-260)
-- [x] GeminiCLIClient.ts fixed (ALREADY HAS try-catch in parseResponse method and line 517-523)
-- [x] ClaudeCodeCLIClient.ts fixed (ALREADY HAS try-catch in parseResponse method)
-- [x] MergerAgent.ts fixed (ALREADY HAS try-catch at lines 331-371)
-- [x] ReviewerAgent.ts fixed (ALREADY HAS try-catch at lines 296-326)
-- [x] TaskDecomposer.ts fixed (ALREADY HAS try-catch at lines 340-344)
-- [x] WorktreeManager.ts fixed (ALREADY HAS try-catch at lines 298-326)
-- [x] ConfigFileLoader.ts fixed (ALREADY HAS try-catch with ConfigFileLoadError)
-- [x] TypeScript compiles
-- [x] Tests pass (verified - no changes needed)
-
-**NOTE:** All JSON.parse calls in the listed files already have proper try-catch error handling. The audit report may have been generated before these fixes were made, or was based on static analysis that didn't trace the call stack context properly.
-
-**[TASK 5 COMPLETE]**
-
----
-
-# =============================================================================
-# TASK 6: Fix P2 - Minor Issues (Error Handling & Type Safety)
-# =============================================================================
-
-## Objective
-Fix minor issues for code quality.
-
-## P2-001: app.whenReady Missing Catch
-
-### Files
-- `src/main/main.ts` line 43
-- `src/main/index.ts` line 207
-
-### Fix
-```typescript
-void app.whenReady().then(async () => {
-  // ... existing code
-}).catch((error) => {
-  console.error('[Main] Failed to initialize app:', error);
-  app.quit();
-});
-```
-
-## P2-002 to P2-004: Silent Return Null
-
-Add logging before returning null:
-
-### ConfigFileLoader.ts
-```typescript
-// Before returning null, add:
-console.warn(`[ConfigFileLoader] ${methodName} returning null: ${reason}`);
-```
-
-### RequestContextTool.ts
-```typescript
-// In parseContext, before return null:
-console.warn('[RequestContextTool] parseContext failed, returning null');
-```
-
-### RequestReplanTool.ts
-```typescript
-// In parsePlan, before return null:
-console.warn('[RequestReplanTool] parsePlan failed, returning null');
-```
-
-## P2-005 & P2-006: Type Safety
-
-These are lower priority - skip if time constrained. The `any` types work and tests pass.
-
-## Verification
-
-```bash
-grep -n "app.whenReady" src/main/main.ts src/main/index.ts
-grep -n "returning null\|return null" src/ --include="*.ts" | head -20
-npm run build
-npm test
-```
-
-### Task 6 Completion Checklist
-- [x] Fixed app.whenReady in main.ts
-- [x] Fixed app.whenReady in index.ts
-- [x] Added logging to ConfigFileLoader null returns
-- [x] Added logging to RequestContextTool null return
-- [x] Added logging to RequestReplanTool null return
-- [x] TypeScript compiles
-- [x] Tests pass (2357 passed)
-
-**[TASK 6 COMPLETE]**
-
----
-
-# =============================================================================
-# TASK 7: Final Lint & Quality Verification
-# =============================================================================
-
-## Objective
-Ensure all changes pass quality checks.
+Understand every feature, page, component, and user flow in Nexus.
 
 ## Requirements
 
-### Part A: Auto-fix
-- [x] Run: `npm run lint -- --fix`
+### 1.1 Read the UI Structure
 
-### Part B: Manual Fixes
-- [x] Fix any `no-unused-vars` (prefix with _) - N/A for modified files
-- [x] Fix any `restrict-template-expressions` (use String() or ??) - N/A for modified files
-- [x] Fix any other errors - N/A for modified files
-
-### Part C: Verification
-- [x] `npm run lint` passes (0 errors in modified files)
-- [x] `npm run build` succeeds
-- [x] `npm test` - all tests pass (2357 passed; 7 API-key integration test failures pre-existing)
-
-### Part D: Commit
 ```bash
-git add -A
-git commit -m "fix: Implement Phase 22 debugging audit fixes
+# Find all pages
+find src/renderer -name "*Page*" -type f -name "*.tsx"
 
-P0 Fixes:
-- Add project completion metrics tracking (duration, features)
-- Set QA max iterations default to 50 per specification
+# Find all components
+find src/renderer/src/components -type f -name "*.tsx" | head -50
 
-P1 Fixes:
-- Add UI visibility for requirement save failures
-- Add coordinator state cleanup on planning failure
-- Add JSON.parse validation to 9 high-risk locations
-
-P2 Fixes:
-- Add .catch() to app.whenReady() calls
-- Add logging for silent null returns
-
-All 2357+ tests continue to pass."
+# Read the router configuration
+cat src/renderer/src/App.tsx
 ```
 
-### Task 7 Completion Checklist
-- [x] `npm run lint -- --fix` executed
-- [x] All remaining lint errors fixed (no errors in modified files)
-- [x] `npm run lint` passes (for modified files)
-- [x] `npm run build` succeeds
-- [x] All tests pass (2357 passed)
-- [x] Changes committed (already committed in previous iterations)
+Document:
+- All route paths (/, /genesis, /evolution, /kanban, etc.)
+- What component each route renders
+- Navigation flow between pages
 
-**[TASK 7 COMPLETE]**
+### 1.2 Read the Main Entry Points
+
+```bash
+# Main process entry
+cat src/main/index.ts
+cat src/main/main.ts
+
+# Bootstrap and initialization
+cat src/main/NexusBootstrap.ts | head -200
+```
+
+Document:
+- How the app initializes
+- What services are created
+- What IPC handlers are registered
+
+### 1.3 Read Key Pages
+
+```bash
+# Welcome/Mode selector page
+cat src/renderer/src/pages/ModeSelectorPage.tsx 2>/dev/null || \
+cat src/renderer/src/pages/WelcomePage.tsx 2>/dev/null
+
+# Interview page
+cat src/renderer/src/pages/InterviewPage.tsx 2>/dev/null
+
+# Kanban page
+cat src/renderer/src/pages/KanbanPage.tsx 2>/dev/null
+```
+
+Document for each page:
+- What UI elements exist
+- What actions user can take
+- What events are triggered
+- Expected navigation after actions
+
+### 1.4 Read Key Components
+
+```bash
+# Project selector
+cat src/renderer/src/components/ProjectSelector.tsx
+
+# Interview components
+find src/renderer -path "*interview*" -name "*.tsx" | xargs cat 2>/dev/null | head -300
+
+# Kanban components
+find src/renderer -path "*kanban*" -o -path "*Kanban*" | xargs cat 2>/dev/null | head -200
+```
+
+Document:
+- Key interactive elements (buttons, inputs, etc.)
+- CSS classes or data-testid attributes for selection
+- Component props and state
+
+### 1.5 Understand the Genesis Flow
+
+Map out the COMPLETE Genesis flow:
+```
+1. App launches -> What page shows?
+2. User clicks Genesis -> Where does it navigate?
+3. User selects folder -> How? What component?
+4. User enters project name -> What input?
+5. User clicks Create -> What happens?
+6. Interview page loads -> What elements?
+7. User sends message -> How?
+8. AI responds -> What shows?
+9. User completes interview -> What button?
+10. Tasks are created -> Where stored?
+11. Kanban shows -> What displays?
+12. Execution starts -> How triggered?
+```
+
+### 1.6 Document All Selectors
+
+Find or infer selectors for:
+- Buttons (Genesis, Evolution, Create, Send, Complete, etc.)
+- Inputs (project name, chat input, etc.)
+- Containers (chat area, kanban board, etc.)
+- Status indicators (loading, error, success)
+
+```bash
+# Find data-testid attributes
+grep -rn "data-testid" src/renderer/ --include="*.tsx" | head -50
+
+# Find button text
+grep -rn "<button\|<Button" src/renderer/ --include="*.tsx" | head -50
+
+# Find input elements
+grep -rn "<input\|<Input\|<textarea" src/renderer/ --include="*.tsx" | head -30
+```
+
+**[TASK 1 COMPLETE]** when you have a complete map of Nexus's UI and flows
+
+---
+
+# =============================================================================
+# TASK 2: Write the Playwright MCP E2E Testing Prompt
+# =============================================================================
+
+## Objective
+Create a comprehensive, self-contained prompt for Claude Code with Playwright MCP.
+
+## Output File
+Create: `PROMPT-PLAYWRIGHT-E2E-TEST.md`
+
+## Prompt Structure
+
+The prompt you write MUST follow this structure:
+
+```markdown
+# Nexus E2E Testing with Playwright MCP
+
+## Context
+- What is Nexus (brief description)
+- Current state (app runs, basic flows work)
+- Goal: Create a functional project using Nexus, fixing any issues encountered
+
+## Prerequisites
+- Playwright MCP must be configured
+- Nexus must be running (`npm run dev`)
+- How to verify MCP is working
+
+## Testing Philosophy
+- This is EXPLORATORY and FIXING, not just observing
+- When an issue is found, FIX IT before moving on
+- Only stop for complete blockers requiring human intervention
+- Take screenshots at each major step
+- Log all console output for debugging
+
+## How to Use Playwright MCP
+[Include the key tools and how to use them]
+- browser_navigate
+- browser_click
+- browser_type
+- browser_screenshot
+- browser_snapshot
+- etc.
+
+## Nexus Application Structure
+[Include what you learned in Task 1]
+- Routes and pages
+- Key components
+- Selectors for interactive elements
+- Expected behaviors
+
+## Test Flow
+
+### Phase 1: App Launch Verification
+1. Navigate to Nexus (localhost URL)
+2. Take screenshot
+3. Verify welcome/mode selector page loads
+4. Expected: See Genesis and Evolution options
+5. IF ISSUE: [specific fix instructions]
+
+### Phase 2: Genesis Mode Selection
+1. Click Genesis mode button/card
+2. Take screenshot
+3. Verify navigation to project creation
+4. Expected: See project selector or folder selection
+5. IF ISSUE: [specific fix instructions]
+
+### Phase 3: Project Creation
+1. [Specific steps based on what you found]
+2. Enter project name: "PlaywrightTestProject"
+3. Click create button
+4. Take screenshot
+5. Expected: Navigation to interview page
+6. IF ISSUE: [specific fix instructions]
+
+### Phase 4: Interview Flow
+1. Verify interview page elements
+2. Send a test message: "I want to build a simple todo app with React"
+3. Wait for AI response
+4. Take screenshot
+5. Verify response appears
+6. IF ISSUE: [specific fix instructions]
+
+### Phase 5: Complete Interview
+1. [Continue based on what you found]
+2. Click complete/finish button
+3. Wait for task decomposition
+4. Take screenshot
+5. IF ISSUE: [specific fix instructions]
+
+### Phase 6: Kanban Board
+1. Verify Kanban page loads
+2. Take screenshot
+3. Verify tasks are displayed
+4. IF ISSUE: [specific fix instructions]
+
+### Phase 7: Execution (if applicable)
+1. [Steps to start execution if UI supports it]
+2. Monitor progress
+3. Take screenshots
+4. IF ISSUE: [specific fix instructions]
+
+## Issue Resolution Guide
+
+When you encounter an issue:
+
+1. IDENTIFY: Take screenshot, read error messages, check console
+2. DIAGNOSE: Determine root cause (UI bug, backend error, missing handler, etc.)
+3. FIX: Make the necessary code change
+4. VERIFY: Rebuild if needed, test the fix
+5. CONTINUE: Move to next step
+
+### Common Issues and Fixes
+
+[Include based on what you know about Nexus]
+
+#### Navigation Issues
+- If 404 error: Check router config, ensure HashRouter is used
+- If blank page: Check component rendering, look for errors
+
+#### Dialog Issues
+- If folder dialog doesn't work: Check IPC handlers, fs-extra imports
+
+#### Interview Issues
+- If chat doesn't respond: Check Claude CLI availability, API keys
+
+#### State Issues
+- If data doesn't persist: Check database operations, state management
+
+## Stopping Criteria
+
+ONLY stop the test if:
+1. A critical dependency is missing (e.g., Claude CLI not installed, API key required)
+2. A fix requires architectural changes beyond scope
+3. User input is explicitly required (e.g., entering real API keys)
+
+DO NOT stop for:
+- UI bugs (fix them)
+- Missing error handling (add it)
+- Navigation issues (fix the routes)
+- State management issues (fix the stores)
+
+## Success Criteria
+
+The test is SUCCESSFUL when:
+1. App launches without errors
+2. Genesis flow completes entirely
+3. A project is created with proper structure
+4. Interview captures requirements
+5. Tasks are generated and displayed
+6. (Optional) Execution produces output
+
+## Final Report
+
+After testing, provide:
+1. Summary of steps completed
+2. List of issues found and fixed
+3. Screenshots of each major step
+4. Any remaining issues that need human attention
+5. Recommendations for improvement
+```
+
+## Important Inclusions
+
+### 1. Exact Selectors
+Based on your analysis, include the EXACT selectors Claude Code should use:
+
+```markdown
+## Selectors Reference
+
+| Element | Selector | Notes |
+|---------|----------|-------|
+| Genesis Button | `text=Genesis` or `[data-testid="genesis-button"]` | On welcome page |
+| Project Name Input | `input[placeholder*="name"]` or `[data-testid="project-name"]` | In project selector |
+| Create Button | `button:has-text("Create")` | Submits project creation |
+| Chat Input | `[data-testid="chat-input"]` or `textarea` | In interview page |
+| Send Button | `button:has-text("Send")` | Sends chat message |
+| Complete Button | `button:has-text("Complete")` | Ends interview |
+```
+
+### 2. Expected URLs
+Include the routes:
+
+```markdown
+## URL Routes
+
+| Page | URL | Component |
+|------|-----|-----------|
+| Welcome | `/#/` | ModeSelectorPage |
+| Genesis Interview | `/#/genesis` | InterviewPage |
+| Evolution | `/#/evolution` | KanbanPage |
+| Kanban | `/#/kanban` | KanbanPage |
+```
+
+### 3. IPC Handlers to Know About
+Include relevant IPC calls:
+
+```markdown
+## Key IPC Handlers
+
+| Action | IPC Channel | Purpose |
+|--------|-------------|---------|
+| Create Project | `project:initialize` | Creates project structure |
+| Open Dialog | `dialog:openDirectory` | Opens folder picker |
+| Send Message | `interview:sendMessage` | Sends chat to AI |
+| Complete Interview | `interview:complete` | Ends interview session |
+```
+
+### 4. Fix Instructions
+For EACH potential issue, include specific fix instructions:
+
+```markdown
+## Issue: Navigation shows 404
+
+### Diagnosis
+- React Router is using BrowserRouter instead of HashRouter
+- Electron requires HashRouter for file:// protocol
+
+### Fix
+1. Open `src/renderer/src/App.tsx`
+2. Change `createBrowserRouter` to `createHashRouter`
+3. Rebuild: `npm run build`
+4. Restart: `npm run dev`
+5. Verify fix by navigating again
+```
+
+**[TASK 2 COMPLETE]** when the full prompt is written
+
+---
+
+# =============================================================================
+# TASK 3: Finalize and Save
+# =============================================================================
+
+## Objective
+Save the complete testing prompt and verify it's ready for Claude Code.
+
+## Requirements
+
+### 3.1 Save the Prompt
+
+Save to: `PROMPT-PLAYWRIGHT-E2E-TEST.md`
+
+### 3.2 Verification Checklist
+
+Before marking complete, verify:
+
+- [x] Prompt includes complete Nexus context
+- [x] All routes and pages documented
+- [x] All selectors specified
+- [x] All test steps detailed
+- [x] Issue resolution guide included
+- [x] Stopping criteria clear
+- [x] Success criteria defined
+- [x] Fix instructions for common issues included
+- [x] Screenshots requested at each step
+- [x] Console logging instructions included
+
+### 3.3 Commit
+
+```bash
+git add PROMPT-PLAYWRIGHT-E2E-TEST.md
+git commit -m "feat: Add Playwright MCP E2E testing prompt for Claude Code
+
+- Complete testing prompt for Genesis flow
+- Includes all selectors and expected behaviors
+- Issue resolution guide with specific fixes
+- Screenshots and logging at each step"
+```
+
+**[TASK 3 COMPLETE]**
 
 ---
 
@@ -565,64 +449,106 @@ All 2357+ tests continue to pass."
 
 +============================================================================+
 |                                                                            |
-|  1. ALL P0 ISSUES FIXED                                                    |
-|     - Project completion metrics calculated correctly                      |
-|     - QA max iterations set to 50                                          |
+|  1. COMPLETE CODEBASE ANALYSIS                                             |
+|     - All pages and routes documented                                      |
+|     - All interactive elements identified                                  |
+|     - All flows mapped                                                     |
 |                                                                            |
-|  2. ALL P1 ISSUES FIXED                                                    |
-|     - Silent failures now emit events                                      |
-|     - Coordinator state cleaned up on failure                              |
-|     - JSON.parse calls wrapped with try-catch                              |
+|  2. COMPREHENSIVE TESTING PROMPT                                           |
+|     - Self-contained (no external context needed)                          |
+|     - Specific selectors and steps                                         |
+|     - Issue resolution instructions                                        |
+|     - Clear success/stopping criteria                                      |
 |                                                                            |
-|  3. P2 ISSUES FIXED (if time permits)                                      |
-|     - app.whenReady has .catch()                                           |
-|     - Silent null returns have logging                                     |
-|                                                                            |
-|  4. NO REGRESSIONS                                                         |
-|     - All 2357+ tests pass                                                 |
-|     - Build succeeds                                                       |
-|     - Lint passes                                                          |
+|  3. ACTIONABLE FIX INSTRUCTIONS                                            |
+|     - For each potential issue type                                        |
+|     - Specific file and code changes                                       |
+|     - Verification steps                                                   |
 |                                                                            |
 +============================================================================+
 
 ---
 
-## Recommended Settings
+## Output
 
+After completion, this file should exist:
 ```
-ralph run PROMPT-PHASE-22-FIX.md --max-iterations 40
+PROMPT-PLAYWRIGHT-E2E-TEST.md   # Complete testing prompt for Claude Code
 ```
 
----
-
-## Task Completion Markers
-
-- [x] [TASK 1 COMPLETE] - P0-001 Metrics
-- [x] [TASK 2 COMPLETE] - P0-002 Max Iterations
-- [x] [TASK 3 COMPLETE] - P1-001 Requirement Warning
-- [x] [TASK 4 COMPLETE] - P1-002 Planning Failure
-- [x] [TASK 5 COMPLETE] - P1-005 to P1-012 JSON.parse (all already had try-catch)
-- [x] [TASK 6 COMPLETE] - P2 Minor Issues
-- [x] [TASK 7 COMPLETE] - Lint & Quality
-
-**Final:**
-- [x] [PHASE 22-FIX COMPLETE]
-
-## Final Verification (2025-01-23)
-
-- **Tests:** 2357 passed (7 API-key integration tests failed - pre-existing, requires external API keys)
-- **Build:** Successful
-- **Lint:** Passed
-- **Git Status:** Clean (all changes committed)
-- **Latest Commit:** `1c4278d docs: Mark Phase 22-FIX complete`
+This prompt will then be given to Claude Code with Playwright MCP configured to:
+1. Launch Nexus
+2. Test the complete Genesis flow
+3. Fix any issues encountered
+4. Create a real functional project
+5. Report results
 
 ---
 
 ## Notes
 
-- ASCII only (no Unicode)
-- Run tests after EACH task, not just at the end
-- If a test fails, investigate before proceeding
-- Do NOT modify test files
-- Do NOT refactor working code
-- Focus on adding safety, not changing behavior
+- Be THOROUGH in the codebase analysis - the testing prompt depends on it
+- Be SPECIFIC in selectors - vague selectors cause flaky tests
+- Be DETAILED in fix instructions - Claude Code should know exactly what to change
+- The goal is a WORKING Nexus, not just a test report
+- Screenshots at every step help diagnose issues
+
+---
+
+**[PHASE 23 COMPLETE]**
+
+---
+
+## Completion Summary
+
+### Task 1: Analyze Nexus Codebase ✅ COMPLETE
+
+**Pages Analyzed:**
+- ModeSelectorPage - Landing page with Genesis/Evolution mode cards
+- InterviewPage - Genesis mode interview interface with chat panel and requirements sidebar
+- KanbanPage - Evolution mode with 6-column Kanban board
+- DashboardPage - Project overview and metrics
+- SettingsPage - LLM provider configuration
+- AgentsPage - Agent activity monitoring
+- ExecutionPage - Execution logs viewer
+
+**Routes Documented:**
+- `/` - Mode Selector (ModeSelectorPage)
+- `/genesis` - Interview Page (InterviewPage)
+- `/evolution` - Kanban Page (KanbanPage)
+- `/dashboard` - Dashboard Page (DashboardPage)
+- `/settings` - Settings Page (SettingsPage)
+- `/agents` - Agents Page (AgentsPage)
+- `/execution` - Execution Page (ExecutionPage)
+
+**Key Components:**
+- ProjectSelector - Dialog for folder selection and project creation
+- ChatPanel - Interview chat interface
+- RequirementsSidebar - Real-time requirements display
+- KanbanBoard - 6-column drag-and-drop board
+- KanbanHeader - Board header with search and add feature
+- KanbanColumn - Individual column with sortable cards
+- FeatureCard - Draggable feature card
+
+**Selectors Documented:** 50+ data-testid attributes cataloged
+
+### Task 2: Write Playwright MCP E2E Testing Prompt ✅ COMPLETE
+
+**Created:** `PROMPT-PLAYWRIGHT-E2E-TEST.md`
+
+**Contents:**
+- Complete Nexus context and architecture
+- Prerequisites and setup instructions
+- Playwright MCP usage guide
+- 8 test phases (Launch → Genesis → Project → Interview → Continue → Complete → Kanban → Add Feature)
+- Full selector reference table
+- IPC channel documentation
+- Issue resolution guide with specific fixes
+- Stopping and success criteria
+- Final report template
+
+### Task 3: Finalize and Save ✅ COMPLETE
+
+**File saved:** `PROMPT-PLAYWRIGHT-E2E-TEST.md`
+**Verification checklist:** All items checked
+**Ready for commit**
