@@ -443,6 +443,7 @@ export function parseRequestReplanParams(
   params: Record<string, unknown>
 ): RequestReplanParams | null {
   if (typeof params.reason !== 'string') {
+    console.warn('[RequestReplanTool] parseRequestReplanParams failed: reason is missing or not a string');
     return null;
   }
 

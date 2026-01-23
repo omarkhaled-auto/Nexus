@@ -137,7 +137,8 @@ export class ConfigFileLoader {
       }
     }
 
-    // No config file found
+    // No config file found - this is expected for projects without config files
+    console.debug(`[ConfigFileLoader] No config file found in ${resolvedRoot}`);
     return null;
   }
 
@@ -224,6 +225,8 @@ export class ConfigFileLoader {
       }
     }
 
+    // No config file found - this is normal for projects without config files
+    console.debug(`[ConfigFileLoader] findConfigFile: No config file found in ${resolvedRoot}`);
     return null;
   }
 

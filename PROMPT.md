@@ -494,15 +494,15 @@ npm test
 ```
 
 ### Task 6 Completion Checklist
-- [ ] Fixed app.whenReady in main.ts
-- [ ] Fixed app.whenReady in index.ts
-- [ ] Added logging to ConfigFileLoader null returns
-- [ ] Added logging to RequestContextTool null return
-- [ ] Added logging to RequestReplanTool null return
-- [ ] TypeScript compiles
-- [ ] Tests pass
+- [x] Fixed app.whenReady in main.ts
+- [x] Fixed app.whenReady in index.ts
+- [x] Added logging to ConfigFileLoader null returns
+- [x] Added logging to RequestContextTool null return
+- [x] Added logging to RequestReplanTool null return
+- [x] TypeScript compiles
+- [x] Tests pass (2357 passed)
 
-**[TASK 6 COMPLETE]** <- Mark when done
+**[TASK 6 COMPLETE]**
 
 ---
 
@@ -602,7 +602,7 @@ ralph run PROMPT-PHASE-22-FIX.md --max-iterations 40
 - [x] [TASK 3 COMPLETE] - P1-001 Requirement Warning
 - [x] [TASK 4 COMPLETE] - P1-002 Planning Failure
 - [x] [TASK 5 COMPLETE] - P1-005 to P1-012 JSON.parse (all already had try-catch)
-- [ ] [TASK 6 COMPLETE] - P2 Minor Issues
+- [x] [TASK 6 COMPLETE] - P2 Minor Issues
 - [ ] [TASK 7 COMPLETE] - Lint & Quality
 
 **Final:**

@@ -425,6 +425,7 @@ export function parseRequestContextParams(
     typeof params.query !== 'string' ||
     typeof params.reason !== 'string'
   ) {
+    console.warn('[RequestContextTool] parseRequestContextParams failed: missing or invalid required fields (request_type, query, reason)');
     return null;
   }
 

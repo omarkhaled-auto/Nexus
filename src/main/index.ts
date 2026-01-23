@@ -245,6 +245,9 @@ void app.whenReady().then(async () => {
       createWindow();
     }
   });
+}).catch((error) => {
+  console.error('[Main] Failed to initialize app:', error);
+  app.quit();
 });
 
 // Quit when all windows are closed, except on macOS.
