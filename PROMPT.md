@@ -1316,9 +1316,9 @@ Update UI components to use the new infrastructure.
   # Repeat for Evolution mode
   ```
 
-### Task 7 Completion Checklist
-- [ ] ProjectSelector component created
-- [ ] Welcome/Home page updated
+### Task 7 Completion Checklist (2025-01-23: COMPLETE)
+- [x] ProjectSelector component created (src/renderer/src/components/ProjectSelector.tsx)
+- [x] Welcome/Home page updated (ModeSelectorPage.tsx now uses ProjectSelector)
 - [ ] Genesis mode uses ProjectSelector
 - [ ] Evolution mode uses ProjectSelector
 - [ ] Folder dialog opens correctly
@@ -1831,7 +1831,7 @@ ralph run PROMPT-PHASE-21-INFRASTRUCTURE-AUDIT.md --max-iterations 60
 - [x] [TASK 4 COMPLETE] - Dialog handlers (2025-01-23: Created dialogHandlers.ts, updated preload script, tests pass)
 - [x] [TASK 5 COMPLETE] - Project initialization (2025-01-23: Created ProjectInitializer.ts, projectHandlers.ts, updated preload, 27 tests passing)
 - [x] [TASK 6 COMPLETE] - Project loading (2025-01-23: Created ProjectLoader.ts, added project:load handler, 20 new tests passing, 58 total main process tests pass)
-- [ ] [TASK 7 COMPLETE] - UI integration
+- [x] [TASK 7 COMPLETE] - UI integration (2025-01-23: Created ProjectSelector.tsx, updated ModeSelectorPage.tsx, 10 tests passing)
 
 **Phase C: Additional Features**
 - [ ] [TASK 8 COMPLETE] - Recent projects
