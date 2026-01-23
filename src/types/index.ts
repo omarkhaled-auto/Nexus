@@ -8,6 +8,7 @@ export * from './core';
 export * from './task';
 export * from './agent';
 export * from './events';
+export * from './execution';
 
 // Additional types for test factories
 export type TaskSize = 'small' | 'medium' | 'large';
