@@ -34,13 +34,39 @@
   - Action buttons based on task status (Start, Cancel, Retry, Skip, Reopen)
   - Updated kanban/index.ts to export TaskDetailModal
   - Build verified passing
+- [x] TASK 6: Implement Task Orchestration (2026-01-23) - COMPLETE
+  - Created `src/renderer/src/hooks/useTaskOrchestration.ts` with Zustand store
+  - Implemented topological sort algorithm for dependency resolution
+  - Start/pause/resume/stop execution actions implemented
+  - Simulation mode for demo when backend API not available
+  - Selector hooks for optimized state access
+  - Updated `src/renderer/src/hooks/index.ts` with exports
+  - Build verified passing
 
 ### In Progress
-- [ ] TASK 6: Implement Task Orchestration
+- [ ] TASK 8: Testing and Verification
+
+### Completed This Session (continued)
+- [x] TASK 7: Wire Everything Together (2026-01-23) - COMPLETE
+  - [x] Step 7.1: App routes already configured (/genesis, /planning, /evolution)
+  - [x] Step 7.2: Interview completion already navigates to /planning
+  - [x] Step 7.3: Planning completion already auto-navigates to /evolution
+  - [x] Step 7.4: Connected Kanban to useTaskOrchestration store (2026-01-23)
+    - KanbanBoard now imports useExecutionStore
+    - Added selectedTask state for TaskDetailModal
+    - handleFeatureClick checks for execution mode and opens TaskDetailModal when tasks loaded
+    - Added task action handlers (start, cancel, retry, skip, reopen)
+  - [x] Step 7.5: Connected TaskDetailModal to KanbanCard (2026-01-23)
+    - TaskDetailModal rendered in KanbanBoard with all action callbacks
+    - All tasks in execution passed to modal for dependency display
+    - Fixed KanbanTask priority type to support both 'medium' and 'normal'
+    - Fixed convertFeaturesToTasks with explicit type annotations
+  - [x] Step 7.6: Connected ExecutionControls to useTaskOrchestration hook (2026-01-23)
+    - Replaced placeholder handlers with actual orchestration actions
+    - Added convertFeaturesToTasks utility to bridge Feature to KanbanTask types
+    - ExecutionControls now uses real execution state
 
 ### Pending
-- [ ] TASK 7: Wire Everything Together
-- [ ] TASK 8: Testing and Verification
 - [ ] TASK 9: Code Quality and Cleanup
 
 ---

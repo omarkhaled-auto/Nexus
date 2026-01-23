@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import {
   DndContext,
   DragOverlay,
@@ -12,10 +12,13 @@ import {
 } from '@dnd-kit/core'
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import type { Feature, FeatureStatus } from '@renderer/types/feature'
+import type { KanbanTask, KanbanTaskStatus } from '@/types/execution'
 import { useFeatureStore } from '@renderer/stores/featureStore'
+import { useExecutionStore } from '@renderer/hooks/useTaskOrchestration'
 import { KanbanColumn } from './KanbanColumn'
 import { FeatureCard } from './FeatureCard'
 import { FeatureDetailModal } from './FeatureDetailModal'
+import { TaskDetailModal } from './TaskDetailModal'
 
 // 6-column Kanban configuration
 export const COLUMNS: {
@@ -34,12 +37,21 @@ export const COLUMNS: {
 export function KanbanBoard() {
   const [activeId, setActiveId] = useState<string | null>(null)
   const [selectedFeature, setSelectedFeature] = useState<Feature | null>(null)
+  const [selectedTask, setSelectedTask] = useState<KanbanTask | null>(null)
 
   // Get raw features and filter from store
   const allFeatures = useFeatureStore((s) => s.features)
   const filter = useFeatureStore((s) => s.filter)
   const moveFeature = useFeatureStore((s) => s.moveFeature)
   const reorderFeatures = useFeatureStore((s) => s.reorderFeatures)
+
+  // Get execution store state and actions
+  const executionTasks = useExecutionStore((s) => s.tasks)
+  const executionStatus = useExecutionStore((s) => s.status)
+  const updateTask = useExecutionStore((s) => s.updateTask)
+
+  // Check if we're in execution mode (have tasks loaded)
+  const isExecutionMode = executionTasks.length > 0 && executionStatus !== 'idle'
 
   // Memoize filtered features to avoid infinite loop
   // (useFilteredFeatures creates new array each render, causing React sync issues)
@@ -155,9 +167,63 @@ export function KanbanBoard() {
   function handleFeatureClick(feature: Feature) {
     // Only open modal if we're not in the middle of a drag operation
     if (!activeId) {
+      // If in execution mode, find the corresponding task and open task modal
+      if (isExecutionMode) {
+        const task = executionTasks.find(t => t.id === feature.id || t.featureId === feature.id)
+        if (task) {
+          setSelectedTask(task)
+          return
+        }
+      }
       setSelectedFeature(feature)
     }
   }
+
+  // Task modal action handlers
+  const handleStartTask = useCallback(async (taskId: string): Promise<void> => {
+    updateTask(taskId, {
+      status: 'in-progress' as KanbanTaskStatus,
+      startedAt: new Date().toISOString(),
+      progress: 0
+    })
+  }, [updateTask])
+
+  const handleCancelTask = useCallback(async (taskId: string): Promise<void> => {
+    updateTask(taskId, {
+      status: 'cancelled' as KanbanTaskStatus,
+      completedAt: new Date().toISOString()
+    })
+    setSelectedTask(null)
+  }, [updateTask])
+
+  const handleRetryTask = useCallback(async (taskId: string): Promise<void> => {
+    const task = executionTasks.find(t => t.id === taskId)
+    if (task) {
+      updateTask(taskId, {
+        status: 'pending' as KanbanTaskStatus,
+        progress: 0,
+        retryCount: task.retryCount + 1,
+        completedAt: null,
+        errors: []
+      })
+    }
+  }, [executionTasks, updateTask])
+
+  const handleSkipTask = useCallback(async (taskId: string): Promise<void> => {
+    updateTask(taskId, {
+      status: 'cancelled' as KanbanTaskStatus,
+      completedAt: new Date().toISOString()
+    })
+    setSelectedTask(null)
+  }, [updateTask])
+
+  const handleReopenTask = useCallback(async (taskId: string): Promise<void> => {
+    updateTask(taskId, {
+      status: 'pending' as KanbanTaskStatus,
+      progress: 0,
+      completedAt: null
+    })
+  }, [updateTask])
 
   return (
     <>
@@ -187,6 +253,18 @@ export function KanbanBoard() {
         feature={selectedFeature}
         open={!!selectedFeature}
         onOpenChange={(open) => { if (!open) setSelectedFeature(null) }}
+      />
+
+      <TaskDetailModal
+        task={selectedTask}
+        allTasks={executionTasks}
+        open={!!selectedTask}
+        onOpenChange={(open) => { if (!open) setSelectedTask(null) }}
+        onStartTask={handleStartTask}
+        onCancelTask={handleCancelTask}
+        onRetryTask={handleRetryTask}
+        onSkipTask={handleSkipTask}
+        onReopenTask={handleReopenTask}
       />
     </>
   )

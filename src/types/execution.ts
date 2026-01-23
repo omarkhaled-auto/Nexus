@@ -91,7 +91,8 @@ export interface KanbanTask {
   acceptanceCriteria: string[];
 
   // Classification
-  priority: TaskPriority | 'critical';  // Allow 'critical' as priority
+  // Priority includes both TaskPriority ('normal') and FeaturePriority ('medium') for compatibility
+  priority: 'critical' | 'high' | 'medium' | 'normal' | 'low';
   complexity: TaskComplexity;
   estimatedMinutes: number;
 
@@ -267,7 +268,7 @@ export interface PlanningTaskPreview {
   id: string;
   title: string;
   featureId: string;
-  priority: TaskPriority | 'critical';
+  priority: 'critical' | 'high' | 'medium' | 'normal' | 'low';
   complexity: TaskComplexity;
   estimatedMinutes: number;
   dependsOn: string[];

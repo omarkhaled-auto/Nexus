@@ -6,7 +6,7 @@ import { AnimatedPage } from '@renderer/components/AnimatedPage'
 import { useFeatureStore } from '@renderer/stores/featureStore'
 import { useTaskOrchestration, useExecutionStore } from '@renderer/hooks/useTaskOrchestration'
 import type { Feature, FeatureStatus, FeaturePriority, FeatureComplexity } from '@renderer/types/feature'
-import type { KanbanTask } from '@/types/execution'
+import type { KanbanTask, KanbanTaskStatus, TaskComplexity } from '@/types/execution'
 import {
   Dialog,
   DialogContent,
@@ -305,46 +305,60 @@ export default function KanbanPage(): ReactElement {
    * This bridges the gap between Feature type and KanbanTask type
    */
   const convertFeaturesToTasks = useCallback((featureList: Feature[]): KanbanTask[] => {
-    return featureList.map((feature) => ({
-      id: feature.id,
-      featureId: feature.id,
-      projectId: 'current',
-      title: feature.title,
-      description: feature.description,
-      acceptanceCriteria: [],
-      priority: feature.priority === 'critical' ? 'critical' :
-                feature.priority === 'high' ? 'high' :
-                feature.priority === 'low' ? 'low' : 'medium',
-      complexity: feature.complexity === 'simple' ? 'simple' :
-                  feature.complexity === 'complex' ? 'complex' : 'moderate',
-      estimatedMinutes: feature.complexity === 'simple' ? 15 :
-                        feature.complexity === 'complex' ? 60 : 30,
-      dependsOn: [],
-      blockedBy: [],
-      status: feature.status === 'done' ? 'completed' :
-              feature.status === 'in_progress' ? 'in-progress' :
-              feature.status === 'ai_review' ? 'ai-review' :
-              feature.status === 'human_review' ? 'human-review' :
-              feature.status === 'planning' ? 'queued' : 'pending',
-      assignedAgent: feature.assignedAgent as KanbanTask['assignedAgent'] ?? null,
-      progress: feature.progress,
-      startedAt: null,
-      completedAt: feature.status === 'done' ? new Date().toISOString() : null,
-      actualMinutes: null,
-      filesToCreate: [],
-      filesToModify: [],
-      filesCreated: [],
-      filesModified: [],
-      logs: [],
-      errors: [],
-      retryCount: 0,
-      maxRetries: 3,
-      qaIterations: 0,
-      maxQAIterations: 3,
-      statusHistory: [],
-      createdAt: feature.createdAt,
-      updatedAt: feature.updatedAt
-    }))
+    return featureList.map((feature): KanbanTask => {
+      // Map priority (Feature uses 'medium', Task supports both 'medium' and 'normal')
+      const priority: KanbanTask['priority'] =
+        feature.priority === 'critical' ? 'critical' :
+        feature.priority === 'high' ? 'high' :
+        feature.priority === 'low' ? 'low' : 'medium'
+
+      // Map complexity (Feature has simpler set, Task has extended set)
+      const complexity: TaskComplexity =
+        feature.complexity === 'simple' ? 'simple' :
+        feature.complexity === 'complex' ? 'complex' : 'moderate'
+
+      // Map status
+      const status: KanbanTaskStatus =
+        feature.status === 'done' ? 'completed' :
+        feature.status === 'in_progress' ? 'in-progress' :
+        feature.status === 'ai_review' ? 'ai-review' :
+        feature.status === 'human_review' ? 'human-review' :
+        feature.status === 'planning' ? 'queued' : 'pending'
+
+      return {
+        id: feature.id,
+        featureId: feature.id,
+        projectId: 'current',
+        title: feature.title,
+        description: feature.description,
+        acceptanceCriteria: [],
+        priority,
+        complexity,
+        estimatedMinutes: feature.complexity === 'simple' ? 15 :
+                          feature.complexity === 'complex' ? 60 : 30,
+        dependsOn: [],
+        blockedBy: [],
+        status,
+        assignedAgent: feature.assignedAgent as KanbanTask['assignedAgent'] ?? null,
+        progress: feature.progress ?? 0,
+        startedAt: null,
+        completedAt: feature.status === 'done' ? new Date().toISOString() : null,
+        actualMinutes: null,
+        filesToCreate: [],
+        filesToModify: [],
+        filesCreated: [],
+        filesModified: [],
+        logs: [],
+        errors: [],
+        retryCount: 0,
+        maxRetries: 3,
+        qaIterations: 0,
+        maxQAIterations: 3,
+        statusHistory: [],
+        createdAt: feature.createdAt,
+        updatedAt: feature.updatedAt
+      }
+    })
   }, [])
 
   /**
