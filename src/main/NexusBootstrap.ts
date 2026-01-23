@@ -345,7 +345,14 @@ export class NexusBootstrap {
         }
       } catch (error) {
         // Log but don't fail - duplicate detection may throw
-        console.warn(`[NexusBootstrap] Failed to save requirement: ${error instanceof Error ? error.message : String(error)}`);
+        const message = error instanceof Error ? error.message : String(error);
+        console.warn(`[NexusBootstrap] Failed to save requirement: ${message}`);
+
+        // Emit warning for UI visibility (non-blocking)
+        void this.eventBus.emit('system:warning', {
+          component: 'NexusBootstrap',
+          message: `Failed to save requirement: ${message}`,
+        });
       }
     });
 

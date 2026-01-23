@@ -212,12 +212,13 @@ npm test -- src/execution/qa/
 ```
 
 ### Task 2 Completion Checklist
-- [ ] Investigated where QALoopEngine is instantiated
-- [ ] Fixed max iterations to 50
-- [ ] TypeScript compiles
-- [ ] Tests pass
+- [x] Investigated where QALoopEngine is instantiated (found in NexusFactory.ts lines 324, 490)
+- [x] Fixed max iterations to 50 (changed default in QALoopEngine.ts from 3 to 50)
+- [x] Updated NexusFactory.ts to use 50 instead of hardcoded 3
+- [x] TypeScript compiles
+- [x] Tests pass (2357 passed)
 
-**[TASK 2 COMPLETE]** <- Mark when done
+**[TASK 2 COMPLETE]**
 
 ---
 
@@ -269,12 +270,12 @@ npm test
 ```
 
 ### Task 3 Completion Checklist
-- [ ] Added system:warning event emission
-- [ ] Kept existing logging
-- [ ] TypeScript compiles
-- [ ] Tests pass
+- [x] Added system:warning event emission
+- [x] Kept existing logging
+- [x] TypeScript compiles
+- [x] Tests pass (2357 passed)
 
-**[TASK 3 COMPLETE]** <- Mark when done
+**[TASK 3 COMPLETE]**
 
 ---
 
@@ -595,8 +596,8 @@ ralph run PROMPT-PHASE-22-FIX.md --max-iterations 40
 ## Task Completion Markers
 
 - [x] [TASK 1 COMPLETE] - P0-001 Metrics
-- [ ] [TASK 2 COMPLETE] - P0-002 Max Iterations
-- [ ] [TASK 3 COMPLETE] - P1-001 Requirement Warning
+- [x] [TASK 2 COMPLETE] - P0-002 Max Iterations
+- [x] [TASK 3 COMPLETE] - P1-001 Requirement Warning
 - [ ] [TASK 4 COMPLETE] - P1-002 Planning Failure
 - [ ] [TASK 5 COMPLETE] - P1-005 to P1-012 JSON.parse
 - [ ] [TASK 6 COMPLETE] - P2 Minor Issues
