@@ -1,6 +1,6 @@
 /**
  * Project Handlers Tests
- * Phase 21 Task 5: Tests for project initialization IPC handlers
+ * Phase 21 Task 5 & 6: Tests for project initialization and loading IPC handlers
  *
  * Tests cover:
  * - Handler registration
@@ -22,6 +22,13 @@ vi.mock('electron', () => ({
 vi.mock('../../../../src/main/services/ProjectInitializer', () => ({
   projectInitializer: {
     initializeProject: vi.fn(),
+  },
+}));
+
+// Mock ProjectLoader (Phase 21 Task 6)
+vi.mock('../../../../src/main/services/ProjectLoader', () => ({
+  projectLoader: {
+    loadProject: vi.fn(),
   },
 }));
 
@@ -48,6 +55,10 @@ describe('Project Handlers', () => {
         expect.any(Function)
       );
       expect(ipcMain.handle).toHaveBeenCalledWith(
+        'project:load',
+        expect.any(Function)
+      );
+      expect(ipcMain.handle).toHaveBeenCalledWith(
         'project:validatePath',
         expect.any(Function)
       );
@@ -56,8 +67,8 @@ describe('Project Handlers', () => {
         expect.any(Function)
       );
 
-      // Verify exactly 3 handlers were registered
-      expect(ipcMain.handle).toHaveBeenCalledTimes(3);
+      // Verify exactly 4 handlers were registered (initialize, load, validatePath, isPathEmpty)
+      expect(ipcMain.handle).toHaveBeenCalledTimes(4);
     });
 
     it('should not throw when called multiple times', () => {

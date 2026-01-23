@@ -25,3 +25,11 @@ export {
   type ProjectInitOptions,
   type InitializedProject,
 } from './ProjectInitializer';
+
+// Project Loader (Phase 21 Task 6)
+export {
+  ProjectLoader,
+  projectLoader,
+  type LoadedProject,
+  type ProjectConfig,
+} from './ProjectLoader';

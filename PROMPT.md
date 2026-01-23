@@ -1093,15 +1093,15 @@ ${new Date().toISOString()}
   ```
 
 ### Task 6 Completion Checklist
-- [ ] ProjectLoader.ts created
-- [ ] Preload script updated with project API
-- [ ] Project loading works for Nexus projects
-- [ ] Project loading works for regular directories
-- [ ] Validation functions work correctly
-- [ ] Unit tests written and passing
-- [ ] TypeScript compiles without errors
+- [x] ProjectLoader.ts created (src/main/services/ProjectLoader.ts)
+- [x] Preload script updated with project API (load method added to projectInit)
+- [x] Project loading works for Nexus projects
+- [x] Project loading works for regular directories
+- [x] Validation functions work correctly
+- [x] Unit tests written and passing (20 tests in ProjectLoader.test.ts)
+- [x] TypeScript compiles without errors
 
-**[TASK 6 COMPLETE]** <- Mark when done, proceed to Task 7
+**[TASK 6 COMPLETE]** (2025-01-23) - Proceed to Task 7
 
 ---
 
@@ -1830,7 +1830,7 @@ ralph run PROMPT-PHASE-21-INFRASTRUCTURE-AUDIT.md --max-iterations 60
 **Phase B: Core Implementation**
 - [x] [TASK 4 COMPLETE] - Dialog handlers (2025-01-23: Created dialogHandlers.ts, updated preload script, tests pass)
 - [x] [TASK 5 COMPLETE] - Project initialization (2025-01-23: Created ProjectInitializer.ts, projectHandlers.ts, updated preload, 27 tests passing)
-- [ ] [TASK 6 COMPLETE] - Project loading
+- [x] [TASK 6 COMPLETE] - Project loading (2025-01-23: Created ProjectLoader.ts, added project:load handler, 20 new tests passing, 58 total main process tests pass)
 - [ ] [TASK 7 COMPLETE] - UI integration
 
 **Phase C: Additional Features**

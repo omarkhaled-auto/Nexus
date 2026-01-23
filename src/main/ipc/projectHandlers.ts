@@ -20,6 +20,10 @@ import {
   type ProjectInitOptions,
   type InitializedProject,
 } from '../services/ProjectInitializer';
+import {
+  projectLoader,
+  type LoadedProject,
+} from '../services/ProjectLoader';
 
 /**
  * Result type for project operations
@@ -85,6 +89,37 @@ export function registerProjectHandlers(): void {
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         console.error('[ProjectHandlers] Initialize failed:', message);
+        return { success: false, error: message };
+      }
+    }
+  );
+
+  // ========================================
+  // Handler: Load Existing Project
+  // ========================================
+  ipcMain.handle(
+    'project:load',
+    async (
+      event,
+      projectPath: string
+    ): Promise<ProjectOperationResult<LoadedProject>> => {
+      if (!validateSender(event)) {
+        console.error('[ProjectHandlers] Unauthorized sender for project:load');
+        return { success: false, error: 'Unauthorized IPC sender' };
+      }
+
+      if (!projectPath || typeof projectPath !== 'string') {
+        return { success: false, error: 'Project path is required' };
+      }
+
+      try {
+        const project = await projectLoader.loadProject(projectPath);
+
+        console.log(`[ProjectHandlers] Project loaded: ${project.name} from ${project.path}`);
+        return { success: true, data: project };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error('[ProjectHandlers] Load failed:', message);
         return { success: false, error: message };
       }
     }

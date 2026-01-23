@@ -819,7 +819,7 @@ const nexusAPI = {
   },
 
   // ========================================
-  // Project API (Phase 21 Task 5)
+  // Project API (Phase 21 Task 5 & 6)
   // ========================================
 
   /**
@@ -838,6 +838,37 @@ const nexusAPI = {
       initGit?: boolean;
     }): Promise<{ success: boolean; data?: { id: string; name: string; path: string; createdAt: Date }; error?: string }> =>
       ipcRenderer.invoke('project:initialize', options),
+
+    /**
+     * Load an existing project (Phase 21 Task 6)
+     * @param projectPath - Path to project directory
+     * @returns Promise with { success: boolean; data?: LoadedProject; error?: string }
+     */
+    load: (projectPath: string): Promise<{
+      success: boolean;
+      data?: {
+        id: string;
+        name: string;
+        path: string;
+        description?: string;
+        config: {
+          name: string;
+          description?: string;
+          version: string;
+          created: string;
+          nexusVersion: string;
+          settings: {
+            maxAgents: number;
+            qaMaxIterations: number;
+            taskMaxMinutes: number;
+            checkpointIntervalSeconds: number;
+          };
+        };
+        isNexusProject: boolean;
+        hasGit: boolean;
+      };
+      error?: string;
+    }> => ipcRenderer.invoke('project:load', projectPath),
 
     /**
      * Validate a project path
