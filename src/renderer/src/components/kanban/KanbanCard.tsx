@@ -5,7 +5,7 @@
  * Based on KanbanTask type with full execution details.
  */
 
-import { forwardRef, useMemo, type HTMLAttributes } from 'react'
+import { forwardRef, type HTMLAttributes } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { Card, CardContent, CardHeader } from '@renderer/components/ui/card'
@@ -123,7 +123,7 @@ export const KanbanCard = forwardRef<HTMLDivElement, KanbanCardProps>(
     const StatusIcon = statusConfig.icon
 
     // Get complexity config
-    const complexityConfig = COMPLEXITY_CONFIG[task.complexity] || COMPLEXITY_CONFIG.moderate
+    const complexityConfig = COMPLEXITY_CONFIG[task.complexity]
 
     // Get agent icon if assigned
     const AgentIcon = task.assignedAgent ? AGENT_ICONS[task.assignedAgent] : null
@@ -266,7 +266,7 @@ export const KanbanCard = forwardRef<HTMLDivElement, KanbanCardProps>(
 
             {/* Right: Agent */}
             {AgentIcon && (
-              <div className="flex items-center gap-1 text-text-tertiary" title={`Assigned to ${task.assignedAgent}`}>
+              <div className="flex items-center gap-1 text-text-tertiary" title={`Assigned to ${task.assignedAgent ?? 'unassigned'}`}>
                 <AgentIcon className="h-3.5 w-3.5" />
               </div>
             )}

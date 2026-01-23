@@ -5,7 +5,8 @@
  * These extend the core Task types with execution-specific details.
  */
 
-import type { TaskStatus, TaskPriority } from './task';
+// Note: TaskStatus and TaskPriority from './task' are not used in this file
+// This module defines its own KanbanTaskStatus which extends the base status types
 import type { AgentType } from './agent';
 
 // Re-export AgentType for convenience

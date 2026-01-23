@@ -169,7 +169,7 @@ export function KanbanHeader({
           <Button
             variant={showFilters || activeFilter ? 'secondary' : 'ghost'}
             size="icon-sm"
-            onClick={() => setShowFilters(!showFilters)}
+            onClick={() => { setShowFilters(!showFilters); }}
             className={cn(activeFilter && 'text-accent-primary border-accent-primary')}
             title="Toggle filters"
           >

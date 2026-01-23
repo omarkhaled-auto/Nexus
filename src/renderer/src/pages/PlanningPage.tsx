@@ -302,19 +302,19 @@ export default function PlanningPage(): ReactElement {
       setAutoNavigateCountdown((prev) => {
         if (prev === null || prev <= 1) {
           clearInterval(interval);
-          navigate('/evolution');
+          void navigate('/evolution');
           return null;
         }
         return prev - 1;
       });
     }, 1000);
 
-    return () => clearInterval(interval);
+    return () => { clearInterval(interval); };
   }, [isComplete, navigate]);
 
   // Handle manual proceed
-  const handleProceed = () => {
-    navigate('/evolution');
+  const handleProceed = (): void => {
+    void navigate('/evolution');
   };
 
   // Handle retry
@@ -522,7 +522,7 @@ export default function PlanningPage(): ReactElement {
               Please complete the interview first to define your project requirements.
             </p>
             <button
-              onClick={() => navigate('/genesis')}
+              onClick={() => { void navigate('/genesis'); }}
               className={cn(
                 'px-6 py-3 rounded-lg font-medium',
                 'bg-accent-primary text-white',

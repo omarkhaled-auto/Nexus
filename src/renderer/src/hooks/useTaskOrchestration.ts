@@ -97,7 +97,7 @@ export const useExecutionStore = create<ExecutionStore>()((set, get) => ({
   },
 
   setCurrentTask: (taskId: string | null) => {
-    set((state) => ({
+    set(() => ({
       currentTaskId: taskId,
       inProgressCount: taskId ? 1 : 0,
     }));
@@ -315,7 +315,10 @@ export function calculateExecutionOrder(tasks: KanbanTask[]): KanbanTask[] {
       if (!adjacencyList.has(depId)) {
         adjacencyList.set(depId, []);
       }
-      adjacencyList.get(depId)!.push(task.id);
+      const depList = adjacencyList.get(depId);
+      if (depList) {
+        depList.push(task.id);
+      }
     });
   });
 
@@ -335,7 +338,8 @@ export function calculateExecutionOrder(tasks: KanbanTask[]): KanbanTask[] {
 
   while (queue.length > 0) {
     // Take highest priority task from queue
-    const current = queue.shift()!;
+    const current = queue.shift();
+    if (!current) break;
     result.push(current);
     processed.add(current.id);
 
@@ -585,7 +589,7 @@ export function useTaskOrchestration(): UseTaskOrchestrationReturn {
       const nexusAPIExt = window.nexusAPI as typeof window.nexusAPI & {
         executeTask?: (taskId: string) => Promise<void>;
       };
-      if (nexusAPIExt?.executeTask) {
+      if (nexusAPIExt.executeTask) {
         await nexusAPIExt.executeTask(nextTask.id);
       } else {
         // Simulation mode: auto-complete after delay

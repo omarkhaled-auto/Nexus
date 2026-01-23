@@ -27,12 +27,10 @@ import type {
   KanbanTask,
   KanbanTaskStatus,
   TaskComplexity,
-  TaskLog,
-  TaskStatusHistoryEntry
+  TaskLogLevel
 } from '@/types/execution'
 import type { AgentType } from '@/types/agent'
 import {
-  X,
   Clock,
   Calendar,
   AlertCircle,
@@ -43,7 +41,6 @@ import {
   Square,
   RotateCcw,
   SkipForward,
-  XCircle,
   ArrowRight,
   FileText,
   FilePlus,
@@ -162,7 +159,7 @@ const AGENT_LABELS: Record<AgentType, string> = {
 }
 
 // Log level config
-const LOG_LEVEL_CONFIG: Record<string, { icon: React.ComponentType<{ className?: string }>; class: string }> = {
+const LOG_LEVEL_CONFIG: Record<TaskLogLevel, { icon: React.ComponentType<{ className?: string }>; class: string }> = {
   info: { icon: Info, class: 'text-blue-400' },
   warning: { icon: AlertTriangle, class: 'text-amber-400' },
   error: { icon: AlertCircle, class: 'text-red-400' },
@@ -347,16 +344,16 @@ function OverviewTab({ task }: { task: KanbanTask }): ReactElement {
           <MetadataItem
             label="Complexity"
             value={
-              <Badge className={COMPLEXITY_CONFIG[task.complexity]?.class}>
-                {COMPLEXITY_CONFIG[task.complexity]?.fullLabel || task.complexity}
+              <Badge className={COMPLEXITY_CONFIG[task.complexity].class}>
+                {COMPLEXITY_CONFIG[task.complexity].fullLabel}
               </Badge>
             }
           />
           <MetadataItem
             label="Status"
             value={
-              <Badge className={cn(STATUS_STYLES[task.status]?.bg, STATUS_STYLES[task.status]?.text)}>
-                {STATUS_STYLES[task.status]?.label || task.status}
+              <Badge className={cn(STATUS_STYLES[task.status].bg, STATUS_STYLES[task.status].text)}>
+                {STATUS_STYLES[task.status].label}
               </Badge>
             }
           />
@@ -547,8 +544,8 @@ function DependenciesTab({
                     <p className={cn('text-sm text-text-primary', isComplete && 'line-through opacity-60')}>
                       {t.title}
                     </p>
-                    <Badge className={cn('mt-1', statusStyle?.bg, statusStyle?.text)}>
-                      {statusStyle?.label || t.status}
+                    <Badge className={cn('mt-1', statusStyle.bg, statusStyle.text)}>
+                      {statusStyle.label}
                     </Badge>
                   </div>
                   {!isComplete && (
@@ -583,8 +580,8 @@ function DependenciesTab({
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-text-primary">{t.title}</p>
-                    <Badge className={cn('mt-1', statusStyle?.bg, statusStyle?.text)}>
-                      {statusStyle?.label || t.status}
+                    <Badge className={cn('mt-1', statusStyle.bg, statusStyle.text)}>
+                      {statusStyle.label}
                     </Badge>
                   </div>
                 </div>
@@ -715,7 +712,7 @@ function LogsTab({ task }: { task: KanbanTask }): ReactElement {
     const logsText = task.logs
       .map(log => `[${formatTimestamp(log.timestamp)}] [${log.level.toUpperCase()}] ${log.message}${log.details ? '\n' + log.details : ''}`)
       .join('\n')
-    navigator.clipboard.writeText(logsText)
+    void navigator.clipboard.writeText(logsText)
   }
 
   const toggleLogExpand = (logId: string): void => {
@@ -752,7 +749,7 @@ function LogsTab({ task }: { task: KanbanTask }): ReactElement {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => setAutoScroll(!autoScroll)}
+            onClick={() => { setAutoScroll(!autoScroll); }}
             className={cn(!autoScroll && 'opacity-50')}
           >
             Auto-scroll {autoScroll ? 'ON' : 'OFF'}
@@ -768,7 +765,7 @@ function LogsTab({ task }: { task: KanbanTask }): ReactElement {
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-1 font-mono text-xs">
           {task.logs.map(log => {
-            const config = LOG_LEVEL_CONFIG[log.level] || LOG_LEVEL_CONFIG.info
+            const config = LOG_LEVEL_CONFIG[log.level]
             const Icon = config.icon
             const isExpanded = expandedLogs.has(log.id)
             const hasDetails = !!log.details
@@ -801,7 +798,7 @@ function LogsTab({ task }: { task: KanbanTask }): ReactElement {
                     <>
                       <button
                         type="button"
-                        onClick={() => toggleLogExpand(log.id)}
+                        onClick={() => { toggleLogExpand(log.id); }}
                         className="flex items-center gap-1 mt-1 text-text-tertiary hover:text-text-secondary"
                       >
                         {isExpanded ? (
@@ -877,14 +874,14 @@ function HistoryTab({ task }: { task: KanbanTask }): ReactElement {
                   <div className="mt-1 flex items-center gap-2">
                     {entry.fromStatus && (
                       <>
-                        <Badge className={cn(STATUS_STYLES[entry.fromStatus]?.bg, STATUS_STYLES[entry.fromStatus]?.text)}>
-                          {STATUS_STYLES[entry.fromStatus]?.label || entry.fromStatus}
+                        <Badge className={cn(STATUS_STYLES[entry.fromStatus].bg, STATUS_STYLES[entry.fromStatus].text)}>
+                          {STATUS_STYLES[entry.fromStatus].label}
                         </Badge>
                         <ArrowRight className="h-3 w-3 text-text-tertiary" />
                       </>
                     )}
-                    <Badge className={cn(toStyle?.bg, toStyle?.text)}>
-                      {toStyle?.label || entry.toStatus}
+                    <Badge className={cn(toStyle.bg, toStyle.text)}>
+                      {toStyle.label}
                     </Badge>
                   </div>
                   {entry.reason && (
@@ -964,8 +961,8 @@ export function TaskDetailModal({
                   P{task.priority === 'critical' ? '0' : task.priority === 'high' ? '1' : task.priority === 'medium' ? '2' : '3'}
                 </Badge>
                 {/* Status Badge */}
-                <Badge className={cn(STATUS_STYLES[task.status]?.bg, STATUS_STYLES[task.status]?.text)}>
-                  {STATUS_STYLES[task.status]?.label || task.status}
+                <Badge className={cn(STATUS_STYLES[task.status].bg, STATUS_STYLES[task.status].text)}>
+                  {STATUS_STYLES[task.status].label}
                 </Badge>
                 {/* Blocked indicator */}
                 {isBlocked && (
@@ -1016,7 +1013,7 @@ export function TaskDetailModal({
                 key={tab.id}
                 tab={tab}
                 isActive={activeTab === tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => { setActiveTab(tab.id); }}
                 count={tabCounts[tab.id]}
               />
             ))}
@@ -1111,7 +1108,7 @@ export function TaskDetailModal({
                 Start Now
               </Button>
             )}
-            <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
+            <Button variant="outline" size="sm" onClick={() => { onOpenChange(false); }}>
               Close
             </Button>
           </div>

@@ -1,14 +1,95 @@
-import { c as createLucideIcon, r as reactExports, p as React, q as reactDomExports, j as jsxRuntimeExports, s as Card, a as cn, v as CardHeader, w as CardTitle, x as CardContent, y as useFeatureStore, D as Dialog, z as DialogContent, A as DialogHeader, T as TriangleAlert, E as DialogTitle, F as DialogDescription, G as DialogFooter, H as Button, L as LoaderCircle, I as useFeatureCount, C as CircleAlert, J as Search, P as Plus, K as Eye, B as Bot, M as useComposedRefs, N as createContextScope, O as Primitive, Q as Presence, U as composeEventHandlers, V as useCallbackRef, W as useLayoutEffect2, X as Input } from "./index-BSPnSUoA.js";
-import { C as Circle } from "./circle-DpUQ6Wnu.js";
-import { C as Clock } from "./clock-Bs1B-Wb3.js";
-import { T as Trash2 } from "./trash-2-nYFRIEpX.js";
-import { C as CircleX } from "./circle-x-CzsN8rW2.js";
-import { C as CircleCheck } from "./circle-check-BbyISBzp.js";
-import { L as Layers } from "./layers-BGa9Y6if.js";
-import { L as Lock, T as TestTube } from "./test-tube-BOVF1sz0.js";
-import { G as GitMerge, P as Play, a as Pause } from "./play-3PuEe-iY.js";
-import { R as RotateCcw } from "./rotate-ccw-Bglq-Tud.js";
-import { A as AnimatedPage } from "./AnimatedPage-BwPSVE5o.js";
+import { c as createLucideIcon, r as reactExports, p as React, q as reactDomExports, j as jsxRuntimeExports, s as Card, a as cn, v as CardHeader, w as CardTitle, x as CardContent, y as useFeatureStore, D as Dialog, z as DialogContent, A as DialogHeader, T as TriangleAlert, E as DialogTitle, F as DialogDescription, G as DialogFooter, H as Button, L as LoaderCircle, I as useComposedRefs, J as createContextScope, P as Primitive, K as Presence, M as composeEventHandlers, N as useCallbackRef, O as useLayoutEffect2, Q as Eye, B as Bot, C as CircleAlert, g as ChevronDown, n as ChevronRight, U as useFeatureCount, V as Search, W as Plus, X as Input } from "./index-BoQyQ-ap.js";
+import { L as Lock, T as TestTube, u as useExecutionStore, a as useTaskOrchestration } from "./useTaskOrchestration-C6c0541T.js";
+import { C as Circle } from "./circle-DI3CSXp2.js";
+import { C as Clock } from "./clock-C_KhMjW-.js";
+import { T as Trash2 } from "./trash-2-D-vVDL80.js";
+import { C as CircleX } from "./circle-x-Di8ZTA2A.js";
+import { C as CircleCheck } from "./circle-check-hbu4IvA3.js";
+import { F as FileText } from "./file-text-DPF6koxy.js";
+import { G as GitMerge, B as Bug, P as Play, a as Pause } from "./play-DCjD3vBB.js";
+import { R as RotateCcw } from "./rotate-ccw-Br1wug3C.js";
+import { A as ArrowRight } from "./arrow-right-C8ctKMyK.js";
+import { I as Info } from "./info-BHJvML7t.js";
+import { L as Layers } from "./layers-BZmc9_HD.js";
+import { A as AnimatedPage } from "./AnimatedPage-fTtyTsDw.js";
+/**
+ * @license lucide-react v0.562.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$8 = [
+  ["path", { d: "M8 2v4", key: "1cmpym" }],
+  ["path", { d: "M16 2v4", key: "4m81vk" }],
+  ["rect", { width: "18", height: "18", x: "3", y: "4", rx: "2", key: "1hopcy" }],
+  ["path", { d: "M3 10h18", key: "8toen8" }]
+];
+const Calendar = createLucideIcon("calendar", __iconNode$8);
+/**
+ * @license lucide-react v0.562.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$7 = [
+  ["path", { d: "m16 18 6-6-6-6", key: "eg8j8" }],
+  ["path", { d: "m8 6-6 6 6 6", key: "ppft3o" }]
+];
+const Code = createLucideIcon("code", __iconNode$7);
+/**
+ * @license lucide-react v0.562.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$6 = [
+  ["rect", { width: "14", height: "14", x: "8", y: "8", rx: "2", ry: "2", key: "17jyea" }],
+  ["path", { d: "M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2", key: "zix9uf" }]
+];
+const Copy = createLucideIcon("copy", __iconNode$6);
+/**
+ * @license lucide-react v0.562.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$5 = [
+  [
+    "path",
+    {
+      d: "M12.659 22H18a2 2 0 0 0 2-2V8a2.4 2.4 0 0 0-.706-1.706l-3.588-3.588A2.4 2.4 0 0 0 14 2H6a2 2 0 0 0-2 2v9.34",
+      key: "o6klzx"
+    }
+  ],
+  ["path", { d: "M14 2v5a1 1 0 0 0 1 1h5", key: "wfsgrz" }],
+  [
+    "path",
+    {
+      d: "M10.378 12.622a1 1 0 0 1 3 3.003L8.36 20.637a2 2 0 0 1-.854.506l-2.867.837a.5.5 0 0 1-.62-.62l.836-2.869a2 2 0 0 1 .506-.853z",
+      key: "zhnas1"
+    }
+  ]
+];
+const FilePen = createLucideIcon("file-pen", __iconNode$5);
+/**
+ * @license lucide-react v0.562.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$4 = [
+  [
+    "path",
+    {
+      d: "M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z",
+      key: "1oefj6"
+    }
+  ],
+  ["path", { d: "M14 2v5a1 1 0 0 0 1 1h5", key: "wfsgrz" }],
+  ["path", { d: "M9 15h6", key: "cctwl0" }],
+  ["path", { d: "M12 18v-6", key: "17g6i2" }]
+];
+const FilePlus = createLucideIcon("file-plus", __iconNode$4);
 /**
  * @license lucide-react v0.562.0 - ISC
  *
@@ -16,17 +97,6 @@ import { A as AnimatedPage } from "./AnimatedPage-BwPSVE5o.js";
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$3 = [
-  ["path", { d: "m16 18 6-6-6-6", key: "eg8j8" }],
-  ["path", { d: "m8 6-6 6 6 6", key: "ppft3o" }]
-];
-const Code = createLucideIcon("code", __iconNode$3);
-/**
- * @license lucide-react v0.562.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode$2 = [
   [
     "path",
     {
@@ -35,14 +105,14 @@ const __iconNode$2 = [
     }
   ]
 ];
-const Funnel = createLucideIcon("funnel", __iconNode$2);
+const Funnel = createLucideIcon("funnel", __iconNode$3);
 /**
  * @license lucide-react v0.562.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$1 = [
+const __iconNode$2 = [
   ["circle", { cx: "9", cy: "12", r: "1", key: "1vctgf" }],
   ["circle", { cx: "9", cy: "5", r: "1", key: "hp0tcf" }],
   ["circle", { cx: "9", cy: "19", r: "1", key: "fkjjf6" }],
@@ -50,7 +120,24 @@ const __iconNode$1 = [
   ["circle", { cx: "15", cy: "5", r: "1", key: "19l28e" }],
   ["circle", { cx: "15", cy: "19", r: "1", key: "f4zoj3" }]
 ];
-const GripVertical = createLucideIcon("grip-vertical", __iconNode$1);
+const GripVertical = createLucideIcon("grip-vertical", __iconNode$2);
+/**
+ * @license lucide-react v0.562.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$1 = [
+  ["path", { d: "M21 4v16", key: "7j8fe9" }],
+  [
+    "path",
+    {
+      d: "M6.029 4.285A2 2 0 0 0 3 6v12a2 2 0 0 0 3.029 1.715l9.997-5.998a2 2 0 0 0 .003-3.432z",
+      key: "zs4d6"
+    }
+  ]
+];
+const SkipForward = createLucideIcon("skip-forward", __iconNode$1);
 /**
  * @license lucide-react v0.562.0 - ISC
  *
@@ -4736,512 +4823,6 @@ function FeatureDetailModal({
     ] })
   ] }) });
 }
-const COLUMNS = [
-  { id: "backlog", title: "Backlog" },
-  { id: "planning", title: "Planning" },
-  { id: "in_progress", title: "In Progress", limit: 3 },
-  { id: "ai_review", title: "AI Review" },
-  { id: "human_review", title: "Human Review" },
-  { id: "done", title: "Done" }
-];
-function KanbanBoard() {
-  const [activeId, setActiveId] = reactExports.useState(null);
-  const [selectedFeature, setSelectedFeature] = reactExports.useState(null);
-  const allFeatures = useFeatureStore((s) => s.features);
-  const filter = useFeatureStore((s) => s.filter);
-  const moveFeature = useFeatureStore((s) => s.moveFeature);
-  const reorderFeatures = useFeatureStore((s) => s.reorderFeatures);
-  const features = reactExports.useMemo(() => {
-    if (!filter.search && !filter.priority && !filter.status) {
-      return allFeatures;
-    }
-    return allFeatures.filter((f) => {
-      const matchesSearch = !filter.search || f.title.toLowerCase().includes(filter.search.toLowerCase()) || f.description.toLowerCase().includes(filter.search.toLowerCase());
-      const matchesPriority = !filter.priority || filter.priority.includes(f.priority);
-      const matchesStatus = !filter.status || filter.status.includes(f.status);
-      return matchesSearch && matchesPriority && matchesStatus;
-    });
-  }, [allFeatures, filter]);
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 5
-      }
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates
-    })
-  );
-  const activeFeature = reactExports.useMemo(
-    () => activeId ? features.find((f) => f.id === activeId) : null,
-    [activeId, features]
-  );
-  const featuresByColumn = reactExports.useMemo(() => {
-    const grouped = {
-      backlog: [],
-      planning: [],
-      in_progress: [],
-      ai_review: [],
-      human_review: [],
-      done: []
-    };
-    for (const feature of features) {
-      grouped[feature.status].push(feature);
-    }
-    return grouped;
-  }, [features]);
-  function handleDragStart(event) {
-    setActiveId(event.active.id);
-  }
-  function handleDragEnd(event) {
-    const { active, over } = event;
-    setActiveId(null);
-    if (!over) return;
-    const activeFeatureId = active.id;
-    const draggedFeature = features.find((f) => f.id === activeFeatureId);
-    if (!draggedFeature) return;
-    const sortableContainerId = over.data.current?.sortable?.containerId;
-    const overColumnId = over.data.current?.columnId || sortableContainerId || over.id;
-    const isOverColumn = COLUMNS.some((col) => col.id === over.id);
-    const isOverFeature = features.some((f) => f.id === over.id);
-    if (isOverColumn) {
-      if (draggedFeature.status !== overColumnId) {
-        moveFeature(activeFeatureId, overColumnId);
-      }
-    } else if (isOverFeature) {
-      const overFeature = features.find((f) => f.id === over.id);
-      if (!overFeature) return;
-      const targetColumn = overFeature.status;
-      if (draggedFeature.status === targetColumn) {
-        const columnFeatures = featuresByColumn[targetColumn];
-        const oldIndex = columnFeatures.findIndex((f) => f.id === active.id);
-        const newIndex = columnFeatures.findIndex((f) => f.id === over.id);
-        if (oldIndex !== newIndex && oldIndex !== -1 && newIndex !== -1) {
-          reorderFeatures(targetColumn, oldIndex, newIndex);
-        }
-      } else {
-        moveFeature(activeFeatureId, targetColumn);
-      }
-    }
-  }
-  function handleDragCancel() {
-    setActiveId(null);
-  }
-  function handleFeatureClick(feature) {
-    if (!activeId) {
-      setSelectedFeature(feature);
-    }
-  }
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsxs(
-      DndContext,
-      {
-        sensors,
-        collisionDetection: closestCenter,
-        onDragStart: handleDragStart,
-        onDragEnd: handleDragEnd,
-        onDragCancel: handleDragCancel,
-        children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex h-full gap-4 overflow-x-auto p-4", children: COLUMNS.map((column) => /* @__PURE__ */ jsxRuntimeExports.jsx(
-            KanbanColumn,
-            {
-              column,
-              features: featuresByColumn[column.id],
-              onFeatureClick: handleFeatureClick
-            },
-            column.id
-          )) }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(DragOverlay, { children: activeFeature ? /* @__PURE__ */ jsxRuntimeExports.jsx(FeatureCard, { feature: activeFeature, isOverlay: true }) : null })
-        ]
-      }
-    ),
-    /* @__PURE__ */ jsxRuntimeExports.jsx(
-      FeatureDetailModal,
-      {
-        feature: selectedFeature,
-        open: !!selectedFeature,
-        onOpenChange: (open) => {
-          if (!open) setSelectedFeature(null);
-        }
-      }
-    )
-  ] });
-}
-function KanbanHeader({
-  projectName,
-  onNewFeature,
-  taskSummary,
-  activeFilter,
-  onFilterChange,
-  searchPlaceholder = "Search tasks...",
-  showAddFeature = true
-}) {
-  const featureCount = useFeatureCount();
-  const setSearchFilter = useFeatureStore((s) => s.setSearchFilter);
-  const [searchInput, setSearchInput] = reactExports.useState("");
-  const [showFilters, setShowFilters] = reactExports.useState(false);
-  const debouncedSetSearch = reactExports.useCallback(
-    /* @__PURE__ */ (() => {
-      let timeoutId = null;
-      return (value) => {
-        if (timeoutId) {
-          clearTimeout(timeoutId);
-        }
-        timeoutId = setTimeout(() => {
-          setSearchFilter(value);
-        }, 300);
-      };
-    })(),
-    [setSearchFilter]
-  );
-  reactExports.useEffect(() => {
-    debouncedSetSearch(searchInput);
-  }, [searchInput, debouncedSetSearch]);
-  const summary = taskSummary || {
-    total: featureCount,
-    completed: 0,
-    inProgress: 0,
-    blocked: 0
-  };
-  const completionPercentage = summary.total > 0 ? Math.round(summary.completed / summary.total * 100) : 0;
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("header", { className: "border-b border-border-default bg-bg-secondary/50", children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between px-6 py-4", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-6", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx(Layers, { className: "h-5 w-5 text-accent-primary" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("h1", { className: "text-xl font-semibold text-text-primary", children: projectName || "Evolution Mode" })
-        ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "hidden md:flex items-center gap-3", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-1.5 text-sm", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-text-tertiary", children: "Total:" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "font-medium text-text-primary", children: summary.total })
-          ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "h-4 w-px bg-border-default" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-1.5 text-sm", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx(CircleCheck, { className: "h-4 w-4 text-emerald-500" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-text-secondary", children: summary.completed })
-          ] }),
-          summary.inProgress > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-1.5 text-sm", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx(Clock, { className: "h-4 w-4 text-amber-500" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-text-secondary", children: summary.inProgress })
-          ] }),
-          summary.blocked > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-1.5 text-sm", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx(CircleAlert, { className: "h-4 w-4 text-red-500" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-text-secondary", children: summary.blocked })
-          ] }),
-          summary.total > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "h-4 w-px bg-border-default" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2", children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-20 h-1.5 bg-bg-tertiary rounded-full overflow-hidden", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-                "div",
-                {
-                  className: "h-full bg-emerald-500 transition-all duration-300",
-                  style: { width: `${completionPercentage}%` }
-                }
-              ) }),
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-xs text-text-tertiary", children: [
-                completionPercentage,
-                "%"
-              ] })
-            ] })
-          ] })
-        ] })
-      ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-3", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx(Search, { className: "absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-tertiary" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "input",
-            {
-              type: "text",
-              placeholder: searchPlaceholder,
-              value: searchInput,
-              onChange: (e) => {
-                setSearchInput(e.target.value);
-              },
-              className: cn(
-                "h-9 w-56 lg:w-64 rounded-md border border-border-default",
-                "bg-bg-secondary pl-9 pr-3 text-sm text-text-primary",
-                "placeholder:text-text-tertiary",
-                "focus:outline-none focus:ring-2 focus:ring-accent-primary/50 focus:border-accent-primary"
-              )
-            }
-          )
-        ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          Button,
-          {
-            variant: showFilters || activeFilter ? "secondary" : "ghost",
-            size: "icon-sm",
-            onClick: () => setShowFilters(!showFilters),
-            className: cn(activeFilter && "text-accent-primary border-accent-primary"),
-            title: "Toggle filters",
-            children: /* @__PURE__ */ jsxRuntimeExports.jsx(Funnel, { className: "h-4 w-4" })
-          }
-        ),
-        showAddFeature && /* @__PURE__ */ jsxRuntimeExports.jsxs(
-          Button,
-          {
-            variant: "primary",
-            size: "sm",
-            onClick: onNewFeature,
-            disabled: !onNewFeature,
-            className: "gap-1.5",
-            children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx(Plus, { className: "h-4 w-4" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "hidden lg:inline", children: "Add Feature" })
-            ]
-          }
-        )
-      ] })
-    ] }),
-    showFilters && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2 px-6 py-2 border-t border-border-default bg-bg-tertiary/30", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs text-text-tertiary mr-2", children: "Filter by:" }),
-      ["all", "critical", "high", "medium", "low"].map((filter) => /* @__PURE__ */ jsxRuntimeExports.jsx(
-        "button",
-        {
-          onClick: () => onFilterChange?.(filter === "all" ? null : filter),
-          className: cn(
-            "px-2.5 py-1 text-xs rounded-md transition-colors capitalize",
-            activeFilter === filter || filter === "all" && !activeFilter ? "bg-accent-primary text-white" : "bg-bg-secondary text-text-secondary hover:bg-bg-tertiary"
-          ),
-          children: filter
-        },
-        filter
-      )),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "h-4 w-px bg-border-default mx-1" }),
-      ["blocked", "in-progress", "completed"].map((filter) => /* @__PURE__ */ jsxRuntimeExports.jsx(
-        "button",
-        {
-          onClick: () => onFilterChange?.(activeFilter === filter ? null : filter),
-          className: cn(
-            "px-2.5 py-1 text-xs rounded-md transition-colors capitalize",
-            activeFilter === filter ? "bg-accent-primary text-white" : "bg-bg-secondary text-text-secondary hover:bg-bg-tertiary"
-          ),
-          children: filter.replace("-", " ")
-        },
-        filter
-      )),
-      activeFilter && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "h-4 w-px bg-border-default mx-1" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "button",
-          {
-            onClick: () => onFilterChange?.(null),
-            className: "px-2.5 py-1 text-xs rounded-md text-text-tertiary hover:text-text-secondary",
-            children: "Clear"
-          }
-        )
-      ] })
-    ] })
-  ] });
-}
-const PRIORITY_STYLES = {
-  critical: "bg-red-500 text-white",
-  high: "bg-orange-500 text-white",
-  medium: "bg-yellow-500 text-black",
-  low: "bg-emerald-500 text-white"
-};
-const COMPLEXITY_CONFIG = {
-  trivial: { label: "XS", class: "bg-slate-500/20 text-slate-300" },
-  simple: { label: "S", class: "bg-emerald-500/20 text-emerald-300" },
-  moderate: { label: "M", class: "bg-blue-500/20 text-blue-300" },
-  complex: { label: "L", class: "bg-purple-500/20 text-purple-300" },
-  "very-complex": { label: "XL", class: "bg-red-500/20 text-red-300" }
-};
-const AGENT_ICONS = {
-  planner: Bot,
-  coder: Code,
-  reviewer: Eye,
-  tester: TestTube,
-  merger: GitMerge
-};
-const STATUS_CONFIG = {
-  pending: { icon: Clock, class: "text-slate-400" },
-  ready: { icon: CircleCheck, class: "text-emerald-400" },
-  queued: { icon: Clock, class: "text-blue-400" },
-  "in-progress": { icon: LoaderCircle, class: "text-amber-400", animate: true },
-  "ai-review": { icon: Eye, class: "text-violet-400" },
-  "human-review": { icon: Eye, class: "text-purple-400" },
-  blocked: { icon: Lock, class: "text-red-400" },
-  completed: { icon: CircleCheck, class: "text-emerald-400" },
-  failed: { icon: CircleAlert, class: "text-red-400" },
-  cancelled: { icon: CircleAlert, class: "text-slate-400" }
-};
-function formatTime(minutes) {
-  if (!minutes) return "";
-  if (minutes < 60) return `${minutes}m`;
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
-}
-const KanbanCard = reactExports.forwardRef(
-  ({ task, onClick, isDragging, isOverlay, compact = false, className, ...props }, ref) => {
-    const {
-      attributes,
-      listeners,
-      setNodeRef,
-      transform,
-      transition,
-      isDragging: isSortableDragging
-    } = useSortable({
-      id: task.id,
-      data: { type: "task", task }
-    });
-    const style = {
-      transform: CSS.Transform.toString(transform),
-      transition,
-      opacity: isSortableDragging && !isOverlay ? 0.5 : 1
-    };
-    const statusConfig = STATUS_CONFIG[task.status];
-    const StatusIcon = statusConfig.icon;
-    const complexityConfig = COMPLEXITY_CONFIG[task.complexity] || COMPLEXITY_CONFIG.moderate;
-    const AgentIcon = task.assignedAgent ? AGENT_ICONS[task.assignedAgent] : null;
-    const isBlocked = task.status === "blocked" || task.blockedBy.length > 0;
-    const isActive = task.status === "in-progress";
-    const isReady = task.status === "ready";
-    const isCompleted = task.status === "completed";
-    const blockingCount = task.blockedBy.length;
-    return /* @__PURE__ */ jsxRuntimeExports.jsxs(
-      Card,
-      {
-        ref: (node) => {
-          setNodeRef(node);
-          if (typeof ref === "function") {
-            ref(node);
-          } else if (ref) {
-            ref.current = node;
-          }
-        },
-        style,
-        className: cn(
-          "cursor-pointer transition-all duration-200",
-          "hover:shadow-lg hover:shadow-black/20",
-          "border border-border-default",
-          // State-based styling
-          isActive && "ring-2 ring-amber-500/50 border-amber-500/30",
-          isBlocked && "border-red-500/30 bg-red-500/5",
-          isReady && "border-emerald-500/30",
-          isCompleted && "opacity-70",
-          isDragging && "ring-2 ring-accent-primary shadow-xl",
-          isOverlay && "shadow-2xl rotate-2",
-          className
-        ),
-        onClick: () => onClick?.(task),
-        ...props,
-        children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx(CardHeader, { className: cn("p-3 pb-2", compact && "p-2 pb-1"), children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-start justify-between gap-2", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex-1 min-w-0", children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2 mb-1", children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsxs(
-                  "span",
-                  {
-                    className: cn(
-                      "px-1.5 py-0.5 text-[10px] font-bold uppercase rounded",
-                      PRIORITY_STYLES[task.priority] || PRIORITY_STYLES.medium
-                    ),
-                    children: [
-                      "P",
-                      task.priority === "critical" ? "0" : task.priority === "high" ? "1" : task.priority === "medium" ? "2" : "3"
-                    ]
-                  }
-                ),
-                /* @__PURE__ */ jsxRuntimeExports.jsx(
-                  StatusIcon,
-                  {
-                    className: cn(
-                      "h-3.5 w-3.5",
-                      statusConfig.class,
-                      statusConfig.animate && "animate-spin"
-                    )
-                  }
-                )
-              ] }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx(
-                "h3",
-                {
-                  className: cn(
-                    "font-medium text-text-primary leading-tight",
-                    compact ? "text-xs line-clamp-1" : "text-sm line-clamp-2",
-                    isCompleted && "line-through text-text-tertiary"
-                  ),
-                  title: task.title,
-                  children: task.title
-                }
-              )
-            ] }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx(
-              "button",
-              {
-                className: "cursor-grab touch-none flex-shrink-0 opacity-50 hover:opacity-100 transition-opacity",
-                ...attributes,
-                ...listeners,
-                children: /* @__PURE__ */ jsxRuntimeExports.jsx(GripVertical, { className: "h-4 w-4 text-text-tertiary" })
-              }
-            )
-          ] }) }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs(CardContent, { className: cn("p-3 pt-0", compact && "p-2 pt-0"), children: [
-            !compact && task.description && /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs text-text-secondary line-clamp-2 mb-2", children: task.description }),
-            isActive && task.progress > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "mb-2", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "h-1.5 bg-bg-tertiary rounded-full overflow-hidden", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-              "div",
-              {
-                className: "h-full bg-amber-500 transition-all duration-300 rounded-full",
-                style: { width: `${task.progress}%` }
-              }
-            ) }) }),
-            isBlocked && blockingCount > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-1.5 mb-2 text-red-400 text-xs", children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx(Lock, { className: "h-3 w-3" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
-                "Blocked by ",
-                blockingCount,
-                " ",
-                blockingCount === 1 ? "task" : "tasks"
-              ] })
-            ] }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between gap-2", children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-1.5", children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx(
-                  "span",
-                  {
-                    className: cn(
-                      "px-1.5 py-0.5 text-[10px] font-medium rounded",
-                      complexityConfig.class
-                    ),
-                    children: complexityConfig.label
-                  }
-                ),
-                task.estimatedMinutes > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "flex items-center gap-0.5 text-[10px] text-text-tertiary", children: [
-                  /* @__PURE__ */ jsxRuntimeExports.jsx(Clock, { className: "h-3 w-3" }),
-                  formatTime(task.estimatedMinutes)
-                ] })
-              ] }),
-              AgentIcon && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex items-center gap-1 text-text-tertiary", title: `Assigned to ${task.assignedAgent}`, children: /* @__PURE__ */ jsxRuntimeExports.jsx(AgentIcon, { className: "h-3.5 w-3.5" }) })
-            ] }),
-            !compact && task.dependsOn.length > 0 && !isBlocked && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "mt-2 pt-2 border-t border-border-default", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-[10px] text-text-tertiary", children: [
-              "Depends on ",
-              task.dependsOn.length,
-              " ",
-              task.dependsOn.length === 1 ? "task" : "tasks"
-            ] }) }),
-            !compact && (task.filesToCreate.length > 0 || task.filesToModify.length > 0) && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mt-2 flex items-center gap-2 text-[10px] text-text-tertiary", children: [
-              task.filesToCreate.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
-                "+",
-                task.filesToCreate.length,
-                " new"
-              ] }),
-              task.filesToModify.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
-                "~",
-                task.filesToModify.length,
-                " modify"
-              ] })
-            ] })
-          ] })
-        ]
-      }
-    );
-  }
-);
-KanbanCard.displayName = "KanbanCard";
 var DirectionContext = reactExports.createContext(void 0);
 function useDirection(localDir) {
   const globalDir = reactExports.useContext(DirectionContext);
@@ -5984,6 +5565,1357 @@ const ScrollBar = reactExports.forwardRef(({ className, orientation = "vertical"
   }
 ));
 ScrollBar.displayName = ScrollAreaScrollbar.displayName;
+const TABS = [
+  { id: "overview", label: "Overview", icon: FileText },
+  { id: "dependencies", label: "Dependencies", icon: GitMerge },
+  { id: "files", label: "Files", icon: FilePen },
+  { id: "logs", label: "Logs", icon: Bug },
+  { id: "history", label: "History", icon: Clock }
+];
+const PRIORITY_STYLES$1 = {
+  critical: "bg-red-500 text-white",
+  high: "bg-orange-500 text-white",
+  medium: "bg-yellow-500 text-black",
+  low: "bg-emerald-500 text-white"
+};
+const PRIORITY_LABELS = {
+  critical: "Critical",
+  high: "High",
+  medium: "Medium",
+  low: "Low"
+};
+const STATUS_STYLES = {
+  pending: { bg: "bg-slate-500/20", text: "text-slate-400", label: "Pending" },
+  ready: { bg: "bg-emerald-500/20", text: "text-emerald-400", label: "Ready" },
+  queued: { bg: "bg-blue-500/20", text: "text-blue-400", label: "Queued" },
+  "in-progress": { bg: "bg-amber-500/20", text: "text-amber-400", label: "In Progress" },
+  "ai-review": { bg: "bg-violet-500/20", text: "text-violet-400", label: "AI Review" },
+  "human-review": { bg: "bg-purple-500/20", text: "text-purple-400", label: "Human Review" },
+  blocked: { bg: "bg-red-500/20", text: "text-red-400", label: "Blocked" },
+  completed: { bg: "bg-emerald-500/20", text: "text-emerald-400", label: "Completed" },
+  failed: { bg: "bg-red-500/20", text: "text-red-400", label: "Failed" },
+  cancelled: { bg: "bg-slate-500/20", text: "text-slate-400", label: "Cancelled" }
+};
+const COMPLEXITY_CONFIG$1 = {
+  trivial: { label: "XS", fullLabel: "Trivial", class: "bg-slate-500/20 text-slate-300" },
+  simple: { label: "S", fullLabel: "Simple", class: "bg-emerald-500/20 text-emerald-300" },
+  moderate: { label: "M", fullLabel: "Moderate", class: "bg-blue-500/20 text-blue-300" },
+  complex: { label: "L", fullLabel: "Complex", class: "bg-purple-500/20 text-purple-300" },
+  "very-complex": { label: "XL", fullLabel: "Very Complex", class: "bg-red-500/20 text-red-300" }
+};
+const AGENT_ICONS$1 = {
+  planner: Bot,
+  coder: Code,
+  reviewer: Eye,
+  tester: TestTube,
+  merger: GitMerge
+};
+const AGENT_LABELS = {
+  planner: "Planner",
+  coder: "Coder",
+  reviewer: "Reviewer",
+  tester: "Tester",
+  merger: "Merger"
+};
+const LOG_LEVEL_CONFIG = {
+  info: { icon: Info, class: "text-blue-400" },
+  warning: { icon: TriangleAlert, class: "text-amber-400" },
+  error: { icon: CircleAlert, class: "text-red-400" },
+  debug: { icon: Bug, class: "text-slate-400" }
+};
+function formatTime$1(minutes) {
+  if (!minutes) return "-";
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+}
+function formatDate(dateStr) {
+  if (!dateStr) return "-";
+  try {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+  } catch {
+    return "-";
+  }
+}
+function formatTimestamp(dateStr) {
+  if (!dateStr) return "-";
+  try {
+    const date = new Date(dateStr);
+    return date.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit"
+    });
+  } catch {
+    return "-";
+  }
+}
+function Badge({
+  children,
+  className
+}) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(
+    "span",
+    {
+      className: cn(
+        "px-2 py-0.5 text-xs font-medium rounded",
+        className
+      ),
+      children
+    }
+  );
+}
+function MetadataItem({
+  label,
+  value,
+  icon: Icon
+}) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-1", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs text-text-tertiary", children: label }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-1.5 text-sm text-text-primary", children: [
+      Icon && /* @__PURE__ */ jsxRuntimeExports.jsx(Icon, { className: "h-4 w-4 text-text-secondary" }),
+      value
+    ] })
+  ] });
+}
+function TabButton({
+  tab,
+  isActive,
+  onClick,
+  count
+}) {
+  const Icon = tab.icon;
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    "button",
+    {
+      type: "button",
+      onClick,
+      className: cn(
+        "flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors",
+        "border-b-2 -mb-px",
+        isActive ? "border-accent-primary text-accent-primary" : "border-transparent text-text-secondary hover:text-text-primary hover:border-border-default"
+      ),
+      children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Icon, { className: "h-4 w-4" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: tab.label }),
+        count !== void 0 && count > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "px-1.5 py-0.5 text-xs rounded-full bg-bg-tertiary", children: count })
+      ]
+    }
+  );
+}
+function OverviewTab({ task }) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-6 p-4", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("h4", { className: "text-sm font-medium text-text-primary mb-2", children: "Description" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm text-text-secondary whitespace-pre-wrap", children: task.description || "No description provided." })
+    ] }),
+    task.acceptanceCriteria.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("h4", { className: "text-sm font-medium text-text-primary mb-2", children: [
+        "Acceptance Criteria (",
+        task.acceptanceCriteria.length,
+        ")"
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("ul", { className: "space-y-2", children: task.acceptanceCriteria.map((criterion, index) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        "li",
+        {
+          className: "flex items-start gap-2 text-sm text-text-secondary",
+          children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "mt-1 h-4 w-4 flex-shrink-0 rounded border border-border-default flex items-center justify-center", children: task.status === "completed" && /* @__PURE__ */ jsxRuntimeExports.jsx(CircleCheck, { className: "h-3 w-3 text-emerald-400" }) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: criterion })
+          ]
+        },
+        index
+      )) })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("h4", { className: "text-sm font-medium text-text-primary mb-3", children: "Details" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-2 md:grid-cols-3 gap-4", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          MetadataItem,
+          {
+            label: "Priority",
+            value: /* @__PURE__ */ jsxRuntimeExports.jsx(Badge, { className: PRIORITY_STYLES$1[task.priority], children: PRIORITY_LABELS[task.priority] || task.priority })
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          MetadataItem,
+          {
+            label: "Complexity",
+            value: /* @__PURE__ */ jsxRuntimeExports.jsx(Badge, { className: COMPLEXITY_CONFIG$1[task.complexity]?.class, children: COMPLEXITY_CONFIG$1[task.complexity]?.fullLabel || task.complexity })
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          MetadataItem,
+          {
+            label: "Status",
+            value: /* @__PURE__ */ jsxRuntimeExports.jsx(Badge, { className: cn(STATUS_STYLES[task.status]?.bg, STATUS_STYLES[task.status]?.text), children: STATUS_STYLES[task.status]?.label || task.status })
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          MetadataItem,
+          {
+            label: "Estimated Time",
+            value: formatTime$1(task.estimatedMinutes),
+            icon: Clock
+          }
+        ),
+        task.actualMinutes && /* @__PURE__ */ jsxRuntimeExports.jsx(
+          MetadataItem,
+          {
+            label: "Actual Time",
+            value: formatTime$1(task.actualMinutes),
+            icon: Clock
+          }
+        ),
+        task.assignedAgent && /* @__PURE__ */ jsxRuntimeExports.jsx(
+          MetadataItem,
+          {
+            label: "Assigned Agent",
+            value: AGENT_LABELS[task.assignedAgent],
+            icon: AGENT_ICONS$1[task.assignedAgent]
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          MetadataItem,
+          {
+            label: "Created",
+            value: formatDate(task.createdAt),
+            icon: Calendar
+          }
+        ),
+        task.startedAt && /* @__PURE__ */ jsxRuntimeExports.jsx(
+          MetadataItem,
+          {
+            label: "Started",
+            value: formatDate(task.startedAt),
+            icon: Calendar
+          }
+        ),
+        task.completedAt && /* @__PURE__ */ jsxRuntimeExports.jsx(
+          MetadataItem,
+          {
+            label: "Completed",
+            value: formatDate(task.completedAt),
+            icon: Calendar
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          MetadataItem,
+          {
+            label: "Retries",
+            value: `${task.retryCount} / ${task.maxRetries}`
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          MetadataItem,
+          {
+            label: "QA Iterations",
+            value: `${task.qaIterations} / ${task.maxQAIterations}`
+          }
+        )
+      ] })
+    ] }),
+    task.progress > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("h4", { className: "text-sm font-medium text-text-primary mb-2", children: "Progress" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-3", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex-1 h-2 bg-bg-tertiary rounded-full overflow-hidden", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "div",
+          {
+            className: cn(
+              "h-full rounded-full transition-all duration-300",
+              task.status === "completed" ? "bg-emerald-500" : task.status === "failed" ? "bg-red-500" : "bg-accent-primary"
+            ),
+            style: { width: `${task.progress}%` }
+          }
+        ) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-sm text-text-secondary tabular-nums w-12 text-right", children: [
+          task.progress,
+          "%"
+        ] })
+      ] })
+    ] }),
+    task.errors.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("h4", { className: "text-sm font-medium text-red-400 mb-2", children: [
+        "Errors (",
+        task.errors.length,
+        ")"
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "space-y-2", children: task.errors.map((error) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "div",
+        {
+          className: cn(
+            "p-3 rounded-lg text-sm",
+            error.resolved ? "bg-slate-500/10" : "bg-red-500/10"
+          ),
+          children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-start gap-2", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(CircleAlert, { className: cn("h-4 w-4 mt-0.5 flex-shrink-0", error.resolved ? "text-slate-400" : "text-red-400") }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex-1 min-w-0", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: cn("text-text-primary", error.resolved && "line-through opacity-60"), children: error.message }),
+              error.stack && /* @__PURE__ */ jsxRuntimeExports.jsx("pre", { className: "mt-2 text-xs text-text-tertiary overflow-x-auto", children: error.stack }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mt-1 flex items-center gap-2 text-xs text-text-tertiary", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: formatTimestamp(error.timestamp) }),
+                error.recoverable && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-amber-400", children: "Recoverable" }),
+                error.resolved && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-emerald-400", children: "Resolved" })
+              ] })
+            ] })
+          ] })
+        },
+        error.id
+      )) })
+    ] })
+  ] });
+}
+function DependenciesTab({
+  task,
+  allTasks
+}) {
+  const upstreamTasks = reactExports.useMemo(() => {
+    return task.dependsOn.map((id) => allTasks.find((t) => t.id === id)).filter((t) => t !== void 0);
+  }, [task.dependsOn, allTasks]);
+  const downstreamTasks = reactExports.useMemo(() => {
+    return allTasks.filter((t) => t.dependsOn.includes(task.id));
+  }, [task.id, allTasks]);
+  const blockingTasks = reactExports.useMemo(() => {
+    return upstreamTasks.filter((t) => t.status !== "completed");
+  }, [upstreamTasks]);
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-6 p-4", children: [
+    blockingTasks.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "p-3 bg-red-500/10 rounded-lg border border-red-500/20", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2 text-red-400", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx(Lock, { className: "h-4 w-4" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-sm font-medium", children: [
+        "Blocked by ",
+        blockingTasks.length,
+        " incomplete ",
+        blockingTasks.length === 1 ? "task" : "tasks"
+      ] })
+    ] }) }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("h4", { className: "text-sm font-medium text-text-primary mb-3 flex items-center gap-2", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(ArrowRight, { className: "h-4 w-4 rotate-180" }),
+        "Depends On (",
+        upstreamTasks.length,
+        ")"
+      ] }),
+      upstreamTasks.length === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm text-text-tertiary", children: "No dependencies. This task can start immediately." }) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "space-y-2", children: upstreamTasks.map((t) => {
+        const isComplete = t.status === "completed";
+        const statusStyle = STATUS_STYLES[t.status];
+        return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "div",
+          {
+            className: cn(
+              "flex items-center gap-3 p-3 rounded-lg",
+              isComplete ? "bg-emerald-500/5" : "bg-bg-secondary"
+            ),
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex-shrink-0", children: isComplete ? /* @__PURE__ */ jsxRuntimeExports.jsx(CircleCheck, { className: "h-5 w-5 text-emerald-400" }) : t.status === "in-progress" ? /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "h-5 w-5 text-amber-400 animate-spin" }) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "h-5 w-5 rounded-full border-2 border-border-default" }) }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex-1 min-w-0", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: cn("text-sm text-text-primary", isComplete && "line-through opacity-60"), children: t.title }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx(Badge, { className: cn("mt-1", statusStyle?.bg, statusStyle?.text), children: statusStyle?.label || t.status })
+              ] }),
+              !isComplete && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs text-red-400 font-medium", children: "BLOCKING" })
+            ]
+          },
+          t.id
+        );
+      }) })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("h4", { className: "text-sm font-medium text-text-primary mb-3 flex items-center gap-2", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(ArrowRight, { className: "h-4 w-4" }),
+        "Blocks (",
+        downstreamTasks.length,
+        ")"
+      ] }),
+      downstreamTasks.length === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm text-text-tertiary", children: "No tasks depend on this task." }) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "space-y-2", children: downstreamTasks.map((t) => {
+        const statusStyle = STATUS_STYLES[t.status];
+        return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "div",
+          {
+            className: "flex items-center gap-3 p-3 rounded-lg bg-bg-secondary",
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex-shrink-0", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Clock, { className: "h-5 w-5 text-text-tertiary" }) }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex-1 min-w-0", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm text-text-primary", children: t.title }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx(Badge, { className: cn("mt-1", statusStyle?.bg, statusStyle?.text), children: statusStyle?.label || t.status })
+              ] })
+            ]
+          },
+          t.id
+        );
+      }) })
+    ] })
+  ] });
+}
+function FilesTab({ task }) {
+  const totalFiles = task.filesToCreate.length + task.filesToModify.length;
+  if (totalFiles === 0) {
+    return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex items-center justify-center h-full text-text-tertiary text-sm", children: "No file changes planned for this task." });
+  }
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-6 p-4", children: [
+    task.filesToCreate.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("h4", { className: "text-sm font-medium text-text-primary mb-3 flex items-center gap-2", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(FilePlus, { className: "h-4 w-4 text-emerald-400" }),
+        "Files to Create (",
+        task.filesToCreate.length,
+        ")"
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "space-y-1", children: task.filesToCreate.map((file, index) => {
+        const isCreated = task.filesCreated.includes(file);
+        return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "div",
+          {
+            className: cn(
+              "flex items-center gap-2 p-2 rounded text-sm font-mono",
+              isCreated ? "bg-emerald-500/10" : "bg-bg-secondary"
+            ),
+            children: [
+              isCreated ? /* @__PURE__ */ jsxRuntimeExports.jsx(CircleCheck, { className: "h-4 w-4 text-emerald-400 flex-shrink-0" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(FilePlus, { className: "h-4 w-4 text-text-tertiary flex-shrink-0" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn("text-text-secondary truncate", isCreated && "text-emerald-300"), children: file })
+            ]
+          },
+          index
+        );
+      }) })
+    ] }),
+    task.filesToModify.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("h4", { className: "text-sm font-medium text-text-primary mb-3 flex items-center gap-2", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(FilePen, { className: "h-4 w-4 text-amber-400" }),
+        "Files to Modify (",
+        task.filesToModify.length,
+        ")"
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "space-y-1", children: task.filesToModify.map((file, index) => {
+        const isModified = task.filesModified.includes(file);
+        return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "div",
+          {
+            className: cn(
+              "flex items-center gap-2 p-2 rounded text-sm font-mono",
+              isModified ? "bg-amber-500/10" : "bg-bg-secondary"
+            ),
+            children: [
+              isModified ? /* @__PURE__ */ jsxRuntimeExports.jsx(CircleCheck, { className: "h-4 w-4 text-amber-400 flex-shrink-0" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(FilePen, { className: "h-4 w-4 text-text-tertiary flex-shrink-0" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn("text-text-secondary truncate", isModified && "text-amber-300"), children: file })
+            ]
+          },
+          index
+        );
+      }) })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "pt-4 border-t border-border-default", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-2 gap-4 text-sm", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-text-tertiary", children: "Created: " }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-emerald-400 font-medium", children: [
+          task.filesCreated.length,
+          " / ",
+          task.filesToCreate.length
+        ] })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-text-tertiary", children: "Modified: " }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-amber-400 font-medium", children: [
+          task.filesModified.length,
+          " / ",
+          task.filesToModify.length
+        ] })
+      ] })
+    ] }) })
+  ] });
+}
+function LogsTab({ task }) {
+  const logsEndRef = reactExports.useRef(null);
+  const [autoScroll, setAutoScroll] = reactExports.useState(true);
+  const [expandedLogs, setExpandedLogs] = reactExports.useState(/* @__PURE__ */ new Set());
+  reactExports.useEffect(() => {
+    if (autoScroll && logsEndRef.current) {
+      logsEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [task.logs.length, autoScroll]);
+  const handleCopyLogs = () => {
+    const logsText = task.logs.map((log) => `[${formatTimestamp(log.timestamp)}] [${log.level.toUpperCase()}] ${log.message}${log.details ? "\n" + log.details : ""}`).join("\n");
+    navigator.clipboard.writeText(logsText);
+  };
+  const toggleLogExpand = (logId) => {
+    setExpandedLogs((prev) => {
+      const next = new Set(prev);
+      if (next.has(logId)) {
+        next.delete(logId);
+      } else {
+        next.add(logId);
+      }
+      return next;
+    });
+  };
+  if (task.logs.length === 0) {
+    return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col items-center justify-center h-full text-text-tertiary text-sm gap-2", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx(Bug, { className: "h-8 w-8 opacity-50" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "No logs yet. Logs will appear here during task execution." })
+    ] });
+  }
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col h-full", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between px-4 py-2 border-b border-border-default", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex items-center gap-2", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-sm text-text-secondary", children: [
+        task.logs.length,
+        " log entries"
+      ] }) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          Button,
+          {
+            variant: "ghost",
+            size: "sm",
+            onClick: () => setAutoScroll(!autoScroll),
+            className: cn(!autoScroll && "opacity-50"),
+            children: [
+              "Auto-scroll ",
+              autoScroll ? "ON" : "OFF"
+            ]
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs(Button, { variant: "ghost", size: "sm", onClick: handleCopyLogs, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Copy, { className: "h-4 w-4 mr-1" }),
+          "Copy"
+        ] })
+      ] })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(ScrollArea, { className: "flex-1", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "p-4 space-y-1 font-mono text-xs", children: [
+      task.logs.map((log) => {
+        const config = LOG_LEVEL_CONFIG[log.level] || LOG_LEVEL_CONFIG.info;
+        const Icon = config.icon;
+        const isExpanded = expandedLogs.has(log.id);
+        const hasDetails = !!log.details;
+        return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "div",
+          {
+            className: cn(
+              "flex items-start gap-2 p-2 rounded hover:bg-bg-secondary/50",
+              log.level === "error" && "bg-red-500/5",
+              log.level === "warning" && "bg-amber-500/5"
+            ),
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(Icon, { className: cn("h-4 w-4 mt-0.5 flex-shrink-0", config.class) }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex-1 min-w-0", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-start gap-2", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-text-tertiary flex-shrink-0", children: formatTimestamp(log.timestamp) }),
+                  log.phase && /* @__PURE__ */ jsxRuntimeExports.jsx(Badge, { className: "bg-bg-tertiary text-text-tertiary", children: log.phase }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-text-secondary break-words", children: log.message })
+                ] }),
+                hasDetails && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                    "button",
+                    {
+                      type: "button",
+                      onClick: () => toggleLogExpand(log.id),
+                      className: "flex items-center gap-1 mt-1 text-text-tertiary hover:text-text-secondary",
+                      children: [
+                        isExpanded ? /* @__PURE__ */ jsxRuntimeExports.jsx(ChevronDown, { className: "h-3 w-3" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(ChevronRight, { className: "h-3 w-3" }),
+                        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Details" })
+                      ]
+                    }
+                  ),
+                  isExpanded && /* @__PURE__ */ jsxRuntimeExports.jsx("pre", { className: "mt-2 p-2 bg-bg-tertiary rounded text-text-tertiary overflow-x-auto whitespace-pre-wrap", children: log.details })
+                ] })
+              ] })
+            ]
+          },
+          log.id
+        );
+      }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { ref: logsEndRef })
+    ] }) })
+  ] });
+}
+function HistoryTab({ task }) {
+  if (task.statusHistory.length === 0) {
+    return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col items-center justify-center h-full text-text-tertiary text-sm gap-2", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx(Clock, { className: "h-8 w-8 opacity-50" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "No history yet." })
+    ] });
+  }
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "p-4", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute left-[7px] top-2 bottom-2 w-0.5 bg-border-default" }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "space-y-4", children: task.statusHistory.map((entry, index) => {
+      const toStyle = STATUS_STYLES[entry.toStatus];
+      const isLatest = index === task.statusHistory.length - 1;
+      return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative flex items-start gap-4 pl-6", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "div",
+          {
+            className: cn(
+              "absolute left-0 w-3.5 h-3.5 rounded-full border-2 bg-bg-primary",
+              isLatest ? "border-accent-primary" : "border-border-default"
+            )
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex-1 min-w-0 pb-4", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2 flex-wrap", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs text-text-tertiary", children: formatDate(entry.timestamp) }),
+            entry.agentId && /* @__PURE__ */ jsxRuntimeExports.jsx(Badge, { className: "bg-bg-tertiary text-text-tertiary", children: entry.agentId })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mt-1 flex items-center gap-2", children: [
+            entry.fromStatus && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(Badge, { className: cn(STATUS_STYLES[entry.fromStatus]?.bg, STATUS_STYLES[entry.fromStatus]?.text), children: STATUS_STYLES[entry.fromStatus]?.label || entry.fromStatus }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(ArrowRight, { className: "h-3 w-3 text-text-tertiary" })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(Badge, { className: cn(toStyle?.bg, toStyle?.text), children: toStyle?.label || entry.toStatus })
+          ] }),
+          entry.reason && /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "mt-1 text-sm text-text-secondary", children: entry.reason })
+        ] })
+      ] }, index);
+    }) })
+  ] }) });
+}
+function TaskDetailModal({
+  task,
+  allTasks = [],
+  open,
+  onOpenChange,
+  onStartTask,
+  onCancelTask,
+  onRetryTask,
+  onSkipTask,
+  onReopenTask
+}) {
+  const [activeTab, setActiveTab] = reactExports.useState("overview");
+  const [isLoading, setIsLoading] = reactExports.useState(false);
+  if (!task) return null;
+  const canStart = task.status === "pending" || task.status === "ready";
+  const canCancel = task.status === "in-progress" || task.status === "queued";
+  const canRetry = task.status === "failed";
+  const canSkip = task.status === "failed" || task.status === "blocked";
+  const canReopen = task.status === "completed" || task.status === "cancelled";
+  const isBlocked = task.status === "blocked" || task.blockedBy.length > 0;
+  const tabCounts = {
+    dependencies: task.dependsOn.length + allTasks.filter((t) => t.dependsOn.includes(task.id)).length,
+    files: task.filesToCreate.length + task.filesToModify.length,
+    logs: task.logs.length,
+    history: task.statusHistory.length
+  };
+  const handleAction = async (action) => {
+    setIsLoading(true);
+    try {
+      await action();
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(Dialog, { open, onOpenChange, children: /* @__PURE__ */ jsxRuntimeExports.jsxs(DialogContent, { className: "max-w-4xl max-h-[90vh] flex flex-col p-0 gap-0", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs(DialogHeader, { className: "p-4 pb-0", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex items-start justify-between gap-4", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex-1 min-w-0", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2 mb-2", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs(Badge, { className: PRIORITY_STYLES$1[task.priority], children: [
+            "P",
+            task.priority === "critical" ? "0" : task.priority === "high" ? "1" : task.priority === "medium" ? "2" : "3"
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Badge, { className: cn(STATUS_STYLES[task.status]?.bg, STATUS_STYLES[task.status]?.text), children: STATUS_STYLES[task.status]?.label || task.status }),
+          isBlocked && /* @__PURE__ */ jsxRuntimeExports.jsxs(Badge, { className: "bg-red-500/20 text-red-400 flex items-center gap-1", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(Lock, { className: "h-3 w-3" }),
+            "Blocked"
+          ] })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(DialogTitle, { className: "text-xl text-text-primary", children: task.title }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs(DialogDescription, { className: "mt-1", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-text-tertiary", children: [
+            "ID: ",
+            task.id
+          ] }),
+          task.assignedAgent && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "mx-2 text-text-tertiary", children: "|" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-text-tertiary", children: [
+              "Agent: ",
+              AGENT_LABELS[task.assignedAgent]
+            ] })
+          ] })
+        ] })
+      ] }) }),
+      task.status === "in-progress" && task.progress > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mt-3 flex items-center gap-3", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex-1 h-1.5 bg-bg-tertiary rounded-full overflow-hidden", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "div",
+          {
+            className: "h-full bg-amber-500 rounded-full transition-all duration-300",
+            style: { width: `${task.progress}%` }
+          }
+        ) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-xs text-text-secondary tabular-nums w-10 text-right", children: [
+          task.progress,
+          "%"
+        ] })
+      ] })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "border-b border-border-default px-4 mt-4", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex items-center gap-0 overflow-x-auto", children: TABS.map((tab) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+      TabButton,
+      {
+        tab,
+        isActive: activeTab === tab.id,
+        onClick: () => setActiveTab(tab.id),
+        count: tabCounts[tab.id]
+      },
+      tab.id
+    )) }) }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex-1 min-h-0 overflow-hidden", children: /* @__PURE__ */ jsxRuntimeExports.jsxs(ScrollArea, { className: "h-full max-h-[calc(90vh-220px)]", children: [
+      activeTab === "overview" && /* @__PURE__ */ jsxRuntimeExports.jsx(OverviewTab, { task }),
+      activeTab === "dependencies" && /* @__PURE__ */ jsxRuntimeExports.jsx(DependenciesTab, { task, allTasks }),
+      activeTab === "files" && /* @__PURE__ */ jsxRuntimeExports.jsx(FilesTab, { task }),
+      activeTab === "logs" && /* @__PURE__ */ jsxRuntimeExports.jsx(LogsTab, { task }),
+      activeTab === "history" && /* @__PURE__ */ jsxRuntimeExports.jsx(HistoryTab, { task })
+    ] }) }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs(DialogFooter, { className: "p-4 border-t border-border-default flex-row justify-between", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2", children: [
+        canSkip && onSkipTask && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          Button,
+          {
+            variant: "ghost",
+            size: "sm",
+            onClick: () => void handleAction(() => onSkipTask(task.id)),
+            disabled: isLoading,
+            className: "text-text-secondary hover:text-amber-400",
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(SkipForward, { className: "h-4 w-4 mr-1" }),
+              "Skip"
+            ]
+          }
+        ),
+        canReopen && onReopenTask && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          Button,
+          {
+            variant: "ghost",
+            size: "sm",
+            onClick: () => void handleAction(() => onReopenTask(task.id)),
+            disabled: isLoading,
+            className: "text-text-secondary",
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(RotateCcw, { className: "h-4 w-4 mr-1" }),
+              "Reopen"
+            ]
+          }
+        )
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2", children: [
+        canRetry && onRetryTask && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          Button,
+          {
+            variant: "outline",
+            size: "sm",
+            onClick: () => void handleAction(() => onRetryTask(task.id)),
+            disabled: isLoading,
+            children: [
+              isLoading ? /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "h-4 w-4 mr-1 animate-spin" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(RotateCcw, { className: "h-4 w-4 mr-1" }),
+              "Retry"
+            ]
+          }
+        ),
+        canCancel && onCancelTask && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          Button,
+          {
+            variant: "destructive",
+            size: "sm",
+            onClick: () => void handleAction(() => onCancelTask(task.id)),
+            disabled: isLoading,
+            children: [
+              isLoading ? /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "h-4 w-4 mr-1 animate-spin" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Square, { className: "h-4 w-4 mr-1" }),
+              "Cancel"
+            ]
+          }
+        ),
+        canStart && onStartTask && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          Button,
+          {
+            variant: "default",
+            size: "sm",
+            onClick: () => void handleAction(() => onStartTask(task.id)),
+            disabled: isLoading || isBlocked,
+            children: [
+              isLoading ? /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "h-4 w-4 mr-1 animate-spin" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Play, { className: "h-4 w-4 mr-1" }),
+              "Start Now"
+            ]
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Button, { variant: "outline", size: "sm", onClick: () => onOpenChange(false), children: "Close" })
+      ] })
+    ] })
+  ] }) });
+}
+const COLUMNS = [
+  { id: "backlog", title: "Backlog" },
+  { id: "planning", title: "Planning" },
+  { id: "in_progress", title: "In Progress", limit: 3 },
+  { id: "ai_review", title: "AI Review" },
+  { id: "human_review", title: "Human Review" },
+  { id: "done", title: "Done" }
+];
+function KanbanBoard() {
+  const [activeId, setActiveId] = reactExports.useState(null);
+  const [selectedFeature, setSelectedFeature] = reactExports.useState(null);
+  const [selectedTask, setSelectedTask] = reactExports.useState(null);
+  const allFeatures = useFeatureStore((s) => s.features);
+  const filter = useFeatureStore((s) => s.filter);
+  const moveFeature = useFeatureStore((s) => s.moveFeature);
+  const reorderFeatures = useFeatureStore((s) => s.reorderFeatures);
+  const executionTasks = useExecutionStore((s) => s.tasks);
+  const executionStatus = useExecutionStore((s) => s.status);
+  const updateTask = useExecutionStore((s) => s.updateTask);
+  const isExecutionMode = executionTasks.length > 0 && executionStatus !== "idle";
+  const features = reactExports.useMemo(() => {
+    if (!filter.search && !filter.priority && !filter.status) {
+      return allFeatures;
+    }
+    return allFeatures.filter((f) => {
+      const matchesSearch = !filter.search || f.title.toLowerCase().includes(filter.search.toLowerCase()) || f.description.toLowerCase().includes(filter.search.toLowerCase());
+      const matchesPriority = !filter.priority || filter.priority.includes(f.priority);
+      const matchesStatus = !filter.status || filter.status.includes(f.status);
+      return matchesSearch && matchesPriority && matchesStatus;
+    });
+  }, [allFeatures, filter]);
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5
+      }
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates
+    })
+  );
+  const activeFeature = reactExports.useMemo(
+    () => activeId ? features.find((f) => f.id === activeId) : null,
+    [activeId, features]
+  );
+  const featuresByColumn = reactExports.useMemo(() => {
+    const grouped = {
+      backlog: [],
+      planning: [],
+      in_progress: [],
+      ai_review: [],
+      human_review: [],
+      done: []
+    };
+    for (const feature of features) {
+      grouped[feature.status].push(feature);
+    }
+    return grouped;
+  }, [features]);
+  function handleDragStart(event) {
+    setActiveId(event.active.id);
+  }
+  function handleDragEnd(event) {
+    const { active, over } = event;
+    setActiveId(null);
+    if (!over) return;
+    const activeFeatureId = active.id;
+    const draggedFeature = features.find((f) => f.id === activeFeatureId);
+    if (!draggedFeature) return;
+    const sortableContainerId = over.data.current?.sortable?.containerId;
+    const overColumnId = over.data.current?.columnId || sortableContainerId || over.id;
+    const isOverColumn = COLUMNS.some((col) => col.id === over.id);
+    const isOverFeature = features.some((f) => f.id === over.id);
+    if (isOverColumn) {
+      if (draggedFeature.status !== overColumnId) {
+        moveFeature(activeFeatureId, overColumnId);
+      }
+    } else if (isOverFeature) {
+      const overFeature = features.find((f) => f.id === over.id);
+      if (!overFeature) return;
+      const targetColumn = overFeature.status;
+      if (draggedFeature.status === targetColumn) {
+        const columnFeatures = featuresByColumn[targetColumn];
+        const oldIndex = columnFeatures.findIndex((f) => f.id === active.id);
+        const newIndex = columnFeatures.findIndex((f) => f.id === over.id);
+        if (oldIndex !== newIndex && oldIndex !== -1 && newIndex !== -1) {
+          reorderFeatures(targetColumn, oldIndex, newIndex);
+        }
+      } else {
+        moveFeature(activeFeatureId, targetColumn);
+      }
+    }
+  }
+  function handleDragCancel() {
+    setActiveId(null);
+  }
+  function handleFeatureClick(feature) {
+    if (!activeId) {
+      if (isExecutionMode) {
+        const task = executionTasks.find((t) => t.id === feature.id || t.featureId === feature.id);
+        if (task) {
+          setSelectedTask(task);
+          return;
+        }
+      }
+      setSelectedFeature(feature);
+    }
+  }
+  const handleStartTask = reactExports.useCallback(async (taskId) => {
+    updateTask(taskId, {
+      status: "in-progress",
+      startedAt: (/* @__PURE__ */ new Date()).toISOString(),
+      progress: 0
+    });
+  }, [updateTask]);
+  const handleCancelTask = reactExports.useCallback(async (taskId) => {
+    updateTask(taskId, {
+      status: "cancelled",
+      completedAt: (/* @__PURE__ */ new Date()).toISOString()
+    });
+    setSelectedTask(null);
+  }, [updateTask]);
+  const handleRetryTask = reactExports.useCallback(async (taskId) => {
+    const task = executionTasks.find((t) => t.id === taskId);
+    if (task) {
+      updateTask(taskId, {
+        status: "pending",
+        progress: 0,
+        retryCount: task.retryCount + 1,
+        completedAt: null,
+        errors: []
+      });
+    }
+  }, [executionTasks, updateTask]);
+  const handleSkipTask = reactExports.useCallback(async (taskId) => {
+    updateTask(taskId, {
+      status: "cancelled",
+      completedAt: (/* @__PURE__ */ new Date()).toISOString()
+    });
+    setSelectedTask(null);
+  }, [updateTask]);
+  const handleReopenTask = reactExports.useCallback(async (taskId) => {
+    updateTask(taskId, {
+      status: "pending",
+      progress: 0,
+      completedAt: null
+    });
+  }, [updateTask]);
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      DndContext,
+      {
+        sensors,
+        collisionDetection: closestCenter,
+        onDragStart: handleDragStart,
+        onDragEnd: handleDragEnd,
+        onDragCancel: handleDragCancel,
+        children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex h-full gap-4 overflow-x-auto p-4", children: COLUMNS.map((column) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+            KanbanColumn,
+            {
+              column,
+              features: featuresByColumn[column.id],
+              onFeatureClick: handleFeatureClick
+            },
+            column.id
+          )) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(DragOverlay, { children: activeFeature ? /* @__PURE__ */ jsxRuntimeExports.jsx(FeatureCard, { feature: activeFeature, isOverlay: true }) : null })
+        ]
+      }
+    ),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      FeatureDetailModal,
+      {
+        feature: selectedFeature,
+        open: !!selectedFeature,
+        onOpenChange: (open) => {
+          if (!open) setSelectedFeature(null);
+        }
+      }
+    ),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      TaskDetailModal,
+      {
+        task: selectedTask,
+        allTasks: executionTasks,
+        open: !!selectedTask,
+        onOpenChange: (open) => {
+          if (!open) setSelectedTask(null);
+        },
+        onStartTask: handleStartTask,
+        onCancelTask: handleCancelTask,
+        onRetryTask: handleRetryTask,
+        onSkipTask: handleSkipTask,
+        onReopenTask: handleReopenTask
+      }
+    )
+  ] });
+}
+function KanbanHeader({
+  projectName,
+  onNewFeature,
+  taskSummary,
+  activeFilter,
+  onFilterChange,
+  searchPlaceholder = "Search tasks...",
+  showAddFeature = true
+}) {
+  const featureCount = useFeatureCount();
+  const setSearchFilter = useFeatureStore((s) => s.setSearchFilter);
+  const [searchInput, setSearchInput] = reactExports.useState("");
+  const [showFilters, setShowFilters] = reactExports.useState(false);
+  const debouncedSetSearch = reactExports.useCallback(
+    /* @__PURE__ */ (() => {
+      let timeoutId = null;
+      return (value) => {
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
+        timeoutId = setTimeout(() => {
+          setSearchFilter(value);
+        }, 300);
+      };
+    })(),
+    [setSearchFilter]
+  );
+  reactExports.useEffect(() => {
+    debouncedSetSearch(searchInput);
+  }, [searchInput, debouncedSetSearch]);
+  const summary = taskSummary || {
+    total: featureCount,
+    completed: 0,
+    inProgress: 0,
+    blocked: 0
+  };
+  const completionPercentage = summary.total > 0 ? Math.round(summary.completed / summary.total * 100) : 0;
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("header", { className: "border-b border-border-default bg-bg-secondary/50", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between px-6 py-4", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-6", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Layers, { className: "h-5 w-5 text-accent-primary" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("h1", { className: "text-xl font-semibold text-text-primary", children: projectName || "Evolution Mode" })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "hidden md:flex items-center gap-3", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-1.5 text-sm", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-text-tertiary", children: "Total:" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "font-medium text-text-primary", children: summary.total })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "h-4 w-px bg-border-default" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-1.5 text-sm", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(CircleCheck, { className: "h-4 w-4 text-emerald-500" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-text-secondary", children: summary.completed })
+          ] }),
+          summary.inProgress > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-1.5 text-sm", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(Clock, { className: "h-4 w-4 text-amber-500" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-text-secondary", children: summary.inProgress })
+          ] }),
+          summary.blocked > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-1.5 text-sm", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(CircleAlert, { className: "h-4 w-4 text-red-500" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-text-secondary", children: summary.blocked })
+          ] }),
+          summary.total > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "h-4 w-px bg-border-default" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-20 h-1.5 bg-bg-tertiary rounded-full overflow-hidden", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "div",
+                {
+                  className: "h-full bg-emerald-500 transition-all duration-300",
+                  style: { width: `${completionPercentage}%` }
+                }
+              ) }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-xs text-text-tertiary", children: [
+                completionPercentage,
+                "%"
+              ] })
+            ] })
+          ] })
+        ] })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-3", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Search, { className: "absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-tertiary" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "input",
+            {
+              type: "text",
+              placeholder: searchPlaceholder,
+              value: searchInput,
+              onChange: (e) => {
+                setSearchInput(e.target.value);
+              },
+              className: cn(
+                "h-9 w-56 lg:w-64 rounded-md border border-border-default",
+                "bg-bg-secondary pl-9 pr-3 text-sm text-text-primary",
+                "placeholder:text-text-tertiary",
+                "focus:outline-none focus:ring-2 focus:ring-accent-primary/50 focus:border-accent-primary"
+              )
+            }
+          )
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          Button,
+          {
+            variant: showFilters || activeFilter ? "secondary" : "ghost",
+            size: "icon-sm",
+            onClick: () => setShowFilters(!showFilters),
+            className: cn(activeFilter && "text-accent-primary border-accent-primary"),
+            title: "Toggle filters",
+            children: /* @__PURE__ */ jsxRuntimeExports.jsx(Funnel, { className: "h-4 w-4" })
+          }
+        ),
+        showAddFeature && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          Button,
+          {
+            variant: "primary",
+            size: "sm",
+            onClick: onNewFeature,
+            disabled: !onNewFeature,
+            className: "gap-1.5",
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(Plus, { className: "h-4 w-4" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "hidden lg:inline", children: "Add Feature" })
+            ]
+          }
+        )
+      ] })
+    ] }),
+    showFilters && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2 px-6 py-2 border-t border-border-default bg-bg-tertiary/30", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs text-text-tertiary mr-2", children: "Filter by:" }),
+      ["all", "critical", "high", "medium", "low"].map((filter) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "button",
+        {
+          onClick: () => onFilterChange?.(filter === "all" ? null : filter),
+          className: cn(
+            "px-2.5 py-1 text-xs rounded-md transition-colors capitalize",
+            activeFilter === filter || filter === "all" && !activeFilter ? "bg-accent-primary text-white" : "bg-bg-secondary text-text-secondary hover:bg-bg-tertiary"
+          ),
+          children: filter
+        },
+        filter
+      )),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "h-4 w-px bg-border-default mx-1" }),
+      ["blocked", "in-progress", "completed"].map((filter) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "button",
+        {
+          onClick: () => onFilterChange?.(activeFilter === filter ? null : filter),
+          className: cn(
+            "px-2.5 py-1 text-xs rounded-md transition-colors capitalize",
+            activeFilter === filter ? "bg-accent-primary text-white" : "bg-bg-secondary text-text-secondary hover:bg-bg-tertiary"
+          ),
+          children: filter.replace("-", " ")
+        },
+        filter
+      )),
+      activeFilter && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "h-4 w-px bg-border-default mx-1" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "button",
+          {
+            onClick: () => onFilterChange?.(null),
+            className: "px-2.5 py-1 text-xs rounded-md text-text-tertiary hover:text-text-secondary",
+            children: "Clear"
+          }
+        )
+      ] })
+    ] })
+  ] });
+}
+const PRIORITY_STYLES = {
+  critical: "bg-red-500 text-white",
+  high: "bg-orange-500 text-white",
+  medium: "bg-yellow-500 text-black",
+  low: "bg-emerald-500 text-white"
+};
+const COMPLEXITY_CONFIG = {
+  trivial: { label: "XS", class: "bg-slate-500/20 text-slate-300" },
+  simple: { label: "S", class: "bg-emerald-500/20 text-emerald-300" },
+  moderate: { label: "M", class: "bg-blue-500/20 text-blue-300" },
+  complex: { label: "L", class: "bg-purple-500/20 text-purple-300" },
+  "very-complex": { label: "XL", class: "bg-red-500/20 text-red-300" }
+};
+const AGENT_ICONS = {
+  planner: Bot,
+  coder: Code,
+  reviewer: Eye,
+  tester: TestTube,
+  merger: GitMerge
+};
+const STATUS_CONFIG = {
+  pending: { icon: Clock, class: "text-slate-400" },
+  ready: { icon: CircleCheck, class: "text-emerald-400" },
+  queued: { icon: Clock, class: "text-blue-400" },
+  "in-progress": { icon: LoaderCircle, class: "text-amber-400", animate: true },
+  "ai-review": { icon: Eye, class: "text-violet-400" },
+  "human-review": { icon: Eye, class: "text-purple-400" },
+  blocked: { icon: Lock, class: "text-red-400" },
+  completed: { icon: CircleCheck, class: "text-emerald-400" },
+  failed: { icon: CircleAlert, class: "text-red-400" },
+  cancelled: { icon: CircleAlert, class: "text-slate-400" }
+};
+function formatTime(minutes) {
+  if (!minutes) return "";
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+}
+const KanbanCard = reactExports.forwardRef(
+  ({ task, onClick, isDragging, isOverlay, compact = false, className, ...props }, ref) => {
+    const {
+      attributes,
+      listeners,
+      setNodeRef,
+      transform,
+      transition,
+      isDragging: isSortableDragging
+    } = useSortable({
+      id: task.id,
+      data: { type: "task", task }
+    });
+    const style = {
+      transform: CSS.Transform.toString(transform),
+      transition,
+      opacity: isSortableDragging && !isOverlay ? 0.5 : 1
+    };
+    const statusConfig = STATUS_CONFIG[task.status];
+    const StatusIcon = statusConfig.icon;
+    const complexityConfig = COMPLEXITY_CONFIG[task.complexity] || COMPLEXITY_CONFIG.moderate;
+    const AgentIcon = task.assignedAgent ? AGENT_ICONS[task.assignedAgent] : null;
+    const isBlocked = task.status === "blocked" || task.blockedBy.length > 0;
+    const isActive = task.status === "in-progress";
+    const isReady = task.status === "ready";
+    const isCompleted = task.status === "completed";
+    const blockingCount = task.blockedBy.length;
+    return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      Card,
+      {
+        ref: (node) => {
+          setNodeRef(node);
+          if (typeof ref === "function") {
+            ref(node);
+          } else if (ref) {
+            ref.current = node;
+          }
+        },
+        style,
+        className: cn(
+          "cursor-pointer transition-all duration-200",
+          "hover:shadow-lg hover:shadow-black/20",
+          "border border-border-default",
+          // State-based styling
+          isActive && "ring-2 ring-amber-500/50 border-amber-500/30",
+          isBlocked && "border-red-500/30 bg-red-500/5",
+          isReady && "border-emerald-500/30",
+          isCompleted && "opacity-70",
+          isDragging && "ring-2 ring-accent-primary shadow-xl",
+          isOverlay && "shadow-2xl rotate-2",
+          className
+        ),
+        onClick: () => onClick?.(task),
+        ...props,
+        children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(CardHeader, { className: cn("p-3 pb-2", compact && "p-2 pb-1"), children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-start justify-between gap-2", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex-1 min-w-0", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2 mb-1", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                  "span",
+                  {
+                    className: cn(
+                      "px-1.5 py-0.5 text-[10px] font-bold uppercase rounded",
+                      PRIORITY_STYLES[task.priority] || PRIORITY_STYLES.medium
+                    ),
+                    children: [
+                      "P",
+                      task.priority === "critical" ? "0" : task.priority === "high" ? "1" : task.priority === "medium" ? "2" : "3"
+                    ]
+                  }
+                ),
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  StatusIcon,
+                  {
+                    className: cn(
+                      "h-3.5 w-3.5",
+                      statusConfig.class,
+                      statusConfig.animate && "animate-spin"
+                    )
+                  }
+                )
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "h3",
+                {
+                  className: cn(
+                    "font-medium text-text-primary leading-tight",
+                    compact ? "text-xs line-clamp-1" : "text-sm line-clamp-2",
+                    isCompleted && "line-through text-text-tertiary"
+                  ),
+                  title: task.title,
+                  children: task.title
+                }
+              )
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "button",
+              {
+                className: "cursor-grab touch-none flex-shrink-0 opacity-50 hover:opacity-100 transition-opacity",
+                ...attributes,
+                ...listeners,
+                children: /* @__PURE__ */ jsxRuntimeExports.jsx(GripVertical, { className: "h-4 w-4 text-text-tertiary" })
+              }
+            )
+          ] }) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs(CardContent, { className: cn("p-3 pt-0", compact && "p-2 pt-0"), children: [
+            !compact && task.description && /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs text-text-secondary line-clamp-2 mb-2", children: task.description }),
+            isActive && task.progress > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "mb-2", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "h-1.5 bg-bg-tertiary rounded-full overflow-hidden", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "div",
+              {
+                className: "h-full bg-amber-500 transition-all duration-300 rounded-full",
+                style: { width: `${task.progress}%` }
+              }
+            ) }) }),
+            isBlocked && blockingCount > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-1.5 mb-2 text-red-400 text-xs", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(Lock, { className: "h-3 w-3" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
+                "Blocked by ",
+                blockingCount,
+                " ",
+                blockingCount === 1 ? "task" : "tasks"
+              ] })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between gap-2", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-1.5", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "span",
+                  {
+                    className: cn(
+                      "px-1.5 py-0.5 text-[10px] font-medium rounded",
+                      complexityConfig.class
+                    ),
+                    children: complexityConfig.label
+                  }
+                ),
+                task.estimatedMinutes > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "flex items-center gap-0.5 text-[10px] text-text-tertiary", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(Clock, { className: "h-3 w-3" }),
+                  formatTime(task.estimatedMinutes)
+                ] })
+              ] }),
+              AgentIcon && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex items-center gap-1 text-text-tertiary", title: `Assigned to ${task.assignedAgent}`, children: /* @__PURE__ */ jsxRuntimeExports.jsx(AgentIcon, { className: "h-3.5 w-3.5" }) })
+            ] }),
+            !compact && task.dependsOn.length > 0 && !isBlocked && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "mt-2 pt-2 border-t border-border-default", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-[10px] text-text-tertiary", children: [
+              "Depends on ",
+              task.dependsOn.length,
+              " ",
+              task.dependsOn.length === 1 ? "task" : "tasks"
+            ] }) }),
+            !compact && (task.filesToCreate.length > 0 || task.filesToModify.length > 0) && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mt-2 flex items-center gap-2 text-[10px] text-text-tertiary", children: [
+              task.filesToCreate.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
+                "+",
+                task.filesToCreate.length,
+                " new"
+              ] }),
+              task.filesToModify.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
+                "~",
+                task.filesToModify.length,
+                " modify"
+              ] })
+            ] })
+          ] })
+        ]
+      }
+    );
+  }
+);
+KanbanCard.displayName = "KanbanCard";
 function formatElapsedTime(startedAt) {
   if (!startedAt) return "0:00";
   const start = new Date(startedAt).getTime();
@@ -6265,16 +7197,38 @@ function KanbanPage() {
   const [newFeatureComplexity, setNewFeatureComplexity] = reactExports.useState("moderate");
   const [isCreating, setIsCreating] = reactExports.useState(false);
   const [createError, setCreateError] = reactExports.useState(null);
-  const [executionStatus, setExecutionStatus] = reactExports.useState("idle");
-  const [executionStartedAt, setExecutionStartedAt] = reactExports.useState(null);
-  const [currentTaskName, setCurrentTaskName] = reactExports.useState(void 0);
+  const {
+    executionState,
+    isIdle,
+    startExecution,
+    pauseExecution,
+    resumeExecution,
+    stopExecution,
+    getTaskById
+  } = useTaskOrchestration();
+  const executionStore = useExecutionStore();
+  const currentTaskName = reactExports.useMemo(() => {
+    if (executionState.currentTaskId) {
+      const task = getTaskById(executionState.currentTaskId);
+      return task?.title;
+    }
+    return void 0;
+  }, [executionState.currentTaskId, getTaskById]);
   const executionStats = reactExports.useMemo(() => {
+    if (executionState.totalTasks > 0) {
+      return {
+        total: executionState.totalTasks,
+        completed: executionState.completedCount,
+        failed: executionState.failedCount,
+        inProgress: executionState.inProgressCount
+      };
+    }
     const total = features.length;
     const completed = features.filter((f) => f.status === "done").length;
     const failed = 0;
     const inProgress = features.filter((f) => f.status === "in_progress").length;
     return { total, completed, failed, inProgress };
-  }, [features]);
+  }, [executionState, features]);
   const loadRealData = reactExports.useCallback(async () => {
     if (!isElectronEnvironment()) {
       setError("Backend not available. Please run in Electron.");
@@ -6374,40 +7328,76 @@ function KanbanPage() {
   const handleOpenAddFeatureModal = reactExports.useCallback(() => {
     setIsAddFeatureModalOpen(true);
   }, []);
-  const handleStartExecution = reactExports.useCallback(() => {
-    setExecutionStatus("running");
-    setExecutionStartedAt((/* @__PURE__ */ new Date()).toISOString());
-    setCurrentTaskName(features[0]?.title || "Starting...");
-  }, [features]);
+  const convertFeaturesToTasks = reactExports.useCallback((featureList) => {
+    return featureList.map((feature) => {
+      const priority = feature.priority === "critical" ? "critical" : feature.priority === "high" ? "high" : feature.priority === "low" ? "low" : "medium";
+      const complexity = feature.complexity === "simple" ? "simple" : feature.complexity === "complex" ? "complex" : "moderate";
+      const status = feature.status === "done" ? "completed" : feature.status === "in_progress" ? "in-progress" : feature.status === "ai_review" ? "ai-review" : feature.status === "human_review" ? "human-review" : feature.status === "planning" ? "queued" : "pending";
+      return {
+        id: feature.id,
+        featureId: feature.id,
+        projectId: "current",
+        title: feature.title,
+        description: feature.description,
+        acceptanceCriteria: [],
+        priority,
+        complexity,
+        estimatedMinutes: feature.complexity === "simple" ? 15 : feature.complexity === "complex" ? 60 : 30,
+        dependsOn: [],
+        blockedBy: [],
+        status,
+        assignedAgent: feature.assignedAgent ?? null,
+        progress: feature.progress ?? 0,
+        startedAt: null,
+        completedAt: feature.status === "done" ? (/* @__PURE__ */ new Date()).toISOString() : null,
+        actualMinutes: null,
+        filesToCreate: [],
+        filesToModify: [],
+        filesCreated: [],
+        filesModified: [],
+        logs: [],
+        errors: [],
+        retryCount: 0,
+        maxRetries: 3,
+        qaIterations: 0,
+        maxQAIterations: 3,
+        statusHistory: [],
+        createdAt: feature.createdAt,
+        updatedAt: feature.updatedAt
+      };
+    });
+  }, []);
+  const handleStartExecution = reactExports.useCallback(async () => {
+    const tasks = convertFeaturesToTasks(features);
+    if (tasks.length > 0) {
+      await startExecution("current", tasks);
+    }
+  }, [features, convertFeaturesToTasks, startExecution]);
   const handlePauseExecution = reactExports.useCallback(() => {
-    setExecutionStatus("paused");
-  }, []);
+    pauseExecution();
+  }, [pauseExecution]);
   const handleResumeExecution = reactExports.useCallback(() => {
-    setExecutionStatus("running");
-  }, []);
+    resumeExecution();
+  }, [resumeExecution]);
   const handleStopExecution = reactExports.useCallback(() => {
-    setExecutionStatus("idle");
-    setExecutionStartedAt(null);
-    setCurrentTaskName(void 0);
-  }, []);
+    stopExecution();
+  }, [stopExecution]);
   const handleRestartExecution = reactExports.useCallback(() => {
-    setExecutionStatus("idle");
-    setExecutionStartedAt(null);
-    setCurrentTaskName(void 0);
-  }, []);
+    executionStore.reset();
+  }, [executionStore]);
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(AnimatedPage, { className: "flex h-full flex-col", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx(KanbanHeader, { projectName: "Nexus", onNewFeature: handleOpenAddFeatureModal }),
     !isLoading && !isEmpty && features.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx(
       ExecutionControls,
       {
-        status: executionStatus,
+        status: executionState.status,
         totalTasks: executionStats.total,
         completedTasks: executionStats.completed,
         failedTasks: executionStats.failed,
         currentTaskName,
-        startedAt: executionStartedAt,
-        canStart: executionStats.total > 0,
-        onStart: handleStartExecution,
+        startedAt: executionState.startedAt,
+        canStart: features.length > 0 && isIdle,
+        onStart: () => void handleStartExecution(),
         onPause: handlePauseExecution,
         onResume: handleResumeExecution,
         onStop: handleStopExecution,

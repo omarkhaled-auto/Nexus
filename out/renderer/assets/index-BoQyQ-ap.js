@@ -1,4 +1,4 @@
-const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["./InterviewPage-CvP5PmuV.js","./test-tube-BOVF1sz0.js","./zap-6lSLcdyD.js","./save-CgVYMdMb.js","./layers-BGa9Y6if.js","./circle-check-BbyISBzp.js","./circle-DpUQ6Wnu.js","./trash-2-nYFRIEpX.js","./download-BfXUET1a.js","./AnimatedPage-BwPSVE5o.js","./arrow-left-CNIi9_CP.js","./rotate-ccw-Bglq-Tud.js","./PlanningPage-DZYGPMsF.js","./clock-Bs1B-Wb3.js","./KanbanPage-zsPTaRTW.js","./circle-x-CzsN8rW2.js","./play-3PuEe-iY.js","./DashboardPage-4dPETENK.js","./test-tube-diagonal-C14NvkU9.js","./SettingsPage-CwroVG0z.js","./Header-BVTP2iZB.js","./circle-check-big-CPP1oHtZ.js","./info-CnrZid7X.js","./AgentsPage-sdByjCnB.js","./ExecutionPage-qqhbrwcY.js"])))=>i.map(i=>d[i]);
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["./InterviewPage-JCiiSYth.js","./useTaskOrchestration-C6c0541T.js","./zap-p-mHZ1VX.js","./save-DEGhM12x.js","./layers-BZmc9_HD.js","./circle-check-hbu4IvA3.js","./circle-DI3CSXp2.js","./trash-2-D-vVDL80.js","./file-text-DPF6koxy.js","./download-im9mP9tg.js","./usePlanningProgress-F6S3380Z.js","./AnimatedPage-fTtyTsDw.js","./arrow-left-SdQ-w_nS.js","./rotate-ccw-Br1wug3C.js","./PlanningPage-ComFECuX.js","./clock-C_KhMjW-.js","./arrow-right-C8ctKMyK.js","./KanbanPage-D8prqVAw.js","./circle-x-Di8ZTA2A.js","./play-DCjD3vBB.js","./info-BHJvML7t.js","./DashboardPage-CXmB9dfK.js","./test-tube-diagonal-Bq7S5ocB.js","./SettingsPage-9ZQmNpvW.js","./Header-UVvTDEGF.js","./circle-check-big-B_n4a8JE.js","./AgentsPage-Bg5p9pfG.js","./ExecutionPage-qxWuZsBh.js"])))=>i.map(i=>d[i]);
 function _mergeNamespaces(n, m) {
   for (var i = 0; i < m.length; i++) {
     const e = m[i];
@@ -28880,13 +28880,13 @@ function KeyboardShortcutsModal() {
     )) })
   ] }) });
 }
-const InterviewPage = reactExports.lazy(() => __vitePreload(() => import("./InterviewPage-CvP5PmuV.js"), true ? __vite__mapDeps([0,1,2,3,4,5,6,7,8,9,10,11]) : void 0, import.meta.url));
-const PlanningPage = reactExports.lazy(() => __vitePreload(() => import("./PlanningPage-DZYGPMsF.js"), true ? __vite__mapDeps([12,9,13,5,4]) : void 0, import.meta.url));
-const KanbanPage = reactExports.lazy(() => __vitePreload(() => import("./KanbanPage-zsPTaRTW.js"), true ? __vite__mapDeps([14,6,13,7,15,5,4,1,16,11,9]) : void 0, import.meta.url));
-const DashboardPage = reactExports.lazy(() => __vitePreload(() => import("./DashboardPage-4dPETENK.js"), true ? __vite__mapDeps([17,2,18,16,6,5,15,9,13]) : void 0, import.meta.url));
-const SettingsPage = reactExports.lazy(() => __vitePreload(() => import("./SettingsPage-CwroVG0z.js"), true ? __vite__mapDeps([19,20,10,11,3,21,22]) : void 0, import.meta.url));
-const AgentsPage = reactExports.lazy(() => __vitePreload(() => import("./AgentsPage-sdByjCnB.js"), true ? __vite__mapDeps([23,20,10,22,5,2,18,16,13,7,15]) : void 0, import.meta.url));
-const ExecutionPage = reactExports.lazy(() => __vitePreload(() => import("./ExecutionPage-qqhbrwcY.js"), true ? __vite__mapDeps([24,20,10,8,7,15,21]) : void 0, import.meta.url));
+const InterviewPage = reactExports.lazy(() => __vitePreload(() => import("./InterviewPage-JCiiSYth.js"), true ? __vite__mapDeps([0,1,2,3,4,5,6,7,8,9,10,11,12,13]) : void 0, import.meta.url));
+const PlanningPage = reactExports.lazy(() => __vitePreload(() => import("./PlanningPage-ComFECuX.js"), true ? __vite__mapDeps([14,11,10,15,5,16,4]) : void 0, import.meta.url));
+const KanbanPage = reactExports.lazy(() => __vitePreload(() => import("./KanbanPage-D8prqVAw.js"), true ? __vite__mapDeps([17,1,6,15,7,18,5,8,19,13,16,20,4,11]) : void 0, import.meta.url));
+const DashboardPage = reactExports.lazy(() => __vitePreload(() => import("./DashboardPage-CXmB9dfK.js"), true ? __vite__mapDeps([21,8,19,22,6,5,18,2,11,15]) : void 0, import.meta.url));
+const SettingsPage = reactExports.lazy(() => __vitePreload(() => import("./SettingsPage-9ZQmNpvW.js"), true ? __vite__mapDeps([23,24,12,13,3,25,20]) : void 0, import.meta.url));
+const AgentsPage = reactExports.lazy(() => __vitePreload(() => import("./AgentsPage-Bg5p9pfG.js"), true ? __vite__mapDeps([26,24,12,20,5,8,19,22,2,15,7,18]) : void 0, import.meta.url));
+const ExecutionPage = reactExports.lazy(() => __vitePreload(() => import("./ExecutionPage-qxWuZsBh.js"), true ? __vite__mapDeps([27,24,12,9,7,18,25]) : void 0, import.meta.url));
 function PageLoader() {
   return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex items-center justify-center min-h-screen bg-bg-dark", "data-testid": "page-loader", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col items-center gap-3", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-8 h-8 rounded-full border-2 border-accent-primary border-t-transparent animate-spin" }),
@@ -28980,21 +28980,21 @@ export {
   DialogDescription as F,
   DialogFooter as G,
   Button as H,
-  useFeatureCount as I,
-  Search as J,
-  Eye as K,
+  useComposedRefs as I,
+  createContextScope as J,
+  Presence as K,
   LoaderCircle as L,
-  useComposedRefs as M,
-  createContextScope as N,
-  Primitive as O,
-  Plus as P,
-  Presence as Q,
+  composeEventHandlers as M,
+  useCallbackRef$1 as N,
+  useLayoutEffect2 as O,
+  Primitive as P,
+  Eye as Q,
   RefreshCw as R,
   Sparkles as S,
   TriangleAlert as T,
-  composeEventHandlers as U,
-  useCallbackRef$1 as V,
-  useLayoutEffect2 as W,
+  useFeatureCount as U,
+  Search as V,
+  Plus as W,
   Input as X,
   useCosts as Y,
   clsx as Z,
@@ -29029,10 +29029,10 @@ export {
   useInterviewStage as i,
   jsxRuntimeExports as j,
   useNavigate as k,
-  create as l,
-  useLocation as m,
-  ListTodo as n,
-  ChevronRight as o,
+  useLocation as l,
+  ListTodo as m,
+  ChevronRight as n,
+  create as o,
   React$2 as p,
   reactDomExports as q,
   reactExports as r,

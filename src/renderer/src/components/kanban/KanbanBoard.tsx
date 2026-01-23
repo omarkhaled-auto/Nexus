@@ -180,7 +180,7 @@ export function KanbanBoard() {
   }
 
   // Task modal action handlers
-  const handleStartTask = useCallback(async (taskId: string): Promise<void> => {
+  const handleStartTask = useCallback((taskId: string): void => {
     updateTask(taskId, {
       status: 'in-progress' as KanbanTaskStatus,
       startedAt: new Date().toISOString(),
@@ -188,7 +188,7 @@ export function KanbanBoard() {
     })
   }, [updateTask])
 
-  const handleCancelTask = useCallback(async (taskId: string): Promise<void> => {
+  const handleCancelTask = useCallback((taskId: string): void => {
     updateTask(taskId, {
       status: 'cancelled' as KanbanTaskStatus,
       completedAt: new Date().toISOString()
@@ -196,7 +196,7 @@ export function KanbanBoard() {
     setSelectedTask(null)
   }, [updateTask])
 
-  const handleRetryTask = useCallback(async (taskId: string): Promise<void> => {
+  const handleRetryTask = useCallback((taskId: string): void => {
     const task = executionTasks.find(t => t.id === taskId)
     if (task) {
       updateTask(taskId, {
@@ -209,7 +209,7 @@ export function KanbanBoard() {
     }
   }, [executionTasks, updateTask])
 
-  const handleSkipTask = useCallback(async (taskId: string): Promise<void> => {
+  const handleSkipTask = useCallback((taskId: string): void => {
     updateTask(taskId, {
       status: 'cancelled' as KanbanTaskStatus,
       completedAt: new Date().toISOString()
@@ -217,7 +217,7 @@ export function KanbanBoard() {
     setSelectedTask(null)
   }, [updateTask])
 
-  const handleReopenTask = useCallback(async (taskId: string): Promise<void> => {
+  const handleReopenTask = useCallback((taskId: string): void => {
     updateTask(taskId, {
       status: 'pending' as KanbanTaskStatus,
       progress: 0,

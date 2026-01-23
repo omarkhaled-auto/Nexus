@@ -116,11 +116,7 @@ export default function KanbanPage(): ReactElement {
   // Task orchestration hook for execution control
   const {
     executionState,
-    isRunning,
-    isPaused,
     isIdle,
-    isComplete,
-    canStart,
     startExecution,
     pauseExecution,
     resumeExecution,
