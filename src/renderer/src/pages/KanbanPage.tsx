@@ -4,8 +4,9 @@ import { Loader2 } from 'lucide-react'
 import { KanbanBoard, KanbanHeader, ExecutionControls } from '@renderer/components/kanban'
 import { AnimatedPage } from '@renderer/components/AnimatedPage'
 import { useFeatureStore } from '@renderer/stores/featureStore'
+import { useTaskOrchestration, useExecutionStore } from '@renderer/hooks/useTaskOrchestration'
 import type { Feature, FeatureStatus, FeaturePriority, FeatureComplexity } from '@renderer/types/feature'
-import type { ExecutionStatus } from '@/types/execution'
+import type { KanbanTask } from '@/types/execution'
 import {
   Dialog,
   DialogContent,
@@ -112,20 +113,50 @@ export default function KanbanPage(): ReactElement {
   const [isCreating, setIsCreating] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
 
-  // Execution state - will be connected to orchestration hook in TASK 6
-  const [executionStatus, setExecutionStatus] = useState<ExecutionStatus>('idle')
-  const [executionStartedAt, setExecutionStartedAt] = useState<string | null>(null)
-  const [currentTaskName, setCurrentTaskName] = useState<string | undefined>(undefined)
+  // Task orchestration hook for execution control
+  const {
+    executionState,
+    isRunning,
+    isPaused,
+    isIdle,
+    isComplete,
+    canStart,
+    startExecution,
+    pauseExecution,
+    resumeExecution,
+    stopExecution,
+    getTaskById
+  } = useTaskOrchestration()
 
-  // Calculate execution stats from features
+  const executionStore = useExecutionStore()
+
+  // Get current task name for display
+  const currentTaskName = useMemo(() => {
+    if (executionState.currentTaskId) {
+      const task = getTaskById(executionState.currentTaskId)
+      return task?.title
+    }
+    return undefined
+  }, [executionState.currentTaskId, getTaskById])
+
+  // Calculate execution stats from both features and execution state
   const executionStats = useMemo(() => {
+    // Prefer execution state stats if available, otherwise use features
+    if (executionState.totalTasks > 0) {
+      return {
+        total: executionState.totalTasks,
+        completed: executionState.completedCount,
+        failed: executionState.failedCount,
+        inProgress: executionState.inProgressCount
+      }
+    }
+    // Fallback to feature-based stats
     const total = features.length
     const completed = features.filter(f => f.status === 'done').length
-    const failed = 0 // Will be tracked properly in TASK 6
+    const failed = 0
     const inProgress = features.filter(f => f.status === 'in_progress').length
-
     return { total, completed, failed, inProgress }
-  }, [features])
+  }, [executionState, features])
 
   /**
    * Load features from backend API
@@ -270,39 +301,89 @@ export default function KanbanPage(): ReactElement {
   }, [])
 
   /**
-   * Execution control handlers - placeholders until TASK 6
-   * These will be replaced with the useTaskOrchestration hook
+   * Convert features to KanbanTask format for orchestration
+   * This bridges the gap between Feature type and KanbanTask type
    */
-  const handleStartExecution = useCallback(() => {
-    setExecutionStatus('running')
-    setExecutionStartedAt(new Date().toISOString())
-    setCurrentTaskName(features[0]?.title || 'Starting...')
-    // TODO: Connect to backend orchestration in TASK 6
-  }, [features])
+  const convertFeaturesToTasks = useCallback((featureList: Feature[]): KanbanTask[] => {
+    return featureList.map((feature) => ({
+      id: feature.id,
+      featureId: feature.id,
+      projectId: 'current',
+      title: feature.title,
+      description: feature.description,
+      acceptanceCriteria: [],
+      priority: feature.priority === 'critical' ? 'critical' :
+                feature.priority === 'high' ? 'high' :
+                feature.priority === 'low' ? 'low' : 'medium',
+      complexity: feature.complexity === 'simple' ? 'simple' :
+                  feature.complexity === 'complex' ? 'complex' : 'moderate',
+      estimatedMinutes: feature.complexity === 'simple' ? 15 :
+                        feature.complexity === 'complex' ? 60 : 30,
+      dependsOn: [],
+      blockedBy: [],
+      status: feature.status === 'done' ? 'completed' :
+              feature.status === 'in_progress' ? 'in-progress' :
+              feature.status === 'ai_review' ? 'ai-review' :
+              feature.status === 'human_review' ? 'human-review' :
+              feature.status === 'planning' ? 'queued' : 'pending',
+      assignedAgent: feature.assignedAgent as KanbanTask['assignedAgent'] ?? null,
+      progress: feature.progress,
+      startedAt: null,
+      completedAt: feature.status === 'done' ? new Date().toISOString() : null,
+      actualMinutes: null,
+      filesToCreate: [],
+      filesToModify: [],
+      filesCreated: [],
+      filesModified: [],
+      logs: [],
+      errors: [],
+      retryCount: 0,
+      maxRetries: 3,
+      qaIterations: 0,
+      maxQAIterations: 3,
+      statusHistory: [],
+      createdAt: feature.createdAt,
+      updatedAt: feature.updatedAt
+    }))
+  }, [])
 
+  /**
+   * Start execution - converts features to tasks and starts orchestration
+   */
+  const handleStartExecution = useCallback(async () => {
+    const tasks = convertFeaturesToTasks(features)
+    if (tasks.length > 0) {
+      await startExecution('current', tasks)
+    }
+  }, [features, convertFeaturesToTasks, startExecution])
+
+  /**
+   * Pause execution
+   */
   const handlePauseExecution = useCallback(() => {
-    setExecutionStatus('paused')
-    // TODO: Connect to backend orchestration in TASK 6
-  }, [])
+    pauseExecution()
+  }, [pauseExecution])
 
+  /**
+   * Resume execution
+   */
   const handleResumeExecution = useCallback(() => {
-    setExecutionStatus('running')
-    // TODO: Connect to backend orchestration in TASK 6
-  }, [])
+    resumeExecution()
+  }, [resumeExecution])
 
+  /**
+   * Stop execution
+   */
   const handleStopExecution = useCallback(() => {
-    setExecutionStatus('idle')
-    setExecutionStartedAt(null)
-    setCurrentTaskName(undefined)
-    // TODO: Connect to backend orchestration in TASK 6
-  }, [])
+    stopExecution()
+  }, [stopExecution])
 
+  /**
+   * Restart execution - stops and resets to idle
+   */
   const handleRestartExecution = useCallback(() => {
-    setExecutionStatus('idle')
-    setExecutionStartedAt(null)
-    setCurrentTaskName(undefined)
-    // TODO: Connect to backend orchestration in TASK 6
-  }, [])
+    executionStore.reset()
+  }, [executionStore])
 
   return (
     <AnimatedPage className="flex h-full flex-col">
@@ -312,14 +393,14 @@ export default function KanbanPage(): ReactElement {
       {/* Execution Controls - below header, above board */}
       {!isLoading && !isEmpty && features.length > 0 && (
         <ExecutionControls
-          status={executionStatus}
+          status={executionState.status}
           totalTasks={executionStats.total}
           completedTasks={executionStats.completed}
           failedTasks={executionStats.failed}
           currentTaskName={currentTaskName}
-          startedAt={executionStartedAt}
-          canStart={executionStats.total > 0}
-          onStart={handleStartExecution}
+          startedAt={executionState.startedAt}
+          canStart={features.length > 0 && isIdle}
+          onStart={() => void handleStartExecution()}
           onPause={handlePauseExecution}
           onResume={handleResumeExecution}
           onStop={handleStopExecution}
