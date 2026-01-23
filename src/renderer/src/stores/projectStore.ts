@@ -5,6 +5,19 @@ export interface Project {
   name: string
   mode: 'genesis' | 'evolution'
   createdAt: string
+  /** Path to project directory (Phase 21) */
+  path?: string
+}
+
+/**
+ * Partial project info for setting current project (Phase 21)
+ * Allows setting project without all fields
+ */
+export interface CurrentProjectInfo {
+  id: string
+  name: string
+  path?: string
+  mode?: 'genesis' | 'evolution'
 }
 
 interface ProjectState {
@@ -13,6 +26,8 @@ interface ProjectState {
   mode: 'genesis' | 'evolution' | null
 
   setProject: (project: Project) => void
+  /** Set current project with partial info (Phase 21) */
+  setCurrentProject: (info: CurrentProjectInfo) => void
   setMode: (mode: 'genesis' | 'evolution') => void
   addProject: (project: Project) => void
   clearProject: () => void
@@ -25,10 +40,25 @@ const initialState = {
   mode: null as 'genesis' | 'evolution' | null
 }
 
-export const useProjectStore = create<ProjectState>()((set) => ({
+export const useProjectStore = create<ProjectState>()((set, get) => ({
   ...initialState,
 
-  setProject: (project) => { set({ currentProject: project }); },
+  setProject: (project) => { set({ currentProject: project, mode: project.mode }); },
+
+  setCurrentProject: (info) => {
+    const mode = info.mode || get().mode || 'genesis';
+    set({
+      currentProject: {
+        id: info.id,
+        name: info.name,
+        path: info.path,
+        mode,
+        createdAt: new Date().toISOString(),
+      },
+      mode,
+    });
+  },
+
   setMode: (mode) => { set({ mode }); },
   addProject: (project) => { set((state) => ({ projects: [...state.projects, project] })); },
   clearProject: () => { set({ currentProject: null, mode: null }); },

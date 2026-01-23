@@ -15,8 +15,10 @@ import {
   DialogDescription,
 } from '@renderer/components/ui/dialog';
 import { Button } from '@renderer/components/ui/button';
+import { ProjectSelector, type ProjectData } from '@renderer/components/ProjectSelector';
 import { uiBackendBridge } from '@renderer/bridges/UIBackendBridge';
 import { useUIStore } from '@renderer/stores/uiStore';
+import { useProjectStore } from '@renderer/stores/projectStore';
 import { Sparkles, GitBranch, FolderOpen, Plus, Loader2, ChevronRight } from 'lucide-react';
 import { cn } from '@renderer/lib/utils';
 
@@ -28,9 +30,19 @@ const isElectronEnvironment = (): boolean => {
 };
 
 /**
- * Project data interface for display
+ * Check if dialog API is available
  */
-interface ProjectData {
+const hasDialogAPI = (): boolean => {
+  return (
+    isElectronEnvironment() &&
+    typeof window.nexusAPI.dialog !== 'undefined'
+  );
+};
+
+/**
+ * Legacy project data interface for display (from backend projects:list)
+ */
+interface LegacyProjectData {
   id: string;
   name: string;
   mode: 'genesis' | 'evolution';
@@ -42,21 +54,29 @@ interface ProjectData {
  *
  * Design: Cursor-style aesthetic with dark theme, gradient accents,
  * and subtle hover effects. Two prominent cards for mode selection.
+ *
+ * Phase 21 Update: Now uses ProjectSelector with native folder dialog
+ * for proper project directory selection.
  */
 export function ModeSelectorPage(): ReactElement {
   const navigate = useNavigate();
   const isLoading = useUIStore((s) => s.isLoading);
+  const setCurrentProject = useProjectStore((s) => s.setCurrentProject);
 
-  // State for project selection modal
-  const [showProjectModal, setShowProjectModal] = useState(false);
-  const [projects, setProjects] = useState<ProjectData[]>([]);
+  // State for the new ProjectSelector dialog
+  const [showProjectSelector, setShowProjectSelector] = useState(false);
+  const [projectSelectorMode, setProjectSelectorMode] = useState<'genesis' | 'evolution'>('genesis');
+
+  // State for legacy project selection modal (fallback when no dialog API)
+  const [showLegacyModal, setShowLegacyModal] = useState(false);
+  const [legacyProjects, setLegacyProjects] = useState<LegacyProjectData[]>([]);
   const [loadingProjects, setLoadingProjects] = useState(false);
   const [projectsError, setProjectsError] = useState<string | null>(null);
 
   /**
-   * Load projects from backend
+   * Load projects from backend (legacy method)
    */
-  const loadProjects = useCallback(async () => {
+  const loadLegacyProjects = useCallback(async () => {
     if (!isElectronEnvironment()) {
       setProjectsError('Backend not available. Please run in Electron.');
       return;
@@ -68,7 +88,7 @@ export function ModeSelectorPage(): ReactElement {
     try {
       const projectsData = await window.nexusAPI.getProjects();
       if (Array.isArray(projectsData)) {
-        const transformedProjects: ProjectData[] = projectsData.map((p: unknown) => {
+        const transformedProjects: LegacyProjectData[] = projectsData.map((p: unknown) => {
           const proj = p as { id: string; name: string; mode: 'genesis' | 'evolution'; status?: string };
           return {
             id: proj.id,
@@ -77,7 +97,7 @@ export function ModeSelectorPage(): ReactElement {
             status: proj.status,
           };
         });
-        setProjects(transformedProjects);
+        setLegacyProjects(transformedProjects);
       }
     } catch (err) {
       console.error('Failed to load projects:', err);
@@ -87,34 +107,87 @@ export function ModeSelectorPage(): ReactElement {
     }
   }, []);
 
+  /**
+   * Handle Genesis card click
+   * Opens ProjectSelector in genesis mode for folder selection
+   */
   const handleGenesisClick = (): void => {
-    // Navigate immediately for responsive UX
-    void navigate('/genesis');
-    // Fire backend call as side effect (non-blocking)
-    void uiBackendBridge.startGenesis().catch((error: unknown) => {
-      console.error('Failed to start Genesis:', error);
-    });
+    if (hasDialogAPI()) {
+      // Use new ProjectSelector with native folder dialog
+      setProjectSelectorMode('genesis');
+      setShowProjectSelector(true);
+    } else {
+      // Fallback: Navigate directly and let backend handle it
+      void navigate('/genesis');
+      void uiBackendBridge.startGenesis().catch((error: unknown) => {
+        console.error('Failed to start Genesis:', error);
+      });
+    }
   };
 
+  /**
+   * Handle Evolution card click
+   * Opens ProjectSelector in evolution mode for folder selection
+   */
   const handleEvolutionClick = (): void => {
-    // Show project selector modal instead of navigating immediately
-    setShowProjectModal(true);
-    void loadProjects();
+    if (hasDialogAPI()) {
+      // Use new ProjectSelector with native folder dialog
+      setProjectSelectorMode('evolution');
+      setShowProjectSelector(true);
+    } else {
+      // Fallback: Show legacy project selector modal
+      setShowLegacyModal(true);
+      void loadLegacyProjects();
+    }
   };
 
-  const handleSelectProject = (projectId: string): void => {
-    setShowProjectModal(false);
-    // Navigate to evolution/kanban page
+  /**
+   * Handle project selected from ProjectSelector
+   * This is called when user completes folder selection and project init/load
+   */
+  const handleProjectSelected = (project: ProjectData): void => {
+    console.log('[ModeSelectorPage] Project selected:', project);
+
+    // Store project info in project store
+    setCurrentProject({
+      id: project.id,
+      name: project.name,
+      path: project.path,
+      mode: projectSelectorMode,
+    });
+
+    // Navigate to appropriate page based on mode
+    if (projectSelectorMode === 'genesis') {
+      void navigate('/interview');
+      // Notify backend that genesis mode started
+      void uiBackendBridge.startGenesis().catch((error: unknown) => {
+        console.error('Failed to start Genesis:', error);
+      });
+    } else {
+      void navigate('/kanban');
+      // Notify backend that evolution mode started with project
+      void uiBackendBridge.startEvolution(project.id).catch((error: unknown) => {
+        console.error('Failed to start Evolution:', error);
+      });
+    }
+  };
+
+  /**
+   * Handle legacy project selection (fallback)
+   */
+  const handleLegacySelectProject = (projectId: string): void => {
+    setShowLegacyModal(false);
     void navigate('/evolution');
-    // Fire backend call to start evolution with selected project
     void uiBackendBridge.startEvolution(projectId).catch((error: unknown) => {
       console.error('Failed to start Evolution:', error);
     });
   };
 
-  const handleCreateNewProject = (): void => {
-    setShowProjectModal(false);
-    // Navigate to dashboard where user can create a new project
+  /**
+   * Handle legacy create new project (fallback)
+   */
+  const handleLegacyCreateNewProject = (): void => {
+    setShowLegacyModal(false);
     void navigate('/dashboard');
   };
 
@@ -136,6 +209,7 @@ export function ModeSelectorPage(): ReactElement {
         <Card
           className="relative overflow-hidden cursor-pointer group hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-violet-500/10"
           onClick={handleGenesisClick}
+          data-testid="genesis-card"
         >
           <div className="absolute inset-0 bg-gradient-to-br from-violet-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
           <CardHeader className="pb-4">
@@ -165,6 +239,7 @@ export function ModeSelectorPage(): ReactElement {
         <Card
           className="relative overflow-hidden cursor-pointer group hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-emerald-500/10"
           onClick={handleEvolutionClick}
+          data-testid="evolution-card"
         >
           <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
           <CardHeader className="pb-4">
@@ -203,15 +278,24 @@ export function ModeSelectorPage(): ReactElement {
         Press a card to begin
       </p>
 
-      {/* Project Selection Modal */}
-      <Dialog open={showProjectModal} onOpenChange={setShowProjectModal}>
-        <DialogContent className="bg-bg-card border-border-default max-w-md">
+      {/* New ProjectSelector Dialog (with native folder selection) */}
+      <ProjectSelector
+        mode={projectSelectorMode}
+        open={showProjectSelector}
+        onOpenChange={setShowProjectSelector}
+        onProjectSelected={handleProjectSelected}
+        onCancel={() => setShowProjectSelector(false)}
+      />
+
+      {/* Legacy Project Selection Modal (fallback when no dialog API) */}
+      <Dialog open={showLegacyModal} onOpenChange={setShowLegacyModal}>
+        <DialogContent className="bg-background border-border max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-text-primary flex items-center gap-2">
+            <DialogTitle className="text-foreground flex items-center gap-2">
               <GitBranch className="h-5 w-5 text-emerald-500" />
               Select Project
             </DialogTitle>
-            <DialogDescription className="text-text-secondary">
+            <DialogDescription className="text-muted-foreground">
               Choose an existing project to evolve, or create a new one.
             </DialogDescription>
           </DialogHeader>
@@ -221,19 +305,19 @@ export function ModeSelectorPage(): ReactElement {
             {loadingProjects && (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-6 w-6 animate-spin text-emerald-500" />
-                <span className="ml-2 text-text-secondary">Loading projects...</span>
+                <span className="ml-2 text-muted-foreground">Loading projects...</span>
               </div>
             )}
 
             {/* Error State */}
             {projectsError && !loadingProjects && (
               <div className="text-center py-8">
-                <p className="text-sm text-accent-error">{projectsError}</p>
+                <p className="text-sm text-destructive">{projectsError}</p>
                 <Button
                   variant="outline"
                   size="sm"
                   className="mt-4"
-                  onClick={() => void loadProjects()}
+                  onClick={() => void loadLegacyProjects()}
                 >
                   Retry
                 </Button>
@@ -243,20 +327,20 @@ export function ModeSelectorPage(): ReactElement {
             {/* Projects List */}
             {!loadingProjects && !projectsError && (
               <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                {projects.length === 0 ? (
+                {legacyProjects.length === 0 ? (
                   <div className="text-center py-8">
-                    <FolderOpen className="h-10 w-10 text-text-tertiary mx-auto mb-3" />
-                    <p className="text-sm text-text-secondary">No projects yet</p>
-                    <p className="text-xs text-text-tertiary mt-1">Create your first project to get started</p>
+                    <FolderOpen className="h-10 w-10 text-muted-foreground/50 mx-auto mb-3" />
+                    <p className="text-sm text-muted-foreground">No projects yet</p>
+                    <p className="text-xs text-muted-foreground/70 mt-1">Create your first project to get started</p>
                   </div>
                 ) : (
-                  projects.map((project) => (
+                  legacyProjects.map((project) => (
                     <button
                       key={project.id}
-                      onClick={(): void => { handleSelectProject(project.id); }}
+                      onClick={(): void => { handleLegacySelectProject(project.id); }}
                       className={cn(
                         'w-full flex items-center gap-3 p-3 rounded-lg border transition-all',
-                        'border-border-default hover:border-emerald-500/50 hover:bg-bg-hover',
+                        'border-border hover:border-emerald-500/50 hover:bg-muted/50',
                         'text-left group'
                       )}
                       data-testid={`project-select-${project.id}`}
@@ -265,10 +349,10 @@ export function ModeSelectorPage(): ReactElement {
                         <GitBranch className="h-5 w-5 text-emerald-500" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-text-primary truncate">{project.name}</p>
-                        <p className="text-xs text-text-tertiary capitalize">{project.mode} mode</p>
+                        <p className="font-medium text-foreground truncate">{project.name}</p>
+                        <p className="text-xs text-muted-foreground capitalize">{project.mode} mode</p>
                       </div>
-                      <ChevronRight className="h-5 w-5 text-text-tertiary group-hover:text-emerald-500 transition-colors" />
+                      <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-emerald-500 transition-colors" />
                     </button>
                   ))
                 )}
@@ -277,16 +361,15 @@ export function ModeSelectorPage(): ReactElement {
           </div>
 
           {/* Actions */}
-          <div className="flex items-center justify-between pt-4 border-t border-border-default">
+          <div className="flex items-center justify-between pt-4 border-t border-border">
             <Button
               variant="outline"
-              onClick={(): void => { setShowProjectModal(false); }}
+              onClick={(): void => { setShowLegacyModal(false); }}
             >
               Cancel
             </Button>
             <Button
-              variant="primary"
-              onClick={handleCreateNewProject}
+              onClick={handleLegacyCreateNewProject}
               className="gap-2 bg-emerald-600 hover:bg-emerald-700"
             >
               <Plus className="h-4 w-4" />
