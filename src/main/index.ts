@@ -20,7 +20,7 @@
 import { app, BrowserWindow, shell } from 'electron';
 import { join } from 'path';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
-import { registerIpcHandlers, registerCheckpointReviewHandlers, registerDatabaseHandlers, registerSettingsHandlers, registerInterviewHandlers, registerFallbackInterviewHandlers, removeInterviewHandlers, setupEventForwarding } from './ipc';
+import { registerIpcHandlers, registerCheckpointReviewHandlers, registerDatabaseHandlers, registerSettingsHandlers, registerInterviewHandlers, registerFallbackInterviewHandlers, removeInterviewHandlers, setupEventForwarding, registerDialogHandlers } from './ipc';
 import {
   initializeNexus,
   setMainWindow,
@@ -211,6 +211,7 @@ void app.whenReady().then(async () => {
   // Register basic IPC handlers before Nexus initialization
   registerIpcHandlers();
   registerSettingsHandlers();
+  registerDialogHandlers(); // Phase 21 Task 4: Dialog handlers for file/folder selection
 
   // Register fallback interview handlers BEFORE window creation
   // This prevents "No handler registered" errors if the renderer tries to

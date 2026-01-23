@@ -772,6 +772,51 @@ const nexusAPI = {
   offNexusEvent: (): void => {
     ipcRenderer.removeAllListeners('nexus-event')
   },
+
+  // ========================================
+  // Dialog API (Phase 21 Task 4)
+  // ========================================
+
+  /**
+   * Dialog operations for native file dialogs
+   */
+  dialog: {
+    /**
+     * Open a directory picker dialog
+     * @param options - Dialog options (title, defaultPath, buttonLabel)
+     * @returns Promise with { canceled: boolean; path: string | null }
+     */
+    openDirectory: (options?: {
+      title?: string;
+      defaultPath?: string;
+      buttonLabel?: string;
+    }): Promise<{ canceled: boolean; path: string | null }> =>
+      ipcRenderer.invoke('dialog:openDirectory', options),
+
+    /**
+     * Open a file picker dialog
+     * @param options - Dialog options (title, defaultPath, filters)
+     * @returns Promise with { canceled: boolean; path: string | null }
+     */
+    openFile: (options?: {
+      title?: string;
+      defaultPath?: string;
+      filters?: Array<{ name: string; extensions: string[] }>;
+    }): Promise<{ canceled: boolean; path: string | null }> =>
+      ipcRenderer.invoke('dialog:openFile', options),
+
+    /**
+     * Open a save file dialog
+     * @param options - Dialog options (title, defaultPath, filters)
+     * @returns Promise with { canceled: boolean; path: string | null }
+     */
+    saveFile: (options?: {
+      title?: string;
+      defaultPath?: string;
+      filters?: Array<{ name: string; extensions: string[] }>;
+    }): Promise<{ canceled: boolean; path: string | null }> =>
+      ipcRenderer.invoke('dialog:saveFile', options),
+  },
 }
 
 // Expose the API to the renderer process via contextBridge

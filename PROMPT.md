@@ -496,14 +496,16 @@ Create Electron IPC handlers for native file dialogs.
   ```
 
 ### Task 4 Completion Checklist
-- [ ] dialogHandlers.ts created
-- [ ] Preload script updated with dialog API
-- [ ] Handlers registered in main process
-- [ ] TypeScript types added for renderer
-- [ ] Basic tests written
-- [ ] TypeScript compiles without errors
+- [x] dialogHandlers.ts created (src/main/ipc/dialogHandlers.ts)
+- [x] Preload script updated with dialog API (src/preload/index.ts)
+- [x] Handlers registered in main process (src/main/index.ts)
+- [x] TypeScript types added for renderer (inline in preload)
+- [x] Basic tests written (tests/unit/main/ipc/dialogHandlers.test.ts - 11 tests passing)
+- [x] TypeScript compiles without errors
+- [x] Build succeeds
+- [x] All 2278 existing tests still pass
 
-**[TASK 4 COMPLETE]** <- Mark when done, proceed to Task 5
+**[TASK 4 COMPLETE]** (2025-01-23) - Proceed to Task 5
 
 ---
 
@@ -1826,7 +1828,7 @@ ralph run PROMPT-PHASE-21-INFRASTRUCTURE-AUDIT.md --max-iterations 60
 - [x] [TASK 3 COMPLETE] - Create implementation plan (2025-01-23: Created IMPLEMENTATION_PLAN.md)
 
 **Phase B: Core Implementation**
-- [ ] [TASK 4 COMPLETE] - Dialog handlers
+- [x] [TASK 4 COMPLETE] - Dialog handlers (2025-01-23: Created dialogHandlers.ts, updated preload script, tests pass)
 - [ ] [TASK 5 COMPLETE] - Project initialization
 - [ ] [TASK 6 COMPLETE] - Project loading
 - [ ] [TASK 7 COMPLETE] - UI integration

@@ -3,6 +3,7 @@
  * Phase 05-04: Barrel export for IPC handlers
  * Phase 09: Interview handlers for InterviewEngine integration
  * Phase 12-01: Settings handlers for secure settings storage
+ * Phase 21 Task 4: Dialog handlers for native file dialogs
  */
 
 export {
@@ -18,3 +19,5 @@ export {
 export { registerInterviewHandlers, registerFallbackInterviewHandlers, removeInterviewHandlers } from './interview-handlers'
 
 export { registerSettingsHandlers } from './settingsHandlers'
+
+export { registerDialogHandlers } from './dialogHandlers'
