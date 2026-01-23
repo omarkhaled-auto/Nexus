@@ -148,11 +148,16 @@ export function registerProjectHandlers(): void {
       }
 
       try {
-        const fs = await import('fs-extra');
+        const fs = await import('fs/promises');
         const path = await import('path');
 
         // Check if path exists
-        const exists = await fs.pathExists(projectPath);
+        let exists = true;
+        try {
+          await fs.access(projectPath);
+        } catch {
+          exists = false;
+        }
         if (!exists) {
           return { valid: false, error: 'Path does not exist' };
         }
@@ -165,7 +170,12 @@ export function registerProjectHandlers(): void {
 
         // Check if it's a Nexus project
         const nexusConfigPath = path.join(projectPath, '.nexus', 'config.json');
-        const isNexusProject = await fs.pathExists(nexusConfigPath);
+        let isNexusProject = true;
+        try {
+          await fs.access(nexusConfigPath);
+        } catch {
+          isNexusProject = false;
+        }
 
         return { valid: true, isNexusProject };
       } catch (error) {
@@ -195,9 +205,14 @@ export function registerProjectHandlers(): void {
       }
 
       try {
-        const fs = await import('fs-extra');
+        const fs = await import('fs/promises');
 
-        const exists = await fs.pathExists(targetPath);
+        let exists = true;
+        try {
+          await fs.access(targetPath);
+        } catch {
+          exists = false;
+        }
         if (!exists) {
           return { empty: true, exists: false };
         }

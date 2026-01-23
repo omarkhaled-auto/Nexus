@@ -158,13 +158,13 @@ export function ModeSelectorPage(): ReactElement {
 
     // Navigate to appropriate page based on mode
     if (projectSelectorMode === 'genesis') {
-      void navigate('/interview');
+      void navigate('/genesis');
       // Notify backend that genesis mode started
       void uiBackendBridge.startGenesis().catch((error: unknown) => {
         console.error('Failed to start Genesis:', error);
       });
     } else {
-      void navigate('/kanban');
+      void navigate('/evolution');
       // Notify backend that evolution mode started with project
       void uiBackendBridge.startEvolution(project.id).catch((error: unknown) => {
         console.error('Failed to start Evolution:', error);

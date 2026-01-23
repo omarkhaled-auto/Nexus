@@ -36,7 +36,11 @@
       "Bash(git remote:*)",
       "Bash(git remote add:*)",
       "Bash(git push:*)",
-      "Bash(git tag:*)"
+      "Bash(git tag:*)",
+      "Bash(more:*)",
+      "Bash(npm ls:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm run:*)"
     ]
   }
 }

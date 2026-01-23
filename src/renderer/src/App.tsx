@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react';
-import { createBrowserRouter, RouterProvider } from 'react-router';
+import { createHashRouter, RouterProvider } from 'react-router';
 import { ThemeProvider } from './components/theme-provider';
 import { RootLayout } from './components/layout/RootLayout';
 import { ModeSelectorPage } from './pages/ModeSelectorPage';
@@ -47,7 +47,7 @@ function PageLoader(): ReactElement {
  * - /execution → Execution Logs Page (Phase 17)
  * - /settings → Settings Page (Phase 12)
  */
-const router = createBrowserRouter([
+const router = createHashRouter([
   {
     path: '/',
     element: <RootLayout />,

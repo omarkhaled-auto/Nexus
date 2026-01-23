@@ -1,4 +1,4 @@
-const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["./InterviewPage-Ds5YAUF_.js","./circle-alert-Bq2SZuv_.js","./zap-BiHqKb82.js","./save-BRXWbv48.js","./layers-BC576AtS.js","./circle-check-D8bQKBkt.js","./AnimatedPage-kxF8xqL7.js","./trash-2-DkjKaby1.js","./download-DbppfHfC.js","./arrow-left-WcIZj86O.js","./KanbanPage-7wU46MJT.js","./clock-Cfj-dkBa.js","./circle-x-DmGWgNdE.js","./Input-D8Acil3U.js","./eye-off-CPyjqvte.js","./eye-DcIDhFBq.js","./DashboardPage-Dt1IKblh.js","./test-tube-diagonal-5-nv2NFY.js","./SettingsPage-HtGWm6Rg.js","./Header-DAWwnyOR.js","./circle-check-big-dPNue94m.js","./info-DSCMbBbf.js","./AgentsPage-COwA44Ya.js","./ExecutionPage-rO-h_6G5.js"])))=>i.map(i=>d[i]);
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["./InterviewPage-Cq0GR7bs.js","./zap-KJY6pF-B.js","./save-DWgNRTSH.js","./layers-DVT27XUu.js","./circle-check-DxHRZeyh.js","./AnimatedPage-I_XulWVG.js","./trash-2-B8lSErBu.js","./download-DGHmlkAp.js","./arrow-left-CBSng-pb.js","./KanbanPage-B1AFt7D8.js","./clock-B0X_eaYb.js","./circle-x-p927tQjm.js","./DashboardPage-DQXce99w.js","./test-tube-diagonal-CVdnjAfh.js","./SettingsPage-CawXD3YN.js","./Header-KLHbVClI.js","./circle-check-big-DiEmvQEu.js","./info-BNfLz4fr.js","./AgentsPage-DIJkfL7h.js","./ExecutionPage-DJeLrJEh.js"])))=>i.map(i=>d[i]);
 function _mergeNamespaces(n, m) {
   for (var i = 0; i < m.length; i++) {
     const e = m[i];
@@ -12557,9 +12557,16 @@ var __accessCheck = (obj, member, msg) => member.has(obj) || __typeError("Cannot
 var __privateGet = (obj, member, getter) => (__accessCheck(obj, member, "read from private field"), getter ? getter.call(obj) : member.get(obj));
 var __privateAdd = (obj, member, value) => member.has(obj) ? __typeError("Cannot add the same private member more than once") : member instanceof WeakSet ? member.add(obj) : member.set(obj, value);
 var PopStateEventType = "popstate";
-function createBrowserHistory(options = {}) {
-  function createBrowserLocation(window2, globalHistory) {
-    let { pathname, search, hash } = window2.location;
+function createHashHistory(options = {}) {
+  function createHashLocation(window2, globalHistory) {
+    let {
+      pathname = "/",
+      search = "",
+      hash = ""
+    } = parsePath(window2.location.hash.substring(1));
+    if (!pathname.startsWith("/") && !pathname.startsWith(".")) {
+      pathname = "/" + pathname;
+    }
     return createLocation(
       "",
       { pathname, search, hash },
@@ -12568,13 +12575,28 @@ function createBrowserHistory(options = {}) {
       globalHistory.state && globalHistory.state.key || "default"
     );
   }
-  function createBrowserHref(window2, to) {
-    return typeof to === "string" ? to : createPath(to);
+  function createHashHref(window2, to) {
+    let base = window2.document.querySelector("base");
+    let href = "";
+    if (base && base.getAttribute("href")) {
+      let url = window2.location.href;
+      let hashIndex = url.indexOf("#");
+      href = hashIndex === -1 ? url : url.slice(0, hashIndex);
+    }
+    return href + "#" + (typeof to === "string" ? to : createPath(to));
+  }
+  function validateHashLocation(location, to) {
+    warning(
+      location.pathname.charAt(0) === "/",
+      `relative pathnames are not supported in hash history.push(${JSON.stringify(
+        to
+      )})`
+    );
   }
   return getUrlBasedHistory(
-    createBrowserLocation,
-    createBrowserHref,
-    null,
+    createHashLocation,
+    createHashHref,
+    validateHashLocation,
     options
   );
 }
@@ -12673,6 +12695,7 @@ function getUrlBasedHistory(getLocation, createHref2, validateLocation, options 
   function push2(to, state) {
     action = "PUSH";
     let location = createLocation(history.location, to, state);
+    if (validateLocation) validateLocation(location, to);
     index2 = getIndex() + 1;
     let historyState = getHistoryState(location, index2);
     let url = history.createHref(location);
@@ -12691,6 +12714,7 @@ function getUrlBasedHistory(getLocation, createHref2, validateLocation, options 
   function replace2(to, state) {
     action = "REPLACE";
     let location = createLocation(history.location, to, state);
+    if (validateLocation) validateLocation(location, to);
     index2 = getIndex();
     let historyState = getHistoryState(location, index2);
     let url = history.createHref(location);
@@ -18530,12 +18554,12 @@ try {
   }
 } catch (e) {
 }
-function createBrowserRouter(routes, opts) {
+function createHashRouter(routes, opts) {
   return createRouter({
     basename: opts?.basename,
     getContext: opts?.getContext,
     future: opts?.future,
-    history: createBrowserHistory({ window: opts?.window }),
+    history: createHashHistory({ window: opts?.window }),
     hydrationData: parseHydrationData(),
     routes,
     mapRouteProperties,
@@ -19060,7 +19084,7 @@ const createLucideIcon = (iconName, iconNode) => {
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$h = [
+const __iconNode$l = [
   ["path", { d: "M12 8V4H8", key: "hb8ula" }],
   ["rect", { width: "16", height: "12", x: "4", y: "8", rx: "2", key: "enze0r" }],
   ["path", { d: "M2 14h2", key: "vft8re" }],
@@ -19068,38 +19092,92 @@ const __iconNode$h = [
   ["path", { d: "M15 13v2", key: "1xurst" }],
   ["path", { d: "M9 13v2", key: "rq6x2g" }]
 ];
-const Bot = createLucideIcon("bot", __iconNode$h);
+const Bot = createLucideIcon("bot", __iconNode$l);
 /**
  * @license lucide-react v0.562.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$g = [["path", { d: "m6 9 6 6 6-6", key: "qrunsl" }]];
-const ChevronDown = createLucideIcon("chevron-down", __iconNode$g);
+const __iconNode$k = [["path", { d: "m6 9 6 6 6-6", key: "qrunsl" }]];
+const ChevronDown = createLucideIcon("chevron-down", __iconNode$k);
 /**
  * @license lucide-react v0.562.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$f = [["path", { d: "m15 18-6-6 6-6", key: "1wnfg3" }]];
-const ChevronLeft = createLucideIcon("chevron-left", __iconNode$f);
+const __iconNode$j = [["path", { d: "m15 18-6-6 6-6", key: "1wnfg3" }]];
+const ChevronLeft = createLucideIcon("chevron-left", __iconNode$j);
 /**
  * @license lucide-react v0.562.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$e = [["path", { d: "m9 18 6-6-6-6", key: "mthhwq" }]];
-const ChevronRight = createLucideIcon("chevron-right", __iconNode$e);
+const __iconNode$i = [["path", { d: "m9 18 6-6-6-6", key: "mthhwq" }]];
+const ChevronRight = createLucideIcon("chevron-right", __iconNode$i);
 /**
  * @license lucide-react v0.562.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$d = [
+const __iconNode$h = [
+  ["circle", { cx: "12", cy: "12", r: "10", key: "1mglay" }],
+  ["line", { x1: "12", x2: "12", y1: "8", y2: "12", key: "1pkeuh" }],
+  ["line", { x1: "12", x2: "12.01", y1: "16", y2: "16", key: "4dfq90" }]
+];
+const CircleAlert = createLucideIcon("circle-alert", __iconNode$h);
+/**
+ * @license lucide-react v0.562.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$g = [
+  [
+    "path",
+    {
+      d: "M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49",
+      key: "ct8e1f"
+    }
+  ],
+  ["path", { d: "M14.084 14.158a3 3 0 0 1-4.242-4.242", key: "151rxh" }],
+  [
+    "path",
+    {
+      d: "M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143",
+      key: "13bj9a"
+    }
+  ],
+  ["path", { d: "m2 2 20 20", key: "1ooewy" }]
+];
+const EyeOff = createLucideIcon("eye-off", __iconNode$g);
+/**
+ * @license lucide-react v0.562.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$f = [
+  [
+    "path",
+    {
+      d: "M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0",
+      key: "1nclc0"
+    }
+  ],
+  ["circle", { cx: "12", cy: "12", r: "3", key: "1v7zrd" }]
+];
+const Eye = createLucideIcon("eye", __iconNode$f);
+/**
+ * @license lucide-react v0.562.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$e = [
   [
     "path",
     {
@@ -19108,7 +19186,20 @@ const __iconNode$d = [
     }
   ]
 ];
-const FolderOpen = createLucideIcon("folder-open", __iconNode$d);
+const FolderOpen = createLucideIcon("folder-open", __iconNode$e);
+/**
+ * @license lucide-react v0.562.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$d = [
+  ["line", { x1: "6", x2: "6", y1: "3", y2: "15", key: "17qcm7" }],
+  ["circle", { cx: "18", cy: "6", r: "3", key: "1h7g24" }],
+  ["circle", { cx: "6", cy: "18", r: "3", key: "fqmcym" }],
+  ["path", { d: "M18 9a9 9 0 0 1-9 9", key: "n2h4wq" }]
+];
+const GitBranch = createLucideIcon("git-branch", __iconNode$d);
 /**
  * @license lucide-react v0.562.0 - ISC
  *
@@ -19116,12 +19207,12 @@ const FolderOpen = createLucideIcon("folder-open", __iconNode$d);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$c = [
-  ["line", { x1: "6", x2: "6", y1: "3", y2: "15", key: "17qcm7" }],
-  ["circle", { cx: "18", cy: "6", r: "3", key: "1h7g24" }],
-  ["circle", { cx: "6", cy: "18", r: "3", key: "fqmcym" }],
-  ["path", { d: "M18 9a9 9 0 0 1-9 9", key: "n2h4wq" }]
+  ["rect", { width: "7", height: "9", x: "3", y: "3", rx: "1", key: "10lvy0" }],
+  ["rect", { width: "7", height: "5", x: "14", y: "3", rx: "1", key: "16une8" }],
+  ["rect", { width: "7", height: "9", x: "14", y: "12", rx: "1", key: "1hutg5" }],
+  ["rect", { width: "7", height: "5", x: "3", y: "16", rx: "1", key: "ldoo1y" }]
 ];
-const GitBranch = createLucideIcon("git-branch", __iconNode$c);
+const LayoutDashboard = createLucideIcon("layout-dashboard", __iconNode$c);
 /**
  * @license lucide-react v0.562.0 - ISC
  *
@@ -19129,34 +19220,33 @@ const GitBranch = createLucideIcon("git-branch", __iconNode$c);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$b = [
-  ["rect", { width: "7", height: "9", x: "3", y: "3", rx: "1", key: "10lvy0" }],
-  ["rect", { width: "7", height: "5", x: "14", y: "3", rx: "1", key: "16une8" }],
-  ["rect", { width: "7", height: "9", x: "14", y: "12", rx: "1", key: "1hutg5" }],
-  ["rect", { width: "7", height: "5", x: "3", y: "16", rx: "1", key: "ldoo1y" }]
-];
-const LayoutDashboard = createLucideIcon("layout-dashboard", __iconNode$b);
-/**
- * @license lucide-react v0.562.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode$a = [
   ["path", { d: "M13 5h8", key: "a7qcls" }],
   ["path", { d: "M13 12h8", key: "h98zly" }],
   ["path", { d: "M13 19h8", key: "c3s6r1" }],
   ["path", { d: "m3 17 2 2 4-4", key: "1jhpwq" }],
   ["rect", { x: "3", y: "4", width: "6", height: "6", rx: "1", key: "cif1o7" }]
 ];
-const ListTodo = createLucideIcon("list-todo", __iconNode$a);
+const ListTodo = createLucideIcon("list-todo", __iconNode$b);
 /**
  * @license lucide-react v0.562.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$9 = [["path", { d: "M21 12a9 9 0 1 1-6.219-8.56", key: "13zald" }]];
-const LoaderCircle = createLucideIcon("loader-circle", __iconNode$9);
+const __iconNode$a = [["path", { d: "M21 12a9 9 0 1 1-6.219-8.56", key: "13zald" }]];
+const LoaderCircle = createLucideIcon("loader-circle", __iconNode$a);
+/**
+ * @license lucide-react v0.562.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$9 = [
+  ["path", { d: "M4 5h16", key: "1tepv9" }],
+  ["path", { d: "M4 12h16", key: "1lakjw" }],
+  ["path", { d: "M4 19h16", key: "1djgab" }]
+];
+const Menu = createLucideIcon("menu", __iconNode$9);
 /**
  * @license lucide-react v0.562.0 - ISC
  *
@@ -19164,18 +19254,6 @@ const LoaderCircle = createLucideIcon("loader-circle", __iconNode$9);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$8 = [
-  ["path", { d: "M4 5h16", key: "1tepv9" }],
-  ["path", { d: "M4 12h16", key: "1lakjw" }],
-  ["path", { d: "M4 19h16", key: "1djgab" }]
-];
-const Menu = createLucideIcon("menu", __iconNode$8);
-/**
- * @license lucide-react v0.562.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode$7 = [
   [
     "path",
     {
@@ -19184,7 +19262,18 @@ const __iconNode$7 = [
     }
   ]
 ];
-const MessageSquare = createLucideIcon("message-square", __iconNode$7);
+const MessageSquare = createLucideIcon("message-square", __iconNode$8);
+/**
+ * @license lucide-react v0.562.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$7 = [
+  ["path", { d: "M5 12h14", key: "1ays0h" }],
+  ["path", { d: "M12 5v14", key: "s699le" }]
+];
+const Plus = createLucideIcon("plus", __iconNode$7);
 /**
  * @license lucide-react v0.562.0 - ISC
  *
@@ -19192,10 +19281,12 @@ const MessageSquare = createLucideIcon("message-square", __iconNode$7);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$6 = [
-  ["path", { d: "M5 12h14", key: "1ays0h" }],
-  ["path", { d: "M12 5v14", key: "s699le" }]
+  ["path", { d: "M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8", key: "v9h5vc" }],
+  ["path", { d: "M21 3v5h-5", key: "1q7to0" }],
+  ["path", { d: "M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16", key: "3uifl3" }],
+  ["path", { d: "M8 16H3v5", key: "1cv678" }]
 ];
-const Plus = createLucideIcon("plus", __iconNode$6);
+const RefreshCw = createLucideIcon("refresh-cw", __iconNode$6);
 /**
  * @license lucide-react v0.562.0 - ISC
  *
@@ -19203,12 +19294,10 @@ const Plus = createLucideIcon("plus", __iconNode$6);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$5 = [
-  ["path", { d: "M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8", key: "v9h5vc" }],
-  ["path", { d: "M21 3v5h-5", key: "1q7to0" }],
-  ["path", { d: "M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16", key: "3uifl3" }],
-  ["path", { d: "M8 16H3v5", key: "1cv678" }]
+  ["path", { d: "m21 21-4.34-4.34", key: "14j7rj" }],
+  ["circle", { cx: "11", cy: "11", r: "8", key: "4ej97u" }]
 ];
-const RefreshCw = createLucideIcon("refresh-cw", __iconNode$5);
+const Search = createLucideIcon("search", __iconNode$5);
 /**
  * @license lucide-react v0.562.0 - ISC
  *
@@ -19329,10 +19418,23 @@ const initialState$3 = {
   projects: [],
   mode: null
 };
-const useProjectStore = create()((set) => ({
+const useProjectStore = create()((set, get) => ({
   ...initialState$3,
   setProject: (project) => {
-    set({ currentProject: project });
+    set({ currentProject: project, mode: project.mode });
+  },
+  setCurrentProject: (info) => {
+    const mode = info.mode || get().mode || "genesis";
+    set({
+      currentProject: {
+        id: info.id,
+        name: info.name,
+        path: info.path,
+        mode,
+        createdAt: (/* @__PURE__ */ new Date()).toISOString()
+      },
+      mode
+    });
   },
   setMode: (mode) => {
     set({ mode });
@@ -27100,17 +27202,476 @@ const Button = reactExports.forwardRef(
   }
 );
 Button.displayName = "Button";
+const inputVariants = cva(
+  // Base styles
+  [
+    "flex w-full",
+    "bg-[#161B22] border border-[#30363D]",
+    "text-[#F0F6FC] placeholder:text-[#6E7681]",
+    "transition-all duration-150",
+    "focus:outline-none focus:border-[#7C3AED] focus:ring-2 focus:ring-[#7C3AED]/20",
+    "disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-[#21262D]",
+    "file:border-0 file:bg-transparent file:text-sm file:font-medium"
+  ].join(" "),
+  {
+    variants: {
+      size: {
+        sm: "h-8 px-3 text-xs rounded",
+        md: "h-10 px-3 text-sm rounded-md",
+        lg: "h-12 px-4 text-base rounded-md"
+      },
+      hasError: {
+        true: "border-[#EF4444] focus:border-[#EF4444] focus:ring-[#EF4444]/20",
+        false: ""
+      },
+      hasIcon: {
+        left: "pl-10",
+        right: "pr-10",
+        both: "pl-10 pr-10",
+        none: ""
+      }
+    },
+    defaultVariants: {
+      size: "md",
+      hasError: false,
+      hasIcon: "none"
+    }
+  }
+);
+const Input = reactExports.forwardRef(
+  ({
+    className,
+    type = "text",
+    label,
+    hint,
+    error,
+    icon,
+    iconPosition = "left",
+    fullWidth = true,
+    size = "md",
+    showCount = false,
+    clearable = false,
+    onClear,
+    disabled,
+    maxLength,
+    value,
+    onChange,
+    id,
+    "aria-label": ariaLabel,
+    "data-testid": dataTestId,
+    ...props
+  }, ref) => {
+    const [showPassword, setShowPassword] = reactExports.useState(false);
+    const [charCount, setCharCount] = reactExports.useState(0);
+    const inputId = id || reactExports.useId();
+    const hintId = `${inputId}-hint`;
+    const errorId = `${inputId}-error`;
+    reactExports.useEffect(() => {
+      if (typeof value === "string") {
+        setCharCount(value.length);
+      }
+    }, [value]);
+    const handleChange = (e) => {
+      setCharCount(e.target.value.length);
+      onChange?.(e);
+    };
+    const handleClear = () => {
+      onClear?.();
+      const event = {
+        target: { value: "" }
+      };
+      onChange?.(event);
+      setCharCount(0);
+    };
+    const hasLeftIcon = icon && iconPosition === "left";
+    const hasRightIcon = icon && iconPosition === "right" || type === "password" || clearable && charCount > 0 || error;
+    const hasIconVariant = hasLeftIcon && hasRightIcon ? "both" : hasLeftIcon ? "left" : hasRightIcon ? "right" : "none";
+    const actualType = type === "password" && showPassword ? "text" : type;
+    const iconSizeClass = size === "sm" ? "h-4 w-4" : size === "lg" ? "h-5 w-5" : "h-4 w-4";
+    return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: cn("flex flex-col gap-1.5", fullWidth && "w-full"), children: [
+      label && /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "label",
+        {
+          htmlFor: inputId,
+          className: "text-sm font-medium text-[#F0F6FC]",
+          children: label
+        }
+      ),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative", children: [
+        hasLeftIcon && /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "div",
+          {
+            className: cn(
+              "absolute left-3 top-1/2 -translate-y-1/2",
+              "text-[#6E7681] pointer-events-none",
+              iconSizeClass
+            ),
+            children: type === "search" && !icon ? /* @__PURE__ */ jsxRuntimeExports.jsx(Search, { className: iconSizeClass }) : icon
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "input",
+          {
+            ref,
+            id: inputId,
+            type: actualType,
+            disabled,
+            maxLength,
+            value,
+            onChange: handleChange,
+            className: cn(
+              inputVariants({ size, hasError: !!error, hasIcon: hasIconVariant }),
+              className
+            ),
+            "aria-label": ariaLabel,
+            "aria-invalid": !!error,
+            "aria-describedby": error ? errorId : hint ? hintId : void 0,
+            "data-testid": dataTestId,
+            ...props
+          }
+        ),
+        hasRightIcon && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "div",
+          {
+            className: cn(
+              "absolute right-3 top-1/2 -translate-y-1/2",
+              "flex items-center gap-2"
+            ),
+            children: [
+              error && /* @__PURE__ */ jsxRuntimeExports.jsx(
+                CircleAlert,
+                {
+                  className: cn(iconSizeClass, "text-[#EF4444]"),
+                  "aria-hidden": "true"
+                }
+              ),
+              clearable && charCount > 0 && !error && /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "button",
+                {
+                  type: "button",
+                  onClick: handleClear,
+                  className: cn(
+                    "text-[#6E7681] hover:text-[#F0F6FC]",
+                    "transition-colors p-0.5 rounded",
+                    "focus:outline-none focus:ring-1 focus:ring-[#7C3AED]"
+                  ),
+                  "aria-label": "Clear input",
+                  "data-testid": dataTestId ? `${dataTestId}-clear` : void 0,
+                  children: /* @__PURE__ */ jsxRuntimeExports.jsx(X$1, { className: iconSizeClass })
+                }
+              ),
+              type === "password" && /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "button",
+                {
+                  type: "button",
+                  onClick: () => {
+                    setShowPassword(!showPassword);
+                  },
+                  className: cn(
+                    "text-[#6E7681] hover:text-[#F0F6FC]",
+                    "transition-colors p-0.5 rounded",
+                    "focus:outline-none focus:ring-1 focus:ring-[#7C3AED]"
+                  ),
+                  "aria-label": showPassword ? "Hide password" : "Show password",
+                  "data-testid": dataTestId ? `${dataTestId}-toggle-password` : void 0,
+                  children: showPassword ? /* @__PURE__ */ jsxRuntimeExports.jsx(EyeOff, { className: iconSizeClass }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Eye, { className: iconSizeClass })
+                }
+              ),
+              icon && iconPosition === "right" && !error && type !== "password" && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn(iconSizeClass, "text-[#6E7681]"), children: icon })
+            ]
+          }
+        )
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between gap-2 min-h-[20px]", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: error ? /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "p",
+          {
+            id: errorId,
+            className: "text-xs text-[#EF4444]",
+            role: "alert",
+            children: error
+          }
+        ) : hint ? /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "p",
+          {
+            id: hintId,
+            className: "text-xs text-[#6E7681]",
+            children: hint
+          }
+        ) : null }),
+        showCount && maxLength && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "p",
+          {
+            className: cn(
+              "text-xs",
+              charCount >= maxLength ? "text-[#EF4444]" : "text-[#6E7681]"
+            ),
+            children: [
+              charCount,
+              "/",
+              maxLength
+            ]
+          }
+        )
+      ] })
+    ] });
+  }
+);
+Input.displayName = "Input";
+const isElectronWithDialog = () => {
+  return typeof window !== "undefined" && typeof window.nexusAPI !== "undefined" && typeof window.nexusAPI.dialog !== "undefined";
+};
+function ProjectSelector({
+  mode,
+  open,
+  onOpenChange,
+  onProjectSelected,
+  onCancel
+}) {
+  const [projectName, setProjectName] = reactExports.useState("");
+  const [selectedPath, setSelectedPath] = reactExports.useState(null);
+  const [error, setError] = reactExports.useState(null);
+  const [isLoading, setIsLoading] = reactExports.useState(false);
+  const [validationStatus, setValidationStatus] = reactExports.useState("idle");
+  const handleOpenChange = (newOpen) => {
+    if (!newOpen) {
+      setProjectName("");
+      setSelectedPath(null);
+      setError(null);
+      setIsLoading(false);
+      setValidationStatus("idle");
+    }
+    onOpenChange(newOpen);
+  };
+  const handleSelectFolder = reactExports.useCallback(async () => {
+    if (!isElectronWithDialog()) {
+      setError("Dialog API not available. Please run in Electron.");
+      return;
+    }
+    try {
+      setError(null);
+      const result = await window.nexusAPI.dialog.openDirectory({
+        title: mode === "genesis" ? "Select Location for New Project" : "Select Existing Project",
+        buttonLabel: "Select"
+      });
+      if (!result.canceled && result.path) {
+        setSelectedPath(result.path);
+        if (mode === "evolution") {
+          setValidationStatus("idle");
+          const validation = await window.nexusAPI.projectInit.validatePath(result.path);
+          if (validation.valid) {
+            setValidationStatus("valid");
+            setError(null);
+          } else {
+            setValidationStatus("invalid");
+            setError(validation.error || "Selected directory is not a valid project");
+          }
+        } else {
+          const pathCheck = await window.nexusAPI.projectInit.isPathEmpty(result.path);
+          if (!pathCheck.exists) {
+            setValidationStatus("valid");
+          } else if (pathCheck.empty) {
+            setValidationStatus("valid");
+          } else {
+            setValidationStatus("valid");
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Failed to open folder dialog:", err);
+      setError("Failed to open folder dialog");
+    }
+  }, [mode]);
+  const handleConfirm = reactExports.useCallback(async () => {
+    if (!selectedPath) {
+      setError("Please select a folder");
+      return;
+    }
+    if (mode === "genesis" && !projectName.trim()) {
+      setError("Please enter a project name");
+      return;
+    }
+    if (mode === "genesis") {
+      const nameRegex = /^[a-zA-Z0-9_-]+$/;
+      if (!nameRegex.test(projectName.trim())) {
+        setError("Project name can only contain letters, numbers, dashes, and underscores");
+        return;
+      }
+    }
+    setIsLoading(true);
+    setError(null);
+    try {
+      if (mode === "genesis") {
+        const result = await window.nexusAPI.projectInit.initialize({
+          name: projectName.trim(),
+          path: selectedPath,
+          initGit: true
+        });
+        if (!result.success || !result.data) {
+          setError(result.error || "Failed to create project");
+          setIsLoading(false);
+          return;
+        }
+        onProjectSelected({
+          id: result.data.id,
+          name: result.data.name,
+          path: result.data.path,
+          createdAt: result.data.createdAt
+        });
+      } else {
+        const result = await window.nexusAPI.projectInit.load(selectedPath);
+        if (!result.success || !result.data) {
+          setError(result.error || "Failed to load project");
+          setIsLoading(false);
+          return;
+        }
+        onProjectSelected({
+          id: result.data.id,
+          name: result.data.name,
+          path: result.data.path,
+          description: result.data.description,
+          isNexusProject: result.data.isNexusProject,
+          hasGit: result.data.hasGit
+        });
+      }
+      handleOpenChange(false);
+    } catch (err) {
+      console.error("Project operation failed:", err);
+      setError("An unexpected error occurred");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [mode, projectName, selectedPath, onProjectSelected, handleOpenChange]);
+  const handleCancel = () => {
+    handleOpenChange(false);
+    onCancel?.();
+  };
+  const ModeIcon = mode === "genesis" ? Sparkles : GitBranch;
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(Dialog, { open, onOpenChange: handleOpenChange, children: /* @__PURE__ */ jsxRuntimeExports.jsxs(DialogContent, { className: "bg-background border-border max-w-md", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs(DialogHeader, { children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs(DialogTitle, { className: "flex items-center gap-2 text-foreground", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: cn(
+          "p-1.5 rounded-md",
+          mode === "genesis" ? "bg-violet-500/10 text-violet-500" : "bg-emerald-500/10 text-emerald-500"
+        ), children: /* @__PURE__ */ jsxRuntimeExports.jsx(ModeIcon, { className: "h-5 w-5" }) }),
+        mode === "genesis" ? "Create New Project" : "Open Existing Project"
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(DialogDescription, { className: "text-muted-foreground", children: mode === "genesis" ? "Enter a name and select where to create your new project." : "Select an existing project folder to enhance with Nexus." })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "py-4 space-y-4", children: [
+      mode === "genesis" && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-2", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("label", { htmlFor: "project-name", className: "text-sm font-medium text-foreground", children: "Project Name" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          Input,
+          {
+            id: "project-name",
+            value: projectName,
+            onChange: (e) => {
+              setProjectName(e.target.value);
+              setError(null);
+            },
+            placeholder: "my-awesome-app",
+            disabled: isLoading,
+            className: "bg-background"
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs text-muted-foreground", children: "Letters, numbers, dashes, and underscores only" })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-2", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("label", { htmlFor: "project-path", className: "text-sm font-medium text-foreground", children: mode === "genesis" ? "Location" : "Project Folder" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex gap-2", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            Input,
+            {
+              id: "project-path",
+              value: selectedPath || "",
+              readOnly: true,
+              placeholder: "Select a folder...",
+              className: "flex-1 bg-muted/50 cursor-pointer",
+              onClick: handleSelectFolder
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            Button,
+            {
+              type: "button",
+              variant: "outline",
+              size: "icon",
+              "data-testid": "folder-select-btn",
+              onClick: handleSelectFolder,
+              disabled: isLoading,
+              className: "shrink-0",
+              children: /* @__PURE__ */ jsxRuntimeExports.jsx(FolderOpen, { className: "h-4 w-4" })
+            }
+          )
+        ] }),
+        selectedPath && mode === "genesis" && /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-xs text-muted-foreground", children: [
+          "Project will be created at: ",
+          selectedPath,
+          "/",
+          projectName || "[project-name]"
+        ] }),
+        selectedPath && mode === "evolution" && validationStatus === "valid" && /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs text-emerald-500", children: "Valid project directory" })
+      ] }),
+      error && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-start gap-2 p-3 rounded-md bg-destructive/10 text-destructive text-sm", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(CircleAlert, { className: "h-4 w-4 mt-0.5 shrink-0" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: error })
+      ] })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs(DialogFooter, { className: "gap-2 sm:gap-0", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        Button,
+        {
+          type: "button",
+          variant: "outline",
+          onClick: handleCancel,
+          "data-testid": "cancel-btn",
+          disabled: isLoading,
+          children: "Cancel"
+        }
+      ),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        Button,
+        {
+          type: "button",
+          onClick: handleConfirm,
+          "data-testid": "confirm-btn",
+          disabled: isLoading || !selectedPath || mode === "genesis" && !projectName.trim(),
+          className: cn(
+            mode === "genesis" ? "bg-violet-600 hover:bg-violet-700" : "bg-emerald-600 hover:bg-emerald-700"
+          ),
+          children: isLoading ? /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "h-4 w-4 mr-2 animate-spin" }),
+            mode === "genesis" ? "Creating..." : "Loading..."
+          ] }) : /* @__PURE__ */ jsxRuntimeExports.jsx(jsxRuntimeExports.Fragment, { children: mode === "genesis" ? /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(Plus, { className: "h-4 w-4 mr-2" }),
+            "Create Project"
+          ] }) : /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(FolderOpen, { className: "h-4 w-4 mr-2" }),
+            "Open Project"
+          ] }) })
+        }
+      )
+    ] })
+  ] }) });
+}
 const isElectronEnvironment = () => {
   return typeof window !== "undefined" && typeof window.nexusAPI !== "undefined";
+};
+const hasDialogAPI = () => {
+  return isElectronEnvironment() && typeof window.nexusAPI.dialog !== "undefined";
 };
 function ModeSelectorPage() {
   const navigate = useNavigate();
   const isLoading = useUIStore((s) => s.isLoading);
-  const [showProjectModal, setShowProjectModal] = reactExports.useState(false);
-  const [projects, setProjects] = reactExports.useState([]);
+  const setCurrentProject = useProjectStore((s) => s.setCurrentProject);
+  const [showProjectSelector, setShowProjectSelector] = reactExports.useState(false);
+  const [projectSelectorMode, setProjectSelectorMode] = reactExports.useState("genesis");
+  const [showLegacyModal, setShowLegacyModal] = reactExports.useState(false);
+  const [legacyProjects, setLegacyProjects] = reactExports.useState([]);
   const [loadingProjects, setLoadingProjects] = reactExports.useState(false);
   const [projectsError, setProjectsError] = reactExports.useState(null);
-  const loadProjects = reactExports.useCallback(async () => {
+  const loadLegacyProjects = reactExports.useCallback(async () => {
     if (!isElectronEnvironment()) {
       setProjectsError("Backend not available. Please run in Electron.");
       return;
@@ -27129,7 +27690,7 @@ function ModeSelectorPage() {
             status: proj.status
           };
         });
-        setProjects(transformedProjects);
+        setLegacyProjects(transformedProjects);
       }
     } catch (err) {
       console.error("Failed to load projects:", err);
@@ -27139,24 +27700,54 @@ function ModeSelectorPage() {
     }
   }, []);
   const handleGenesisClick = () => {
-    void navigate("/genesis");
-    void uiBackendBridge.startGenesis().catch((error) => {
-      console.error("Failed to start Genesis:", error);
-    });
+    if (hasDialogAPI()) {
+      setProjectSelectorMode("genesis");
+      setShowProjectSelector(true);
+    } else {
+      void navigate("/genesis");
+      void uiBackendBridge.startGenesis().catch((error) => {
+        console.error("Failed to start Genesis:", error);
+      });
+    }
   };
   const handleEvolutionClick = () => {
-    setShowProjectModal(true);
-    void loadProjects();
+    if (hasDialogAPI()) {
+      setProjectSelectorMode("evolution");
+      setShowProjectSelector(true);
+    } else {
+      setShowLegacyModal(true);
+      void loadLegacyProjects();
+    }
   };
-  const handleSelectProject = (projectId) => {
-    setShowProjectModal(false);
+  const handleProjectSelected = (project) => {
+    console.log("[ModeSelectorPage] Project selected:", project);
+    setCurrentProject({
+      id: project.id,
+      name: project.name,
+      path: project.path,
+      mode: projectSelectorMode
+    });
+    if (projectSelectorMode === "genesis") {
+      void navigate("/interview");
+      void uiBackendBridge.startGenesis().catch((error) => {
+        console.error("Failed to start Genesis:", error);
+      });
+    } else {
+      void navigate("/kanban");
+      void uiBackendBridge.startEvolution(project.id).catch((error) => {
+        console.error("Failed to start Evolution:", error);
+      });
+    }
+  };
+  const handleLegacySelectProject = (projectId) => {
+    setShowLegacyModal(false);
     void navigate("/evolution");
     void uiBackendBridge.startEvolution(projectId).catch((error) => {
       console.error("Failed to start Evolution:", error);
     });
   };
-  const handleCreateNewProject = () => {
-    setShowProjectModal(false);
+  const handleLegacyCreateNewProject = () => {
+    setShowLegacyModal(false);
     void navigate("/dashboard");
   };
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "min-h-screen flex flex-col items-center justify-center p-8 bg-gradient-to-b from-background to-background/80", children: [
@@ -27170,6 +27761,7 @@ function ModeSelectorPage() {
         {
           className: "relative overflow-hidden cursor-pointer group hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-violet-500/10",
           onClick: handleGenesisClick,
+          "data-testid": "genesis-card",
           children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute inset-0 bg-gradient-to-br from-violet-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" }),
             /* @__PURE__ */ jsxRuntimeExports.jsxs(CardHeader, { className: "pb-4", children: [
@@ -27194,6 +27786,7 @@ function ModeSelectorPage() {
         {
           className: "relative overflow-hidden cursor-pointer group hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-emerald-500/10",
           onClick: handleEvolutionClick,
+          "data-testid": "evolution-card",
           children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" }),
             /* @__PURE__ */ jsxRuntimeExports.jsxs(CardHeader, { className: "pb-4", children: [
@@ -27216,70 +27809,82 @@ function ModeSelectorPage() {
     ] }),
     isLoading && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "mt-8 text-muted-foreground animate-pulse", children: "Initializing..." }),
     /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "mt-12 text-xs text-muted-foreground/50", children: "Press a card to begin" }),
-    /* @__PURE__ */ jsxRuntimeExports.jsx(Dialog, { open: showProjectModal, onOpenChange: setShowProjectModal, children: /* @__PURE__ */ jsxRuntimeExports.jsxs(DialogContent, { className: "bg-bg-card border-border-default max-w-md", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      ProjectSelector,
+      {
+        mode: projectSelectorMode,
+        open: showProjectSelector,
+        onOpenChange: setShowProjectSelector,
+        onProjectSelected: handleProjectSelected,
+        onCancel: () => {
+          setShowProjectSelector(false);
+        }
+      }
+    ),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(Dialog, { open: showLegacyModal, onOpenChange: setShowLegacyModal, children: /* @__PURE__ */ jsxRuntimeExports.jsxs(DialogContent, { className: "bg-background border-border max-w-md", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsxs(DialogHeader, { children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsxs(DialogTitle, { className: "text-text-primary flex items-center gap-2", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs(DialogTitle, { className: "text-foreground flex items-center gap-2", children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx(GitBranch, { className: "h-5 w-5 text-emerald-500" }),
           "Select Project"
         ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(DialogDescription, { className: "text-text-secondary", children: "Choose an existing project to evolve, or create a new one." })
+        /* @__PURE__ */ jsxRuntimeExports.jsx(DialogDescription, { className: "text-muted-foreground", children: "Choose an existing project to evolve, or create a new one." })
       ] }),
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "py-4", children: [
         loadingProjects && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-center py-8", children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "h-6 w-6 animate-spin text-emerald-500" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "ml-2 text-text-secondary", children: "Loading projects..." })
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "ml-2 text-muted-foreground", children: "Loading projects..." })
         ] }),
         projectsError && !loadingProjects && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-center py-8", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm text-accent-error", children: projectsError }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm text-destructive", children: projectsError }),
           /* @__PURE__ */ jsxRuntimeExports.jsx(
             Button,
             {
               variant: "outline",
               size: "sm",
               className: "mt-4",
-              onClick: () => void loadProjects(),
+              onClick: () => void loadLegacyProjects(),
               children: "Retry"
             }
           )
         ] }),
-        !loadingProjects && !projectsError && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "space-y-2 max-h-[300px] overflow-y-auto", children: projects.length === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-center py-8", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx(FolderOpen, { className: "h-10 w-10 text-text-tertiary mx-auto mb-3" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm text-text-secondary", children: "No projects yet" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs text-text-tertiary mt-1", children: "Create your first project to get started" })
-        ] }) : projects.map((project) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        !loadingProjects && !projectsError && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "space-y-2 max-h-[300px] overflow-y-auto", children: legacyProjects.length === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-center py-8", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(FolderOpen, { className: "h-10 w-10 text-muted-foreground/50 mx-auto mb-3" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm text-muted-foreground", children: "No projects yet" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs text-muted-foreground/70 mt-1", children: "Create your first project to get started" })
+        ] }) : legacyProjects.map((project) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
           "button",
           {
             onClick: () => {
-              handleSelectProject(project.id);
+              handleLegacySelectProject(project.id);
             },
             className: cn(
               "w-full flex items-center gap-3 p-3 rounded-lg border transition-all",
-              "border-border-default hover:border-emerald-500/50 hover:bg-bg-hover",
+              "border-border hover:border-emerald-500/50 hover:bg-muted/50",
               "text-left group"
             ),
             "data-testid": `project-select-${project.id}`,
             children: [
               /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex-shrink-0 w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center", children: /* @__PURE__ */ jsxRuntimeExports.jsx(GitBranch, { className: "h-5 w-5 text-emerald-500" }) }),
               /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex-1 min-w-0", children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "font-medium text-text-primary truncate", children: project.name }),
-                /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-xs text-text-tertiary capitalize", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "font-medium text-foreground truncate", children: project.name }),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-xs text-muted-foreground capitalize", children: [
                   project.mode,
                   " mode"
                 ] })
               ] }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx(ChevronRight, { className: "h-5 w-5 text-text-tertiary group-hover:text-emerald-500 transition-colors" })
+              /* @__PURE__ */ jsxRuntimeExports.jsx(ChevronRight, { className: "h-5 w-5 text-muted-foreground group-hover:text-emerald-500 transition-colors" })
             ]
           },
           project.id
         )) })
       ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between pt-4 border-t border-border-default", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between pt-4 border-t border-border", children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx(
           Button,
           {
             variant: "outline",
             onClick: () => {
-              setShowProjectModal(false);
+              setShowLegacyModal(false);
             },
             children: "Cancel"
           }
@@ -27287,8 +27892,7 @@ function ModeSelectorPage() {
         /* @__PURE__ */ jsxRuntimeExports.jsxs(
           Button,
           {
-            variant: "primary",
-            onClick: handleCreateNewProject,
+            onClick: handleLegacyCreateNewProject,
             className: "gap-2 bg-emerald-600 hover:bg-emerald-700",
             children: [
               /* @__PURE__ */ jsxRuntimeExports.jsx(Plus, { className: "h-4 w-4" }),
@@ -27823,6 +28427,13 @@ const useInterviewStore = create()((set, get) => ({
       duration
     });
   },
+  restoreSession: (messages, requirements) => {
+    set({
+      messages,
+      requirements,
+      stage: messages.length > 0 ? "functional" : "welcome"
+    });
+  },
   reset: () => {
     set({
       ...initialState,
@@ -28269,19 +28880,19 @@ function KeyboardShortcutsModal() {
     )) })
   ] }) });
 }
-const InterviewPage = reactExports.lazy(() => __vitePreload(() => import("./InterviewPage-Ds5YAUF_.js"), true ? __vite__mapDeps([0,1,2,3,4,5,6,7,8,9]) : void 0, import.meta.url));
-const KanbanPage = reactExports.lazy(() => __vitePreload(() => import("./KanbanPage-7wU46MJT.js"), true ? __vite__mapDeps([10,6,11,7,12,5,4,13,1,14,15]) : void 0, import.meta.url));
-const DashboardPage = reactExports.lazy(() => __vitePreload(() => import("./DashboardPage-Dt1IKblh.js"), true ? __vite__mapDeps([16,2,17,15,6,5,12,1,13,14,11]) : void 0, import.meta.url));
-const SettingsPage = reactExports.lazy(() => __vitePreload(() => import("./SettingsPage-HtGWm6Rg.js"), true ? __vite__mapDeps([18,19,9,1,3,20,21,14,15]) : void 0, import.meta.url));
-const AgentsPage = reactExports.lazy(() => __vitePreload(() => import("./AgentsPage-COwA44Ya.js"), true ? __vite__mapDeps([22,19,9,21,1,5,2,17,15,11,7,12]) : void 0, import.meta.url));
-const ExecutionPage = reactExports.lazy(() => __vitePreload(() => import("./ExecutionPage-rO-h_6G5.js"), true ? __vite__mapDeps([23,19,9,8,7,12,20]) : void 0, import.meta.url));
+const InterviewPage = reactExports.lazy(() => __vitePreload(() => import("./InterviewPage-Cq0GR7bs.js"), true ? __vite__mapDeps([0,1,2,3,4,5,6,7,8]) : void 0, import.meta.url));
+const KanbanPage = reactExports.lazy(() => __vitePreload(() => import("./KanbanPage-B1AFt7D8.js"), true ? __vite__mapDeps([9,5,10,6,11,4,3]) : void 0, import.meta.url));
+const DashboardPage = reactExports.lazy(() => __vitePreload(() => import("./DashboardPage-DQXce99w.js"), true ? __vite__mapDeps([12,1,13,5,4,11,10]) : void 0, import.meta.url));
+const SettingsPage = reactExports.lazy(() => __vitePreload(() => import("./SettingsPage-CawXD3YN.js"), true ? __vite__mapDeps([14,15,8,2,16,17]) : void 0, import.meta.url));
+const AgentsPage = reactExports.lazy(() => __vitePreload(() => import("./AgentsPage-DIJkfL7h.js"), true ? __vite__mapDeps([18,15,8,17,4,1,13,10,6,11]) : void 0, import.meta.url));
+const ExecutionPage = reactExports.lazy(() => __vitePreload(() => import("./ExecutionPage-DJeLrJEh.js"), true ? __vite__mapDeps([19,15,8,7,6,11,16]) : void 0, import.meta.url));
 function PageLoader() {
   return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex items-center justify-center min-h-screen bg-bg-dark", "data-testid": "page-loader", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col items-center gap-3", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-8 h-8 rounded-full border-2 border-accent-primary border-t-transparent animate-spin" }),
     /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-sm text-text-secondary animate-pulse", children: "Loading..." })
   ] }) });
 }
-const router = createBrowserRouter([
+const router = createHashRouter([
   {
     path: "/",
     element: /* @__PURE__ */ jsxRuntimeExports.jsx(RootLayout, {}),
@@ -28355,62 +28966,67 @@ root.render(
   /* @__PURE__ */ jsxRuntimeExports.jsx(reactExports.StrictMode, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(App, {}) })
 );
 export {
-  useSettingsDirty as $,
-  useCosts as A,
+  useSettings as $,
+  useFeatureCount as A,
   Bot as B,
-  ChevronDown as C,
+  CircleAlert as C,
   Dialog as D,
-  clsx as E,
-  getDefaultExportFromCjs as F,
-  React$3 as G,
-  useAgentMetrics as H,
-  fo as I,
-  RefreshCw as J,
-  useTimeline as K,
+  Search as E,
+  useCosts as F,
+  clsx as G,
+  getDefaultExportFromCjs as H,
+  Input as I,
+  React$3 as J,
+  useAgentMetrics as K,
   LoaderCircle as L,
-  MessageSquare as M,
-  useIsMetricsLoading as N,
-  useOverview as O,
+  Eye as M,
+  fo as N,
+  RefreshCw as O,
   Plus as P,
-  useMetricsStore as Q,
+  MessageSquare as Q,
   React$2 as R,
   Sparkles as S,
   TriangleAlert as T,
-  FolderOpen as U,
-  Link as V,
-  ChevronRight as W,
-  cva as X,
-  X$1 as Y,
-  useSettings as Z,
-  useSettingsLoading as _,
+  useTimeline as U,
+  useIsMetricsLoading as V,
+  useOverview as W,
+  useMetricsStore as X,
+  FolderOpen as Y,
+  Link as Z,
+  ChevronRight as _,
   cn as a,
-  useSettingsStore as a0,
-  Terminal as a1,
-  CardDescription as a2,
-  useHasApiKey as a3,
+  useSettingsLoading as a0,
+  useSettingsDirty as a1,
+  useSettingsStore as a2,
+  Terminal as a3,
+  CardDescription as a4,
+  useHasApiKey as a5,
+  EyeOff as a6,
+  X$1 as a7,
+  cva as a8,
   useIsInterviewing as b,
   createLucideIcon as c,
   useInterviewStore as d,
   useSessionId as e,
   useProjectStore as f,
-  useRequirements as g,
-  useInterviewStage as h,
-  useNavigate as i,
+  ChevronDown as g,
+  useRequirements as h,
+  useInterviewStage as i,
   jsxRuntimeExports as j,
-  reactDomExports as k,
-  Card as l,
-  CardHeader as m,
-  CardTitle as n,
-  CardContent as o,
-  useFeatureStore as p,
-  DialogContent as q,
+  useNavigate as k,
+  reactDomExports as l,
+  Card as m,
+  CardHeader as n,
+  CardTitle as o,
+  CardContent as p,
+  useFeatureStore as q,
   reactExports as r,
-  DialogHeader as s,
+  DialogContent as s,
   toast as t,
   useMessages as u,
-  DialogTitle as v,
-  DialogDescription as w,
-  DialogFooter as x,
-  Button as y,
-  useFeatureCount as z
+  DialogHeader as v,
+  DialogTitle as w,
+  DialogDescription as x,
+  DialogFooter as y,
+  Button as z
 };

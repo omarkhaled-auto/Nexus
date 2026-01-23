@@ -721,6 +721,94 @@ const nexusAPI = {
    */
   offNexusEvent: () => {
     electron.ipcRenderer.removeAllListeners("nexus-event");
+  },
+  // ========================================
+  // Dialog API (Phase 21 Task 4)
+  // ========================================
+  /**
+   * Dialog operations for native file dialogs
+   */
+  dialog: {
+    /**
+     * Open a directory picker dialog
+     * @param options - Dialog options (title, defaultPath, buttonLabel)
+     * @returns Promise with { canceled: boolean; path: string | null }
+     */
+    openDirectory: (options) => electron.ipcRenderer.invoke("dialog:openDirectory", options),
+    /**
+     * Open a file picker dialog
+     * @param options - Dialog options (title, defaultPath, filters)
+     * @returns Promise with { canceled: boolean; path: string | null }
+     */
+    openFile: (options) => electron.ipcRenderer.invoke("dialog:openFile", options),
+    /**
+     * Open a save file dialog
+     * @param options - Dialog options (title, defaultPath, filters)
+     * @returns Promise with { canceled: boolean; path: string | null }
+     */
+    saveFile: (options) => electron.ipcRenderer.invoke("dialog:saveFile", options)
+  },
+  // ========================================
+  // Project API (Phase 21 Task 5 & 6)
+  // ========================================
+  /**
+   * Project operations for project initialization and management
+   */
+  projectInit: {
+    /**
+     * Initialize a new Nexus project
+     * @param options - Project options (name, path, description, initGit)
+     * @returns Promise with { success: boolean; data?: InitializedProject; error?: string }
+     */
+    initialize: (options) => electron.ipcRenderer.invoke("project:initialize", options),
+    /**
+     * Load an existing project (Phase 21 Task 6)
+     * @param projectPath - Path to project directory
+     * @returns Promise with { success: boolean; data?: LoadedProject; error?: string }
+     */
+    load: (projectPath) => electron.ipcRenderer.invoke("project:load", projectPath),
+    /**
+     * Validate a project path
+     * @param projectPath - Path to validate
+     * @returns Promise with { valid: boolean; isNexusProject?: boolean; error?: string }
+     */
+    validatePath: (projectPath) => electron.ipcRenderer.invoke("project:validatePath", projectPath),
+    /**
+     * Check if a path is empty (for Genesis mode)
+     * @param targetPath - Path to check
+     * @returns Promise with { empty: boolean; exists: boolean; error?: string }
+     */
+    isPathEmpty: (targetPath) => electron.ipcRenderer.invoke("project:isPathEmpty", targetPath)
+  },
+  // ========================================
+  // Recent Projects API (Phase 21 Task 8)
+  // ========================================
+  /**
+   * Recent projects operations for quick access to previously opened projects
+   */
+  recentProjects: {
+    /**
+     * Get list of recent projects (up to 10)
+     * @returns Promise with array of recent projects
+     */
+    get: () => electron.ipcRenderer.invoke("project:getRecent"),
+    /**
+     * Add a project to the recent list
+     * @param project - Project to add (path and name required)
+     * @returns Promise with { success: boolean; error?: string }
+     */
+    add: (project) => electron.ipcRenderer.invoke("project:addRecent", project),
+    /**
+     * Remove a project from the recent list
+     * @param projectPath - Path of project to remove
+     * @returns Promise with { success: boolean; error?: string }
+     */
+    remove: (projectPath) => electron.ipcRenderer.invoke("project:removeRecent", projectPath),
+    /**
+     * Clear all recent projects
+     * @returns Promise with { success: boolean; error?: string }
+     */
+    clear: () => electron.ipcRenderer.invoke("project:clearRecent")
   }
 };
 if (process.contextIsolated) {

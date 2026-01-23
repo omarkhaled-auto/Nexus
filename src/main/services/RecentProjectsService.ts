@@ -11,9 +11,35 @@
  * Storage Location: {userData}/recent-projects.json
  */
 
-import * as fs from 'fs-extra';
+import * as fs from 'fs/promises';
 import * as path from 'path';
 import { app } from 'electron';
+
+/** Helper to check if path exists */
+async function pathExists(p: string): Promise<boolean> {
+  try {
+    await fs.access(p);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Helper to ensure directory exists */
+async function ensureDir(p: string): Promise<void> {
+  await fs.mkdir(p, { recursive: true });
+}
+
+/** Helper to write JSON file */
+async function writeJson(p: string, data: unknown, options?: { spaces?: number }): Promise<void> {
+  await fs.writeFile(p, JSON.stringify(data, null, options?.spaces ?? 2));
+}
+
+/** Helper to read JSON file */
+async function readJson<T = unknown>(p: string): Promise<T> {
+  const content = await fs.readFile(p, 'utf-8');
+  return JSON.parse(content) as T;
+}
 
 /**
  * Recent project entry
@@ -69,8 +95,8 @@ export class RecentProjectsService {
     }
 
     try {
-      if (await fs.pathExists(this.configPath)) {
-        const data = await fs.readJson(this.configPath);
+      if (await pathExists(this.configPath)) {
+        const data = await readJson(this.configPath);
         // Validate data structure
         if (Array.isArray(data)) {
           this.cache = data.filter(this.isValidRecentProject);
@@ -151,7 +177,7 @@ export class RecentProjectsService {
 
     for (const project of recent) {
       try {
-        if (await fs.pathExists(project.path)) {
+        if (await pathExists(project.path)) {
           valid.push(project);
         }
       } catch {
@@ -173,8 +199,8 @@ export class RecentProjectsService {
    */
   private async save(projects: RecentProject[]): Promise<void> {
     try {
-      await fs.ensureDir(path.dirname(this.configPath));
-      await fs.writeJson(this.configPath, projects, { spaces: 2 });
+      await ensureDir(path.dirname(this.configPath));
+      await writeJson(this.configPath, projects, { spaces: 2 });
       this.cache = projects;
     } catch (error) {
       console.error('[RecentProjectsService] Failed to save recent projects:', error);

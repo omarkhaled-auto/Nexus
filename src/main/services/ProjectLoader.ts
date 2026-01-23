@@ -14,8 +14,34 @@
  * - Creates STATE.md
  */
 
-import * as fs from 'fs-extra';
+import * as fs from 'fs/promises';
 import * as path from 'path';
+
+/** Helper to check if path exists */
+async function pathExists(p: string): Promise<boolean> {
+  try {
+    await fs.access(p);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Helper to ensure directory exists */
+async function ensureDir(p: string): Promise<void> {
+  await fs.mkdir(p, { recursive: true });
+}
+
+/** Helper to write JSON file */
+async function writeJson(p: string, data: unknown, options?: { spaces?: number }): Promise<void> {
+  await fs.writeFile(p, JSON.stringify(data, null, options?.spaces ?? 2));
+}
+
+/** Helper to read JSON file */
+async function readJson<T = unknown>(p: string): Promise<T> {
+  const content = await fs.readFile(p, 'utf-8');
+  return JSON.parse(content) as T;
+}
 
 /**
  * Loaded project information
@@ -76,7 +102,7 @@ export class ProjectLoader {
    */
   async loadProject(projectPath: string): Promise<LoadedProject> {
     // Validate path exists
-    if (!(await fs.pathExists(projectPath))) {
+    if (!(await pathExists(projectPath))) {
       throw new Error(`Project path does not exist: ${projectPath}`);
     }
 
@@ -87,17 +113,17 @@ export class ProjectLoader {
 
     // Check if it's a Nexus project
     const nexusConfigPath = path.join(projectPath, '.nexus', 'config.json');
-    const isNexusProject = await fs.pathExists(nexusConfigPath);
+    const isNexusProject = await pathExists(nexusConfigPath);
 
     // Check for git
     const gitDir = path.join(projectPath, '.git');
-    const hasGit = await fs.pathExists(gitDir);
+    const hasGit = await pathExists(gitDir);
 
     let config: ProjectConfig;
 
     if (isNexusProject) {
       // Load existing Nexus config
-      config = await fs.readJson(nexusConfigPath);
+      config = await readJson(nexusConfigPath);
       console.log(`[ProjectLoader] Loaded existing Nexus project: ${config.name}`);
     } else {
       // Create default config for non-Nexus project
@@ -127,7 +153,7 @@ export class ProjectLoader {
    */
   async validateProjectPath(projectPath: string): Promise<boolean> {
     try {
-      if (!(await fs.pathExists(projectPath))) {
+      if (!(await pathExists(projectPath))) {
         return false;
       }
 
@@ -146,7 +172,7 @@ export class ProjectLoader {
    */
   async isNexusProject(projectPath: string): Promise<boolean> {
     const configPath = path.join(projectPath, '.nexus', 'config.json');
-    return fs.pathExists(configPath);
+    return pathExists(configPath);
   }
 
   /**
@@ -159,12 +185,12 @@ export class ProjectLoader {
   async getProjectConfig(projectPath: string): Promise<ProjectConfig | null> {
     const configPath = path.join(projectPath, '.nexus', 'config.json');
 
-    if (!(await fs.pathExists(configPath))) {
+    if (!(await pathExists(configPath))) {
       return null;
     }
 
     try {
-      return await fs.readJson(configPath);
+      return await readJson(configPath);
     } catch {
       return null;
     }
@@ -184,11 +210,11 @@ export class ProjectLoader {
   ): Promise<ProjectConfig> {
     const configPath = path.join(projectPath, '.nexus', 'config.json');
 
-    if (!(await fs.pathExists(configPath))) {
+    if (!(await pathExists(configPath))) {
       throw new Error(`Not a Nexus project: ${projectPath}`);
     }
 
-    const currentConfig = await fs.readJson(configPath);
+    const currentConfig = await readJson(configPath);
     const updatedConfig = {
       ...currentConfig,
       ...updates,
@@ -196,7 +222,7 @@ export class ProjectLoader {
       created: currentConfig.created,
     };
 
-    await fs.writeJson(configPath, updatedConfig, { spaces: 2 });
+    await writeJson(configPath, updatedConfig, { spaces: 2 });
     console.log(`[ProjectLoader] Updated project config: ${projectPath}`);
 
     return updatedConfig;
@@ -230,12 +256,12 @@ export class ProjectLoader {
     const nexusDir = path.join(projectPath, '.nexus');
 
     // Create .nexus directory structure
-    await fs.ensureDir(nexusDir);
-    await fs.ensureDir(path.join(nexusDir, 'checkpoints'));
-    await fs.ensureDir(path.join(nexusDir, 'worktrees'));
+    await ensureDir(nexusDir);
+    await ensureDir(path.join(nexusDir, 'checkpoints'));
+    await ensureDir(path.join(nexusDir, 'worktrees'));
 
     // Write config
-    await fs.writeJson(path.join(nexusDir, 'config.json'), config, { spaces: 2 });
+    await writeJson(path.join(nexusDir, 'config.json'), config, { spaces: 2 });
 
     // Create STATE.md
     const stateContent = `# Project State

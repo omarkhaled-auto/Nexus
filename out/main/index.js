@@ -1,11 +1,14 @@
-import { app, session, ipcMain, BrowserWindow, safeStorage, shell } from "electron";
+import { app, session, ipcMain, BrowserWindow, safeStorage, dialog, shell } from "electron";
+import * as path from "path";
 import { resolve, extname, posix, relative, basename, join as join$1 } from "path";
 import { webcrypto, randomFillSync, randomUUID } from "node:crypto";
 import { relations, eq, and, or, desc } from "drizzle-orm";
 import { sqliteTable, integer, text, real, blob } from "drizzle-orm/sqlite-core";
 import Store from "electron-store";
-import { spawn } from "child_process";
+import { spawn, execSync } from "child_process";
 import Anthropic from "@anthropic-ai/sdk";
+import * as fs from "fs/promises";
+import { readFile, stat } from "fs/promises";
 import { GoogleGenAI } from "@google/genai";
 import OpenAI from "openai";
 import { simpleGit } from "simple-git";
@@ -15,7 +18,6 @@ import { execaCommand } from "execa";
 import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import { migrate } from "drizzle-orm/better-sqlite3/migrator";
-import { readFile, stat } from "fs/promises";
 import fg from "fast-glob";
 import __cjs_mod__ from "node:module";
 const __filename = import.meta.filename;
@@ -393,7 +395,7 @@ function getEventBus() {
   }
   return globalEventBus;
 }
-function validateSender$2(event) {
+function validateSender$4(event) {
   const url = event.sender.getURL();
   return url.startsWith("http://localhost:") || url.startsWith("file://");
 }
@@ -412,7 +414,7 @@ function registerCheckpointReviewHandlers(checkpointManager, humanReviewService)
   checkpointManagerRef = checkpointManager;
   humanReviewServiceRef = humanReviewService;
   ipcMain.handle("checkpoint:list", (event, projectId) => {
-    if (!validateSender$2(event)) {
+    if (!validateSender$4(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     if (typeof projectId !== "string" || !projectId) {
@@ -426,7 +428,7 @@ function registerCheckpointReviewHandlers(checkpointManager, humanReviewService)
   ipcMain.handle(
     "checkpoint:create",
     async (event, projectId, reason) => {
-      if (!validateSender$2(event)) {
+      if (!validateSender$4(event)) {
         throw new Error("Unauthorized IPC sender");
       }
       if (typeof projectId !== "string" || !projectId) {
@@ -444,7 +446,7 @@ function registerCheckpointReviewHandlers(checkpointManager, humanReviewService)
   ipcMain.handle(
     "checkpoint:restore",
     async (event, checkpointId, restoreGit) => {
-      if (!validateSender$2(event)) {
+      if (!validateSender$4(event)) {
         throw new Error("Unauthorized IPC sender");
       }
       if (typeof checkpointId !== "string" || !checkpointId) {
@@ -457,7 +459,7 @@ function registerCheckpointReviewHandlers(checkpointManager, humanReviewService)
     }
   );
   ipcMain.handle("checkpoint:delete", (event, checkpointId) => {
-    if (!validateSender$2(event)) {
+    if (!validateSender$4(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     if (typeof checkpointId !== "string" || !checkpointId) {
@@ -469,7 +471,7 @@ function registerCheckpointReviewHandlers(checkpointManager, humanReviewService)
     checkpointManagerRef.deleteCheckpoint(checkpointId);
   });
   ipcMain.handle("review:list", (event) => {
-    if (!validateSender$2(event)) {
+    if (!validateSender$4(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     if (!humanReviewServiceRef) {
@@ -478,7 +480,7 @@ function registerCheckpointReviewHandlers(checkpointManager, humanReviewService)
     return humanReviewServiceRef.listPendingReviews();
   });
   ipcMain.handle("review:get", (event, reviewId) => {
-    if (!validateSender$2(event)) {
+    if (!validateSender$4(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     if (typeof reviewId !== "string" || !reviewId) {
@@ -492,7 +494,7 @@ function registerCheckpointReviewHandlers(checkpointManager, humanReviewService)
   ipcMain.handle(
     "review:approve",
     async (event, reviewId, resolution) => {
-      if (!validateSender$2(event)) {
+      if (!validateSender$4(event)) {
         throw new Error("Unauthorized IPC sender");
       }
       if (typeof reviewId !== "string" || !reviewId) {
@@ -507,7 +509,7 @@ function registerCheckpointReviewHandlers(checkpointManager, humanReviewService)
   ipcMain.handle(
     "review:reject",
     async (event, reviewId, feedback) => {
-      if (!validateSender$2(event)) {
+      if (!validateSender$4(event)) {
         throw new Error("Unauthorized IPC sender");
       }
       if (typeof reviewId !== "string" || !reviewId) {
@@ -529,7 +531,7 @@ function registerDatabaseHandlers(databaseClient) {
 }
 function registerIpcHandlers() {
   ipcMain.handle("mode:genesis", (event) => {
-    if (!validateSender$2(event)) {
+    if (!validateSender$4(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     state.mode = "genesis";
@@ -543,7 +545,7 @@ function registerIpcHandlers() {
     return { success: true, projectId };
   });
   ipcMain.handle("mode:evolution", (event, projectId) => {
-    if (!validateSender$2(event)) {
+    if (!validateSender$4(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     if (typeof projectId !== "string" || !projectId) {
@@ -557,7 +559,7 @@ function registerIpcHandlers() {
     return { success: true };
   });
   ipcMain.handle("project:get", (event, id) => {
-    if (!validateSender$2(event)) {
+    if (!validateSender$4(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     if (typeof id !== "string" || !id) {
@@ -570,13 +572,13 @@ function registerIpcHandlers() {
     return project;
   });
   ipcMain.handle("projects:list", (event) => {
-    if (!validateSender$2(event)) {
+    if (!validateSender$4(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     return Array.from(state.projects.values());
   });
   ipcMain.handle("dashboard:getMetrics", (event) => {
-    if (!validateSender$2(event)) {
+    if (!validateSender$4(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     const projects2 = Array.from(state.projects.values());
@@ -603,7 +605,7 @@ function registerIpcHandlers() {
     };
   });
   ipcMain.handle("dashboard:getCosts", (event) => {
-    if (!validateSender$2(event)) {
+    if (!validateSender$4(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     return {
@@ -618,7 +620,7 @@ function registerIpcHandlers() {
     };
   });
   ipcMain.handle("dashboard:getHistoricalProgress", (event) => {
-    if (!validateSender$2(event)) {
+    if (!validateSender$4(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     const tasks2 = Array.from(state.tasks.values());
@@ -644,7 +646,7 @@ function registerIpcHandlers() {
   ipcMain.handle(
     "project:create",
     (event, input) => {
-      if (!validateSender$2(event)) {
+      if (!validateSender$4(event)) {
         throw new Error("Unauthorized IPC sender");
       }
       if (typeof input.name !== "string" || !input.name) {
@@ -660,7 +662,7 @@ function registerIpcHandlers() {
     }
   );
   ipcMain.handle("tasks:list", async (event) => {
-    if (!validateSender$2(event)) {
+    if (!validateSender$4(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     if (databaseClientRef) {
@@ -687,7 +689,7 @@ function registerIpcHandlers() {
   ipcMain.handle(
     "task:update",
     (event, id, update) => {
-      if (!validateSender$2(event)) {
+      if (!validateSender$4(event)) {
         throw new Error("Unauthorized IPC sender");
       }
       if (typeof id !== "string" || !id) {
@@ -708,13 +710,13 @@ function registerIpcHandlers() {
     }
   );
   ipcMain.handle("agents:status", (event) => {
-    if (!validateSender$2(event)) {
+    if (!validateSender$4(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     return Array.from(state.agents.values());
   });
   ipcMain.handle("agents:list", (event) => {
-    if (!validateSender$2(event)) {
+    if (!validateSender$4(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     const agents2 = Array.from(state.agents.values()).map((agent) => ({
@@ -730,7 +732,7 @@ function registerIpcHandlers() {
     return agents2;
   });
   ipcMain.handle("agents:get", (event, id) => {
-    if (!validateSender$2(event)) {
+    if (!validateSender$4(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     if (typeof id !== "string" || !id) {
@@ -752,7 +754,7 @@ function registerIpcHandlers() {
     };
   });
   ipcMain.handle("agents:getPoolStatus", (event) => {
-    if (!validateSender$2(event)) {
+    if (!validateSender$4(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     const agents2 = Array.from(state.agents.values());
@@ -791,7 +793,7 @@ function registerIpcHandlers() {
     };
   });
   ipcMain.handle("agents:getOutput", (event, id) => {
-    if (!validateSender$2(event)) {
+    if (!validateSender$4(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     if (typeof id !== "string" || !id) {
@@ -800,7 +802,7 @@ function registerIpcHandlers() {
     return [];
   });
   ipcMain.handle("agents:getQAStatus", (event) => {
-    if (!validateSender$2(event)) {
+    if (!validateSender$4(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     return {
@@ -831,7 +833,7 @@ function registerIpcHandlers() {
   let currentExecutionTaskId = null;
   let currentExecutionTaskName = null;
   ipcMain.handle("execution:getLogs", (event, stepType) => {
-    if (!validateSender$2(event)) {
+    if (!validateSender$4(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     if (!["build", "lint", "test", "review"].includes(stepType)) {
@@ -840,7 +842,7 @@ function registerIpcHandlers() {
     return executionLogs.get(stepType) || [];
   });
   ipcMain.handle("execution:getStatus", (event) => {
-    if (!validateSender$2(event)) {
+    if (!validateSender$4(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     const steps = ["build", "lint", "test", "review"].map((type) => ({
@@ -858,7 +860,7 @@ function registerIpcHandlers() {
     };
   });
   ipcMain.handle("execution:clearLogs", (event) => {
-    if (!validateSender$2(event)) {
+    if (!validateSender$4(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     for (const type of ["build", "lint", "test", "review"]) {
@@ -872,7 +874,7 @@ function registerIpcHandlers() {
     return { success: true };
   });
   ipcMain.handle("execution:exportLogs", (event) => {
-    if (!validateSender$2(event)) {
+    if (!validateSender$4(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     let output = `Nexus Execution Logs
@@ -929,7 +931,7 @@ ${"-".repeat(40)}
     currentExecutionTaskName = name;
   };
   ipcMain.handle("features:list", async (event) => {
-    if (!validateSender$2(event)) {
+    if (!validateSender$4(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     if (databaseClientRef) {
@@ -966,7 +968,7 @@ ${"-".repeat(40)}
     return Array.from(state.features.values());
   });
   ipcMain.handle("feature:get", (event, id) => {
-    if (!validateSender$2(event)) {
+    if (!validateSender$4(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     if (typeof id !== "string" || !id) {
@@ -975,7 +977,7 @@ ${"-".repeat(40)}
     return state.features.get(id) || null;
   });
   ipcMain.handle("feature:create", (event, input) => {
-    if (!validateSender$2(event)) {
+    if (!validateSender$4(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     if (typeof input.title !== "string" || !input.title) {
@@ -1013,7 +1015,7 @@ ${"-".repeat(40)}
     return feature;
   });
   ipcMain.handle("feature:update", (event, id, update) => {
-    if (!validateSender$2(event)) {
+    if (!validateSender$4(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     if (typeof id !== "string" || !id) {
@@ -1052,7 +1054,7 @@ ${"-".repeat(40)}
     return feature;
   });
   ipcMain.handle("feature:delete", (event, id) => {
-    if (!validateSender$2(event)) {
+    if (!validateSender$4(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     if (typeof id !== "string" || !id) {
@@ -1070,7 +1072,7 @@ ${"-".repeat(40)}
     return { success: true };
   });
   ipcMain.handle("execution:pause", (event, reason) => {
-    if (!validateSender$2(event)) {
+    if (!validateSender$4(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     if (eventForwardingWindow && !eventForwardingWindow.isDestroyed()) {
@@ -1079,7 +1081,7 @@ ${"-".repeat(40)}
     return { success: true };
   });
   ipcMain.handle("execution:start", async (event, projectId) => {
-    if (!validateSender$2(event)) {
+    if (!validateSender$4(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     if (typeof projectId !== "string" || !projectId) {
@@ -1122,7 +1124,7 @@ ${"-".repeat(40)}
     }
   });
   ipcMain.handle("execution:resume", async (event) => {
-    if (!validateSender$2(event)) {
+    if (!validateSender$4(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     console.log("[ExecutionHandlers] Resuming execution");
@@ -1151,7 +1153,7 @@ ${"-".repeat(40)}
     }
   });
   ipcMain.handle("execution:stop", async (event) => {
-    if (!validateSender$2(event)) {
+    if (!validateSender$4(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     console.log("[ExecutionHandlers] Stopping execution");
@@ -1182,7 +1184,7 @@ ${"-".repeat(40)}
   ipcMain.handle(
     "interview:emit-started",
     (event, payload) => {
-      if (!validateSender$2(event)) {
+      if (!validateSender$4(event)) {
         throw new Error("Unauthorized IPC sender");
       }
       const eventBus = EventBus.getInstance();
@@ -1201,7 +1203,7 @@ ${"-".repeat(40)}
   ipcMain.handle(
     "interview:emit-message",
     (event, payload) => {
-      if (!validateSender$2(event)) {
+      if (!validateSender$4(event)) {
         throw new Error("Unauthorized IPC sender");
       }
       const eventBus = EventBus.getInstance();
@@ -1221,7 +1223,7 @@ ${"-".repeat(40)}
   ipcMain.handle(
     "interview:emit-requirement",
     (event, payload) => {
-      if (!validateSender$2(event)) {
+      if (!validateSender$4(event)) {
         throw new Error("Unauthorized IPC sender");
       }
       const eventBus = EventBus.getInstance();
@@ -1271,7 +1273,7 @@ ${"-".repeat(40)}
   ipcMain.handle(
     "interview:emit-completed",
     (event, payload) => {
-      if (!validateSender$2(event)) {
+      if (!validateSender$4(event)) {
         throw new Error("Unauthorized IPC sender");
       }
       const eventBus = EventBus.getInstance();
@@ -1291,7 +1293,7 @@ ${"-".repeat(40)}
   ipcMain.handle(
     "eventbus:emit",
     (event, channel, payload) => {
-      if (!validateSender$2(event)) {
+      if (!validateSender$4(event)) {
         throw new Error("Unauthorized IPC sender");
       }
       if (typeof channel !== "string" || !channel) {
@@ -1841,7 +1843,7 @@ class NexusNotInitializedError extends Error {
     this.name = "NexusNotInitializedError";
   }
 }
-function validateSender$1(event) {
+function validateSender$3(event) {
   const url = event.sender.getURL();
   return url.startsWith("http://localhost:") || url.startsWith("file://");
 }
@@ -1866,7 +1868,7 @@ function registerInterviewHandlers(interviewEngine, sessionManager, db) {
   ipcMain.handle(
     "interview:start",
     (event, projectId) => {
-      if (!validateSender$1(event)) {
+      if (!validateSender$3(event)) {
         throw new Error("Unauthorized IPC sender");
       }
       if (typeof projectId !== "string" || !projectId) {
@@ -1881,7 +1883,7 @@ function registerInterviewHandlers(interviewEngine, sessionManager, db) {
   ipcMain.handle(
     "interview:sendMessage",
     async (event, sessionId, message) => {
-      if (!validateSender$1(event)) {
+      if (!validateSender$3(event)) {
         throw new Error("Unauthorized IPC sender");
       }
       if (typeof sessionId !== "string" || !sessionId) {
@@ -1897,7 +1899,7 @@ function registerInterviewHandlers(interviewEngine, sessionManager, db) {
   ipcMain.handle(
     "interview:getSession",
     (event, sessionId) => {
-      if (!validateSender$1(event)) {
+      if (!validateSender$3(event)) {
         throw new Error("Unauthorized IPC sender");
       }
       if (typeof sessionId !== "string" || !sessionId) {
@@ -1909,7 +1911,7 @@ function registerInterviewHandlers(interviewEngine, sessionManager, db) {
   ipcMain.handle(
     "interview:resume",
     (event, sessionId) => {
-      if (!validateSender$1(event)) {
+      if (!validateSender$3(event)) {
         throw new Error("Unauthorized IPC sender");
       }
       if (typeof sessionId !== "string" || !sessionId) {
@@ -1925,7 +1927,7 @@ function registerInterviewHandlers(interviewEngine, sessionManager, db) {
   ipcMain.handle(
     "interview:resumeByProject",
     (event, projectId) => {
-      if (!validateSender$1(event)) {
+      if (!validateSender$3(event)) {
         throw new Error("Unauthorized IPC sender");
       }
       if (typeof projectId !== "string" || !projectId) {
@@ -1941,7 +1943,7 @@ function registerInterviewHandlers(interviewEngine, sessionManager, db) {
   ipcMain.handle(
     "interview:end",
     (event, sessionId) => {
-      if (!validateSender$1(event)) {
+      if (!validateSender$3(event)) {
         throw new Error("Unauthorized IPC sender");
       }
       if (typeof sessionId !== "string" || !sessionId) {
@@ -1958,7 +1960,7 @@ function registerInterviewHandlers(interviewEngine, sessionManager, db) {
   ipcMain.handle(
     "interview:pause",
     (event, sessionId) => {
-      if (!validateSender$1(event)) {
+      if (!validateSender$3(event)) {
         throw new Error("Unauthorized IPC sender");
       }
       if (typeof sessionId !== "string" || !sessionId) {
@@ -1975,7 +1977,7 @@ function registerInterviewHandlers(interviewEngine, sessionManager, db) {
   ipcMain.handle(
     "interview:getGreeting",
     (event) => {
-      if (!validateSender$1(event)) {
+      if (!validateSender$3(event)) {
         throw new Error("Unauthorized IPC sender");
       }
       return interviewEngine.getInitialGreeting();
@@ -3504,7 +3506,7 @@ ${results}`;
     return new Promise((resolve2) => setTimeout(resolve2, ms));
   }
 }
-function validateSender(event) {
+function validateSender$2(event) {
   const url = event.sender.getURL();
   return url.startsWith("http://localhost:") || url.startsWith("file://");
 }
@@ -3513,13 +3515,13 @@ function isValidProvider(provider) {
 }
 function registerSettingsHandlers() {
   ipcMain.handle("settings:getAll", (event) => {
-    if (!validateSender(event)) {
+    if (!validateSender$2(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     return settingsService.getAll();
   });
   ipcMain.handle("settings:get", (event, key) => {
-    if (!validateSender(event)) {
+    if (!validateSender$2(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     if (typeof key !== "string" || !key) {
@@ -3528,7 +3530,7 @@ function registerSettingsHandlers() {
     return settingsService.get(key);
   });
   ipcMain.handle("settings:set", (event, key, value) => {
-    if (!validateSender(event)) {
+    if (!validateSender$2(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     if (typeof key !== "string" || !key) {
@@ -3538,7 +3540,7 @@ function registerSettingsHandlers() {
     return true;
   });
   ipcMain.handle("settings:setApiKey", (event, provider, key) => {
-    if (!validateSender(event)) {
+    if (!validateSender$2(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     if (!isValidProvider(provider)) {
@@ -3550,7 +3552,7 @@ function registerSettingsHandlers() {
     return settingsService.setApiKey(provider, key);
   });
   ipcMain.handle("settings:hasApiKey", (event, provider) => {
-    if (!validateSender(event)) {
+    if (!validateSender$2(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     if (!isValidProvider(provider)) {
@@ -3559,7 +3561,7 @@ function registerSettingsHandlers() {
     return settingsService.hasApiKey(provider);
   });
   ipcMain.handle("settings:clearApiKey", (event, provider) => {
-    if (!validateSender(event)) {
+    if (!validateSender$2(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     if (!isValidProvider(provider)) {
@@ -3569,14 +3571,14 @@ function registerSettingsHandlers() {
     return true;
   });
   ipcMain.handle("settings:reset", (event) => {
-    if (!validateSender(event)) {
+    if (!validateSender$2(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     settingsService.reset();
     return true;
   });
   ipcMain.handle("settings:checkCliAvailability", async (event, provider) => {
-    if (!validateSender(event)) {
+    if (!validateSender$2(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     if (provider !== "claude" && provider !== "gemini") {
@@ -3605,6 +3607,807 @@ function registerSettingsHandlers() {
       return { detected: false, message: `Failed to detect ${provider} CLI` };
     }
   });
+}
+function validateSender$1(event) {
+  const url = event.sender.getURL();
+  return url.startsWith("http://localhost:") || url.startsWith("file://");
+}
+function registerDialogHandlers() {
+  ipcMain.handle(
+    "dialog:openDirectory",
+    async (event, options) => {
+      if (!validateSender$1(event)) {
+        console.error("[DialogHandlers] Unauthorized sender for dialog:openDirectory");
+        throw new Error("Unauthorized IPC sender");
+      }
+      const window = BrowserWindow.fromWebContents(event.sender);
+      if (!window) {
+        throw new Error("No browser window available for dialog");
+      }
+      try {
+        const result = await dialog.showOpenDialog(window, {
+          title: options?.title ?? "Select Directory",
+          defaultPath: options?.defaultPath,
+          buttonLabel: options?.buttonLabel ?? "Select",
+          properties: ["openDirectory", "createDirectory"]
+        });
+        if (result.canceled || result.filePaths.length === 0) {
+          return { canceled: true, path: null };
+        }
+        return { canceled: false, path: result.filePaths[0] };
+      } catch (error) {
+        console.error("[DialogHandlers] Error in openDirectory:", error);
+        throw error;
+      }
+    }
+  );
+  ipcMain.handle(
+    "dialog:openFile",
+    async (event, options) => {
+      if (!validateSender$1(event)) {
+        console.error("[DialogHandlers] Unauthorized sender for dialog:openFile");
+        throw new Error("Unauthorized IPC sender");
+      }
+      const window = BrowserWindow.fromWebContents(event.sender);
+      if (!window) {
+        throw new Error("No browser window available for dialog");
+      }
+      try {
+        const properties = ["openFile"];
+        if (options?.multiSelections) {
+          properties.push("multiSelections");
+        }
+        const result = await dialog.showOpenDialog(window, {
+          title: options?.title ?? "Select File",
+          defaultPath: options?.defaultPath,
+          filters: options?.filters,
+          properties
+        });
+        if (result.canceled || result.filePaths.length === 0) {
+          return { canceled: true, path: null };
+        }
+        return { canceled: false, path: result.filePaths[0] };
+      } catch (error) {
+        console.error("[DialogHandlers] Error in openFile:", error);
+        throw error;
+      }
+    }
+  );
+  ipcMain.handle(
+    "dialog:saveFile",
+    async (event, options) => {
+      if (!validateSender$1(event)) {
+        console.error("[DialogHandlers] Unauthorized sender for dialog:saveFile");
+        throw new Error("Unauthorized IPC sender");
+      }
+      const window = BrowserWindow.fromWebContents(event.sender);
+      if (!window) {
+        throw new Error("No browser window available for dialog");
+      }
+      try {
+        const result = await dialog.showSaveDialog(window, {
+          title: options?.title ?? "Save File",
+          defaultPath: options?.defaultPath,
+          filters: options?.filters
+        });
+        if (result.canceled || !result.filePath) {
+          return { canceled: true, path: null };
+        }
+        return { canceled: false, path: result.filePath };
+      } catch (error) {
+        console.error("[DialogHandlers] Error in saveFile:", error);
+        throw error;
+      }
+    }
+  );
+  console.log("[DialogHandlers] Registered dialog IPC handlers");
+}
+async function pathExists$2(p) {
+  try {
+    await fs.access(p);
+    return true;
+  } catch {
+    return false;
+  }
+}
+async function ensureDir$2(p) {
+  await fs.mkdir(p, { recursive: true });
+}
+async function writeJson$2(p, data, options) {
+  await fs.writeFile(p, JSON.stringify(data, null, options?.spaces));
+}
+class ProjectInitializer {
+  /**
+   * Initialize a new Nexus project at the specified path
+   *
+   * @param options - Project initialization options
+   * @returns Promise resolving to initialized project info
+   * @throws Error if path already exists as a file or non-empty directory
+   */
+  async initializeProject(options) {
+    const projectPath = path.join(options.path, options.name);
+    if (await pathExists$2(projectPath)) {
+      const stat2 = await fs.stat(projectPath);
+      if (!stat2.isDirectory()) {
+        throw new Error(`Path already exists as a file: ${projectPath}`);
+      }
+      const files = await fs.readdir(projectPath);
+      if (files.length > 0 && !files.includes(".nexus")) {
+        throw new Error(`Directory not empty and not a Nexus project: ${projectPath}`);
+      }
+    }
+    await this.createDirectoryStructure(projectPath);
+    await this.createNexusConfig(projectPath, options);
+    if (options.initGit !== false) {
+      await this.initializeGit(projectPath);
+    }
+    const projectId = this.generateProjectId();
+    console.log(`[ProjectInitializer] Project initialized: ${options.name} at ${projectPath}`);
+    return {
+      id: projectId,
+      name: options.name,
+      path: projectPath,
+      createdAt: /* @__PURE__ */ new Date()
+    };
+  }
+  /**
+   * Create the standard Nexus project directory structure
+   */
+  async createDirectoryStructure(projectPath) {
+    const directories = [
+      projectPath,
+      path.join(projectPath, "src"),
+      path.join(projectPath, "tests"),
+      path.join(projectPath, ".nexus"),
+      path.join(projectPath, ".nexus", "checkpoints"),
+      path.join(projectPath, ".nexus", "worktrees")
+    ];
+    for (const dir of directories) {
+      await ensureDir$2(dir);
+    }
+    console.log(`[ProjectInitializer] Created directory structure at ${projectPath}`);
+  }
+  /**
+   * Create the .nexus configuration files
+   */
+  async createNexusConfig(projectPath, options) {
+    const config = {
+      name: options.name,
+      description: options.description ?? "",
+      version: "1.0.0",
+      created: (/* @__PURE__ */ new Date()).toISOString(),
+      nexusVersion: "1.0.0",
+      settings: {
+        maxAgents: 4,
+        qaMaxIterations: 50,
+        taskMaxMinutes: 30,
+        checkpointIntervalSeconds: 7200
+      }
+    };
+    await writeJson$2(path.join(projectPath, ".nexus", "config.json"), config, {
+      spaces: 2
+    });
+    const stateContent = `# Project State
+
+## Current Phase
+initialization
+
+## Status
+pending
+
+## Last Updated
+${(/* @__PURE__ */ new Date()).toISOString()}
+`;
+    await fs.writeFile(path.join(projectPath, ".nexus", "STATE.md"), stateContent);
+    console.log(`[ProjectInitializer] Created Nexus configuration`);
+  }
+  /**
+   * Initialize git repository for the project
+   */
+  async initializeGit(projectPath) {
+    try {
+      const gitDir = path.join(projectPath, ".git");
+      if (await pathExists$2(gitDir)) {
+        console.log(`[ProjectInitializer] Git already initialized`);
+        return;
+      }
+      try {
+        execSync("git --version", { stdio: "pipe" });
+      } catch {
+        console.warn(`[ProjectInitializer] Git not available, skipping git initialization`);
+        return;
+      }
+      execSync("git init", { cwd: projectPath, stdio: "pipe" });
+      const gitignore = `# Dependencies
+node_modules/
+
+# Build
+dist/
+build/
+out/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Nexus working files
+.nexus/worktrees/
+.nexus/checkpoints/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Coverage
+coverage/
+
+# TypeScript cache
+*.tsbuildinfo
+`;
+      await fs.writeFile(path.join(projectPath, ".gitignore"), gitignore);
+      execSync("git add .", { cwd: projectPath, stdio: "pipe" });
+      execSync('git commit -m "Initial commit - Nexus project initialized"', {
+        cwd: projectPath,
+        stdio: "pipe"
+      });
+      console.log(`[ProjectInitializer] Git initialized with initial commit`);
+    } catch (error) {
+      console.warn(`[ProjectInitializer] Git initialization failed:`, error);
+    }
+  }
+  /**
+   * Generate a unique project ID
+   */
+  generateProjectId() {
+    return `proj_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+  }
+}
+const projectInitializer = new ProjectInitializer();
+async function pathExists$1(p) {
+  try {
+    await fs.access(p);
+    return true;
+  } catch {
+    return false;
+  }
+}
+async function ensureDir$1(p) {
+  await fs.mkdir(p, { recursive: true });
+}
+async function writeJson$1(p, data, options) {
+  await fs.writeFile(p, JSON.stringify(data, null, options?.spaces ?? 2));
+}
+async function readJson$1(p) {
+  const content = await fs.readFile(p, "utf-8");
+  return JSON.parse(content);
+}
+class ProjectLoader {
+  /**
+   * Load an existing project from the given path
+   *
+   * For Nexus projects: Loads existing configuration
+   * For non-Nexus directories: Creates .nexus structure with defaults
+   *
+   * @param projectPath - Absolute path to the project directory
+   * @returns Promise resolving to loaded project info
+   * @throws Error if path does not exist or is not a directory
+   */
+  async loadProject(projectPath) {
+    if (!await pathExists$1(projectPath)) {
+      throw new Error(`Project path does not exist: ${projectPath}`);
+    }
+    const stat2 = await fs.stat(projectPath);
+    if (!stat2.isDirectory()) {
+      throw new Error(`Project path is not a directory: ${projectPath}`);
+    }
+    const nexusConfigPath = path.join(projectPath, ".nexus", "config.json");
+    const isNexusProject = await pathExists$1(nexusConfigPath);
+    const gitDir = path.join(projectPath, ".git");
+    const hasGit = await pathExists$1(gitDir);
+    let config;
+    if (isNexusProject) {
+      config = await readJson$1(nexusConfigPath);
+      console.log(`[ProjectLoader] Loaded existing Nexus project: ${config.name}`);
+    } else {
+      config = this.createDefaultConfig(path.basename(projectPath));
+      await this.initializeNexusStructure(projectPath, config);
+      console.log(`[ProjectLoader] Initialized Nexus structure for: ${config.name}`);
+    }
+    return {
+      id: this.generateProjectId(projectPath),
+      name: config.name,
+      path: projectPath,
+      description: config.description,
+      config,
+      isNexusProject,
+      hasGit
+    };
+  }
+  /**
+   * Validate if a path is a valid project directory
+   *
+   * @param projectPath - Path to validate
+   * @returns Promise resolving to boolean
+   */
+  async validateProjectPath(projectPath) {
+    try {
+      if (!await pathExists$1(projectPath)) {
+        return false;
+      }
+      const stat2 = await fs.stat(projectPath);
+      return stat2.isDirectory();
+    } catch {
+      return false;
+    }
+  }
+  /**
+   * Check if path contains a Nexus project
+   *
+   * @param projectPath - Path to check
+   * @returns Promise resolving to boolean
+   */
+  async isNexusProject(projectPath) {
+    const configPath = path.join(projectPath, ".nexus", "config.json");
+    return pathExists$1(configPath);
+  }
+  /**
+   * Get project config without full loading
+   * Returns null if not a Nexus project
+   *
+   * @param projectPath - Path to project
+   * @returns Promise resolving to config or null
+   */
+  async getProjectConfig(projectPath) {
+    const configPath = path.join(projectPath, ".nexus", "config.json");
+    if (!await pathExists$1(configPath)) {
+      return null;
+    }
+    try {
+      return await readJson$1(configPath);
+    } catch {
+      return null;
+    }
+  }
+  /**
+   * Update project configuration
+   *
+   * @param projectPath - Path to project
+   * @param updates - Partial config updates
+   * @returns Promise resolving to updated config
+   * @throws Error if project not found
+   */
+  async updateProjectConfig(projectPath, updates) {
+    const configPath = path.join(projectPath, ".nexus", "config.json");
+    if (!await pathExists$1(configPath)) {
+      throw new Error(`Not a Nexus project: ${projectPath}`);
+    }
+    const currentConfig = await readJson$1(configPath);
+    const updatedConfig = {
+      ...currentConfig,
+      ...updates,
+      // Don't allow overwriting certain fields
+      created: currentConfig.created
+    };
+    await writeJson$1(configPath, updatedConfig, { spaces: 2 });
+    console.log(`[ProjectLoader] Updated project config: ${projectPath}`);
+    return updatedConfig;
+  }
+  /**
+   * Create default configuration for a project
+   */
+  createDefaultConfig(name) {
+    return {
+      name,
+      version: "1.0.0",
+      created: (/* @__PURE__ */ new Date()).toISOString(),
+      nexusVersion: "1.0.0",
+      settings: {
+        maxAgents: 4,
+        qaMaxIterations: 50,
+        taskMaxMinutes: 30,
+        checkpointIntervalSeconds: 7200
+      }
+    };
+  }
+  /**
+   * Initialize Nexus structure for an existing directory
+   */
+  async initializeNexusStructure(projectPath, config) {
+    const nexusDir = path.join(projectPath, ".nexus");
+    await ensureDir$1(nexusDir);
+    await ensureDir$1(path.join(nexusDir, "checkpoints"));
+    await ensureDir$1(path.join(nexusDir, "worktrees"));
+    await writeJson$1(path.join(nexusDir, "config.json"), config, { spaces: 2 });
+    const stateContent = `# Project State
+
+## Current Phase
+loaded
+
+## Status
+ready
+
+## Last Updated
+${(/* @__PURE__ */ new Date()).toISOString()}
+`;
+    await fs.writeFile(path.join(nexusDir, "STATE.md"), stateContent);
+    console.log(`[ProjectLoader] Initialized Nexus structure for existing project`);
+  }
+  /**
+   * Generate a consistent project ID from path
+   * Same path always produces same ID
+   */
+  generateProjectId(projectPath) {
+    let hash = 0;
+    for (let i = 0; i < projectPath.length; i++) {
+      const char = projectPath.charCodeAt(i);
+      hash = (hash << 5) - hash + char;
+      hash = hash & hash;
+    }
+    return `proj_${Math.abs(hash).toString(36)}`;
+  }
+}
+const projectLoader = new ProjectLoader();
+async function pathExists(p) {
+  try {
+    await fs.access(p);
+    return true;
+  } catch {
+    return false;
+  }
+}
+async function ensureDir(p) {
+  await fs.mkdir(p, { recursive: true });
+}
+async function writeJson(p, data, options) {
+  await fs.writeFile(p, JSON.stringify(data, null, options?.spaces));
+}
+async function readJson(p) {
+  const content = await fs.readFile(p, "utf-8");
+  return JSON.parse(content);
+}
+const MAX_RECENT = 10;
+class RecentProjectsService {
+  configPath;
+  cache = null;
+  constructor() {
+    try {
+      this.configPath = path.join(app.getPath("userData"), "recent-projects.json");
+    } catch {
+      this.configPath = path.join(process.cwd(), ".nexus-recent-projects.json");
+    }
+  }
+  /**
+   * Allow setting a custom config path (for testing)
+   */
+  setConfigPath(configPath) {
+    this.configPath = configPath;
+    this.cache = null;
+  }
+  /**
+   * Get list of recent projects, sorted by lastOpened descending
+   * @returns Array of recent projects
+   */
+  async getRecent() {
+    if (this.cache !== null) {
+      return this.cache;
+    }
+    try {
+      if (await pathExists(this.configPath)) {
+        const data = await readJson(this.configPath);
+        if (Array.isArray(data)) {
+          this.cache = data.filter(this.isValidRecentProject);
+          return this.cache;
+        }
+      }
+    } catch (error) {
+      console.error("[RecentProjectsService] Failed to load recent projects:", error);
+    }
+    this.cache = [];
+    return this.cache;
+  }
+  /**
+   * Add a project to the recent list (or update if exists)
+   * @param project - Project to add (path and name required)
+   */
+  async addRecent(project) {
+    if (!project.path || !project.name) {
+      console.warn("[RecentProjectsService] Invalid project data, skipping add");
+      return;
+    }
+    const recent = await this.getRecent();
+    const filtered = recent.filter((p) => p.path !== project.path);
+    filtered.unshift({
+      path: project.path,
+      name: project.name,
+      lastOpened: (/* @__PURE__ */ new Date()).toISOString()
+    });
+    const trimmed = filtered.slice(0, MAX_RECENT);
+    await this.save(trimmed);
+    console.log(`[RecentProjectsService] Added recent project: ${project.name}`);
+  }
+  /**
+   * Remove a project from the recent list
+   * @param projectPath - Path of project to remove
+   */
+  async removeRecent(projectPath) {
+    if (!projectPath) {
+      return;
+    }
+    const recent = await this.getRecent();
+    const filtered = recent.filter((p) => p.path !== projectPath);
+    if (filtered.length !== recent.length) {
+      await this.save(filtered);
+      console.log(`[RecentProjectsService] Removed recent project: ${projectPath}`);
+    }
+  }
+  /**
+   * Clear all recent projects
+   */
+  async clearRecent() {
+    await this.save([]);
+    console.log("[RecentProjectsService] Cleared all recent projects");
+  }
+  /**
+   * Clean up entries for projects that no longer exist
+   * @returns Number of entries removed
+   */
+  async cleanup() {
+    const recent = await this.getRecent();
+    const valid = [];
+    for (const project of recent) {
+      try {
+        if (await pathExists(project.path)) {
+          valid.push(project);
+        }
+      } catch {
+      }
+    }
+    const removed = recent.length - valid.length;
+    if (removed > 0) {
+      await this.save(valid);
+      console.log(`[RecentProjectsService] Cleaned up ${removed} non-existent entries`);
+    }
+    return removed;
+  }
+  /**
+   * Save recent projects to disk
+   */
+  async save(projects2) {
+    try {
+      await ensureDir(path.dirname(this.configPath));
+      await writeJson(this.configPath, projects2, { spaces: 2 });
+      this.cache = projects2;
+    } catch (error) {
+      console.error("[RecentProjectsService] Failed to save recent projects:", error);
+      throw error;
+    }
+  }
+  /**
+   * Validate that an object is a valid RecentProject
+   */
+  isValidRecentProject(obj) {
+    return typeof obj === "object" && obj !== null && typeof obj.path === "string" && typeof obj.name === "string" && typeof obj.lastOpened === "string";
+  }
+}
+const recentProjectsService = new RecentProjectsService();
+function validateSender(event) {
+  const url = event.sender.getURL();
+  return url.startsWith("http://localhost:") || url.startsWith("file://");
+}
+function registerProjectHandlers() {
+  ipcMain.handle(
+    "project:initialize",
+    async (event, options) => {
+      if (!validateSender(event)) {
+        console.error("[ProjectHandlers] Unauthorized sender for project:initialize");
+        return { success: false, error: "Unauthorized IPC sender" };
+      }
+      if (!options?.name || typeof options.name !== "string") {
+        return { success: false, error: "Project name is required" };
+      }
+      if (!options?.path || typeof options.path !== "string") {
+        return { success: false, error: "Project path is required" };
+      }
+      const sanitizedName = options.name.trim().replace(/[<>:"/\\|?*]/g, "-");
+      if (sanitizedName.length === 0) {
+        return { success: false, error: "Invalid project name" };
+      }
+      try {
+        const project = await projectInitializer.initializeProject({
+          ...options,
+          name: sanitizedName
+        });
+        console.log(`[ProjectHandlers] Project initialized: ${project.name}`);
+        return { success: true, data: project };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error("[ProjectHandlers] Initialize failed:", message);
+        return { success: false, error: message };
+      }
+    }
+  );
+  ipcMain.handle(
+    "project:load",
+    async (event, projectPath) => {
+      if (!validateSender(event)) {
+        console.error("[ProjectHandlers] Unauthorized sender for project:load");
+        return { success: false, error: "Unauthorized IPC sender" };
+      }
+      if (!projectPath || typeof projectPath !== "string") {
+        return { success: false, error: "Project path is required" };
+      }
+      try {
+        const project = await projectLoader.loadProject(projectPath);
+        console.log(`[ProjectHandlers] Project loaded: ${project.name} from ${project.path}`);
+        return { success: true, data: project };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error("[ProjectHandlers] Load failed:", message);
+        return { success: false, error: message };
+      }
+    }
+  );
+  ipcMain.handle(
+    "project:validatePath",
+    async (event, projectPath) => {
+      if (!validateSender(event)) {
+        console.error("[ProjectHandlers] Unauthorized sender for project:validatePath");
+        return { valid: false, error: "Unauthorized IPC sender" };
+      }
+      if (!projectPath || typeof projectPath !== "string") {
+        return { valid: false, error: "Project path is required" };
+      }
+      try {
+        const fs2 = await import("fs/promises");
+        const path2 = await import("path");
+        let exists = true;
+        try {
+          await fs2.access(projectPath);
+        } catch {
+          exists = false;
+        }
+        if (!exists) {
+          return { valid: false, error: "Path does not exist" };
+        }
+        const stat2 = await fs2.stat(projectPath);
+        if (!stat2.isDirectory()) {
+          return { valid: false, error: "Path is not a directory" };
+        }
+        const nexusConfigPath = path2.join(projectPath, ".nexus", "config.json");
+        let isNexusProject = true;
+        try {
+          await fs2.access(nexusConfigPath);
+        } catch {
+          isNexusProject = false;
+        }
+        return { valid: true, isNexusProject };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error("[ProjectHandlers] Validation failed:", message);
+        return { valid: false, error: message };
+      }
+    }
+  );
+  ipcMain.handle(
+    "project:isPathEmpty",
+    async (event, targetPath) => {
+      if (!validateSender(event)) {
+        console.error("[ProjectHandlers] Unauthorized sender for project:isPathEmpty");
+        return { empty: false, exists: false, error: "Unauthorized IPC sender" };
+      }
+      if (!targetPath || typeof targetPath !== "string") {
+        return { empty: false, exists: false, error: "Path is required" };
+      }
+      try {
+        const fs2 = await import("fs/promises");
+        let exists = true;
+        try {
+          await fs2.access(targetPath);
+        } catch {
+          exists = false;
+        }
+        if (!exists) {
+          return { empty: true, exists: false };
+        }
+        const stat2 = await fs2.stat(targetPath);
+        if (!stat2.isDirectory()) {
+          return { empty: false, exists: true, error: "Path is not a directory" };
+        }
+        const files = await fs2.readdir(targetPath);
+        return { empty: files.length === 0, exists: true };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error("[ProjectHandlers] isPathEmpty failed:", message);
+        return { empty: false, exists: false, error: message };
+      }
+    }
+  );
+  ipcMain.handle(
+    "project:getRecent",
+    async (event) => {
+      if (!validateSender(event)) {
+        console.error("[ProjectHandlers] Unauthorized sender for project:getRecent");
+        return [];
+      }
+      try {
+        return await recentProjectsService.getRecent();
+      } catch (error) {
+        console.error("[ProjectHandlers] getRecent failed:", error);
+        return [];
+      }
+    }
+  );
+  ipcMain.handle(
+    "project:addRecent",
+    async (event, project) => {
+      if (!validateSender(event)) {
+        console.error("[ProjectHandlers] Unauthorized sender for project:addRecent");
+        return { success: false, error: "Unauthorized IPC sender" };
+      }
+      if (!project?.path || !project?.name) {
+        return { success: false, error: "Project path and name are required" };
+      }
+      try {
+        await recentProjectsService.addRecent(project);
+        return { success: true };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error("[ProjectHandlers] addRecent failed:", message);
+        return { success: false, error: message };
+      }
+    }
+  );
+  ipcMain.handle(
+    "project:removeRecent",
+    async (event, projectPath) => {
+      if (!validateSender(event)) {
+        console.error("[ProjectHandlers] Unauthorized sender for project:removeRecent");
+        return { success: false, error: "Unauthorized IPC sender" };
+      }
+      if (!projectPath) {
+        return { success: false, error: "Project path is required" };
+      }
+      try {
+        await recentProjectsService.removeRecent(projectPath);
+        return { success: true };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error("[ProjectHandlers] removeRecent failed:", message);
+        return { success: false, error: message };
+      }
+    }
+  );
+  ipcMain.handle(
+    "project:clearRecent",
+    async (event) => {
+      if (!validateSender(event)) {
+        console.error("[ProjectHandlers] Unauthorized sender for project:clearRecent");
+        return { success: false, error: "Unauthorized IPC sender" };
+      }
+      try {
+        await recentProjectsService.clearRecent();
+        return { success: true };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error("[ProjectHandlers] clearRecent failed:", message);
+        return { success: false, error: message };
+      }
+    }
+  );
+  console.log("[ProjectHandlers] Registered project IPC handlers");
 }
 class GeminiAPIError extends Error {
   statusCode;
@@ -5048,28 +5851,28 @@ class DependencyResolver {
     const taskMap = /* @__PURE__ */ new Map();
     const visited = /* @__PURE__ */ new Set();
     const recursionStack = /* @__PURE__ */ new Set();
-    const path = [];
+    const path2 = [];
     for (const task of tasks2) {
       taskMap.set(task.id, task);
     }
     const dfs = (taskId) => {
       visited.add(taskId);
       recursionStack.add(taskId);
-      path.push(taskId);
+      path2.push(taskId);
       const task = taskMap.get(taskId);
       for (const dep of task?.dependsOn || []) {
         if (!taskMap.has(dep)) continue;
         if (!visited.has(dep)) {
           dfs(dep);
         } else if (recursionStack.has(dep)) {
-          const cycleStart = path.indexOf(dep);
-          const cyclePath = path.slice(cycleStart);
+          const cycleStart = path2.indexOf(dep);
+          const cyclePath = path2.slice(cycleStart);
           cycles.push({
             taskIds: [...cyclePath]
           });
         }
       }
-      path.pop();
+      path2.pop();
       recursionStack.delete(taskId);
     };
     for (const task of tasks2) {
@@ -8048,10 +8851,10 @@ class GitError extends Error {
 }
 class NotARepositoryError extends GitError {
   path;
-  constructor(path) {
-    super(`Not a git repository: ${path}`);
+  constructor(path2) {
+    super(`Not a git repository: ${path2}`);
     this.name = "NotARepositoryError";
-    this.path = path;
+    this.path = path2;
   }
 }
 class BranchNotFoundError extends GitError {
@@ -8549,7 +9352,7 @@ class QALoopEngine {
   workingDir;
   constructor(config) {
     this.qaRunner = config.qaRunner;
-    this.maxIterations = config.maxIterations ?? 3;
+    this.maxIterations = config.maxIterations ?? 50;
     this.stopOnFirstFailure = config.stopOnFirstFailure ?? true;
     this.workingDir = config.workingDir;
   }
@@ -9841,7 +10644,7 @@ class NexusFactory {
     });
     const qaEngine = new QALoopEngine({
       qaRunner,
-      maxIterations: config.qaConfig?.maxIterations ?? 3,
+      maxIterations: config.qaConfig?.maxIterations ?? 50,
       stopOnFirstFailure: true,
       workingDir: config.workingDir
     });
@@ -9951,7 +10754,7 @@ class NexusFactory {
     });
     const qaEngine = new QALoopEngine({
       qaRunner,
-      maxIterations: 3,
+      maxIterations: 50,
       stopOnFirstFailure: true,
       workingDir: config.workingDir
     });
@@ -13323,12 +14126,12 @@ class DependencyGraphBuilder {
     const cycles = [];
     const visited = /* @__PURE__ */ new Set();
     const recursionStack = /* @__PURE__ */ new Set();
-    const path = [];
+    const path2 = [];
     const dfs = (node) => {
       if (recursionStack.has(node)) {
-        const cycleStart = path.indexOf(node);
+        const cycleStart = path2.indexOf(node);
         if (cycleStart !== -1) {
-          const cycle = path.slice(cycleStart);
+          const cycle = path2.slice(cycleStart);
           cycle.push(node);
           cycles.push(cycle);
         }
@@ -13339,14 +14142,14 @@ class DependencyGraphBuilder {
       }
       visited.add(node);
       recursionStack.add(node);
-      path.push(node);
+      path2.push(node);
       const dependencies = this.dependenciesMap.get(node);
       if (dependencies) {
         for (const dep of dependencies) {
           dfs(dep);
         }
       }
-      path.pop();
+      path2.pop();
       recursionStack.delete(node);
     };
     for (const file of this.knownFiles) {
@@ -14883,6 +15686,10 @@ class NexusBootstrap {
   gitService = null;
   repoMapGenerator = null;
   unsubscribers = [];
+  /** Track project start times for completion metrics */
+  projectStartTimes = /* @__PURE__ */ new Map();
+  /** Track project features for completion metrics */
+  projectFeatures = /* @__PURE__ */ new Map();
   constructor(config) {
     this.config = config;
     this.eventBus = getEventBus();
@@ -14960,7 +15767,7 @@ class NexusBootstrap {
       sessionManager: this.sessionManager,
       eventBus: this.eventBus,
       startGenesis: (name) => this.startGenesisMode(name),
-      startEvolution: (path, name) => this.startEvolutionMode(path, name),
+      startEvolution: (path2, name) => this.startEvolutionMode(path2, name),
       createCheckpoint: (projectId, reason) => this.createCheckpointForProject(projectId, reason),
       restoreCheckpoint: (checkpointId, restoreGit) => this.restoreCheckpointById(checkpointId, restoreGit),
       listCheckpoints: (projectId) => this.listCheckpointsForProject(projectId),
@@ -15021,7 +15828,12 @@ class NexusBootstrap {
           console.log(`[NexusBootstrap] Requirement saved to DB for project ${projectId}`);
         }
       } catch (error) {
-        console.warn(`[NexusBootstrap] Failed to save requirement: ${error instanceof Error ? error.message : String(error)}`);
+        const message = error instanceof Error ? error.message : String(error);
+        console.warn(`[NexusBootstrap] Failed to save requirement: ${message}`);
+        void this.eventBus.emit("system:warning", {
+          component: "NexusBootstrap",
+          message: `Failed to save requirement: ${message}`
+        });
       }
     });
     this.unsubscribers.push(requirementCapturedUnsub);
@@ -15066,19 +15878,32 @@ class NexusBootstrap {
           });
           console.log(`[NexusBootstrap] Forwarded planning:completed to UI`);
         }
+        const projectFeatures = this.tasksToFeatures(decomposedTasks, projectId);
         coordinator.initialize({
           projectId,
           projectPath: this.config.workingDir,
-          features: this.tasksToFeatures(decomposedTasks, projectId),
+          features: projectFeatures,
           mode: "genesis"
         });
         coordinator.start(projectId);
+        this.projectStartTimes.set(projectId, /* @__PURE__ */ new Date());
+        this.projectFeatures.set(projectId, projectFeatures);
         console.log(`[NexusBootstrap] Execution started for ${projectId}`);
       } catch (error) {
-        console.error("[NexusBootstrap] Planning failed:", error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error("[NexusBootstrap] Planning failed:", errorMessage);
+        try {
+          const coordStatus = coordinator.getStatus();
+          if (coordStatus.state !== "idle") {
+            await coordinator.stop();
+            console.log("[NexusBootstrap] Coordinator stopped after planning failure");
+          }
+        } catch (stopError) {
+          console.error("[NexusBootstrap] Failed to stop coordinator:", stopError);
+        }
         await this.eventBus.emit("project:failed", {
           projectId,
-          error: error instanceof Error ? error.message : String(error),
+          error: `[Planning] ${errorMessage}`,
           recoverable: true
         });
       }
@@ -15130,24 +15955,32 @@ class NexusBootstrap {
           lastError: String(eventData.lastError ?? "")
         });
       } else if (eventType === "project:completed" && "projectId" in eventData) {
-        console.log(`[NexusBootstrap] Project completed: ${String(eventData.projectId)}`);
+        const projectIdStr = String(eventData.projectId);
+        console.log(`[NexusBootstrap] Project completed: ${projectIdStr}`);
         const totalTasks = Number(eventData.totalTasks ?? 0);
         const completedTasks = Number(eventData.completedTasks ?? 0);
         const failedTasks = Number(eventData.failedTasks ?? 0);
+        const startTime = this.projectStartTimes.get(projectIdStr);
+        const totalDuration = startTime ? Math.round((Date.now() - startTime.getTime()) / 1e3) : 0;
+        const features2 = this.projectFeatures.get(projectIdStr) ?? [];
+        const featuresTotal = features2.length;
+        const featuresCompleted = features2.filter((f) => f.status === "completed").length;
+        this.projectStartTimes.delete(projectIdStr);
+        this.projectFeatures.delete(projectIdStr);
         void this.eventBus.emit("project:completed", {
-          projectId: String(eventData.projectId),
-          totalDuration: 0,
-          // TODO: Track actual duration in coordinator
+          projectId: projectIdStr,
+          totalDuration,
           metrics: {
             tasksTotal: totalTasks,
             tasksCompleted: completedTasks,
             tasksFailed: failedTasks,
-            featuresTotal: 0,
-            // TODO: Track features
-            featuresCompleted: 0,
+            featuresTotal,
+            featuresCompleted,
             estimatedTotalMinutes: 0,
-            actualTotalMinutes: 0,
+            // Would require deeper tracking of task estimates
+            actualTotalMinutes: Math.round(totalDuration / 60),
             averageQAIterations: 0
+            // Requires deeper tracking
           }
         });
       } else if (eventType === "project:failed" && "projectId" in eventData) {
@@ -15675,6 +16508,8 @@ void app.whenReady().then(async () => {
   electronApp.setAppUserModelId("com.nexus.app");
   registerIpcHandlers();
   registerSettingsHandlers();
+  registerDialogHandlers();
+  registerProjectHandlers();
   registerFallbackInterviewHandlers("Nexus is still initializing...");
   app.on("browser-window-created", (_, window) => {
     optimizer.watchWindowShortcuts(window);
@@ -15689,6 +16524,9 @@ void app.whenReady().then(async () => {
       createWindow();
     }
   });
+}).catch((error) => {
+  console.error("[Main] Failed to initialize app:", error);
+  app.quit();
 });
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {

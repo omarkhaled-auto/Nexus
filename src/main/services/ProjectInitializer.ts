@@ -20,9 +20,30 @@
  *   .gitignore
  */
 
-import * as fs from 'fs-extra';
+import * as fs from 'fs/promises';
+import { existsSync } from 'fs';
 import * as path from 'path';
 import { execSync } from 'child_process';
+
+/** Helper to check if path exists */
+async function pathExists(p: string): Promise<boolean> {
+  try {
+    await fs.access(p);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Helper to ensure directory exists */
+async function ensureDir(p: string): Promise<void> {
+  await fs.mkdir(p, { recursive: true });
+}
+
+/** Helper to write JSON file */
+async function writeJson(p: string, data: unknown, options?: { spaces?: number }): Promise<void> {
+  await fs.writeFile(p, JSON.stringify(data, null, options?.spaces ?? 2));
+}
 
 /**
  * Options for initializing a new project
@@ -84,7 +105,7 @@ export class ProjectInitializer {
     const projectPath = path.join(options.path, options.name);
 
     // Validate path doesn't already exist as a file
-    if (await fs.pathExists(projectPath)) {
+    if (await pathExists(projectPath)) {
       const stat = await fs.stat(projectPath);
       if (!stat.isDirectory()) {
         throw new Error(`Path already exists as a file: ${projectPath}`);
@@ -134,7 +155,7 @@ export class ProjectInitializer {
     ];
 
     for (const dir of directories) {
-      await fs.ensureDir(dir);
+      await ensureDir(dir);
     }
 
     console.log(`[ProjectInitializer] Created directory structure at ${projectPath}`);
@@ -162,7 +183,7 @@ export class ProjectInitializer {
     };
 
     // Write config.json
-    await fs.writeJson(path.join(projectPath, '.nexus', 'config.json'), config, {
+    await writeJson(path.join(projectPath, '.nexus', 'config.json'), config, {
       spaces: 2,
     });
 
@@ -191,7 +212,7 @@ ${new Date().toISOString()}
     try {
       // Check if already a git repo
       const gitDir = path.join(projectPath, '.git');
-      if (await fs.pathExists(gitDir)) {
+      if (await pathExists(gitDir)) {
         console.log(`[ProjectInitializer] Git already initialized`);
         return;
       }
