@@ -24,6 +24,10 @@ import {
   projectLoader,
   type LoadedProject,
 } from '../services/ProjectLoader';
+import {
+  recentProjectsService,
+  type RecentProject,
+} from '../services/RecentProjectsService';
 
 /**
  * Result type for project operations
@@ -209,6 +213,110 @@ export function registerProjectHandlers(): void {
         const message = error instanceof Error ? error.message : String(error);
         console.error('[ProjectHandlers] isPathEmpty failed:', message);
         return { empty: false, exists: false, error: message };
+      }
+    }
+  );
+
+  // ========================================
+  // Handler: Get Recent Projects
+  // ========================================
+  ipcMain.handle(
+    'project:getRecent',
+    async (
+      event
+    ): Promise<RecentProject[]> => {
+      if (!validateSender(event)) {
+        console.error('[ProjectHandlers] Unauthorized sender for project:getRecent');
+        return [];
+      }
+
+      try {
+        return await recentProjectsService.getRecent();
+      } catch (error) {
+        console.error('[ProjectHandlers] getRecent failed:', error);
+        return [];
+      }
+    }
+  );
+
+  // ========================================
+  // Handler: Add Recent Project
+  // ========================================
+  ipcMain.handle(
+    'project:addRecent',
+    async (
+      event,
+      project: { path: string; name: string }
+    ): Promise<{ success: boolean; error?: string }> => {
+      if (!validateSender(event)) {
+        console.error('[ProjectHandlers] Unauthorized sender for project:addRecent');
+        return { success: false, error: 'Unauthorized IPC sender' };
+      }
+
+      if (!project?.path || !project?.name) {
+        return { success: false, error: 'Project path and name are required' };
+      }
+
+      try {
+        await recentProjectsService.addRecent(project);
+        return { success: true };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error('[ProjectHandlers] addRecent failed:', message);
+        return { success: false, error: message };
+      }
+    }
+  );
+
+  // ========================================
+  // Handler: Remove Recent Project
+  // ========================================
+  ipcMain.handle(
+    'project:removeRecent',
+    async (
+      event,
+      projectPath: string
+    ): Promise<{ success: boolean; error?: string }> => {
+      if (!validateSender(event)) {
+        console.error('[ProjectHandlers] Unauthorized sender for project:removeRecent');
+        return { success: false, error: 'Unauthorized IPC sender' };
+      }
+
+      if (!projectPath) {
+        return { success: false, error: 'Project path is required' };
+      }
+
+      try {
+        await recentProjectsService.removeRecent(projectPath);
+        return { success: true };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error('[ProjectHandlers] removeRecent failed:', message);
+        return { success: false, error: message };
+      }
+    }
+  );
+
+  // ========================================
+  // Handler: Clear Recent Projects
+  // ========================================
+  ipcMain.handle(
+    'project:clearRecent',
+    async (
+      event
+    ): Promise<{ success: boolean; error?: string }> => {
+      if (!validateSender(event)) {
+        console.error('[ProjectHandlers] Unauthorized sender for project:clearRecent');
+        return { success: false, error: 'Unauthorized IPC sender' };
+      }
+
+      try {
+        await recentProjectsService.clearRecent();
+        return { success: true };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error('[ProjectHandlers] clearRecent failed:', message);
+        return { success: false, error: message };
       }
     }
   );

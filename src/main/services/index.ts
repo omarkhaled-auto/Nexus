@@ -33,3 +33,10 @@ export {
   type LoadedProject,
   type ProjectConfig,
 } from './ProjectLoader';
+
+// Recent Projects Service (Phase 21 Task 8)
+export {
+  RecentProjectsService,
+  recentProjectsService,
+  type RecentProject,
+} from './RecentProjectsService';

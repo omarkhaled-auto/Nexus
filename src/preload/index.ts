@@ -886,6 +886,45 @@ const nexusAPI = {
     isPathEmpty: (targetPath: string): Promise<{ empty: boolean; exists: boolean; error?: string }> =>
       ipcRenderer.invoke('project:isPathEmpty', targetPath),
   },
+
+  // ========================================
+  // Recent Projects API (Phase 21 Task 8)
+  // ========================================
+
+  /**
+   * Recent projects operations for quick access to previously opened projects
+   */
+  recentProjects: {
+    /**
+     * Get list of recent projects (up to 10)
+     * @returns Promise with array of recent projects
+     */
+    get: (): Promise<Array<{ path: string; name: string; lastOpened: string }>> =>
+      ipcRenderer.invoke('project:getRecent'),
+
+    /**
+     * Add a project to the recent list
+     * @param project - Project to add (path and name required)
+     * @returns Promise with { success: boolean; error?: string }
+     */
+    add: (project: { path: string; name: string }): Promise<{ success: boolean; error?: string }> =>
+      ipcRenderer.invoke('project:addRecent', project),
+
+    /**
+     * Remove a project from the recent list
+     * @param projectPath - Path of project to remove
+     * @returns Promise with { success: boolean; error?: string }
+     */
+    remove: (projectPath: string): Promise<{ success: boolean; error?: string }> =>
+      ipcRenderer.invoke('project:removeRecent', projectPath),
+
+    /**
+     * Clear all recent projects
+     * @returns Promise with { success: boolean; error?: string }
+     */
+    clear: (): Promise<{ success: boolean; error?: string }> =>
+      ipcRenderer.invoke('project:clearRecent'),
+  },
 }
 
 // Expose the API to the renderer process via contextBridge

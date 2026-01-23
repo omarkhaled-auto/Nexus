@@ -32,6 +32,16 @@ vi.mock('../../../../src/main/services/ProjectLoader', () => ({
   },
 }));
 
+// Mock RecentProjectsService (Phase 21 Task 8)
+vi.mock('../../../../src/main/services/RecentProjectsService', () => ({
+  recentProjectsService: {
+    getRecent: vi.fn().mockResolvedValue([]),
+    addRecent: vi.fn().mockResolvedValue(undefined),
+    removeRecent: vi.fn().mockResolvedValue(undefined),
+    clearRecent: vi.fn().mockResolvedValue(undefined),
+  },
+}));
+
 import { registerProjectHandlers } from '../../../../src/main/ipc/projectHandlers';
 import { ipcMain } from 'electron';
 import { projectInitializer } from '../../../../src/main/services/ProjectInitializer';
@@ -67,8 +77,27 @@ describe('Project Handlers', () => {
         expect.any(Function)
       );
 
-      // Verify exactly 4 handlers were registered (initialize, load, validatePath, isPathEmpty)
-      expect(ipcMain.handle).toHaveBeenCalledTimes(4);
+      // Phase 21 Task 8: Recent Projects handlers
+      expect(ipcMain.handle).toHaveBeenCalledWith(
+        'project:getRecent',
+        expect.any(Function)
+      );
+      expect(ipcMain.handle).toHaveBeenCalledWith(
+        'project:addRecent',
+        expect.any(Function)
+      );
+      expect(ipcMain.handle).toHaveBeenCalledWith(
+        'project:removeRecent',
+        expect.any(Function)
+      );
+      expect(ipcMain.handle).toHaveBeenCalledWith(
+        'project:clearRecent',
+        expect.any(Function)
+      );
+
+      // Verify exactly 8 handlers were registered
+      // (initialize, load, validatePath, isPathEmpty, getRecent, addRecent, removeRecent, clearRecent)
+      expect(ipcMain.handle).toHaveBeenCalledTimes(8);
     });
 
     it('should not throw when called multiple times', () => {
