@@ -6,6 +6,10 @@
  */
 
 import type { TaskStatus, TaskPriority } from './task';
+import type { AgentType } from './agent';
+
+// Re-export AgentType for convenience
+export type { AgentType };
 
 // ============================================================================
 // Kanban-Specific Status Types
@@ -26,11 +30,6 @@ export type KanbanTaskStatus =
   | 'completed'    // Successfully done
   | 'failed'       // Failed after retries
   | 'cancelled';   // Manually cancelled
-
-/**
- * Agent types available for task execution
- */
-export type AgentType = 'planner' | 'coder' | 'reviewer' | 'tester' | 'merger';
 
 /**
  * Task complexity levels

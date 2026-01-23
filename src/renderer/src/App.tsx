@@ -14,6 +14,7 @@ import { KeyboardShortcutsModal } from './components/KeyboardShortcutsModal';
 
 // Lazy load pages that aren't immediately needed
 const InterviewPage = lazy(() => import('./pages/InterviewPage'));
+const PlanningPage = lazy(() => import('./pages/PlanningPage'));
 const KanbanPage = lazy(() => import('./pages/KanbanPage'));
 const DashboardPage = lazy(() => import('./pages/DashboardPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
@@ -41,6 +42,7 @@ function PageLoader(): ReactElement {
  * Routes:
  * - / → Mode Selector (Genesis/Evolution cards)
  * - /genesis → Interview Page (Phase 6)
+ * - /planning → Planning Page (Phase 24) - Shows progress during task creation
  * - /evolution → Kanban Page (Phase 7)
  * - /dashboard → Dashboard Page (Phase 8)
  * - /agents → Agents Activity Page (Phase 17)
@@ -61,6 +63,14 @@ const router = createHashRouter([
         element: (
           <Suspense fallback={<PageLoader />}>
             <InterviewPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'planning',
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <PlanningPage />
           </Suspense>
         ),
       },

@@ -120,13 +120,14 @@ export default function InterviewPage(): ReactElement {
       // Complete the interview in the store (emits INTERVIEW_COMPLETED event)
       completeInterviewStore();
 
-      // Navigate to tasks page with requirements context
-      void navigate('/evolution', { state: { requirements } });
+      // Navigate to planning page with requirements context
+      // Planning page will show progress while tasks are created, then auto-navigate to Kanban
+      void navigate('/planning', { state: { requirements } });
     } catch (err) {
       console.error('Failed to complete interview:', err);
       // Still navigate even if backend call fails - requirements are in store
       completeInterviewStore();
-      void navigate('/evolution', { state: { requirements } });
+      void navigate('/planning', { state: { requirements } });
     } finally {
       setIsCompleting(false);
     }
