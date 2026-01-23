@@ -4,7 +4,7 @@
 // Note: This file uses `any` typed external services (QALoopEngine, WorktreeManager, etc.)
 // to avoid circular dependencies. The unsafe-* lint rules are disabled for lines that
 // interact with these services.
-/* eslint-disable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
 
 import type {
   INexusCoordinator,

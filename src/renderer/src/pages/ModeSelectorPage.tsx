@@ -284,7 +284,7 @@ export function ModeSelectorPage(): ReactElement {
         open={showProjectSelector}
         onOpenChange={setShowProjectSelector}
         onProjectSelected={handleProjectSelected}
-        onCancel={() => setShowProjectSelector(false)}
+        onCancel={() => { setShowProjectSelector(false); }}
       />
 
       {/* Legacy Project Selection Modal (fallback when no dialog API) */}

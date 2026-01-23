@@ -226,7 +226,7 @@ export function RecentProjectsList({
         {projects.map((project) => (
           <button
             key={project.path}
-            onClick={() => handleSelect(project)}
+            onClick={() => { handleSelect(project); }}
             className={cn(
               'w-full text-left p-3 rounded-lg',
               'flex items-center gap-3 group',
