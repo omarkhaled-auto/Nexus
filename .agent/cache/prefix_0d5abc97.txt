@@ -1,3 +1,0 @@
-# Nexus Codebase Unification - Phase 18
-
-## Context

@@ -1,3 +1,0 @@
-# Phase 20: Complete End-to-End Wiring & Runtime Fixes
-
-## Context
