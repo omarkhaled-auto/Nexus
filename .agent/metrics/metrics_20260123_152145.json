@@ -1,0 +1,43 @@
+{
+  "summary": {
+    "iterations": 1,
+    "successful": 1,
+    "failed": 0,
+    "errors": 0,
+    "checkpoints": 0,
+    "rollbacks": 0
+  },
+  "iterations": [
+    {
+      "iteration": 1,
+      "duration": 1.923546314239502,
+      "success": true,
+      "error": "",
+      "timestamp": "2026-01-23T15:21:43.186398",
+      "trigger_reason": "initial",
+      "output_preview": "",
+      "tokens_used": 0,
+      "cost": 0.0,
+      "tools_used": []
+    }
+  ],
+  "cost": {
+    "total": 0.0,
+    "by_tool": {
+      "claude": 0.0
+    },
+    "history": [
+      {
+        "timestamp": 1769167303.184504,
+        "tool": "claude",
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "cost": 0.0
+      }
+    ]
+  },
+  "analysis": {
+    "avg_iteration_duration": 1.923546314239502,
+    "success_rate": 100.0
+  }
+}
