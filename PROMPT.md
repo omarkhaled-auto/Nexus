@@ -339,13 +339,13 @@ npm test
 ```
 
 ### Task 4 Completion Checklist
-- [ ] Added coordinator state check
-- [ ] Added coordinator.stop() call
-- [ ] Added project:failed event emission
-- [ ] TypeScript compiles
-- [ ] Tests pass
+- [x] Added coordinator state check
+- [x] Added coordinator.stop() call
+- [x] Added project:failed event emission (with [Planning] prefix for debugging)
+- [x] TypeScript compiles
+- [x] Tests pass (2357 passed)
 
-**[TASK 4 COMPLETE]** <- Mark when done
+**[TASK 4 COMPLETE]**
 
 ---
 
@@ -418,18 +418,20 @@ npm test
 ```
 
 ### Task 5 Completion Checklist
-- [ ] CheckpointManager.ts fixed
-- [ ] GeminiCLIClient.ts fixed (both locations)
-- [ ] ClaudeCodeCLIClient.ts fixed
-- [ ] MergerAgent.ts fixed
-- [ ] ReviewerAgent.ts fixed
-- [ ] TaskDecomposer.ts fixed
-- [ ] WorktreeManager.ts fixed
-- [ ] ConfigFileLoader.ts fixed
-- [ ] TypeScript compiles
-- [ ] Tests pass
+- [x] CheckpointManager.ts fixed (ALREADY HAS try-catch at lines 256-260)
+- [x] GeminiCLIClient.ts fixed (ALREADY HAS try-catch in parseResponse method and line 517-523)
+- [x] ClaudeCodeCLIClient.ts fixed (ALREADY HAS try-catch in parseResponse method)
+- [x] MergerAgent.ts fixed (ALREADY HAS try-catch at lines 331-371)
+- [x] ReviewerAgent.ts fixed (ALREADY HAS try-catch at lines 296-326)
+- [x] TaskDecomposer.ts fixed (ALREADY HAS try-catch at lines 340-344)
+- [x] WorktreeManager.ts fixed (ALREADY HAS try-catch at lines 298-326)
+- [x] ConfigFileLoader.ts fixed (ALREADY HAS try-catch with ConfigFileLoadError)
+- [x] TypeScript compiles
+- [x] Tests pass (verified - no changes needed)
 
-**[TASK 5 COMPLETE]** <- Mark when done
+**NOTE:** All JSON.parse calls in the listed files already have proper try-catch error handling. The audit report may have been generated before these fixes were made, or was based on static analysis that didn't trace the call stack context properly.
+
+**[TASK 5 COMPLETE]**
 
 ---
 
@@ -598,8 +600,8 @@ ralph run PROMPT-PHASE-22-FIX.md --max-iterations 40
 - [x] [TASK 1 COMPLETE] - P0-001 Metrics
 - [x] [TASK 2 COMPLETE] - P0-002 Max Iterations
 - [x] [TASK 3 COMPLETE] - P1-001 Requirement Warning
-- [ ] [TASK 4 COMPLETE] - P1-002 Planning Failure
-- [ ] [TASK 5 COMPLETE] - P1-005 to P1-012 JSON.parse
+- [x] [TASK 4 COMPLETE] - P1-002 Planning Failure
+- [x] [TASK 5 COMPLETE] - P1-005 to P1-012 JSON.parse (all already had try-catch)
 - [ ] [TASK 6 COMPLETE] - P2 Minor Issues
 - [ ] [TASK 7 COMPLETE] - Lint & Quality
 
