@@ -153,6 +153,10 @@ export class NexusBootstrap {
   private gitService: GitService | null = null;
   private repoMapGenerator: RepoMapGenerator | null = null;
   private unsubscribers: Array<() => void> = [];
+  /** Track project start times for completion metrics */
+  private projectStartTimes: Map<string, Date> = new Map();
+  /** Track project features for completion metrics */
+  private projectFeatures: Map<string, OrchestrationFeature[]> = new Map();
 
   constructor(config: NexusBootstrapConfig) {
     this.config = config;
@@ -415,15 +419,19 @@ export class NexusBootstrap {
         }
 
         // Initialize coordinator with project config
+        const projectFeatures = this.tasksToFeatures(decomposedTasks, projectId);
         coordinator.initialize({
           projectId,
           projectPath: this.config.workingDir,
-          features: this.tasksToFeatures(decomposedTasks, projectId),
+          features: projectFeatures,
           mode: 'genesis',
         });
 
         // Start execution
         coordinator.start(projectId);
+        // Record start time and features for completion metrics
+        this.projectStartTimes.set(projectId, new Date());
+        this.projectFeatures.set(projectId, projectFeatures);
         console.log(`[NexusBootstrap] Execution started for ${projectId}`);
 
       } catch (error) {
@@ -496,23 +504,39 @@ export class NexusBootstrap {
         });
       } else if (eventType === 'project:completed' && 'projectId' in eventData) {
         // Phase 20 Task 10: Forward project:completed from coordinator to event bus
-        console.log(`[NexusBootstrap] Project completed: ${String(eventData.projectId)}`);
+        const projectIdStr = String(eventData.projectId);
+        console.log(`[NexusBootstrap] Project completed: ${projectIdStr}`);
         const totalTasks = Number(eventData.totalTasks ?? 0);
         const completedTasks = Number(eventData.completedTasks ?? 0);
         const failedTasks = Number(eventData.failedTasks ?? 0);
 
+        // Calculate actual duration from stored start time
+        const startTime = this.projectStartTimes.get(projectIdStr);
+        const totalDuration = startTime
+          ? Math.round((Date.now() - startTime.getTime()) / 1000)
+          : 0;
+
+        // Get features data
+        const features = this.projectFeatures.get(projectIdStr) ?? [];
+        const featuresTotal = features.length;
+        const featuresCompleted = features.filter(f => f.status === 'completed').length;
+
+        // Clean up stored data
+        this.projectStartTimes.delete(projectIdStr);
+        this.projectFeatures.delete(projectIdStr);
+
         void this.eventBus.emit('project:completed', {
-          projectId: String(eventData.projectId),
-          totalDuration: 0, // TODO: Track actual duration in coordinator
+          projectId: projectIdStr,
+          totalDuration,
           metrics: {
             tasksTotal: totalTasks,
             tasksCompleted: completedTasks,
             tasksFailed: failedTasks,
-            featuresTotal: 0, // TODO: Track features
-            featuresCompleted: 0,
-            estimatedTotalMinutes: 0,
-            actualTotalMinutes: 0,
-            averageQAIterations: 0,
+            featuresTotal,
+            featuresCompleted,
+            estimatedTotalMinutes: 0, // Would require deeper tracking of task estimates
+            actualTotalMinutes: Math.round(totalDuration / 60),
+            averageQAIterations: 0, // Requires deeper tracking
           },
         });
       } else if (eventType === 'project:failed' && 'projectId' in eventData) {
