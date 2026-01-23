@@ -1,10 +1,11 @@
 import type { ReactElement } from 'react'
-import { useEffect, useCallback, useState } from 'react'
+import { useEffect, useCallback, useState, useMemo } from 'react'
 import { Loader2 } from 'lucide-react'
-import { KanbanBoard, KanbanHeader } from '@renderer/components/kanban'
+import { KanbanBoard, KanbanHeader, ExecutionControls } from '@renderer/components/kanban'
 import { AnimatedPage } from '@renderer/components/AnimatedPage'
 import { useFeatureStore } from '@renderer/stores/featureStore'
 import type { Feature, FeatureStatus, FeaturePriority, FeatureComplexity } from '@renderer/types/feature'
+import type { ExecutionStatus } from '@/types/execution'
 import {
   Dialog,
   DialogContent,
@@ -110,6 +111,21 @@ export default function KanbanPage(): ReactElement {
   const [newFeatureComplexity, setNewFeatureComplexity] = useState<FeatureComplexity>('moderate')
   const [isCreating, setIsCreating] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
+
+  // Execution state - will be connected to orchestration hook in TASK 6
+  const [executionStatus, setExecutionStatus] = useState<ExecutionStatus>('idle')
+  const [executionStartedAt, setExecutionStartedAt] = useState<string | null>(null)
+  const [currentTaskName, setCurrentTaskName] = useState<string | undefined>(undefined)
+
+  // Calculate execution stats from features
+  const executionStats = useMemo(() => {
+    const total = features.length
+    const completed = features.filter(f => f.status === 'done').length
+    const failed = 0 // Will be tracked properly in TASK 6
+    const inProgress = features.filter(f => f.status === 'in_progress').length
+
+    return { total, completed, failed, inProgress }
+  }, [features])
 
   /**
    * Load features from backend API
@@ -253,10 +269,63 @@ export default function KanbanPage(): ReactElement {
     setIsAddFeatureModalOpen(true)
   }, [])
 
+  /**
+   * Execution control handlers - placeholders until TASK 6
+   * These will be replaced with the useTaskOrchestration hook
+   */
+  const handleStartExecution = useCallback(() => {
+    setExecutionStatus('running')
+    setExecutionStartedAt(new Date().toISOString())
+    setCurrentTaskName(features[0]?.title || 'Starting...')
+    // TODO: Connect to backend orchestration in TASK 6
+  }, [features])
+
+  const handlePauseExecution = useCallback(() => {
+    setExecutionStatus('paused')
+    // TODO: Connect to backend orchestration in TASK 6
+  }, [])
+
+  const handleResumeExecution = useCallback(() => {
+    setExecutionStatus('running')
+    // TODO: Connect to backend orchestration in TASK 6
+  }, [])
+
+  const handleStopExecution = useCallback(() => {
+    setExecutionStatus('idle')
+    setExecutionStartedAt(null)
+    setCurrentTaskName(undefined)
+    // TODO: Connect to backend orchestration in TASK 6
+  }, [])
+
+  const handleRestartExecution = useCallback(() => {
+    setExecutionStatus('idle')
+    setExecutionStartedAt(null)
+    setCurrentTaskName(undefined)
+    // TODO: Connect to backend orchestration in TASK 6
+  }, [])
+
   return (
     <AnimatedPage className="flex h-full flex-col">
       {/* Header - fixed at top */}
       <KanbanHeader projectName="Nexus" onNewFeature={handleOpenAddFeatureModal} />
+
+      {/* Execution Controls - below header, above board */}
+      {!isLoading && !isEmpty && features.length > 0 && (
+        <ExecutionControls
+          status={executionStatus}
+          totalTasks={executionStats.total}
+          completedTasks={executionStats.completed}
+          failedTasks={executionStats.failed}
+          currentTaskName={currentTaskName}
+          startedAt={executionStartedAt}
+          canStart={executionStats.total > 0}
+          onStart={handleStartExecution}
+          onPause={handlePauseExecution}
+          onResume={handleResumeExecution}
+          onStop={handleStopExecution}
+          onRestart={handleRestartExecution}
+        />
+      )}
 
       {/* Error banner */}
       {error && (
