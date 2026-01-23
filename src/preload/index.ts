@@ -817,6 +817,44 @@ const nexusAPI = {
     }): Promise<{ canceled: boolean; path: string | null }> =>
       ipcRenderer.invoke('dialog:saveFile', options),
   },
+
+  // ========================================
+  // Project API (Phase 21 Task 5)
+  // ========================================
+
+  /**
+   * Project operations for project initialization and management
+   */
+  projectInit: {
+    /**
+     * Initialize a new Nexus project
+     * @param options - Project options (name, path, description, initGit)
+     * @returns Promise with { success: boolean; data?: InitializedProject; error?: string }
+     */
+    initialize: (options: {
+      name: string;
+      path: string;
+      description?: string;
+      initGit?: boolean;
+    }): Promise<{ success: boolean; data?: { id: string; name: string; path: string; createdAt: Date }; error?: string }> =>
+      ipcRenderer.invoke('project:initialize', options),
+
+    /**
+     * Validate a project path
+     * @param projectPath - Path to validate
+     * @returns Promise with { valid: boolean; isNexusProject?: boolean; error?: string }
+     */
+    validatePath: (projectPath: string): Promise<{ valid: boolean; isNexusProject?: boolean; error?: string }> =>
+      ipcRenderer.invoke('project:validatePath', projectPath),
+
+    /**
+     * Check if a path is empty (for Genesis mode)
+     * @param targetPath - Path to check
+     * @returns Promise with { empty: boolean; exists: boolean; error?: string }
+     */
+    isPathEmpty: (targetPath: string): Promise<{ empty: boolean; exists: boolean; error?: string }> =>
+      ipcRenderer.invoke('project:isPathEmpty', targetPath),
+  },
 }
 
 // Expose the API to the renderer process via contextBridge

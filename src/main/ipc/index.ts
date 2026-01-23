@@ -4,6 +4,7 @@
  * Phase 09: Interview handlers for InterviewEngine integration
  * Phase 12-01: Settings handlers for secure settings storage
  * Phase 21 Task 4: Dialog handlers for native file dialogs
+ * Phase 21 Task 5: Project handlers for project initialization
  */
 
 export {
@@ -21,3 +22,5 @@ export { registerInterviewHandlers, registerFallbackInterviewHandlers, removeInt
 export { registerSettingsHandlers } from './settingsHandlers'
 
 export { registerDialogHandlers } from './dialogHandlers'
+
+export { registerProjectHandlers } from './projectHandlers'
