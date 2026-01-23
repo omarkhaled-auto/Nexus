@@ -242,7 +242,7 @@ export function ProjectSelector({
   };
 
   // Mode-specific styling
-  const modeColor = mode === 'genesis' ? 'violet' : 'emerald';
+  const _modeColor = mode === 'genesis' ? 'violet' : 'emerald'; // Reserved for future styling
   const ModeIcon = mode === 'genesis' ? Sparkles : GitBranch;
 
   return (

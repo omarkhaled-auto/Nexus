@@ -81,8 +81,12 @@ export function registerDialogHandlers(): void {
 
       const window = BrowserWindow.fromWebContents(event.sender);
 
+      if (!window) {
+        throw new Error('No browser window available for dialog');
+      }
+
       try {
-        const result = await dialog.showOpenDialog(window!, {
+        const result = await dialog.showOpenDialog(window, {
           title: options?.title ?? 'Select Directory',
           defaultPath: options?.defaultPath,
           buttonLabel: options?.buttonLabel ?? 'Select',
@@ -114,13 +118,17 @@ export function registerDialogHandlers(): void {
 
       const window = BrowserWindow.fromWebContents(event.sender);
 
+      if (!window) {
+        throw new Error('No browser window available for dialog');
+      }
+
       try {
         const properties: Array<'openFile' | 'multiSelections'> = ['openFile'];
         if (options?.multiSelections) {
           properties.push('multiSelections');
         }
 
-        const result = await dialog.showOpenDialog(window!, {
+        const result = await dialog.showOpenDialog(window, {
           title: options?.title ?? 'Select File',
           defaultPath: options?.defaultPath,
           filters: options?.filters,
@@ -153,8 +161,12 @@ export function registerDialogHandlers(): void {
 
       const window = BrowserWindow.fromWebContents(event.sender);
 
+      if (!window) {
+        throw new Error('No browser window available for dialog');
+      }
+
       try {
-        const result = await dialog.showSaveDialog(window!, {
+        const result = await dialog.showSaveDialog(window, {
           title: options?.title ?? 'Save File',
           defaultPath: options?.defaultPath,
           filters: options?.filters,
