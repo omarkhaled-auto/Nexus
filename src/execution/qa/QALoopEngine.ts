@@ -58,7 +58,7 @@ export interface QALoopResult {
 export interface QALoopEngineConfig {
   /** QARunner with build/lint/test/review methods */
   qaRunner: QARunner;
-  /** Maximum iterations before escalation (default: 3) */
+  /** Maximum iterations before escalation (default: 50) */
   maxIterations?: number;
   /** Whether to stop on first failure or continue to collect all errors */
   stopOnFirstFailure?: boolean;
@@ -102,7 +102,7 @@ export class QALoopEngine {
 
   constructor(config: QALoopEngineConfig) {
     this.qaRunner = config.qaRunner;
-    this.maxIterations = config.maxIterations ?? 3;
+    this.maxIterations = config.maxIterations ?? 50;
     this.stopOnFirstFailure = config.stopOnFirstFailure ?? true;
     this.workingDir = config.workingDir;
   }

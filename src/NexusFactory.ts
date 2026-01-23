@@ -323,7 +323,7 @@ export class NexusFactory {
     // ========================================================================
     const qaEngine = new QALoopEngine({
       qaRunner,
-      maxIterations: config.qaConfig?.maxIterations ?? 3,
+      maxIterations: config.qaConfig?.maxIterations ?? 50,
       stopOnFirstFailure: true,
       workingDir: config.workingDir,
     });
@@ -489,7 +489,7 @@ export class NexusFactory {
     // Wrap QARunner in QALoopEngine to provide run() interface
     const qaEngine = new QALoopEngine({
       qaRunner,
-      maxIterations: 3,
+      maxIterations: 50,
       stopOnFirstFailure: true,
       workingDir: config.workingDir,
     });
