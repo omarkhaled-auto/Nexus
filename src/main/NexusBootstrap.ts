@@ -442,10 +442,24 @@ export class NexusBootstrap {
         console.log(`[NexusBootstrap] Execution started for ${projectId}`);
 
       } catch (error) {
-        console.error('[NexusBootstrap] Planning failed:', error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error('[NexusBootstrap] Planning failed:', errorMessage);
+
+        // Ensure coordinator is in clean state after planning failure
+        try {
+          const coordStatus = coordinator.getStatus();
+          if (coordStatus.state !== 'idle') {
+            await coordinator.stop();
+            console.log('[NexusBootstrap] Coordinator stopped after planning failure');
+          }
+        } catch (stopError) {
+          console.error('[NexusBootstrap] Failed to stop coordinator:', stopError);
+        }
+
+        // Emit failure event for UI (planning phase failure)
         await this.eventBus.emit('project:failed', {
           projectId,
-          error: error instanceof Error ? error.message : String(error),
+          error: `[Planning] ${errorMessage}`,
           recoverable: true,
         });
       }
