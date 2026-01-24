@@ -179,13 +179,15 @@ export class TestRunner {
    *
    * The callback captures the working directory in a closure, allowing
    * RalphStyleIterator to call it with just the taskId parameter.
+   * An optional workingDir parameter can override the default path.
    *
-   * @param workingDir - Directory containing the test project
-   * @returns Function that takes taskId and returns Promise<TestResult>
+   * @param defaultWorkingDir - Default directory containing the test project
+   * @returns Function that takes taskId and optional workingDir, returns Promise<TestResult>
    */
-  createCallback(workingDir: string): QARunner['test'] {
-    return async (_taskId: string): Promise<TestResult> => {
-      return this.run(workingDir);
+  createCallback(defaultWorkingDir: string): QARunner['test'] {
+    return async (_taskId: string, workingDir?: string): Promise<TestResult> => {
+      const effectiveDir = workingDir ?? defaultWorkingDir;
+      return this.run(effectiveDir);
     };
   }
 

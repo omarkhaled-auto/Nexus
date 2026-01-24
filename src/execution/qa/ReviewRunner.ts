@@ -269,14 +269,16 @@ export class ReviewRunner {
    *
    * The callback captures the working directory in a closure, allowing
    * RalphStyleIterator to call it with just the taskId parameter.
+   * An optional workingDir parameter can override the default path.
    *
-   * @param workingDir - Directory containing the git repository
+   * @param defaultWorkingDir - Default directory containing the git repository
    * @param context - Optional static context for all reviews
-   * @returns Function that takes taskId and returns Promise<ReviewResult>
+   * @returns Function that takes taskId and optional workingDir, returns Promise<ReviewResult>
    */
-  createCallback(workingDir: string, context?: ReviewContext): QARunner['review'] {
-    return async (taskId: string): Promise<ReviewResult> => {
-      return this.run(workingDir, { ...context, taskId });
+  createCallback(defaultWorkingDir: string, context?: ReviewContext): QARunner['review'] {
+    return async (taskId: string, workingDir?: string): Promise<ReviewResult> => {
+      const effectiveDir = workingDir ?? defaultWorkingDir;
+      return this.run(effectiveDir, { ...context, taskId });
     };
   }
 

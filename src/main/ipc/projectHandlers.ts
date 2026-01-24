@@ -30,6 +30,12 @@ import {
 } from '../services/RecentProjectsService';
 
 /**
+ * Stores pending project paths keyed by project name.
+ * Used to pass rootPath from project:initialize to interview:start.
+ */
+export const pendingProjectPaths = new Map<string, string>();
+
+/**
  * Result type for project operations
  */
 export interface ProjectOperationResult<T> {
@@ -89,6 +95,12 @@ export function registerProjectHandlers(): void {
         });
 
         console.log(`[ProjectHandlers] Project initialized: ${project.name}`);
+
+        // Store the rootPath for interview-handlers to use when creating the project record
+        // Key by name since the project ID may differ between handlers
+        pendingProjectPaths.set(project.name, project.path);
+        console.log(`[ProjectHandlers] Stored pending rootPath: ${project.name} -> ${project.path}`);
+
         return { success: true, data: project };
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);

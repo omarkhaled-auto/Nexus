@@ -7,7 +7,7 @@
  * @module execution/agents
  */
 
-import type { LLMClient } from '../../llm/types';
+import type { LLMClient, ChatOptions } from '../../llm/types';
 import { EventBus } from '../../orchestration/events/EventBus';
 import type { AgentType } from '../../types/agent';
 import type { Task, TaskResult } from '../../types/task';
@@ -209,8 +209,14 @@ export abstract class BaseAgentRunner {
       try {
         // Call LLM with conversation history
         // System prompt is included as a system message in the messages array
+        // Pass workingDirectory from context so CLI runs in the correct project folder
+        const chatOptions: ChatOptions = {
+          workingDirectory: context.workingDir,
+        };
+
         const response = await this.llmClient.chat(
-          this.convertToLLMMessages(messages, this.getSystemPrompt())
+          this.convertToLLMMessages(messages, this.getSystemPrompt()),
+          chatOptions
         );
 
         const content = response.content;

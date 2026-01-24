@@ -110,6 +110,13 @@ export interface ChatOptions {
    * tool use (file creation, etc.) is not desired.
    */
   disableTools?: boolean;
+  /**
+   * Override working directory for this specific call.
+   * When provided, the CLI will run in this directory instead of the
+   * default configured working directory.
+   * Use this to run Claude CLI in the user's project directory during execution.
+   */
+  workingDirectory?: string;
 }
 
 /**

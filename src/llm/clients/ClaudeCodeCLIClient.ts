@@ -112,7 +112,7 @@ export class ClaudeCodeCLIClient implements LLMClient {
     const systemPrompt = this.extractSystemPrompt(messages);
 
     const [args, stdinPrompt] = this.buildArgs(prompt, systemPrompt, options);
-    const result = await this.executeWithRetry(args, stdinPrompt);
+    const result = await this.executeWithRetry(args, stdinPrompt, options?.workingDirectory);
 
     return this.parseResponse(result, options);
   }
@@ -120,12 +120,14 @@ export class ClaudeCodeCLIClient implements LLMClient {
   /**
    * Stream a chat completion from Claude Code CLI.
    * Note: CLI doesn't support true streaming, so we execute and yield complete response.
+   * Passes through workingDirectory from options if provided.
    */
   async *chatStream(
     messages: Message[],
     options?: ChatOptions
   ): AsyncGenerator<StreamChunk, void, unknown> {
     // CLI doesn't support true streaming, so we execute and yield at end
+    // workingDirectory is passed through via options to chat()
     const response = await this.chat(messages, options);
 
     // Yield text content
@@ -155,6 +157,7 @@ export class ClaudeCodeCLIClient implements LLMClient {
   /**
    * Execute a task with tools via Claude Code CLI.
    * Claude Code has built-in tools (Read, Write, Bash, etc.)
+   * Passes through workingDirectory from options if provided.
    */
   async executeWithTools(
     messages: Message[],
@@ -177,7 +180,7 @@ export class ClaudeCodeCLIClient implements LLMClient {
       args.push('--allowedTools', cliToolNames.join(','));
     }
 
-    const result = await this.executeWithRetry(args, stdinPrompt);
+    const result = await this.executeWithRetry(args, stdinPrompt, options?.workingDirectory);
     return this.parseResponse(result, options);
   }
 
@@ -265,13 +268,14 @@ export class ClaudeCodeCLIClient implements LLMClient {
    * Execute CLI command with retry logic.
    * @param args CLI arguments
    * @param stdinPrompt Optional prompt to pass via stdin (avoids shell escaping issues)
+   * @param workingDirectory Optional per-call working directory override
    */
-  private async executeWithRetry(args: string[], stdinPrompt?: string): Promise<string> {
+  private async executeWithRetry(args: string[], stdinPrompt?: string, workingDirectory?: string): Promise<string> {
     let lastError: Error | null = null;
 
     for (let attempt = 0; attempt <= this.config.maxRetries; attempt++) {
       try {
-        return await this.execute(args, stdinPrompt);
+        return await this.execute(args, stdinPrompt, workingDirectory);
       } catch (error) {
         lastError = error as Error;
         this.config.logger?.warn(
@@ -293,10 +297,14 @@ export class ClaudeCodeCLIClient implements LLMClient {
    * Execute the Claude CLI command.
    * @param args CLI arguments
    * @param stdinPrompt Optional prompt to pass via stdin (avoids shell escaping issues)
+   * @param workingDirectory Optional per-call working directory override
    */
-  private execute(args: string[], stdinPrompt?: string): Promise<string> {
+  private execute(args: string[], stdinPrompt?: string, workingDirectory?: string): Promise<string> {
     return new Promise((resolve, reject) => {
-      this.config.logger?.debug('Executing Claude CLI', { args: args.join(' ') });
+      // Use per-call override or fall back to config default
+      const cwd = workingDirectory || this.config.workingDirectory;
+
+      this.config.logger?.debug('Executing Claude CLI', { args: args.join(' '), cwd });
 
       // Enhanced debugging for troubleshooting
       console.log('[ClaudeCodeCLIClient] ========== DEBUG START ==========');
@@ -304,12 +312,14 @@ export class ClaudeCodeCLIClient implements LLMClient {
       console.log('[ClaudeCodeCLIClient] Using stdin for prompt:', stdinPrompt ? 'YES' : 'NO');
       console.log('[ClaudeCodeCLIClient] Prompt length:', stdinPrompt?.length ?? 0);
       console.log('[ClaudeCodeCLIClient] Prompt preview:', stdinPrompt?.substring(0, 100) ?? 'N/A');
-      console.log('[ClaudeCodeCLIClient] Working dir:', this.config.workingDirectory);
+      console.log('[ClaudeCodeCLIClient] Config working dir:', this.config.workingDirectory);
+      console.log('[ClaudeCodeCLIClient] Per-call override:', workingDirectory ?? 'NONE');
+      console.log('[ClaudeCodeCLIClient] Resolved working dir:', cwd);
       console.log('[ClaudeCodeCLIClient] Shell mode:', process.platform === 'win32');
       console.log('[ClaudeCodeCLIClient] ========== DEBUG END ==========');
 
       const child = spawn(this.config.claudePath, args, {
-        cwd: this.config.workingDirectory,
+        cwd: cwd,  // Use resolved cwd (per-call or config default)
         env: { ...process.env },
         stdio: ['pipe', 'pipe', 'pipe'],
         shell: process.platform === 'win32', // Use shell on Windows for PATH resolution

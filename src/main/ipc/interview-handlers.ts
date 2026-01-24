@@ -15,6 +15,7 @@ import type { InterviewEngine, InterviewSession, ProcessMessageResult } from '..
 import type { InterviewSessionManager } from '../../interview';
 import type { DatabaseClient } from '../../persistence/database/DatabaseClient';
 import { projects } from '../../persistence/database/schema';
+import { pendingProjectPaths } from './projectHandlers';
 
 /**
  * Error thrown when interview operations are attempted but Nexus is not initialized.
@@ -45,13 +46,18 @@ function validateSender(event: IpcMainInvokeEvent): boolean {
  * Ensure a project exists in the database before creating a session.
  * Creates a minimal project record if one doesn't exist.
  *
+ * Uses the pendingProjectPaths Map to retrieve the rootPath that was stored
+ * by project:initialize handler. This ensures the correct project path is used.
+ *
  * @param db The DatabaseClient instance
  * @param projectId The project ID to ensure exists
+ * @param projectName The project name (used to look up stored rootPath)
  * @param mode The interview mode ('genesis' or 'evolution')
  */
 function ensureProjectExists(
   db: DatabaseClient,
   projectId: string,
+  projectName: string | undefined,
   mode: 'genesis' | 'evolution' = 'genesis'
 ): void {
   // Check if project already exists
@@ -62,19 +68,25 @@ function ensureProjectExists(
     .get();
 
   if (!existing) {
-    // Create minimal project record for the interview session
+    // Get stored rootPath from projectHandlers (set by project:initialize)
+    const storedPath = projectName ? pendingProjectPaths.get(projectName) : undefined;
+    if (storedPath) {
+      pendingProjectPaths.delete(projectName!);
+      console.log(`[InterviewHandlers] Using stored rootPath for ${projectName}: ${storedPath}`);
+    }
+
     const now = new Date();
     db.db.insert(projects).values({
       id: projectId,
-      name: `New ${mode === 'genesis' ? 'Genesis' : 'Evolution'} Project`,
+      name: projectName || `New ${mode === 'genesis' ? 'Genesis' : 'Evolution'} Project`,
       mode: mode,
       status: 'interview',
-      rootPath: process.cwd(), // Default to current working directory
+      rootPath: storedPath || '',
       createdAt: now,
       updatedAt: now,
     }).run();
 
-    console.log(`[InterviewHandlers] Created project record: ${projectId}`);
+    console.log(`[InterviewHandlers] Created project record: ${projectId} with rootPath: ${storedPath || '(empty)'}`);
   }
 }
 
@@ -95,7 +107,7 @@ export function registerInterviewHandlers(
   // ========================================
   ipcMain.handle(
     'interview:start',
-    (event, projectId: string): InterviewSession => {
+    (event, projectId: string, projectName?: string): InterviewSession => {
       if (!validateSender(event)) {
         throw new Error('Unauthorized IPC sender');
       }
@@ -104,8 +116,8 @@ export function registerInterviewHandlers(
       }
 
       // Ensure project exists in database before creating session
-      // This prevents FK constraint failures when saving the session
-      ensureProjectExists(db, projectId, 'genesis');
+      // Pass projectName to retrieve stored rootPath from pendingProjectPaths
+      ensureProjectExists(db, projectId, projectName, 'genesis');
 
       const session = interviewEngine.startSession(projectId);
       sessionManager.startAutoSave(session);

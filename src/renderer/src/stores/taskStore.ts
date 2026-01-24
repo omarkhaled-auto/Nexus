@@ -19,7 +19,7 @@ interface TaskState {
   removeTask: (id: string) => void
   selectTask: (id: string | null) => void
   getTask: (id: string) => Task | undefined
-  loadTasks: () => Promise<void>
+  loadTasks: (projectId?: string) => Promise<void>
   reset: () => void
 }
 
@@ -40,14 +40,14 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
     })); },
   selectTask: (id) => { set({ selectedTaskId: id }); },
   getTask: (id) => get().tasks.find((t) => t.id === id),
-  loadTasks: async () => {
+  loadTasks: async (projectId?: string) => {
     // Load tasks from backend via IPC
     set({ isLoading: true });
     try {
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- defensive check for non-Electron environments
       if (window.nexusAPI?.getTasks) {
-        const tasks = await window.nexusAPI.getTasks() as Task[];
-        console.log('[taskStore] Loaded tasks from backend:', tasks.length);
+        const tasks = await window.nexusAPI.getTasks(projectId) as Task[];
+        console.log('[taskStore] Loaded tasks from backend:', tasks.length, projectId ? `(filtered by ${projectId})` : '(all)');
         set({ tasks, isLoading: false });
       } else {
         console.warn('[taskStore] nexusAPI.getTasks not available');

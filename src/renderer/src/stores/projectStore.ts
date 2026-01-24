@@ -1,4 +1,6 @@
 import { create } from 'zustand'
+import { useFeatureStore } from './featureStore'
+import { useTaskStore } from './taskStore'
 
 export interface Project {
   id: string
@@ -47,6 +49,12 @@ export const useProjectStore = create<ProjectState>()((set, get) => ({
 
   setCurrentProject: (info) => {
     const mode = info.mode || get().mode || 'genesis';
+
+    // Clear stale data from previous project
+    useFeatureStore.getState().reset();
+    useTaskStore.getState().reset();
+    console.log('[projectStore] Cleared features/tasks for project switch');
+
     set({
       currentProject: {
         id: info.id,

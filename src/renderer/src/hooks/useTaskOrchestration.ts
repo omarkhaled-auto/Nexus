@@ -661,11 +661,43 @@ export function useTaskOrchestration(): UseTaskOrchestrationReturn {
         return;
       }
 
-      // Initialize execution
+      // Initialize local execution state
       store.start(projectId, tasks);
 
-      // Start execution loop
-      await executeNextTask();
+      // Call the backend to start actual execution
+      // The backend coordinator will handle running Claude on each task
+      if (window.nexusAPI?.startExecution) {
+        try {
+          const result = await window.nexusAPI.startExecution(projectId);
+          if (!result.success) {
+            console.error('[useTaskOrchestration] Backend execution failed:', result.error);
+            store.addError({
+              id: `error-${Date.now()}`,
+              timestamp: new Date().toISOString(),
+              taskId: null,
+              message: result.error || 'Failed to start execution',
+              fatal: true,
+            });
+            return;
+          }
+          console.log('[useTaskOrchestration] Backend execution started successfully');
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : 'Failed to start execution';
+          console.error('[useTaskOrchestration] Backend execution error:', error);
+          store.addError({
+            id: `error-${Date.now()}`,
+            timestamp: new Date().toISOString(),
+            taskId: null,
+            message: errorMessage,
+            fatal: true,
+          });
+          return;
+        }
+      } else {
+        // Fallback to local simulation mode (for testing without backend)
+        console.warn('[useTaskOrchestration] No backend available, using simulation mode');
+        await executeNextTask();
+      }
     },
     [store, executeNextTask]
   );

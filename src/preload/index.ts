@@ -105,9 +105,11 @@ const nexusAPI = {
 
   /**
    * Get all tasks
+   * Fix #4: Accept optional projectId to filter tasks by project
+   * @param projectId - Optional project ID to filter tasks
    * @returns Promise with array of tasks
    */
-  getTasks: (): Promise<unknown[]> => ipcRenderer.invoke('tasks:list'),
+  getTasks: (projectId?: string): Promise<unknown[]> => ipcRenderer.invoke('tasks:list', projectId),
 
   /**
    * Update a task
@@ -124,9 +126,11 @@ const nexusAPI = {
 
   /**
    * Get all features for Kanban board
+   * Fix #4: Accept optional projectId to filter features by project
+   * @param projectId - Optional project ID to filter features
    * @returns Promise with array of features
    */
-  getFeatures: (): Promise<unknown[]> => ipcRenderer.invoke('features:list'),
+  getFeatures: (projectId?: string): Promise<unknown[]> => ipcRenderer.invoke('features:list', projectId),
 
   /**
    * Get a single feature by ID

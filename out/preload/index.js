@@ -82,9 +82,10 @@ const interviewAPI = {
   /**
    * Start a new interview session
    * @param projectId - Project to conduct interview for
+   * @param projectName - Optional project name (used to retrieve stored rootPath)
    * @returns Promise with the new session
    */
-  start: (projectId) => electron.ipcRenderer.invoke("interview:start", projectId),
+  start: (projectId, projectName) => electron.ipcRenderer.invoke("interview:start", projectId, projectName),
   /**
    * Send a message in the interview
    * @param sessionId - Current session ID
@@ -186,9 +187,11 @@ const nexusAPI = {
   // ========================================
   /**
    * Get all tasks
+   * Fix #4: Accept optional projectId to filter tasks by project
+   * @param projectId - Optional project ID to filter tasks
    * @returns Promise with array of tasks
    */
-  getTasks: () => electron.ipcRenderer.invoke("tasks:list"),
+  getTasks: (projectId) => electron.ipcRenderer.invoke("tasks:list", projectId),
   /**
    * Update a task
    * @param id - Task ID
@@ -201,9 +204,11 @@ const nexusAPI = {
   // ========================================
   /**
    * Get all features for Kanban board
+   * Fix #4: Accept optional projectId to filter features by project
+   * @param projectId - Optional project ID to filter features
    * @returns Promise with array of features
    */
-  getFeatures: () => electron.ipcRenderer.invoke("features:list"),
+  getFeatures: (projectId) => electron.ipcRenderer.invoke("features:list", projectId),
   /**
    * Get a single feature by ID
    * @param id - Feature ID

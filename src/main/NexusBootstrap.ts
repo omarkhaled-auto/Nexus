@@ -33,7 +33,7 @@ import type { PlanningTask } from '../planning/types';
 import type { OrchestrationFeature } from '../orchestration/types';
 import { RepoMapGenerator } from '../infrastructure/analysis/RepoMapGenerator';
 import type { EvolutionContext } from '../interview/InterviewEngine';
-import { features, tasks } from '../persistence/database/schema';
+import { features, tasks, projects } from '../persistence/database/schema';
 
 // ============================================================================
 // Types
@@ -125,6 +125,9 @@ export interface BootstrappedNexus {
 
 /** Singleton instance */
 let bootstrappedNexus: BootstrappedNexus | null = null;
+
+/** Reference to NexusBootstrap instance for helper functions */
+let bootstrapInstance: NexusBootstrap | null = null;
 
 /** Main window reference for IPC event forwarding */
 let mainWindowRef: BrowserWindow | null = null;
@@ -297,63 +300,14 @@ export class NexusBootstrap {
     const { decomposer, resolver } = this.nexus.planning;
 
     // =========================================================================
-    // CRITICAL WIRING: Save Requirements as They Are Captured
+    // CRITICAL WIRING: Log Requirements as They Are Captured
+    // NOTE: Requirements are already saved to DB by InterviewEngine.ts
+    // This handler is for logging/visibility only - do NOT save again!
     // =========================================================================
     const requirementCapturedUnsub = this.eventBus.on('interview:requirement-captured', (event) => {
       const { projectId, requirement } = event.payload;
-
+      // Log for visibility - requirement is already saved by InterviewEngine
       console.log(`[NexusBootstrap] Requirement captured for ${projectId}: ${requirement.content.substring(0, 50)}...`);
-
-      try {
-        // Map category - handle both core event types and UI event types
-        type RequirementCategory = 'functional' | 'non-functional' | 'technical';
-        const categoryMap: Record<string, RequirementCategory> = {
-          functional: 'functional',
-          technical: 'technical',
-          ui: 'functional',
-          performance: 'non-functional',
-          security: 'non-functional',
-          'non-functional': 'non-functional',
-        };
-        const mappedCategory = categoryMap[requirement.category] ?? 'functional';
-
-        // Map priority - handle both MoSCoW and severity-based priorities
-        type RequirementPriority = 'must' | 'should' | 'could' | 'wont';
-        const priorityMap: Record<string, RequirementPriority> = {
-          critical: 'must',
-          high: 'should',
-          medium: 'could',
-          low: 'wont',
-          must: 'must',
-          should: 'should',
-          could: 'could',
-          wont: 'wont',
-        };
-        const mappedPriority = priorityMap[requirement.priority] ?? 'should';
-
-        // Add to RequirementsDB
-        if (this.requirementsDB) {
-          this.requirementsDB.addRequirement(projectId, {
-            category: mappedCategory,
-            description: requirement.content, // Map content to description
-            priority: mappedPriority,
-            source: requirement.source,
-            confidence: 0.8,
-            tags: [],
-          });
-          console.log(`[NexusBootstrap] Requirement saved to DB for project ${projectId}`);
-        }
-      } catch (error) {
-        // Log but don't fail - duplicate detection may throw
-        const message = error instanceof Error ? error.message : String(error);
-        console.warn(`[NexusBootstrap] Failed to save requirement: ${message}`);
-
-        // Emit warning for UI visibility (non-blocking)
-        void this.eventBus.emit('system:warning', {
-          component: 'NexusBootstrap',
-          message: `Failed to save requirement: ${message}`,
-        });
-      }
     });
 
     this.unsubscribers.push(requirementCapturedUnsub);
@@ -425,21 +379,44 @@ export class NexusBootstrap {
           console.log(`[NexusBootstrap] Forwarded planning:completed to UI`);
         }
 
-        // Initialize coordinator with project config
+        // Initialize coordinator with project config (ready for manual start)
         const projectFeatures = this.tasksToFeatures(decomposedTasks, projectId);
+
+        // Fix #5: Get actual project path from database instead of using workingDir
+        let actualProjectPath = this.config.workingDir; // fallback
+        if (this.databaseClient) {
+          try {
+            const { eq } = await import('drizzle-orm');
+            const projectRecord = this.databaseClient.db
+              .select()
+              .from(projects)
+              .where(eq(projects.id, projectId))
+              .get() as { id: string; rootPath: string } | undefined;
+            if (projectRecord?.rootPath) {
+              actualProjectPath = projectRecord.rootPath;
+              console.log(`[NexusBootstrap] Using project path from database: ${actualProjectPath}`);
+            } else {
+              console.warn(`[NexusBootstrap] No rootPath found for project ${projectId}, using workingDir: ${this.config.workingDir}`);
+            }
+          } catch (pathError) {
+            console.error('[NexusBootstrap] Failed to get project path from database:', pathError);
+          }
+        }
+
         coordinator.initialize({
           projectId,
-          projectPath: this.config.workingDir,
+          projectPath: actualProjectPath,
           features: projectFeatures,
           mode: 'genesis',
         });
 
-        // Start execution
-        coordinator.start(projectId);
-        // Record start time and features for completion metrics
-        this.projectStartTimes.set(projectId, new Date());
+        // Store features for when execution is manually started
         this.projectFeatures.set(projectId, projectFeatures);
-        console.log(`[NexusBootstrap] Execution started for ${projectId}`);
+
+        // NOTE: Do NOT auto-start execution here!
+        // Execution should only start when the user clicks "Start Execution" in the UI.
+        // The UI will call the execution:start IPC handler to trigger coordinator.start().
+        console.log(`[NexusBootstrap] Planning complete - ready for manual execution start`);
 
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
@@ -638,6 +615,15 @@ export class NexusBootstrap {
       updatedAt: new Date(),
       projectId,
     }));
+  }
+
+  /**
+   * Record execution start time for a project
+   * Called when execution is manually started via IPC
+   */
+  recordExecutionStart(projectId: string): void {
+    this.projectStartTimes.set(projectId, new Date());
+    console.log(`[NexusBootstrap] Recorded execution start for project: ${projectId}`);
   }
 
   /**
@@ -1091,6 +1077,7 @@ export class NexusBootstrap {
  */
 export async function initializeNexus(config: NexusBootstrapConfig): Promise<BootstrappedNexus> {
   const bootstrap = new NexusBootstrap(config);
+  bootstrapInstance = bootstrap; // Store reference for helper functions
   return bootstrap.initialize();
 }
 
@@ -1113,4 +1100,16 @@ export function setMainWindow(window: BrowserWindow): void {
  */
 export function clearMainWindow(): void {
   mainWindowRef = null;
+}
+
+/**
+ * Record execution start time for a project
+ * Called when execution is manually started via IPC
+ */
+export function recordExecutionStart(projectId: string): void {
+  if (bootstrapInstance) {
+    bootstrapInstance.recordExecutionStart(projectId);
+  } else {
+    console.warn('[NexusBootstrap] Cannot record start time - bootstrap not initialized');
+  }
 }

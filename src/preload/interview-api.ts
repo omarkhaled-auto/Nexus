@@ -15,10 +15,11 @@ export const interviewAPI = {
   /**
    * Start a new interview session
    * @param projectId - Project to conduct interview for
+   * @param projectName - Optional project name (used to retrieve stored rootPath)
    * @returns Promise with the new session
    */
-  start: (projectId: string): Promise<InterviewSession> =>
-    ipcRenderer.invoke('interview:start', projectId),
+  start: (projectId: string, projectName?: string): Promise<InterviewSession> =>
+    ipcRenderer.invoke('interview:start', projectId, projectName),
 
   /**
    * Send a message in the interview

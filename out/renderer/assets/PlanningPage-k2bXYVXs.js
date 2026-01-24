@@ -1,10 +1,10 @@
-import { k as useNavigate, l as useLocation, r as reactExports, j as jsxRuntimeExports, S as Sparkles, L as LoaderCircle, m as ListTodo, C as CircleAlert, a as cn, R as RefreshCw, n as ChevronRight } from "./index-BoQyQ-ap.js";
-import { A as AnimatedPage } from "./AnimatedPage-fTtyTsDw.js";
-import { u as usePlanningProgress, a as usePlanningStore } from "./usePlanningProgress-F6S3380Z.js";
-import { C as Clock } from "./clock-C_KhMjW-.js";
-import { C as CircleCheck } from "./circle-check-hbu4IvA3.js";
-import { A as ArrowRight } from "./arrow-right-C8ctKMyK.js";
-import { L as Layers } from "./layers-BZmc9_HD.js";
+import { k as useNavigate, l as useLocation, r as reactExports, j as jsxRuntimeExports, S as Sparkles, L as LoaderCircle, m as ListTodo, C as CircleAlert, a as cn, R as RefreshCw, n as ChevronRight } from "./index-Bw-1tXJs.js";
+import { A as AnimatedPage } from "./AnimatedPage-C6p8AvpX.js";
+import { u as usePlanningProgress, a as usePlanningStore } from "./usePlanningProgress-ycvnFOa1.js";
+import { C as Clock } from "./clock-ODix_OSj.js";
+import { C as CircleCheck } from "./circle-check-iu1Uuh9T.js";
+import { A as ArrowRight } from "./arrow-right-BAYpRehn.js";
+import { L as Layers } from "./layers-CSiyqjRV.js";
 function ProgressBar({ progress, className }) {
   return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: cn("h-2 bg-bg-hover rounded-full overflow-hidden", className), children: /* @__PURE__ */ jsxRuntimeExports.jsx(
     "div",
@@ -218,16 +218,18 @@ function PlanningPage() {
       setAutoNavigateCountdown((prev) => {
         if (prev === null || prev <= 1) {
           clearInterval(interval);
-          navigate("/evolution");
+          void navigate("/evolution");
           return null;
         }
         return prev - 1;
       });
     }, 1e3);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+    };
   }, [isComplete, navigate]);
   const handleProceed = () => {
-    navigate("/evolution");
+    void navigate("/evolution");
   };
   const handleRetry = () => {
     retry();
@@ -383,7 +385,9 @@ function PlanningPage() {
       /* @__PURE__ */ jsxRuntimeExports.jsx(
         "button",
         {
-          onClick: () => navigate("/genesis"),
+          onClick: () => {
+            void navigate("/genesis");
+          },
           className: cn(
             "px-6 py-3 rounded-lg font-medium",
             "bg-accent-primary text-white",

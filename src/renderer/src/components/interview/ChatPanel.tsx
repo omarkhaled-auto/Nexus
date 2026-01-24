@@ -204,8 +204,8 @@ export function ChatPanel({ className }: ChatPanelProps): ReactElement {
       let session = await window.nexusAPI.interview.resumeByProject(projectId);
 
       if (!session) {
-        // Start a new session
-        session = await window.nexusAPI.interview.start(projectId);
+        // Start a new session, passing project name to retrieve stored rootPath
+        session = await window.nexusAPI.interview.start(projectId, currentProject?.name);
       }
 
       if (session) {

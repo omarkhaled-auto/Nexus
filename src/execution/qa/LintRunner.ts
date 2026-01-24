@@ -199,13 +199,15 @@ export class LintRunner {
    *
    * The callback captures the working directory in a closure, allowing
    * RalphStyleIterator to call it with just the taskId parameter.
+   * An optional workingDir parameter can override the default path.
    *
-   * @param workingDir - Directory containing the project to lint
-   * @returns Function that takes taskId and returns Promise<LintResult>
+   * @param defaultWorkingDir - Default directory containing the project to lint
+   * @returns Function that takes taskId and optional workingDir, returns Promise<LintResult>
    */
-  createCallback(workingDir: string): QARunner['lint'] {
-    return async (_taskId: string): Promise<LintResult> => {
-      return this.run(workingDir);
+  createCallback(defaultWorkingDir: string): QARunner['lint'] {
+    return async (_taskId: string, workingDir?: string): Promise<LintResult> => {
+      const effectiveDir = workingDir ?? defaultWorkingDir;
+      return this.run(effectiveDir);
     };
   }
 

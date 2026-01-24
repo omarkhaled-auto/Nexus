@@ -4,11 +4,11 @@ import { resolve, extname, posix, relative, basename, join as join$1 } from "pat
 import { webcrypto, randomFillSync, randomUUID } from "node:crypto";
 import { relations, eq, and, or, desc } from "drizzle-orm";
 import { sqliteTable, integer, text, real, blob } from "drizzle-orm/sqlite-core";
-import Store from "electron-store";
-import { spawn, execSync } from "child_process";
-import Anthropic from "@anthropic-ai/sdk";
 import * as fs from "fs/promises";
 import { readFile, stat } from "fs/promises";
+import { execSync, spawn } from "child_process";
+import Store from "electron-store";
+import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenAI } from "@google/genai";
 import OpenAI from "openai";
 import { simpleGit } from "simple-git";
@@ -661,14 +661,21 @@ function registerIpcHandlers() {
       return { id };
     }
   );
-  ipcMain.handle("tasks:list", async (event) => {
+  ipcMain.handle("tasks:list", async (event, projectId) => {
     if (!validateSender$4(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     if (databaseClientRef) {
       try {
         const { tasks: tasks2 } = await Promise.resolve().then(() => schema$1);
-        const dbTasks = databaseClientRef.db.select().from(tasks2).all();
+        const { eq: eq2 } = await import("drizzle-orm");
+        let dbTasks;
+        if (projectId) {
+          console.log(`[IPC] tasks:list filtering by projectId: ${projectId}`);
+          dbTasks = databaseClientRef.db.select().from(tasks2).where(eq2(tasks2.projectId, projectId)).all();
+        } else {
+          dbTasks = databaseClientRef.db.select().from(tasks2).all();
+        }
         const uiTasks = dbTasks.map((t) => ({
           id: t.id,
           name: t.name,
@@ -677,7 +684,7 @@ function registerIpcHandlers() {
           description: t.description,
           estimatedMinutes: t.estimatedMinutes
         }));
-        console.log("[IPC] tasks:list returning", uiTasks.length, "tasks from database");
+        console.log("[IPC] tasks:list returning", uiTasks.length, "tasks from database", projectId ? `(filtered by ${projectId})` : "(all)");
         return uiTasks;
       } catch (error) {
         console.error("[IPC] tasks:list database query failed:", error);
@@ -930,15 +937,24 @@ ${"-".repeat(40)}
     currentExecutionTaskId = id;
     currentExecutionTaskName = name;
   };
-  ipcMain.handle("features:list", async (event) => {
+  ipcMain.handle("features:list", async (event, projectId) => {
     if (!validateSender$4(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     if (databaseClientRef) {
       try {
         const { features: features2, tasks: tasks2 } = await Promise.resolve().then(() => schema$1);
-        const dbFeatures = databaseClientRef.db.select().from(features2).all();
-        const dbTasks = databaseClientRef.db.select().from(tasks2).all();
+        const { eq: eq2 } = await import("drizzle-orm");
+        let dbFeatures;
+        let dbTasks;
+        if (projectId) {
+          console.log(`[IPC] features:list filtering by projectId: ${projectId}`);
+          dbFeatures = databaseClientRef.db.select().from(features2).where(eq2(features2.projectId, projectId)).all();
+          dbTasks = databaseClientRef.db.select().from(tasks2).where(eq2(tasks2.projectId, projectId)).all();
+        } else {
+          dbFeatures = databaseClientRef.db.select().from(features2).all();
+          dbTasks = databaseClientRef.db.select().from(tasks2).all();
+        }
         const uiFeatures = dbFeatures.map((f) => {
           const featureTasks = dbTasks.filter((t) => t.featureId === f.id).map((t) => ({
             id: t.id,
@@ -958,7 +974,7 @@ ${"-".repeat(40)}
             updatedAt: f.updatedAt instanceof Date ? f.updatedAt.toISOString() : String(f.updatedAt)
           };
         });
-        console.log("[IPC] features:list returning", uiFeatures.length, "features from database");
+        console.log("[IPC] features:list returning", uiFeatures.length, "features from database", projectId ? `(filtered by ${projectId})` : "(all)");
         return uiFeatures;
       } catch (error) {
         console.error("[IPC] features:list database query failed:", error);
@@ -1014,15 +1030,45 @@ ${"-".repeat(40)}
     }, { source: "IPC" });
     return feature;
   });
-  ipcMain.handle("feature:update", (event, id, update) => {
+  ipcMain.handle("feature:update", async (event, id, update) => {
     if (!validateSender$4(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     if (typeof id !== "string" || !id) {
       throw new Error("Invalid feature id");
     }
-    const feature = state.features.get(id);
+    console.log("[IPC] feature:update called with id:", id);
+    let feature = state.features.get(id);
+    let fromDatabase = false;
+    if (!feature && databaseClientRef) {
+      console.log("[IPC] feature:update - not in memory, checking database...");
+      try {
+        const { features: features2 } = await Promise.resolve().then(() => schema$1);
+        const { eq: eq2 } = await import("drizzle-orm");
+        const dbFeature = databaseClientRef.db.select().from(features2).where(eq2(features2.id, id)).get();
+        if (dbFeature) {
+          console.log("[IPC] feature:update - found in database");
+          fromDatabase = true;
+          feature = {
+            id: dbFeature.id,
+            title: dbFeature.name,
+            description: dbFeature.description || "",
+            status: dbFeature.status,
+            priority: dbFeature.priority,
+            complexity: dbFeature.complexity,
+            progress: dbFeature.estimatedTasks && dbFeature.estimatedTasks > 0 ? Math.round((dbFeature.completedTasks || 0) / dbFeature.estimatedTasks * 100) : 0,
+            tasks: [],
+            createdAt: dbFeature.createdAt instanceof Date ? dbFeature.createdAt.toISOString() : String(dbFeature.createdAt),
+            updatedAt: dbFeature.updatedAt instanceof Date ? dbFeature.updatedAt.toISOString() : String(dbFeature.updatedAt)
+          };
+        }
+      } catch (error) {
+        console.error("[IPC] feature:update database query failed:", error);
+      }
+    }
     if (!feature) {
+      console.log("[IPC] feature:update - Feature not found anywhere!");
+      console.log("[IPC] In-memory features:", Array.from(state.features.keys()));
       throw new Error(`Feature not found: ${id}`);
     }
     const previousStatus = feature.status;
@@ -1034,6 +1080,24 @@ ${"-".repeat(40)}
     }
     feature.updatedAt = (/* @__PURE__ */ new Date()).toISOString();
     state.features.set(id, feature);
+    if (fromDatabase && databaseClientRef) {
+      console.log("[IPC] feature:update - persisting to database...");
+      try {
+        const { features: features2 } = await Promise.resolve().then(() => schema$1);
+        const { eq: eq2 } = await import("drizzle-orm");
+        databaseClientRef.db.update(features2).set({
+          name: feature.title,
+          description: feature.description,
+          status: feature.status,
+          priority: feature.priority,
+          complexity: feature.complexity,
+          updatedAt: /* @__PURE__ */ new Date()
+        }).where(eq2(features2.id, id)).run();
+        console.log("[IPC] feature:update - database updated successfully");
+      } catch (error) {
+        console.error("[IPC] feature:update database persist failed:", error);
+      }
+    }
     if (update.status && update.status !== previousStatus) {
       const eventBus = EventBus.getInstance();
       void eventBus.emit("feature:status-changed", {
@@ -1051,6 +1115,7 @@ ${"-".repeat(40)}
         }, { source: "IPC" });
       }
     }
+    console.log("[IPC] feature:update - success");
     return feature;
   });
   ipcMain.handle("feature:delete", (event, id) => {
@@ -1109,8 +1174,48 @@ ${"-".repeat(40)}
         console.log("[ExecutionHandlers] Execution resumed");
         return { success: true, message: "Execution resumed" };
       }
-      coordinator.start(projectId);
-      console.log("[ExecutionHandlers] Execution started successfully");
+      const { projects: projects2, tasks: tasksTable } = await Promise.resolve().then(() => schema$1);
+      const { eq: eq2 } = await import("drizzle-orm");
+      const dbClient = bootstrappedNexus2.databaseClient;
+      if (!dbClient) {
+        throw new Error("Database client not available");
+      }
+      const project = dbClient.db.select().from(projects2).where(eq2(projects2.id, projectId)).get();
+      if (!project) {
+        throw new Error(`Project not found: ${projectId}`);
+      }
+      const projectPath = project.rootPath;
+      console.log("[ExecutionHandlers] Project path:", projectPath);
+      const dbTasks = dbClient.db.select().from(tasksTable).where(eq2(tasksTable.projectId, projectId)).all();
+      console.log("[ExecutionHandlers] Found", dbTasks.length, "tasks for project");
+      if (dbTasks.length === 0) {
+        return {
+          success: false,
+          error: "No tasks found for project. Complete the interview to generate tasks."
+        };
+      }
+      const orchestrationTasks = dbTasks.map((task) => ({
+        id: task.id,
+        name: task.name,
+        description: task.description || "",
+        type: "auto",
+        // Default task type
+        size: "small",
+        // Default task size
+        status: "pending",
+        featureId: task.featureId || void 0,
+        dependsOn: task.dependsOn ? JSON.parse(task.dependsOn) : [],
+        priority: task.priority || 1,
+        estimatedMinutes: task.estimatedMinutes || 15,
+        files: [],
+        testCriteria: [],
+        waveId: 0,
+        createdAt: /* @__PURE__ */ new Date()
+      }));
+      const { recordExecutionStart: recordExecutionStart2 } = await Promise.resolve().then(() => NexusBootstrap$1);
+      recordExecutionStart2(projectId);
+      coordinator.executeExistingTasks(projectId, orchestrationTasks, projectPath);
+      console.log("[ExecutionHandlers] Execution started with executeExistingTasks");
       if (eventForwardingWindow && !eventForwardingWindow.isDestroyed()) {
         eventForwardingWindow.webContents.send("execution:started", { projectId });
       }
@@ -1835,6 +1940,716 @@ const schema$1 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProp
   tasks,
   tasksRelations
 }, Symbol.toStringTag, { value: "Module" }));
+async function pathExists$2(p) {
+  try {
+    await fs.access(p);
+    return true;
+  } catch {
+    return false;
+  }
+}
+async function ensureDir$2(p) {
+  await fs.mkdir(p, { recursive: true });
+}
+async function writeJson$2(p, data, options) {
+  await fs.writeFile(p, JSON.stringify(data, null, options?.spaces));
+}
+class ProjectInitializer {
+  /**
+   * Initialize a new Nexus project at the specified path
+   *
+   * @param options - Project initialization options
+   * @returns Promise resolving to initialized project info
+   * @throws Error if path already exists as a file or non-empty directory
+   */
+  async initializeProject(options) {
+    const projectPath = path.join(options.path, options.name);
+    if (await pathExists$2(projectPath)) {
+      const stat2 = await fs.stat(projectPath);
+      if (!stat2.isDirectory()) {
+        throw new Error(`Path already exists as a file: ${projectPath}`);
+      }
+      const files = await fs.readdir(projectPath);
+      if (files.length > 0 && !files.includes(".nexus")) {
+        throw new Error(`Directory not empty and not a Nexus project: ${projectPath}`);
+      }
+    }
+    await this.createDirectoryStructure(projectPath);
+    await this.createNexusConfig(projectPath, options);
+    if (options.initGit !== false) {
+      await this.initializeGit(projectPath);
+    }
+    const projectId = this.generateProjectId();
+    console.log(`[ProjectInitializer] Project initialized: ${options.name} at ${projectPath}`);
+    return {
+      id: projectId,
+      name: options.name,
+      path: projectPath,
+      createdAt: /* @__PURE__ */ new Date()
+    };
+  }
+  /**
+   * Create the standard Nexus project directory structure
+   */
+  async createDirectoryStructure(projectPath) {
+    const directories = [
+      projectPath,
+      path.join(projectPath, "src"),
+      path.join(projectPath, "tests"),
+      path.join(projectPath, ".nexus"),
+      path.join(projectPath, ".nexus", "checkpoints"),
+      path.join(projectPath, ".nexus", "worktrees")
+    ];
+    for (const dir of directories) {
+      await ensureDir$2(dir);
+    }
+    console.log(`[ProjectInitializer] Created directory structure at ${projectPath}`);
+  }
+  /**
+   * Create the .nexus configuration files
+   */
+  async createNexusConfig(projectPath, options) {
+    const config = {
+      name: options.name,
+      description: options.description ?? "",
+      version: "1.0.0",
+      created: (/* @__PURE__ */ new Date()).toISOString(),
+      nexusVersion: "1.0.0",
+      settings: {
+        maxAgents: 4,
+        qaMaxIterations: 50,
+        taskMaxMinutes: 30,
+        checkpointIntervalSeconds: 7200
+      }
+    };
+    await writeJson$2(path.join(projectPath, ".nexus", "config.json"), config, {
+      spaces: 2
+    });
+    const stateContent = `# Project State
+
+## Current Phase
+initialization
+
+## Status
+pending
+
+## Last Updated
+${(/* @__PURE__ */ new Date()).toISOString()}
+`;
+    await fs.writeFile(path.join(projectPath, ".nexus", "STATE.md"), stateContent);
+    console.log(`[ProjectInitializer] Created Nexus configuration`);
+  }
+  /**
+   * Initialize git repository for the project
+   */
+  async initializeGit(projectPath) {
+    try {
+      const gitDir = path.join(projectPath, ".git");
+      if (await pathExists$2(gitDir)) {
+        console.log(`[ProjectInitializer] Git already initialized`);
+        return;
+      }
+      try {
+        execSync("git --version", { stdio: "pipe" });
+      } catch {
+        console.warn(`[ProjectInitializer] Git not available, skipping git initialization`);
+        return;
+      }
+      execSync("git init", { cwd: projectPath, stdio: "pipe" });
+      const gitignore = `# Dependencies
+node_modules/
+
+# Build
+dist/
+build/
+out/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Nexus working files
+.nexus/worktrees/
+.nexus/checkpoints/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Coverage
+coverage/
+
+# TypeScript cache
+*.tsbuildinfo
+`;
+      await fs.writeFile(path.join(projectPath, ".gitignore"), gitignore);
+      execSync("git add .", { cwd: projectPath, stdio: "pipe" });
+      execSync('git commit -m "Initial commit - Nexus project initialized"', {
+        cwd: projectPath,
+        stdio: "pipe"
+      });
+      console.log(`[ProjectInitializer] Git initialized with initial commit`);
+    } catch (error) {
+      console.warn(`[ProjectInitializer] Git initialization failed:`, error);
+    }
+  }
+  /**
+   * Generate a unique project ID
+   */
+  generateProjectId() {
+    return `proj_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+  }
+}
+const projectInitializer = new ProjectInitializer();
+async function pathExists$1(p) {
+  try {
+    await fs.access(p);
+    return true;
+  } catch {
+    return false;
+  }
+}
+async function ensureDir$1(p) {
+  await fs.mkdir(p, { recursive: true });
+}
+async function writeJson$1(p, data, options) {
+  await fs.writeFile(p, JSON.stringify(data, null, options?.spaces ?? 2));
+}
+async function readJson$1(p) {
+  const content = await fs.readFile(p, "utf-8");
+  return JSON.parse(content);
+}
+class ProjectLoader {
+  /**
+   * Load an existing project from the given path
+   *
+   * For Nexus projects: Loads existing configuration
+   * For non-Nexus directories: Creates .nexus structure with defaults
+   *
+   * @param projectPath - Absolute path to the project directory
+   * @returns Promise resolving to loaded project info
+   * @throws Error if path does not exist or is not a directory
+   */
+  async loadProject(projectPath) {
+    if (!await pathExists$1(projectPath)) {
+      throw new Error(`Project path does not exist: ${projectPath}`);
+    }
+    const stat2 = await fs.stat(projectPath);
+    if (!stat2.isDirectory()) {
+      throw new Error(`Project path is not a directory: ${projectPath}`);
+    }
+    const nexusConfigPath = path.join(projectPath, ".nexus", "config.json");
+    const isNexusProject = await pathExists$1(nexusConfigPath);
+    const gitDir = path.join(projectPath, ".git");
+    const hasGit = await pathExists$1(gitDir);
+    let config;
+    if (isNexusProject) {
+      config = await readJson$1(nexusConfigPath);
+      console.log(`[ProjectLoader] Loaded existing Nexus project: ${config.name}`);
+    } else {
+      config = this.createDefaultConfig(path.basename(projectPath));
+      await this.initializeNexusStructure(projectPath, config);
+      console.log(`[ProjectLoader] Initialized Nexus structure for: ${config.name}`);
+    }
+    return {
+      id: this.generateProjectId(projectPath),
+      name: config.name,
+      path: projectPath,
+      description: config.description,
+      config,
+      isNexusProject,
+      hasGit
+    };
+  }
+  /**
+   * Validate if a path is a valid project directory
+   *
+   * @param projectPath - Path to validate
+   * @returns Promise resolving to boolean
+   */
+  async validateProjectPath(projectPath) {
+    try {
+      if (!await pathExists$1(projectPath)) {
+        return false;
+      }
+      const stat2 = await fs.stat(projectPath);
+      return stat2.isDirectory();
+    } catch {
+      return false;
+    }
+  }
+  /**
+   * Check if path contains a Nexus project
+   *
+   * @param projectPath - Path to check
+   * @returns Promise resolving to boolean
+   */
+  async isNexusProject(projectPath) {
+    const configPath = path.join(projectPath, ".nexus", "config.json");
+    return pathExists$1(configPath);
+  }
+  /**
+   * Get project config without full loading
+   * Returns null if not a Nexus project
+   *
+   * @param projectPath - Path to project
+   * @returns Promise resolving to config or null
+   */
+  async getProjectConfig(projectPath) {
+    const configPath = path.join(projectPath, ".nexus", "config.json");
+    if (!await pathExists$1(configPath)) {
+      return null;
+    }
+    try {
+      return await readJson$1(configPath);
+    } catch {
+      return null;
+    }
+  }
+  /**
+   * Update project configuration
+   *
+   * @param projectPath - Path to project
+   * @param updates - Partial config updates
+   * @returns Promise resolving to updated config
+   * @throws Error if project not found
+   */
+  async updateProjectConfig(projectPath, updates) {
+    const configPath = path.join(projectPath, ".nexus", "config.json");
+    if (!await pathExists$1(configPath)) {
+      throw new Error(`Not a Nexus project: ${projectPath}`);
+    }
+    const currentConfig = await readJson$1(configPath);
+    const updatedConfig = {
+      ...currentConfig,
+      ...updates,
+      // Don't allow overwriting certain fields
+      created: currentConfig.created
+    };
+    await writeJson$1(configPath, updatedConfig, { spaces: 2 });
+    console.log(`[ProjectLoader] Updated project config: ${projectPath}`);
+    return updatedConfig;
+  }
+  /**
+   * Create default configuration for a project
+   */
+  createDefaultConfig(name) {
+    return {
+      name,
+      version: "1.0.0",
+      created: (/* @__PURE__ */ new Date()).toISOString(),
+      nexusVersion: "1.0.0",
+      settings: {
+        maxAgents: 4,
+        qaMaxIterations: 50,
+        taskMaxMinutes: 30,
+        checkpointIntervalSeconds: 7200
+      }
+    };
+  }
+  /**
+   * Initialize Nexus structure for an existing directory
+   */
+  async initializeNexusStructure(projectPath, config) {
+    const nexusDir = path.join(projectPath, ".nexus");
+    await ensureDir$1(nexusDir);
+    await ensureDir$1(path.join(nexusDir, "checkpoints"));
+    await ensureDir$1(path.join(nexusDir, "worktrees"));
+    await writeJson$1(path.join(nexusDir, "config.json"), config, { spaces: 2 });
+    const stateContent = `# Project State
+
+## Current Phase
+loaded
+
+## Status
+ready
+
+## Last Updated
+${(/* @__PURE__ */ new Date()).toISOString()}
+`;
+    await fs.writeFile(path.join(nexusDir, "STATE.md"), stateContent);
+    console.log(`[ProjectLoader] Initialized Nexus structure for existing project`);
+  }
+  /**
+   * Generate a consistent project ID from path
+   * Same path always produces same ID
+   */
+  generateProjectId(projectPath) {
+    let hash = 0;
+    for (let i = 0; i < projectPath.length; i++) {
+      const char = projectPath.charCodeAt(i);
+      hash = (hash << 5) - hash + char;
+      hash = hash & hash;
+    }
+    return `proj_${Math.abs(hash).toString(36)}`;
+  }
+}
+const projectLoader = new ProjectLoader();
+async function pathExists(p) {
+  try {
+    await fs.access(p);
+    return true;
+  } catch {
+    return false;
+  }
+}
+async function ensureDir(p) {
+  await fs.mkdir(p, { recursive: true });
+}
+async function writeJson(p, data, options) {
+  await fs.writeFile(p, JSON.stringify(data, null, options?.spaces));
+}
+async function readJson(p) {
+  const content = await fs.readFile(p, "utf-8");
+  return JSON.parse(content);
+}
+const MAX_RECENT = 10;
+class RecentProjectsService {
+  configPath;
+  cache = null;
+  constructor() {
+    try {
+      this.configPath = path.join(app.getPath("userData"), "recent-projects.json");
+    } catch {
+      this.configPath = path.join(process.cwd(), ".nexus-recent-projects.json");
+    }
+  }
+  /**
+   * Allow setting a custom config path (for testing)
+   */
+  setConfigPath(configPath) {
+    this.configPath = configPath;
+    this.cache = null;
+  }
+  /**
+   * Get list of recent projects, sorted by lastOpened descending
+   * @returns Array of recent projects
+   */
+  async getRecent() {
+    if (this.cache !== null) {
+      return this.cache;
+    }
+    try {
+      if (await pathExists(this.configPath)) {
+        const data = await readJson(this.configPath);
+        if (Array.isArray(data)) {
+          this.cache = data.filter(this.isValidRecentProject);
+          return this.cache;
+        }
+      }
+    } catch (error) {
+      console.error("[RecentProjectsService] Failed to load recent projects:", error);
+    }
+    this.cache = [];
+    return this.cache;
+  }
+  /**
+   * Add a project to the recent list (or update if exists)
+   * @param project - Project to add (path and name required)
+   */
+  async addRecent(project) {
+    if (!project.path || !project.name) {
+      console.warn("[RecentProjectsService] Invalid project data, skipping add");
+      return;
+    }
+    const recent = await this.getRecent();
+    const filtered = recent.filter((p) => p.path !== project.path);
+    filtered.unshift({
+      path: project.path,
+      name: project.name,
+      lastOpened: (/* @__PURE__ */ new Date()).toISOString()
+    });
+    const trimmed = filtered.slice(0, MAX_RECENT);
+    await this.save(trimmed);
+    console.log(`[RecentProjectsService] Added recent project: ${project.name}`);
+  }
+  /**
+   * Remove a project from the recent list
+   * @param projectPath - Path of project to remove
+   */
+  async removeRecent(projectPath) {
+    if (!projectPath) {
+      return;
+    }
+    const recent = await this.getRecent();
+    const filtered = recent.filter((p) => p.path !== projectPath);
+    if (filtered.length !== recent.length) {
+      await this.save(filtered);
+      console.log(`[RecentProjectsService] Removed recent project: ${projectPath}`);
+    }
+  }
+  /**
+   * Clear all recent projects
+   */
+  async clearRecent() {
+    await this.save([]);
+    console.log("[RecentProjectsService] Cleared all recent projects");
+  }
+  /**
+   * Clean up entries for projects that no longer exist
+   * @returns Number of entries removed
+   */
+  async cleanup() {
+    const recent = await this.getRecent();
+    const valid = [];
+    for (const project of recent) {
+      try {
+        if (await pathExists(project.path)) {
+          valid.push(project);
+        }
+      } catch {
+      }
+    }
+    const removed = recent.length - valid.length;
+    if (removed > 0) {
+      await this.save(valid);
+      console.log(`[RecentProjectsService] Cleaned up ${removed} non-existent entries`);
+    }
+    return removed;
+  }
+  /**
+   * Save recent projects to disk
+   */
+  async save(projects2) {
+    try {
+      await ensureDir(path.dirname(this.configPath));
+      await writeJson(this.configPath, projects2, { spaces: 2 });
+      this.cache = projects2;
+    } catch (error) {
+      console.error("[RecentProjectsService] Failed to save recent projects:", error);
+      throw error;
+    }
+  }
+  /**
+   * Validate that an object is a valid RecentProject
+   */
+  isValidRecentProject(obj) {
+    return typeof obj === "object" && obj !== null && typeof obj.path === "string" && typeof obj.name === "string" && typeof obj.lastOpened === "string";
+  }
+}
+const recentProjectsService = new RecentProjectsService();
+const pendingProjectPaths = /* @__PURE__ */ new Map();
+function validateSender$3(event) {
+  const url = event.sender.getURL();
+  return url.startsWith("http://localhost:") || url.startsWith("file://");
+}
+function registerProjectHandlers() {
+  ipcMain.handle(
+    "project:initialize",
+    async (event, options) => {
+      if (!validateSender$3(event)) {
+        console.error("[ProjectHandlers] Unauthorized sender for project:initialize");
+        return { success: false, error: "Unauthorized IPC sender" };
+      }
+      if (!options?.name || typeof options.name !== "string") {
+        return { success: false, error: "Project name is required" };
+      }
+      if (!options?.path || typeof options.path !== "string") {
+        return { success: false, error: "Project path is required" };
+      }
+      const sanitizedName = options.name.trim().replace(/[<>:"/\\|?*]/g, "-");
+      if (sanitizedName.length === 0) {
+        return { success: false, error: "Invalid project name" };
+      }
+      try {
+        const project = await projectInitializer.initializeProject({
+          ...options,
+          name: sanitizedName
+        });
+        console.log(`[ProjectHandlers] Project initialized: ${project.name}`);
+        pendingProjectPaths.set(project.name, project.path);
+        console.log(`[ProjectHandlers] Stored pending rootPath: ${project.name} -> ${project.path}`);
+        return { success: true, data: project };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error("[ProjectHandlers] Initialize failed:", message);
+        return { success: false, error: message };
+      }
+    }
+  );
+  ipcMain.handle(
+    "project:load",
+    async (event, projectPath) => {
+      if (!validateSender$3(event)) {
+        console.error("[ProjectHandlers] Unauthorized sender for project:load");
+        return { success: false, error: "Unauthorized IPC sender" };
+      }
+      if (!projectPath || typeof projectPath !== "string") {
+        return { success: false, error: "Project path is required" };
+      }
+      try {
+        const project = await projectLoader.loadProject(projectPath);
+        console.log(`[ProjectHandlers] Project loaded: ${project.name} from ${project.path}`);
+        return { success: true, data: project };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error("[ProjectHandlers] Load failed:", message);
+        return { success: false, error: message };
+      }
+    }
+  );
+  ipcMain.handle(
+    "project:validatePath",
+    async (event, projectPath) => {
+      if (!validateSender$3(event)) {
+        console.error("[ProjectHandlers] Unauthorized sender for project:validatePath");
+        return { valid: false, error: "Unauthorized IPC sender" };
+      }
+      if (!projectPath || typeof projectPath !== "string") {
+        return { valid: false, error: "Project path is required" };
+      }
+      try {
+        const fs2 = await import("fs/promises");
+        const path2 = await import("path");
+        let exists = true;
+        try {
+          await fs2.access(projectPath);
+        } catch {
+          exists = false;
+        }
+        if (!exists) {
+          return { valid: false, error: "Path does not exist" };
+        }
+        const stat2 = await fs2.stat(projectPath);
+        if (!stat2.isDirectory()) {
+          return { valid: false, error: "Path is not a directory" };
+        }
+        const nexusConfigPath = path2.join(projectPath, ".nexus", "config.json");
+        let isNexusProject = true;
+        try {
+          await fs2.access(nexusConfigPath);
+        } catch {
+          isNexusProject = false;
+        }
+        return { valid: true, isNexusProject };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error("[ProjectHandlers] Validation failed:", message);
+        return { valid: false, error: message };
+      }
+    }
+  );
+  ipcMain.handle(
+    "project:isPathEmpty",
+    async (event, targetPath) => {
+      if (!validateSender$3(event)) {
+        console.error("[ProjectHandlers] Unauthorized sender for project:isPathEmpty");
+        return { empty: false, exists: false, error: "Unauthorized IPC sender" };
+      }
+      if (!targetPath || typeof targetPath !== "string") {
+        return { empty: false, exists: false, error: "Path is required" };
+      }
+      try {
+        const fs2 = await import("fs/promises");
+        let exists = true;
+        try {
+          await fs2.access(targetPath);
+        } catch {
+          exists = false;
+        }
+        if (!exists) {
+          return { empty: true, exists: false };
+        }
+        const stat2 = await fs2.stat(targetPath);
+        if (!stat2.isDirectory()) {
+          return { empty: false, exists: true, error: "Path is not a directory" };
+        }
+        const files = await fs2.readdir(targetPath);
+        return { empty: files.length === 0, exists: true };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error("[ProjectHandlers] isPathEmpty failed:", message);
+        return { empty: false, exists: false, error: message };
+      }
+    }
+  );
+  ipcMain.handle(
+    "project:getRecent",
+    async (event) => {
+      if (!validateSender$3(event)) {
+        console.error("[ProjectHandlers] Unauthorized sender for project:getRecent");
+        return [];
+      }
+      try {
+        return await recentProjectsService.getRecent();
+      } catch (error) {
+        console.error("[ProjectHandlers] getRecent failed:", error);
+        return [];
+      }
+    }
+  );
+  ipcMain.handle(
+    "project:addRecent",
+    async (event, project) => {
+      if (!validateSender$3(event)) {
+        console.error("[ProjectHandlers] Unauthorized sender for project:addRecent");
+        return { success: false, error: "Unauthorized IPC sender" };
+      }
+      if (!project?.path || !project?.name) {
+        return { success: false, error: "Project path and name are required" };
+      }
+      try {
+        await recentProjectsService.addRecent(project);
+        return { success: true };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error("[ProjectHandlers] addRecent failed:", message);
+        return { success: false, error: message };
+      }
+    }
+  );
+  ipcMain.handle(
+    "project:removeRecent",
+    async (event, projectPath) => {
+      if (!validateSender$3(event)) {
+        console.error("[ProjectHandlers] Unauthorized sender for project:removeRecent");
+        return { success: false, error: "Unauthorized IPC sender" };
+      }
+      if (!projectPath) {
+        return { success: false, error: "Project path is required" };
+      }
+      try {
+        await recentProjectsService.removeRecent(projectPath);
+        return { success: true };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error("[ProjectHandlers] removeRecent failed:", message);
+        return { success: false, error: message };
+      }
+    }
+  );
+  ipcMain.handle(
+    "project:clearRecent",
+    async (event) => {
+      if (!validateSender$3(event)) {
+        console.error("[ProjectHandlers] Unauthorized sender for project:clearRecent");
+        return { success: false, error: "Unauthorized IPC sender" };
+      }
+      try {
+        await recentProjectsService.clearRecent();
+        return { success: true };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error("[ProjectHandlers] clearRecent failed:", message);
+        return { success: false, error: message };
+      }
+    }
+  );
+  console.log("[ProjectHandlers] Registered project IPC handlers");
+}
 class NexusNotInitializedError extends Error {
   constructor(initError) {
     const baseMessage = "Interview system is not available. ";
@@ -1843,38 +2658,42 @@ class NexusNotInitializedError extends Error {
     this.name = "NexusNotInitializedError";
   }
 }
-function validateSender$3(event) {
+function validateSender$2(event) {
   const url = event.sender.getURL();
   return url.startsWith("http://localhost:") || url.startsWith("file://");
 }
-function ensureProjectExists(db, projectId, mode = "genesis") {
+function ensureProjectExists(db, projectId, projectName, mode = "genesis") {
   const existing = db.db.select().from(projects).where(eq(projects.id, projectId)).get();
   if (!existing) {
+    const storedPath = projectName ? pendingProjectPaths.get(projectName) : void 0;
+    if (storedPath) {
+      pendingProjectPaths.delete(projectName);
+      console.log(`[InterviewHandlers] Using stored rootPath for ${projectName}: ${storedPath}`);
+    }
     const now = /* @__PURE__ */ new Date();
     db.db.insert(projects).values({
       id: projectId,
-      name: `New ${mode === "genesis" ? "Genesis" : "Evolution"} Project`,
+      name: projectName || `New ${mode === "genesis" ? "Genesis" : "Evolution"} Project`,
       mode,
       status: "interview",
-      rootPath: process.cwd(),
-      // Default to current working directory
+      rootPath: storedPath || "",
       createdAt: now,
       updatedAt: now
     }).run();
-    console.log(`[InterviewHandlers] Created project record: ${projectId}`);
+    console.log(`[InterviewHandlers] Created project record: ${projectId} with rootPath: ${storedPath || "(empty)"}`);
   }
 }
 function registerInterviewHandlers(interviewEngine, sessionManager, db) {
   ipcMain.handle(
     "interview:start",
-    (event, projectId) => {
-      if (!validateSender$3(event)) {
+    (event, projectId, projectName) => {
+      if (!validateSender$2(event)) {
         throw new Error("Unauthorized IPC sender");
       }
       if (typeof projectId !== "string" || !projectId) {
         throw new Error("Invalid projectId");
       }
-      ensureProjectExists(db, projectId, "genesis");
+      ensureProjectExists(db, projectId, projectName, "genesis");
       const session2 = interviewEngine.startSession(projectId);
       sessionManager.startAutoSave(session2);
       return session2;
@@ -1883,7 +2702,7 @@ function registerInterviewHandlers(interviewEngine, sessionManager, db) {
   ipcMain.handle(
     "interview:sendMessage",
     async (event, sessionId, message) => {
-      if (!validateSender$3(event)) {
+      if (!validateSender$2(event)) {
         throw new Error("Unauthorized IPC sender");
       }
       if (typeof sessionId !== "string" || !sessionId) {
@@ -1899,7 +2718,7 @@ function registerInterviewHandlers(interviewEngine, sessionManager, db) {
   ipcMain.handle(
     "interview:getSession",
     (event, sessionId) => {
-      if (!validateSender$3(event)) {
+      if (!validateSender$2(event)) {
         throw new Error("Unauthorized IPC sender");
       }
       if (typeof sessionId !== "string" || !sessionId) {
@@ -1911,7 +2730,7 @@ function registerInterviewHandlers(interviewEngine, sessionManager, db) {
   ipcMain.handle(
     "interview:resume",
     (event, sessionId) => {
-      if (!validateSender$3(event)) {
+      if (!validateSender$2(event)) {
         throw new Error("Unauthorized IPC sender");
       }
       if (typeof sessionId !== "string" || !sessionId) {
@@ -1927,7 +2746,7 @@ function registerInterviewHandlers(interviewEngine, sessionManager, db) {
   ipcMain.handle(
     "interview:resumeByProject",
     (event, projectId) => {
-      if (!validateSender$3(event)) {
+      if (!validateSender$2(event)) {
         throw new Error("Unauthorized IPC sender");
       }
       if (typeof projectId !== "string" || !projectId) {
@@ -1943,7 +2762,7 @@ function registerInterviewHandlers(interviewEngine, sessionManager, db) {
   ipcMain.handle(
     "interview:end",
     (event, sessionId) => {
-      if (!validateSender$3(event)) {
+      if (!validateSender$2(event)) {
         throw new Error("Unauthorized IPC sender");
       }
       if (typeof sessionId !== "string" || !sessionId) {
@@ -1960,7 +2779,7 @@ function registerInterviewHandlers(interviewEngine, sessionManager, db) {
   ipcMain.handle(
     "interview:pause",
     (event, sessionId) => {
-      if (!validateSender$3(event)) {
+      if (!validateSender$2(event)) {
         throw new Error("Unauthorized IPC sender");
       }
       if (typeof sessionId !== "string" || !sessionId) {
@@ -1977,7 +2796,7 @@ function registerInterviewHandlers(interviewEngine, sessionManager, db) {
   ipcMain.handle(
     "interview:getGreeting",
     (event) => {
-      if (!validateSender$3(event)) {
+      if (!validateSender$2(event)) {
         throw new Error("Unauthorized IPC sender");
       }
       return interviewEngine.getInitialGreeting();
@@ -2772,12 +3591,13 @@ class ClaudeCodeCLIClient {
     const prompt = this.messagesToPrompt(messages);
     const systemPrompt = this.extractSystemPrompt(messages);
     const [args, stdinPrompt] = this.buildArgs(prompt, systemPrompt, options);
-    const result = await this.executeWithRetry(args, stdinPrompt);
+    const result = await this.executeWithRetry(args, stdinPrompt, options?.workingDirectory);
     return this.parseResponse(result, options);
   }
   /**
    * Stream a chat completion from Claude Code CLI.
    * Note: CLI doesn't support true streaming, so we execute and yield complete response.
+   * Passes through workingDirectory from options if provided.
    */
   async *chatStream(messages, options) {
     const response = await this.chat(messages, options);
@@ -2802,6 +3622,7 @@ class ClaudeCodeCLIClient {
   /**
    * Execute a task with tools via Claude Code CLI.
    * Claude Code has built-in tools (Read, Write, Bash, etc.)
+   * Passes through workingDirectory from options if provided.
    */
   async executeWithTools(messages, tools, options) {
     const prompt = this.messagesToPrompt(messages);
@@ -2815,7 +3636,7 @@ class ClaudeCodeCLIClient {
       const cliToolNames = tools.map((t) => this.mapToolName(t.name));
       args.push("--allowedTools", cliToolNames.join(","));
     }
-    const result = await this.executeWithRetry(args, stdinPrompt);
+    const result = await this.executeWithRetry(args, stdinPrompt, options?.workingDirectory);
     return this.parseResponse(result, options);
   }
   /**
@@ -2871,12 +3692,13 @@ ${prompt}` : prompt;
    * Execute CLI command with retry logic.
    * @param args CLI arguments
    * @param stdinPrompt Optional prompt to pass via stdin (avoids shell escaping issues)
+   * @param workingDirectory Optional per-call working directory override
    */
-  async executeWithRetry(args, stdinPrompt) {
+  async executeWithRetry(args, stdinPrompt, workingDirectory) {
     let lastError = null;
     for (let attempt = 0; attempt <= this.config.maxRetries; attempt++) {
       try {
-        return await this.execute(args, stdinPrompt);
+        return await this.execute(args, stdinPrompt, workingDirectory);
       } catch (error) {
         lastError = error;
         this.config.logger?.warn(
@@ -2894,20 +3716,25 @@ ${prompt}` : prompt;
    * Execute the Claude CLI command.
    * @param args CLI arguments
    * @param stdinPrompt Optional prompt to pass via stdin (avoids shell escaping issues)
+   * @param workingDirectory Optional per-call working directory override
    */
-  execute(args, stdinPrompt) {
+  execute(args, stdinPrompt, workingDirectory) {
     return new Promise((resolve2, reject) => {
-      this.config.logger?.debug("Executing Claude CLI", { args: args.join(" ") });
+      const cwd = workingDirectory || this.config.workingDirectory;
+      this.config.logger?.debug("Executing Claude CLI", { args: args.join(" "), cwd });
       console.log("[ClaudeCodeCLIClient] ========== DEBUG START ==========");
       console.log("[ClaudeCodeCLIClient] Full args:", args.join(" "));
       console.log("[ClaudeCodeCLIClient] Using stdin for prompt:", stdinPrompt ? "YES" : "NO");
       console.log("[ClaudeCodeCLIClient] Prompt length:", stdinPrompt?.length ?? 0);
       console.log("[ClaudeCodeCLIClient] Prompt preview:", stdinPrompt?.substring(0, 100) ?? "N/A");
-      console.log("[ClaudeCodeCLIClient] Working dir:", this.config.workingDirectory);
+      console.log("[ClaudeCodeCLIClient] Config working dir:", this.config.workingDirectory);
+      console.log("[ClaudeCodeCLIClient] Per-call override:", workingDirectory ?? "NONE");
+      console.log("[ClaudeCodeCLIClient] Resolved working dir:", cwd);
       console.log("[ClaudeCodeCLIClient] Shell mode:", process.platform === "win32");
       console.log("[ClaudeCodeCLIClient] ========== DEBUG END ==========");
       const child = spawn(this.config.claudePath, args, {
-        cwd: this.config.workingDirectory,
+        cwd,
+        // Use resolved cwd (per-call or config default)
         env: { ...process.env },
         stdio: ["pipe", "pipe", "pipe"],
         shell: process.platform === "win32"
@@ -3506,7 +4333,7 @@ ${results}`;
     return new Promise((resolve2) => setTimeout(resolve2, ms));
   }
 }
-function validateSender$2(event) {
+function validateSender$1(event) {
   const url = event.sender.getURL();
   return url.startsWith("http://localhost:") || url.startsWith("file://");
 }
@@ -3515,13 +4342,13 @@ function isValidProvider(provider) {
 }
 function registerSettingsHandlers() {
   ipcMain.handle("settings:getAll", (event) => {
-    if (!validateSender$2(event)) {
+    if (!validateSender$1(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     return settingsService.getAll();
   });
   ipcMain.handle("settings:get", (event, key) => {
-    if (!validateSender$2(event)) {
+    if (!validateSender$1(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     if (typeof key !== "string" || !key) {
@@ -3530,7 +4357,7 @@ function registerSettingsHandlers() {
     return settingsService.get(key);
   });
   ipcMain.handle("settings:set", (event, key, value) => {
-    if (!validateSender$2(event)) {
+    if (!validateSender$1(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     if (typeof key !== "string" || !key) {
@@ -3540,7 +4367,7 @@ function registerSettingsHandlers() {
     return true;
   });
   ipcMain.handle("settings:setApiKey", (event, provider, key) => {
-    if (!validateSender$2(event)) {
+    if (!validateSender$1(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     if (!isValidProvider(provider)) {
@@ -3552,7 +4379,7 @@ function registerSettingsHandlers() {
     return settingsService.setApiKey(provider, key);
   });
   ipcMain.handle("settings:hasApiKey", (event, provider) => {
-    if (!validateSender$2(event)) {
+    if (!validateSender$1(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     if (!isValidProvider(provider)) {
@@ -3561,7 +4388,7 @@ function registerSettingsHandlers() {
     return settingsService.hasApiKey(provider);
   });
   ipcMain.handle("settings:clearApiKey", (event, provider) => {
-    if (!validateSender$2(event)) {
+    if (!validateSender$1(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     if (!isValidProvider(provider)) {
@@ -3571,14 +4398,14 @@ function registerSettingsHandlers() {
     return true;
   });
   ipcMain.handle("settings:reset", (event) => {
-    if (!validateSender$2(event)) {
+    if (!validateSender$1(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     settingsService.reset();
     return true;
   });
   ipcMain.handle("settings:checkCliAvailability", async (event, provider) => {
-    if (!validateSender$2(event)) {
+    if (!validateSender$1(event)) {
       throw new Error("Unauthorized IPC sender");
     }
     if (provider !== "claude" && provider !== "gemini") {
@@ -3608,7 +4435,7 @@ function registerSettingsHandlers() {
     }
   });
 }
-function validateSender$1(event) {
+function validateSender(event) {
   const url = event.sender.getURL();
   return url.startsWith("http://localhost:") || url.startsWith("file://");
 }
@@ -3616,7 +4443,7 @@ function registerDialogHandlers() {
   ipcMain.handle(
     "dialog:openDirectory",
     async (event, options) => {
-      if (!validateSender$1(event)) {
+      if (!validateSender(event)) {
         console.error("[DialogHandlers] Unauthorized sender for dialog:openDirectory");
         throw new Error("Unauthorized IPC sender");
       }
@@ -3644,7 +4471,7 @@ function registerDialogHandlers() {
   ipcMain.handle(
     "dialog:openFile",
     async (event, options) => {
-      if (!validateSender$1(event)) {
+      if (!validateSender(event)) {
         console.error("[DialogHandlers] Unauthorized sender for dialog:openFile");
         throw new Error("Unauthorized IPC sender");
       }
@@ -3676,7 +4503,7 @@ function registerDialogHandlers() {
   ipcMain.handle(
     "dialog:saveFile",
     async (event, options) => {
-      if (!validateSender$1(event)) {
+      if (!validateSender(event)) {
         console.error("[DialogHandlers] Unauthorized sender for dialog:saveFile");
         throw new Error("Unauthorized IPC sender");
       }
@@ -3701,713 +4528,6 @@ function registerDialogHandlers() {
     }
   );
   console.log("[DialogHandlers] Registered dialog IPC handlers");
-}
-async function pathExists$2(p) {
-  try {
-    await fs.access(p);
-    return true;
-  } catch {
-    return false;
-  }
-}
-async function ensureDir$2(p) {
-  await fs.mkdir(p, { recursive: true });
-}
-async function writeJson$2(p, data, options) {
-  await fs.writeFile(p, JSON.stringify(data, null, options?.spaces));
-}
-class ProjectInitializer {
-  /**
-   * Initialize a new Nexus project at the specified path
-   *
-   * @param options - Project initialization options
-   * @returns Promise resolving to initialized project info
-   * @throws Error if path already exists as a file or non-empty directory
-   */
-  async initializeProject(options) {
-    const projectPath = path.join(options.path, options.name);
-    if (await pathExists$2(projectPath)) {
-      const stat2 = await fs.stat(projectPath);
-      if (!stat2.isDirectory()) {
-        throw new Error(`Path already exists as a file: ${projectPath}`);
-      }
-      const files = await fs.readdir(projectPath);
-      if (files.length > 0 && !files.includes(".nexus")) {
-        throw new Error(`Directory not empty and not a Nexus project: ${projectPath}`);
-      }
-    }
-    await this.createDirectoryStructure(projectPath);
-    await this.createNexusConfig(projectPath, options);
-    if (options.initGit !== false) {
-      await this.initializeGit(projectPath);
-    }
-    const projectId = this.generateProjectId();
-    console.log(`[ProjectInitializer] Project initialized: ${options.name} at ${projectPath}`);
-    return {
-      id: projectId,
-      name: options.name,
-      path: projectPath,
-      createdAt: /* @__PURE__ */ new Date()
-    };
-  }
-  /**
-   * Create the standard Nexus project directory structure
-   */
-  async createDirectoryStructure(projectPath) {
-    const directories = [
-      projectPath,
-      path.join(projectPath, "src"),
-      path.join(projectPath, "tests"),
-      path.join(projectPath, ".nexus"),
-      path.join(projectPath, ".nexus", "checkpoints"),
-      path.join(projectPath, ".nexus", "worktrees")
-    ];
-    for (const dir of directories) {
-      await ensureDir$2(dir);
-    }
-    console.log(`[ProjectInitializer] Created directory structure at ${projectPath}`);
-  }
-  /**
-   * Create the .nexus configuration files
-   */
-  async createNexusConfig(projectPath, options) {
-    const config = {
-      name: options.name,
-      description: options.description ?? "",
-      version: "1.0.0",
-      created: (/* @__PURE__ */ new Date()).toISOString(),
-      nexusVersion: "1.0.0",
-      settings: {
-        maxAgents: 4,
-        qaMaxIterations: 50,
-        taskMaxMinutes: 30,
-        checkpointIntervalSeconds: 7200
-      }
-    };
-    await writeJson$2(path.join(projectPath, ".nexus", "config.json"), config, {
-      spaces: 2
-    });
-    const stateContent = `# Project State
-
-## Current Phase
-initialization
-
-## Status
-pending
-
-## Last Updated
-${(/* @__PURE__ */ new Date()).toISOString()}
-`;
-    await fs.writeFile(path.join(projectPath, ".nexus", "STATE.md"), stateContent);
-    console.log(`[ProjectInitializer] Created Nexus configuration`);
-  }
-  /**
-   * Initialize git repository for the project
-   */
-  async initializeGit(projectPath) {
-    try {
-      const gitDir = path.join(projectPath, ".git");
-      if (await pathExists$2(gitDir)) {
-        console.log(`[ProjectInitializer] Git already initialized`);
-        return;
-      }
-      try {
-        execSync("git --version", { stdio: "pipe" });
-      } catch {
-        console.warn(`[ProjectInitializer] Git not available, skipping git initialization`);
-        return;
-      }
-      execSync("git init", { cwd: projectPath, stdio: "pipe" });
-      const gitignore = `# Dependencies
-node_modules/
-
-# Build
-dist/
-build/
-out/
-
-# Environment
-.env
-.env.local
-.env.*.local
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# Nexus working files
-.nexus/worktrees/
-.nexus/checkpoints/
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Coverage
-coverage/
-
-# TypeScript cache
-*.tsbuildinfo
-`;
-      await fs.writeFile(path.join(projectPath, ".gitignore"), gitignore);
-      execSync("git add .", { cwd: projectPath, stdio: "pipe" });
-      execSync('git commit -m "Initial commit - Nexus project initialized"', {
-        cwd: projectPath,
-        stdio: "pipe"
-      });
-      console.log(`[ProjectInitializer] Git initialized with initial commit`);
-    } catch (error) {
-      console.warn(`[ProjectInitializer] Git initialization failed:`, error);
-    }
-  }
-  /**
-   * Generate a unique project ID
-   */
-  generateProjectId() {
-    return `proj_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
-  }
-}
-const projectInitializer = new ProjectInitializer();
-async function pathExists$1(p) {
-  try {
-    await fs.access(p);
-    return true;
-  } catch {
-    return false;
-  }
-}
-async function ensureDir$1(p) {
-  await fs.mkdir(p, { recursive: true });
-}
-async function writeJson$1(p, data, options) {
-  await fs.writeFile(p, JSON.stringify(data, null, options?.spaces ?? 2));
-}
-async function readJson$1(p) {
-  const content = await fs.readFile(p, "utf-8");
-  return JSON.parse(content);
-}
-class ProjectLoader {
-  /**
-   * Load an existing project from the given path
-   *
-   * For Nexus projects: Loads existing configuration
-   * For non-Nexus directories: Creates .nexus structure with defaults
-   *
-   * @param projectPath - Absolute path to the project directory
-   * @returns Promise resolving to loaded project info
-   * @throws Error if path does not exist or is not a directory
-   */
-  async loadProject(projectPath) {
-    if (!await pathExists$1(projectPath)) {
-      throw new Error(`Project path does not exist: ${projectPath}`);
-    }
-    const stat2 = await fs.stat(projectPath);
-    if (!stat2.isDirectory()) {
-      throw new Error(`Project path is not a directory: ${projectPath}`);
-    }
-    const nexusConfigPath = path.join(projectPath, ".nexus", "config.json");
-    const isNexusProject = await pathExists$1(nexusConfigPath);
-    const gitDir = path.join(projectPath, ".git");
-    const hasGit = await pathExists$1(gitDir);
-    let config;
-    if (isNexusProject) {
-      config = await readJson$1(nexusConfigPath);
-      console.log(`[ProjectLoader] Loaded existing Nexus project: ${config.name}`);
-    } else {
-      config = this.createDefaultConfig(path.basename(projectPath));
-      await this.initializeNexusStructure(projectPath, config);
-      console.log(`[ProjectLoader] Initialized Nexus structure for: ${config.name}`);
-    }
-    return {
-      id: this.generateProjectId(projectPath),
-      name: config.name,
-      path: projectPath,
-      description: config.description,
-      config,
-      isNexusProject,
-      hasGit
-    };
-  }
-  /**
-   * Validate if a path is a valid project directory
-   *
-   * @param projectPath - Path to validate
-   * @returns Promise resolving to boolean
-   */
-  async validateProjectPath(projectPath) {
-    try {
-      if (!await pathExists$1(projectPath)) {
-        return false;
-      }
-      const stat2 = await fs.stat(projectPath);
-      return stat2.isDirectory();
-    } catch {
-      return false;
-    }
-  }
-  /**
-   * Check if path contains a Nexus project
-   *
-   * @param projectPath - Path to check
-   * @returns Promise resolving to boolean
-   */
-  async isNexusProject(projectPath) {
-    const configPath = path.join(projectPath, ".nexus", "config.json");
-    return pathExists$1(configPath);
-  }
-  /**
-   * Get project config without full loading
-   * Returns null if not a Nexus project
-   *
-   * @param projectPath - Path to project
-   * @returns Promise resolving to config or null
-   */
-  async getProjectConfig(projectPath) {
-    const configPath = path.join(projectPath, ".nexus", "config.json");
-    if (!await pathExists$1(configPath)) {
-      return null;
-    }
-    try {
-      return await readJson$1(configPath);
-    } catch {
-      return null;
-    }
-  }
-  /**
-   * Update project configuration
-   *
-   * @param projectPath - Path to project
-   * @param updates - Partial config updates
-   * @returns Promise resolving to updated config
-   * @throws Error if project not found
-   */
-  async updateProjectConfig(projectPath, updates) {
-    const configPath = path.join(projectPath, ".nexus", "config.json");
-    if (!await pathExists$1(configPath)) {
-      throw new Error(`Not a Nexus project: ${projectPath}`);
-    }
-    const currentConfig = await readJson$1(configPath);
-    const updatedConfig = {
-      ...currentConfig,
-      ...updates,
-      // Don't allow overwriting certain fields
-      created: currentConfig.created
-    };
-    await writeJson$1(configPath, updatedConfig, { spaces: 2 });
-    console.log(`[ProjectLoader] Updated project config: ${projectPath}`);
-    return updatedConfig;
-  }
-  /**
-   * Create default configuration for a project
-   */
-  createDefaultConfig(name) {
-    return {
-      name,
-      version: "1.0.0",
-      created: (/* @__PURE__ */ new Date()).toISOString(),
-      nexusVersion: "1.0.0",
-      settings: {
-        maxAgents: 4,
-        qaMaxIterations: 50,
-        taskMaxMinutes: 30,
-        checkpointIntervalSeconds: 7200
-      }
-    };
-  }
-  /**
-   * Initialize Nexus structure for an existing directory
-   */
-  async initializeNexusStructure(projectPath, config) {
-    const nexusDir = path.join(projectPath, ".nexus");
-    await ensureDir$1(nexusDir);
-    await ensureDir$1(path.join(nexusDir, "checkpoints"));
-    await ensureDir$1(path.join(nexusDir, "worktrees"));
-    await writeJson$1(path.join(nexusDir, "config.json"), config, { spaces: 2 });
-    const stateContent = `# Project State
-
-## Current Phase
-loaded
-
-## Status
-ready
-
-## Last Updated
-${(/* @__PURE__ */ new Date()).toISOString()}
-`;
-    await fs.writeFile(path.join(nexusDir, "STATE.md"), stateContent);
-    console.log(`[ProjectLoader] Initialized Nexus structure for existing project`);
-  }
-  /**
-   * Generate a consistent project ID from path
-   * Same path always produces same ID
-   */
-  generateProjectId(projectPath) {
-    let hash = 0;
-    for (let i = 0; i < projectPath.length; i++) {
-      const char = projectPath.charCodeAt(i);
-      hash = (hash << 5) - hash + char;
-      hash = hash & hash;
-    }
-    return `proj_${Math.abs(hash).toString(36)}`;
-  }
-}
-const projectLoader = new ProjectLoader();
-async function pathExists(p) {
-  try {
-    await fs.access(p);
-    return true;
-  } catch {
-    return false;
-  }
-}
-async function ensureDir(p) {
-  await fs.mkdir(p, { recursive: true });
-}
-async function writeJson(p, data, options) {
-  await fs.writeFile(p, JSON.stringify(data, null, options?.spaces));
-}
-async function readJson(p) {
-  const content = await fs.readFile(p, "utf-8");
-  return JSON.parse(content);
-}
-const MAX_RECENT = 10;
-class RecentProjectsService {
-  configPath;
-  cache = null;
-  constructor() {
-    try {
-      this.configPath = path.join(app.getPath("userData"), "recent-projects.json");
-    } catch {
-      this.configPath = path.join(process.cwd(), ".nexus-recent-projects.json");
-    }
-  }
-  /**
-   * Allow setting a custom config path (for testing)
-   */
-  setConfigPath(configPath) {
-    this.configPath = configPath;
-    this.cache = null;
-  }
-  /**
-   * Get list of recent projects, sorted by lastOpened descending
-   * @returns Array of recent projects
-   */
-  async getRecent() {
-    if (this.cache !== null) {
-      return this.cache;
-    }
-    try {
-      if (await pathExists(this.configPath)) {
-        const data = await readJson(this.configPath);
-        if (Array.isArray(data)) {
-          this.cache = data.filter(this.isValidRecentProject);
-          return this.cache;
-        }
-      }
-    } catch (error) {
-      console.error("[RecentProjectsService] Failed to load recent projects:", error);
-    }
-    this.cache = [];
-    return this.cache;
-  }
-  /**
-   * Add a project to the recent list (or update if exists)
-   * @param project - Project to add (path and name required)
-   */
-  async addRecent(project) {
-    if (!project.path || !project.name) {
-      console.warn("[RecentProjectsService] Invalid project data, skipping add");
-      return;
-    }
-    const recent = await this.getRecent();
-    const filtered = recent.filter((p) => p.path !== project.path);
-    filtered.unshift({
-      path: project.path,
-      name: project.name,
-      lastOpened: (/* @__PURE__ */ new Date()).toISOString()
-    });
-    const trimmed = filtered.slice(0, MAX_RECENT);
-    await this.save(trimmed);
-    console.log(`[RecentProjectsService] Added recent project: ${project.name}`);
-  }
-  /**
-   * Remove a project from the recent list
-   * @param projectPath - Path of project to remove
-   */
-  async removeRecent(projectPath) {
-    if (!projectPath) {
-      return;
-    }
-    const recent = await this.getRecent();
-    const filtered = recent.filter((p) => p.path !== projectPath);
-    if (filtered.length !== recent.length) {
-      await this.save(filtered);
-      console.log(`[RecentProjectsService] Removed recent project: ${projectPath}`);
-    }
-  }
-  /**
-   * Clear all recent projects
-   */
-  async clearRecent() {
-    await this.save([]);
-    console.log("[RecentProjectsService] Cleared all recent projects");
-  }
-  /**
-   * Clean up entries for projects that no longer exist
-   * @returns Number of entries removed
-   */
-  async cleanup() {
-    const recent = await this.getRecent();
-    const valid = [];
-    for (const project of recent) {
-      try {
-        if (await pathExists(project.path)) {
-          valid.push(project);
-        }
-      } catch {
-      }
-    }
-    const removed = recent.length - valid.length;
-    if (removed > 0) {
-      await this.save(valid);
-      console.log(`[RecentProjectsService] Cleaned up ${removed} non-existent entries`);
-    }
-    return removed;
-  }
-  /**
-   * Save recent projects to disk
-   */
-  async save(projects2) {
-    try {
-      await ensureDir(path.dirname(this.configPath));
-      await writeJson(this.configPath, projects2, { spaces: 2 });
-      this.cache = projects2;
-    } catch (error) {
-      console.error("[RecentProjectsService] Failed to save recent projects:", error);
-      throw error;
-    }
-  }
-  /**
-   * Validate that an object is a valid RecentProject
-   */
-  isValidRecentProject(obj) {
-    return typeof obj === "object" && obj !== null && typeof obj.path === "string" && typeof obj.name === "string" && typeof obj.lastOpened === "string";
-  }
-}
-const recentProjectsService = new RecentProjectsService();
-function validateSender(event) {
-  const url = event.sender.getURL();
-  return url.startsWith("http://localhost:") || url.startsWith("file://");
-}
-function registerProjectHandlers() {
-  ipcMain.handle(
-    "project:initialize",
-    async (event, options) => {
-      if (!validateSender(event)) {
-        console.error("[ProjectHandlers] Unauthorized sender for project:initialize");
-        return { success: false, error: "Unauthorized IPC sender" };
-      }
-      if (!options?.name || typeof options.name !== "string") {
-        return { success: false, error: "Project name is required" };
-      }
-      if (!options?.path || typeof options.path !== "string") {
-        return { success: false, error: "Project path is required" };
-      }
-      const sanitizedName = options.name.trim().replace(/[<>:"/\\|?*]/g, "-");
-      if (sanitizedName.length === 0) {
-        return { success: false, error: "Invalid project name" };
-      }
-      try {
-        const project = await projectInitializer.initializeProject({
-          ...options,
-          name: sanitizedName
-        });
-        console.log(`[ProjectHandlers] Project initialized: ${project.name}`);
-        return { success: true, data: project };
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        console.error("[ProjectHandlers] Initialize failed:", message);
-        return { success: false, error: message };
-      }
-    }
-  );
-  ipcMain.handle(
-    "project:load",
-    async (event, projectPath) => {
-      if (!validateSender(event)) {
-        console.error("[ProjectHandlers] Unauthorized sender for project:load");
-        return { success: false, error: "Unauthorized IPC sender" };
-      }
-      if (!projectPath || typeof projectPath !== "string") {
-        return { success: false, error: "Project path is required" };
-      }
-      try {
-        const project = await projectLoader.loadProject(projectPath);
-        console.log(`[ProjectHandlers] Project loaded: ${project.name} from ${project.path}`);
-        return { success: true, data: project };
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        console.error("[ProjectHandlers] Load failed:", message);
-        return { success: false, error: message };
-      }
-    }
-  );
-  ipcMain.handle(
-    "project:validatePath",
-    async (event, projectPath) => {
-      if (!validateSender(event)) {
-        console.error("[ProjectHandlers] Unauthorized sender for project:validatePath");
-        return { valid: false, error: "Unauthorized IPC sender" };
-      }
-      if (!projectPath || typeof projectPath !== "string") {
-        return { valid: false, error: "Project path is required" };
-      }
-      try {
-        const fs2 = await import("fs/promises");
-        const path2 = await import("path");
-        let exists = true;
-        try {
-          await fs2.access(projectPath);
-        } catch {
-          exists = false;
-        }
-        if (!exists) {
-          return { valid: false, error: "Path does not exist" };
-        }
-        const stat2 = await fs2.stat(projectPath);
-        if (!stat2.isDirectory()) {
-          return { valid: false, error: "Path is not a directory" };
-        }
-        const nexusConfigPath = path2.join(projectPath, ".nexus", "config.json");
-        let isNexusProject = true;
-        try {
-          await fs2.access(nexusConfigPath);
-        } catch {
-          isNexusProject = false;
-        }
-        return { valid: true, isNexusProject };
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        console.error("[ProjectHandlers] Validation failed:", message);
-        return { valid: false, error: message };
-      }
-    }
-  );
-  ipcMain.handle(
-    "project:isPathEmpty",
-    async (event, targetPath) => {
-      if (!validateSender(event)) {
-        console.error("[ProjectHandlers] Unauthorized sender for project:isPathEmpty");
-        return { empty: false, exists: false, error: "Unauthorized IPC sender" };
-      }
-      if (!targetPath || typeof targetPath !== "string") {
-        return { empty: false, exists: false, error: "Path is required" };
-      }
-      try {
-        const fs2 = await import("fs/promises");
-        let exists = true;
-        try {
-          await fs2.access(targetPath);
-        } catch {
-          exists = false;
-        }
-        if (!exists) {
-          return { empty: true, exists: false };
-        }
-        const stat2 = await fs2.stat(targetPath);
-        if (!stat2.isDirectory()) {
-          return { empty: false, exists: true, error: "Path is not a directory" };
-        }
-        const files = await fs2.readdir(targetPath);
-        return { empty: files.length === 0, exists: true };
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        console.error("[ProjectHandlers] isPathEmpty failed:", message);
-        return { empty: false, exists: false, error: message };
-      }
-    }
-  );
-  ipcMain.handle(
-    "project:getRecent",
-    async (event) => {
-      if (!validateSender(event)) {
-        console.error("[ProjectHandlers] Unauthorized sender for project:getRecent");
-        return [];
-      }
-      try {
-        return await recentProjectsService.getRecent();
-      } catch (error) {
-        console.error("[ProjectHandlers] getRecent failed:", error);
-        return [];
-      }
-    }
-  );
-  ipcMain.handle(
-    "project:addRecent",
-    async (event, project) => {
-      if (!validateSender(event)) {
-        console.error("[ProjectHandlers] Unauthorized sender for project:addRecent");
-        return { success: false, error: "Unauthorized IPC sender" };
-      }
-      if (!project?.path || !project?.name) {
-        return { success: false, error: "Project path and name are required" };
-      }
-      try {
-        await recentProjectsService.addRecent(project);
-        return { success: true };
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        console.error("[ProjectHandlers] addRecent failed:", message);
-        return { success: false, error: message };
-      }
-    }
-  );
-  ipcMain.handle(
-    "project:removeRecent",
-    async (event, projectPath) => {
-      if (!validateSender(event)) {
-        console.error("[ProjectHandlers] Unauthorized sender for project:removeRecent");
-        return { success: false, error: "Unauthorized IPC sender" };
-      }
-      if (!projectPath) {
-        return { success: false, error: "Project path is required" };
-      }
-      try {
-        await recentProjectsService.removeRecent(projectPath);
-        return { success: true };
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        console.error("[ProjectHandlers] removeRecent failed:", message);
-        return { success: false, error: message };
-      }
-    }
-  );
-  ipcMain.handle(
-    "project:clearRecent",
-    async (event) => {
-      if (!validateSender(event)) {
-        console.error("[ProjectHandlers] Unauthorized sender for project:clearRecent");
-        return { success: false, error: "Unauthorized IPC sender" };
-      }
-      try {
-        await recentProjectsService.clearRecent();
-        return { success: true };
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        console.error("[ProjectHandlers] clearRecent failed:", message);
-        return { success: false, error: message };
-      }
-    }
-  );
-  console.log("[ProjectHandlers] Registered project IPC handlers");
 }
 class GeminiAPIError extends Error {
   statusCode;
@@ -6356,8 +6476,12 @@ class BaseAgentRunner {
         agentType: this.getAgentType()
       });
       try {
+        const chatOptions = {
+          workingDirectory: context.workingDir
+        };
         const response = await this.llmClient.chat(
-          this.convertToLLMMessages(messages, this.getSystemPrompt())
+          this.convertToLLMMessages(messages, this.getSystemPrompt()),
+          chatOptions
         );
         const content = response.content;
         if (this.isTaskComplete(content, task)) {
@@ -9378,6 +9502,8 @@ class QALoopEngine {
     let lastTest;
     let lastReview;
     console.log(`[QALoopEngine] Starting QA loop for task ${task.id}: ${task.name}`);
+    console.log(`[QALoopEngine] Project path: ${task.projectPath ?? "NOT PROVIDED"}`);
+    console.log(`[QALoopEngine] Worktree: ${task.worktree ?? "NONE"}`);
     while (iteration < this.maxIterations) {
       iteration++;
       console.log(`[QALoopEngine] Iteration ${iteration}/${this.maxIterations}`);
@@ -9603,6 +9729,119 @@ class NexusCoordinator {
     this.pauseRequested = false;
     this.emitEvent("coordinator:started", { projectId });
     this.orchestrationLoop = this.runOrchestrationLoop();
+  }
+  /**
+   * Execute pre-decomposed tasks (skip decomposition phase)
+   * Used when tasks already exist in database from planning phase.
+   * This is the correct method to call when user clicks "Start Execution"
+   * after features/tasks have been generated during the interview.
+   *
+   * @param projectId - The project ID
+   * @param tasks - Array of existing tasks from database
+   * @param projectPath - Path to user's project folder (NOT Nexus-master)
+   */
+  executeExistingTasks(projectId, tasks2, projectPath) {
+    this.projectConfig = {
+      projectId,
+      projectPath,
+      // User's project folder, NOT Nexus-master
+      features: [],
+      mode: "evolution"
+    };
+    this.state = "running";
+    this.currentPhase = "execution";
+    this.stopRequested = false;
+    this.pauseRequested = false;
+    console.log(`[NexusCoordinator] Executing ${tasks2.length} existing tasks`);
+    console.log(`[NexusCoordinator] Project path: ${projectPath}`);
+    this.emitEvent("coordinator:started", { projectId });
+    this.orchestrationLoop = this.runExecutionLoop(tasks2, projectPath);
+  }
+  /**
+   * Run execution loop for existing tasks (no decomposition)
+   * This skips the decomposeByMode step and directly processes
+   * the provided tasks in waves.
+   */
+  async runExecutionLoop(allTasks, _projectPath) {
+    try {
+      if (!this.projectConfig) {
+        throw new Error("Project configuration not initialized");
+      }
+      console.log(`[NexusCoordinator] Running execution loop with ${allTasks.length} tasks`);
+      const planningTasks = allTasks.map((task) => ({
+        id: task.id,
+        name: task.name,
+        description: task.description,
+        type: task.type ?? "auto",
+        size: "small",
+        estimatedMinutes: task.estimatedMinutes ?? 15,
+        dependsOn: task.dependsOn,
+        testCriteria: task.testCriteria ?? [],
+        files: task.files ?? []
+      }));
+      const cycles = this.resolver.detectCycles(planningTasks);
+      if (cycles.length > 0) {
+        throw new Error(`Dependency cycles detected: ${cycles.map((c) => c.taskIds.join(" -> ")).join("; ")}`);
+      }
+      this.waves = this.resolver.calculateWaves(planningTasks);
+      this.totalTasks = allTasks.length;
+      console.log(`[NexusCoordinator] Calculated ${this.waves.length} waves`);
+      for (const wave of this.waves) {
+        for (const task of wave.tasks) {
+          const orchestrationTask = {
+            ...task,
+            dependsOn: task.dependsOn,
+            status: "pending",
+            waveId: wave.id,
+            priority: 1,
+            createdAt: /* @__PURE__ */ new Date()
+          };
+          this.taskQueue.enqueue(orchestrationTask, wave.id);
+        }
+      }
+      for (let waveIndex = 0; waveIndex < this.waves.length; waveIndex++) {
+        if (this.stopRequested) break;
+        this.currentWaveIndex = waveIndex;
+        this.emitEvent("wave:started", { waveId: waveIndex });
+        const wave = this.waves[waveIndex];
+        await this.processWave(wave);
+        if (!this.stopRequested) {
+          this.emitEvent("wave:completed", { waveId: waveIndex });
+          await this.createWaveCheckpoint(waveIndex);
+        }
+      }
+      if (!this.stopRequested) {
+        const remainingTasks = this.totalTasks - this.completedTasks - this.failedTasks;
+        if (remainingTasks === 0 && this.completedTasks > 0) {
+          this.currentPhase = "completion";
+          this.state = "idle";
+          console.log(`[NexusCoordinator] Project completed: ${this.completedTasks}/${this.totalTasks} tasks completed, ${this.failedTasks} failed`);
+          this.emitEvent("project:completed", {
+            projectId: this.projectConfig?.projectId,
+            totalTasks: this.totalTasks,
+            completedTasks: this.completedTasks,
+            failedTasks: this.failedTasks,
+            totalWaves: this.waves.length
+          });
+        } else if (this.failedTasks > 0 && this.failedTasks === this.totalTasks) {
+          console.log(`[NexusCoordinator] Project failed: all ${this.failedTasks} tasks failed`);
+          this.emitEvent("project:failed", {
+            projectId: this.projectConfig?.projectId,
+            error: "All tasks failed",
+            totalTasks: this.totalTasks,
+            failedTasks: this.failedTasks,
+            recoverable: true
+          });
+        }
+      }
+    } catch (error) {
+      console.error("[NexusCoordinator] Execution error:", error);
+      this.emitEvent("project:failed", {
+        projectId: this.projectConfig?.projectId,
+        error: error instanceof Error ? error.message : String(error),
+        recoverable: false
+      });
+    }
   }
   /**
    * Pause execution gracefully
@@ -9963,9 +10202,12 @@ class NexusCoordinator {
   /**
    * Execute a single task with per-task merge on success
    * Hotfix #5 - Issue 2: Added merge step after successful QA loop
+   * Fix: Now passes projectPath to QA engine for correct CLI working directory
    */
   async executeTask(task, agentId, worktreePath) {
     this.emitEvent("task:started", { taskId: task.id, agentId });
+    const projectPath = this.projectConfig?.projectPath;
+    console.log(`[NexusCoordinator] executeTask: projectPath = ${projectPath ?? "UNDEFINED"}`);
     try {
       const result = await this.qaEngine.run(
         {
@@ -9973,7 +10215,9 @@ class NexusCoordinator {
           name: task.name,
           description: task.description,
           files: task.files ?? [],
-          worktree: worktreePath
+          worktree: worktreePath,
+          projectPath
+          // Pass project path for Claude CLI working directory
         },
         null
         // coder would be passed here
@@ -10868,7 +11112,10 @@ class NexusFactory {
   static async createClaudeClient(config) {
     const backend = config.claudeBackend ?? DEFAULT_NEXUS_CONFIG.claudeBackend ?? "cli";
     if (backend === "cli") {
-      const cliClient = new ClaudeCodeCLIClient(config.claudeCliConfig);
+      const cliClient = new ClaudeCodeCLIClient({
+        ...config.claudeCliConfig,
+        workingDirectory: config.workingDir
+      });
       if (await cliClient.isAvailable()) {
         return { client: cliClient, backend: "cli" };
       }
@@ -15671,6 +15918,7 @@ class RepoMapGenerator {
   }
 }
 let bootstrappedNexus = null;
+let bootstrapInstance = null;
 let mainWindowRef = null;
 class NexusBootstrap {
   config;
@@ -15794,47 +16042,6 @@ class NexusBootstrap {
     const requirementCapturedUnsub = this.eventBus.on("interview:requirement-captured", (event) => {
       const { projectId, requirement } = event.payload;
       console.log(`[NexusBootstrap] Requirement captured for ${projectId}: ${requirement.content.substring(0, 50)}...`);
-      try {
-        const categoryMap = {
-          functional: "functional",
-          technical: "technical",
-          ui: "functional",
-          performance: "non-functional",
-          security: "non-functional",
-          "non-functional": "non-functional"
-        };
-        const mappedCategory = categoryMap[requirement.category] ?? "functional";
-        const priorityMap = {
-          critical: "must",
-          high: "should",
-          medium: "could",
-          low: "wont",
-          must: "must",
-          should: "should",
-          could: "could",
-          wont: "wont"
-        };
-        const mappedPriority = priorityMap[requirement.priority] ?? "should";
-        if (this.requirementsDB) {
-          this.requirementsDB.addRequirement(projectId, {
-            category: mappedCategory,
-            description: requirement.content,
-            // Map content to description
-            priority: mappedPriority,
-            source: requirement.source,
-            confidence: 0.8,
-            tags: []
-          });
-          console.log(`[NexusBootstrap] Requirement saved to DB for project ${projectId}`);
-        }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        console.warn(`[NexusBootstrap] Failed to save requirement: ${message}`);
-        void this.eventBus.emit("system:warning", {
-          component: "NexusBootstrap",
-          message: `Failed to save requirement: ${message}`
-        });
-      }
     });
     this.unsubscribers.push(requirementCapturedUnsub);
     const interviewCompletedUnsub = this.eventBus.on("interview:completed", async (event) => {
@@ -15879,16 +16086,29 @@ class NexusBootstrap {
           console.log(`[NexusBootstrap] Forwarded planning:completed to UI`);
         }
         const projectFeatures = this.tasksToFeatures(decomposedTasks, projectId);
+        let actualProjectPath = this.config.workingDir;
+        if (this.databaseClient) {
+          try {
+            const { eq: eq2 } = await import("drizzle-orm");
+            const projectRecord = this.databaseClient.db.select().from(projects).where(eq2(projects.id, projectId)).get();
+            if (projectRecord?.rootPath) {
+              actualProjectPath = projectRecord.rootPath;
+              console.log(`[NexusBootstrap] Using project path from database: ${actualProjectPath}`);
+            } else {
+              console.warn(`[NexusBootstrap] No rootPath found for project ${projectId}, using workingDir: ${this.config.workingDir}`);
+            }
+          } catch (pathError) {
+            console.error("[NexusBootstrap] Failed to get project path from database:", pathError);
+          }
+        }
         coordinator.initialize({
           projectId,
-          projectPath: this.config.workingDir,
+          projectPath: actualProjectPath,
           features: projectFeatures,
           mode: "genesis"
         });
-        coordinator.start(projectId);
-        this.projectStartTimes.set(projectId, /* @__PURE__ */ new Date());
         this.projectFeatures.set(projectId, projectFeatures);
-        console.log(`[NexusBootstrap] Execution started for ${projectId}`);
+        console.log(`[NexusBootstrap] Planning complete - ready for manual execution start`);
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         console.error("[NexusBootstrap] Planning failed:", errorMessage);
@@ -16054,6 +16274,14 @@ class NexusBootstrap {
       updatedAt: /* @__PURE__ */ new Date(),
       projectId
     }));
+  }
+  /**
+   * Record execution start time for a project
+   * Called when execution is manually started via IPC
+   */
+  recordExecutionStart(projectId) {
+    this.projectStartTimes.set(projectId, /* @__PURE__ */ new Date());
+    console.log(`[NexusBootstrap] Recorded execution start for project: ${projectId}`);
   }
   /**
    * Store decomposed features and tasks in the database
@@ -16388,6 +16616,7 @@ class NexusBootstrap {
 }
 async function initializeNexus(config) {
   const bootstrap = new NexusBootstrap(config);
+  bootstrapInstance = bootstrap;
   return bootstrap.initialize();
 }
 function getBootstrappedNexus() {
@@ -16399,12 +16628,20 @@ function setMainWindow(window) {
 function clearMainWindow() {
   mainWindowRef = null;
 }
+function recordExecutionStart(projectId) {
+  if (bootstrapInstance) {
+    bootstrapInstance.recordExecutionStart(projectId);
+  } else {
+    console.warn("[NexusBootstrap] Cannot record start time - bootstrap not initialized");
+  }
+}
 const NexusBootstrap$1 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
   __proto__: null,
   NexusBootstrap,
   clearMainWindow,
   getBootstrappedNexus,
   initializeNexus,
+  recordExecutionStart,
   setMainWindow
 }, Symbol.toStringTag, { value: "Module" }));
 let mainWindow = null;

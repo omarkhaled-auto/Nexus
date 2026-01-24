@@ -86,7 +86,7 @@ interface FeatureState {
   setPriorityFilter: (priorities: FeaturePriority[] | null) => void
   setStatusFilter: (statuses: FeatureStatus[] | null) => void
   clearFilters: () => void
-  loadFeatures: () => Promise<void>
+  loadFeatures: (projectId?: string) => Promise<void>
   reset: () => void
 }
 
@@ -279,13 +279,14 @@ export const useFeatureStore = create<FeatureState>()((set, get) => ({
       }
     }); },
 
-  loadFeatures: async () => {
+  loadFeatures: async (projectId?: string) => {
     // Load features from backend via IPC
+    // Fix #7: Accept optional projectId to filter features by project
     set({ isLoading: true });
     try {
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- defensive check for non-Electron environments
       if (window.nexusAPI?.getFeatures) {
-        const rawFeatures = await window.nexusAPI.getFeatures();
+        const rawFeatures = await window.nexusAPI.getFeatures(projectId);
         // Map backend features to frontend Feature type
         const features: Feature[] = rawFeatures.map((f: unknown) => {
           const raw = f as Record<string, unknown>;
@@ -323,7 +324,7 @@ export const useFeatureStore = create<FeatureState>()((set, get) => ({
             updatedAt: String(raw.updatedAt ?? new Date().toISOString())
           };
         });
-        console.log('[featureStore] Loaded features from backend:', features.length);
+        console.log('[featureStore] Loaded features from backend:', features.length, projectId ? `(filtered by ${projectId})` : '(all)');
         set({ features, isLoading: false });
       } else {
         console.warn('[featureStore] nexusAPI.getFeatures not available');

@@ -150,13 +150,15 @@ export class BuildRunner {
    *
    * The callback captures the working directory in a closure, allowing
    * RalphStyleIterator to call it with just the taskId parameter.
+   * An optional workingDir parameter can override the default path.
    *
-   * @param workingDir - Directory containing the TypeScript project
-   * @returns Function that takes taskId and returns Promise<BuildResult>
+   * @param defaultWorkingDir - Default directory containing the TypeScript project
+   * @returns Function that takes taskId and optional workingDir, returns Promise<BuildResult>
    */
-  createCallback(workingDir: string): QARunner['build'] {
-    return async (_taskId: string): Promise<BuildResult> => {
-      return this.run(workingDir);
+  createCallback(defaultWorkingDir: string): QARunner['build'] {
+    return async (_taskId: string, workingDir?: string): Promise<BuildResult> => {
+      const effectiveDir = workingDir ?? defaultWorkingDir;
+      return this.run(effectiveDir);
     };
   }
 

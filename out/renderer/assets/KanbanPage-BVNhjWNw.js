@@ -1,17 +1,17 @@
-import { c as createLucideIcon, r as reactExports, p as React, q as reactDomExports, j as jsxRuntimeExports, s as Card, a as cn, v as CardHeader, w as CardTitle, x as CardContent, y as useFeatureStore, D as Dialog, z as DialogContent, A as DialogHeader, T as TriangleAlert, E as DialogTitle, F as DialogDescription, G as DialogFooter, H as Button, L as LoaderCircle, I as useComposedRefs, J as createContextScope, P as Primitive, K as Presence, M as composeEventHandlers, N as useCallbackRef, O as useLayoutEffect2, Q as Eye, B as Bot, C as CircleAlert, g as ChevronDown, n as ChevronRight, U as useFeatureCount, V as Search, W as Plus, X as Input } from "./index-BoQyQ-ap.js";
-import { L as Lock, T as TestTube, u as useExecutionStore, a as useTaskOrchestration } from "./useTaskOrchestration-C6c0541T.js";
-import { C as Circle } from "./circle-DI3CSXp2.js";
-import { C as Clock } from "./clock-C_KhMjW-.js";
-import { T as Trash2 } from "./trash-2-D-vVDL80.js";
-import { C as CircleX } from "./circle-x-Di8ZTA2A.js";
-import { C as CircleCheck } from "./circle-check-hbu4IvA3.js";
-import { F as FileText } from "./file-text-DPF6koxy.js";
-import { G as GitMerge, B as Bug, P as Play, a as Pause } from "./play-DCjD3vBB.js";
-import { R as RotateCcw } from "./rotate-ccw-Br1wug3C.js";
-import { A as ArrowRight } from "./arrow-right-C8ctKMyK.js";
-import { I as Info } from "./info-BHJvML7t.js";
-import { L as Layers } from "./layers-BZmc9_HD.js";
-import { A as AnimatedPage } from "./AnimatedPage-fTtyTsDw.js";
+import { c as createLucideIcon, r as reactExports, p as React, q as reactDomExports, j as jsxRuntimeExports, s as Card, a as cn, v as CardHeader, w as CardTitle, x as CardContent, y as useFeatureStore, D as Dialog, z as DialogContent, A as DialogHeader, T as TriangleAlert, E as DialogTitle, F as DialogDescription, G as DialogFooter, H as Button, L as LoaderCircle, I as useComposedRefs, J as createContextScope, P as Primitive, K as Presence, M as composeEventHandlers, N as useCallbackRef, O as useLayoutEffect2, Q as Eye, B as Bot, C as CircleAlert, g as ChevronDown, n as ChevronRight, U as useFeatureCount, V as Search, W as Plus, X as useCurrentProject, Y as Input } from "./index-Bw-1tXJs.js";
+import { L as Lock, T as TestTube, u as useExecutionStore, a as useTaskOrchestration } from "./useTaskOrchestration-Bq5M-CaK.js";
+import { C as Circle } from "./circle-CUrLFpnH.js";
+import { C as Clock } from "./clock-ODix_OSj.js";
+import { T as Trash2 } from "./trash-2-CCPakjnU.js";
+import { C as CircleX } from "./circle-x-D11iVmvh.js";
+import { C as CircleCheck } from "./circle-check-iu1Uuh9T.js";
+import { F as FileText } from "./file-text-D70jb3vW.js";
+import { G as GitMerge, B as Bug, P as Play, a as Pause } from "./play-D4L-2aWE.js";
+import { R as RotateCcw } from "./rotate-ccw-D3Cqztdd.js";
+import { A as ArrowRight } from "./arrow-right-BAYpRehn.js";
+import { I as Info } from "./info-DMtVIDbl.js";
+import { L as Layers } from "./layers-CSiyqjRV.js";
+import { A as AnimatedPage } from "./AnimatedPage-C6p8AvpX.js";
 /**
  * @license lucide-react v0.562.0 - ISC
  *
@@ -5749,14 +5749,14 @@ function OverviewTab({ task }) {
           MetadataItem,
           {
             label: "Complexity",
-            value: /* @__PURE__ */ jsxRuntimeExports.jsx(Badge, { className: COMPLEXITY_CONFIG$1[task.complexity]?.class, children: COMPLEXITY_CONFIG$1[task.complexity]?.fullLabel || task.complexity })
+            value: /* @__PURE__ */ jsxRuntimeExports.jsx(Badge, { className: COMPLEXITY_CONFIG$1[task.complexity].class, children: COMPLEXITY_CONFIG$1[task.complexity].fullLabel })
           }
         ),
         /* @__PURE__ */ jsxRuntimeExports.jsx(
           MetadataItem,
           {
             label: "Status",
-            value: /* @__PURE__ */ jsxRuntimeExports.jsx(Badge, { className: cn(STATUS_STYLES[task.status]?.bg, STATUS_STYLES[task.status]?.text), children: STATUS_STYLES[task.status]?.label || task.status })
+            value: /* @__PURE__ */ jsxRuntimeExports.jsx(Badge, { className: cn(STATUS_STYLES[task.status].bg, STATUS_STYLES[task.status].text), children: STATUS_STYLES[task.status].label })
           }
         ),
         /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -5917,7 +5917,7 @@ function DependenciesTab({
               /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex-shrink-0", children: isComplete ? /* @__PURE__ */ jsxRuntimeExports.jsx(CircleCheck, { className: "h-5 w-5 text-emerald-400" }) : t.status === "in-progress" ? /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "h-5 w-5 text-amber-400 animate-spin" }) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "h-5 w-5 rounded-full border-2 border-border-default" }) }),
               /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex-1 min-w-0", children: [
                 /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: cn("text-sm text-text-primary", isComplete && "line-through opacity-60"), children: t.title }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx(Badge, { className: cn("mt-1", statusStyle?.bg, statusStyle?.text), children: statusStyle?.label || t.status })
+                /* @__PURE__ */ jsxRuntimeExports.jsx(Badge, { className: cn("mt-1", statusStyle.bg, statusStyle.text), children: statusStyle.label })
               ] }),
               !isComplete && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs text-red-400 font-medium", children: "BLOCKING" })
             ]
@@ -5943,7 +5943,7 @@ function DependenciesTab({
               /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex-shrink-0", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Clock, { className: "h-5 w-5 text-text-tertiary" }) }),
               /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex-1 min-w-0", children: [
                 /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm text-text-primary", children: t.title }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx(Badge, { className: cn("mt-1", statusStyle?.bg, statusStyle?.text), children: statusStyle?.label || t.status })
+                /* @__PURE__ */ jsxRuntimeExports.jsx(Badge, { className: cn("mt-1", statusStyle.bg, statusStyle.text), children: statusStyle.label })
               ] })
             ]
           },
@@ -6040,7 +6040,7 @@ function LogsTab({ task }) {
   }, [task.logs.length, autoScroll]);
   const handleCopyLogs = () => {
     const logsText = task.logs.map((log) => `[${formatTimestamp(log.timestamp)}] [${log.level.toUpperCase()}] ${log.message}${log.details ? "\n" + log.details : ""}`).join("\n");
-    navigator.clipboard.writeText(logsText);
+    void navigator.clipboard.writeText(logsText);
   };
   const toggleLogExpand = (logId) => {
     setExpandedLogs((prev) => {
@@ -6071,7 +6071,9 @@ function LogsTab({ task }) {
           {
             variant: "ghost",
             size: "sm",
-            onClick: () => setAutoScroll(!autoScroll),
+            onClick: () => {
+              setAutoScroll(!autoScroll);
+            },
             className: cn(!autoScroll && "opacity-50"),
             children: [
               "Auto-scroll ",
@@ -6087,7 +6089,7 @@ function LogsTab({ task }) {
     ] }),
     /* @__PURE__ */ jsxRuntimeExports.jsx(ScrollArea, { className: "flex-1", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "p-4 space-y-1 font-mono text-xs", children: [
       task.logs.map((log) => {
-        const config = LOG_LEVEL_CONFIG[log.level] || LOG_LEVEL_CONFIG.info;
+        const config = LOG_LEVEL_CONFIG[log.level];
         const Icon = config.icon;
         const isExpanded = expandedLogs.has(log.id);
         const hasDetails = !!log.details;
@@ -6112,7 +6114,9 @@ function LogsTab({ task }) {
                     "button",
                     {
                       type: "button",
-                      onClick: () => toggleLogExpand(log.id),
+                      onClick: () => {
+                        toggleLogExpand(log.id);
+                      },
                       className: "flex items-center gap-1 mt-1 text-text-tertiary hover:text-text-secondary",
                       children: [
                         isExpanded ? /* @__PURE__ */ jsxRuntimeExports.jsx(ChevronDown, { className: "h-3 w-3" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(ChevronRight, { className: "h-3 w-3" }),
@@ -6161,10 +6165,10 @@ function HistoryTab({ task }) {
           ] }),
           /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mt-1 flex items-center gap-2", children: [
             entry.fromStatus && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx(Badge, { className: cn(STATUS_STYLES[entry.fromStatus]?.bg, STATUS_STYLES[entry.fromStatus]?.text), children: STATUS_STYLES[entry.fromStatus]?.label || entry.fromStatus }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(Badge, { className: cn(STATUS_STYLES[entry.fromStatus].bg, STATUS_STYLES[entry.fromStatus].text), children: STATUS_STYLES[entry.fromStatus].label }),
               /* @__PURE__ */ jsxRuntimeExports.jsx(ArrowRight, { className: "h-3 w-3 text-text-tertiary" })
             ] }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx(Badge, { className: cn(toStyle?.bg, toStyle?.text), children: toStyle?.label || entry.toStatus })
+            /* @__PURE__ */ jsxRuntimeExports.jsx(Badge, { className: cn(toStyle.bg, toStyle.text), children: toStyle.label })
           ] }),
           entry.reason && /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "mt-1 text-sm text-text-secondary", children: entry.reason })
         ] })
@@ -6214,7 +6218,7 @@ function TaskDetailModal({
             "P",
             task.priority === "critical" ? "0" : task.priority === "high" ? "1" : task.priority === "medium" ? "2" : "3"
           ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(Badge, { className: cn(STATUS_STYLES[task.status]?.bg, STATUS_STYLES[task.status]?.text), children: STATUS_STYLES[task.status]?.label || task.status }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Badge, { className: cn(STATUS_STYLES[task.status].bg, STATUS_STYLES[task.status].text), children: STATUS_STYLES[task.status].label }),
           isBlocked && /* @__PURE__ */ jsxRuntimeExports.jsxs(Badge, { className: "bg-red-500/20 text-red-400 flex items-center gap-1", children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx(Lock, { className: "h-3 w-3" }),
             "Blocked"
@@ -6254,7 +6258,9 @@ function TaskDetailModal({
       {
         tab,
         isActive: activeTab === tab.id,
-        onClick: () => setActiveTab(tab.id),
+        onClick: () => {
+          setActiveTab(tab.id);
+        },
         count: tabCounts[tab.id]
       },
       tab.id
@@ -6337,7 +6343,9 @@ function TaskDetailModal({
             ]
           }
         ),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(Button, { variant: "outline", size: "sm", onClick: () => onOpenChange(false), children: "Close" })
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Button, { variant: "outline", size: "sm", onClick: () => {
+          onOpenChange(false);
+        }, children: "Close" })
       ] })
     ] })
   ] }) });
@@ -6450,21 +6458,21 @@ function KanbanBoard() {
       setSelectedFeature(feature);
     }
   }
-  const handleStartTask = reactExports.useCallback(async (taskId) => {
+  const handleStartTask = reactExports.useCallback((taskId) => {
     updateTask(taskId, {
       status: "in-progress",
       startedAt: (/* @__PURE__ */ new Date()).toISOString(),
       progress: 0
     });
   }, [updateTask]);
-  const handleCancelTask = reactExports.useCallback(async (taskId) => {
+  const handleCancelTask = reactExports.useCallback((taskId) => {
     updateTask(taskId, {
       status: "cancelled",
       completedAt: (/* @__PURE__ */ new Date()).toISOString()
     });
     setSelectedTask(null);
   }, [updateTask]);
-  const handleRetryTask = reactExports.useCallback(async (taskId) => {
+  const handleRetryTask = reactExports.useCallback((taskId) => {
     const task = executionTasks.find((t) => t.id === taskId);
     if (task) {
       updateTask(taskId, {
@@ -6476,14 +6484,14 @@ function KanbanBoard() {
       });
     }
   }, [executionTasks, updateTask]);
-  const handleSkipTask = reactExports.useCallback(async (taskId) => {
+  const handleSkipTask = reactExports.useCallback((taskId) => {
     updateTask(taskId, {
       status: "cancelled",
       completedAt: (/* @__PURE__ */ new Date()).toISOString()
     });
     setSelectedTask(null);
   }, [updateTask]);
-  const handleReopenTask = reactExports.useCallback(async (taskId) => {
+  const handleReopenTask = reactExports.useCallback((taskId) => {
     updateTask(taskId, {
       status: "pending",
       progress: 0,
@@ -6647,7 +6655,9 @@ function KanbanHeader({
           {
             variant: showFilters || activeFilter ? "secondary" : "ghost",
             size: "icon-sm",
-            onClick: () => setShowFilters(!showFilters),
+            onClick: () => {
+              setShowFilters(!showFilters);
+            },
             className: cn(activeFilter && "text-accent-primary border-accent-primary"),
             title: "Toggle filters",
             children: /* @__PURE__ */ jsxRuntimeExports.jsx(Funnel, { className: "h-4 w-4" })
@@ -6769,7 +6779,7 @@ const KanbanCard = reactExports.forwardRef(
     };
     const statusConfig = STATUS_CONFIG[task.status];
     const StatusIcon = statusConfig.icon;
-    const complexityConfig = COMPLEXITY_CONFIG[task.complexity] || COMPLEXITY_CONFIG.moderate;
+    const complexityConfig = COMPLEXITY_CONFIG[task.complexity];
     const AgentIcon = task.assignedAgent ? AGENT_ICONS[task.assignedAgent] : null;
     const isBlocked = task.status === "blocked" || task.blockedBy.length > 0;
     const isActive = task.status === "in-progress";
@@ -6889,7 +6899,7 @@ const KanbanCard = reactExports.forwardRef(
                   formatTime(task.estimatedMinutes)
                 ] })
               ] }),
-              AgentIcon && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex items-center gap-1 text-text-tertiary", title: `Assigned to ${task.assignedAgent}`, children: /* @__PURE__ */ jsxRuntimeExports.jsx(AgentIcon, { className: "h-3.5 w-3.5" }) })
+              AgentIcon && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex items-center gap-1 text-text-tertiary", title: `Assigned to ${task.assignedAgent ?? "unassigned"}`, children: /* @__PURE__ */ jsxRuntimeExports.jsx(AgentIcon, { className: "h-3.5 w-3.5" }) })
             ] }),
             !compact && task.dependsOn.length > 0 && !isBlocked && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "mt-2 pt-2 border-t border-border-default", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-[10px] text-text-tertiary", children: [
               "Depends on ",
@@ -7187,6 +7197,7 @@ function KanbanPage() {
   const updateFeature = useFeatureStore((s) => s.updateFeature);
   const addFeature = useFeatureStore((s) => s.addFeature);
   const features = useFeatureStore((s) => s.features);
+  const currentProject = useCurrentProject();
   const [isLoading, setIsLoading] = reactExports.useState(true);
   const [error, setError] = reactExports.useState(null);
   const [isEmpty, setIsEmpty] = reactExports.useState(false);
@@ -7239,7 +7250,7 @@ function KanbanPage() {
     try {
       setIsLoading(true);
       setError(null);
-      const backendFeatures = await window.nexusAPI.getFeatures();
+      const backendFeatures = await window.nexusAPI.getFeatures(currentProject?.id);
       if (Array.isArray(backendFeatures) && backendFeatures.length > 0) {
         const mappedFeatures = backendFeatures.map(
           (f) => mapBackendFeature(f)
@@ -7253,11 +7264,14 @@ function KanbanPage() {
     } catch (err) {
       console.error("Failed to load features:", err);
       setError("Failed to load features from backend.");
-      setIsEmpty(features.length === 0);
+      setFeatures((prev) => {
+        setIsEmpty(prev.length === 0);
+        return prev;
+      });
     } finally {
       setIsLoading(false);
     }
-  }, [features.length, setFeatures]);
+  }, [setFeatures, currentProject?.id]);
   const subscribeToEvents = reactExports.useCallback(() => {
     if (!isElectronEnvironment()) {
       return () => {
@@ -7267,18 +7281,13 @@ function KanbanPage() {
       const feature = mapBackendFeature(featureData);
       updateFeature(feature.id, feature);
     });
-    const unsubscribeTaskUpdate = window.nexusAPI.onTaskUpdate((taskData) => {
-      const task = taskData;
-      const featureId = task.featureId;
-      if (featureId) {
-        void loadRealData();
-      }
+    const unsubscribeTaskUpdate = window.nexusAPI.onTaskUpdate((_taskData) => {
     });
     return () => {
       unsubscribeFeatureUpdate();
       unsubscribeTaskUpdate();
     };
-  }, [updateFeature, loadRealData]);
+  }, [updateFeature]);
   reactExports.useEffect(() => {
     void loadRealData();
     const unsubscribe = subscribeToEvents();
@@ -7336,7 +7345,7 @@ function KanbanPage() {
       return {
         id: feature.id,
         featureId: feature.id,
-        projectId: "current",
+        projectId: currentProject?.id ?? "unknown",
         title: feature.title,
         description: feature.description,
         acceptanceCriteria: [],
@@ -7366,13 +7375,18 @@ function KanbanPage() {
         updatedAt: feature.updatedAt
       };
     });
-  }, []);
+  }, [currentProject?.id]);
   const handleStartExecution = reactExports.useCallback(async () => {
+    if (!currentProject?.id) {
+      console.error("[KanbanPage] No project selected - cannot start execution");
+      return;
+    }
     const tasks = convertFeaturesToTasks(features);
     if (tasks.length > 0) {
-      await startExecution("current", tasks);
+      console.log("[KanbanPage] Starting execution for project:", currentProject.id);
+      await startExecution(currentProject.id, tasks);
     }
-  }, [features, convertFeaturesToTasks, startExecution]);
+  }, [features, convertFeaturesToTasks, startExecution, currentProject]);
   const handlePauseExecution = reactExports.useCallback(() => {
     pauseExecution();
   }, [pauseExecution]);

@@ -624,16 +624,17 @@ export interface RalphStyleIteratorConfig {
 
 /**
  * QA runner functions for each phase
+ * Each method accepts an optional workingDir to override the default path
  */
 export interface QARunner {
   /** Run build step */
-  build?: (taskId: string) => Promise<BuildResult>;
+  build?: (taskId: string, workingDir?: string) => Promise<BuildResult>;
   /** Run lint step */
-  lint?: (taskId: string) => Promise<LintResult>;
+  lint?: (taskId: string, workingDir?: string) => Promise<LintResult>;
   /** Run test step */
-  test?: (taskId: string) => Promise<TestResult>;
+  test?: (taskId: string, workingDir?: string) => Promise<TestResult>;
   /** Run review step */
-  review?: (taskId: string) => Promise<ReviewResult>;
+  review?: (taskId: string, workingDir?: string) => Promise<ReviewResult>;
 }
 
 /**

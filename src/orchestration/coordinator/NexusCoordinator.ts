@@ -29,6 +29,8 @@ import type {
   Wave,
   PlanningTask,
 } from '@/planning/types';
+import { GitService } from '@/infrastructure/git/GitService';
+import { WorktreeManager } from '@/infrastructure/git/WorktreeManager';
 
 /**
  * NexusCoordinator constructor options
@@ -69,7 +71,7 @@ export class NexusCoordinator implements INexusCoordinator {
   private readonly estimator: ITimeEstimator;
   /* eslint-disable @typescript-eslint/no-explicit-any -- External service types to avoid circular dependencies */
   private readonly qaEngine: any;
-  private readonly worktreeManager: any;
+  private worktreeManager: any; // Mutable - can be replaced with project-specific instance
   private readonly checkpointManager: any;
   private readonly mergerRunner?: any;
   private readonly agentWorktreeBridge?: any;
@@ -141,6 +143,167 @@ export class NexusCoordinator implements INexusCoordinator {
 
     // Start the orchestration loop
     this.orchestrationLoop = this.runOrchestrationLoop();
+  }
+
+  /**
+   * Execute pre-decomposed tasks (skip decomposition phase)
+   * Used when tasks already exist in database from planning phase.
+   * This is the correct method to call when user clicks "Start Execution"
+   * after features/tasks have been generated during the interview.
+   *
+   * @param projectId - The project ID
+   * @param tasks - Array of existing tasks from database
+   * @param projectPath - Path to user's project folder (NOT Nexus-master)
+   */
+  executeExistingTasks(
+    projectId: string,
+    tasks: OrchestrationTask[],
+    projectPath: string
+  ): void {
+    // Set project config with the project's actual path
+    this.projectConfig = {
+      projectId,
+      projectPath, // User's project folder, NOT Nexus-master
+      features: [],
+      mode: 'evolution',
+    };
+
+    this.state = 'running';
+    this.currentPhase = 'execution';
+    this.stopRequested = false;
+    this.pauseRequested = false;
+
+    console.log(`[NexusCoordinator] Executing ${tasks.length} existing tasks`);
+    console.log(`[NexusCoordinator] Project path: ${projectPath}`);
+
+    // Create project-specific WorktreeManager for correct worktree location
+    // This ensures worktrees are created in the user's project, not Nexus-master
+    const projectGitService = new GitService({ baseDir: projectPath });
+    this.worktreeManager = new WorktreeManager({
+      baseDir: projectPath,
+      gitService: projectGitService,
+      worktreeDir: `${projectPath}/.nexus/worktrees`,
+    });
+    console.log(`[NexusCoordinator] Created WorktreeManager for project: ${projectPath}`);
+
+    this.emitEvent('coordinator:started', { projectId });
+
+    // Skip decomposition - go directly to execution loop
+    this.orchestrationLoop = this.runExecutionLoop(tasks, projectPath);
+  }
+
+  /**
+   * Run execution loop for existing tasks (no decomposition)
+   * This skips the decomposeByMode step and directly processes
+   * the provided tasks in waves.
+   */
+  private async runExecutionLoop(
+    allTasks: OrchestrationTask[],
+    _projectPath: string
+  ): Promise<void> {
+    try {
+      if (!this.projectConfig) {
+        throw new Error('Project configuration not initialized');
+      }
+
+      console.log(`[NexusCoordinator] Running execution loop with ${allTasks.length} tasks`);
+
+      // Convert OrchestrationTask[] to PlanningTask[] format for dependency resolver
+      // The resolver only uses id and dependsOn fields, so we add required fields with defaults
+      const planningTasks: PlanningTask[] = allTasks.map(task => ({
+        id: task.id,
+        name: task.name,
+        description: task.description,
+        type: (task.type ?? 'auto') as 'auto' | 'checkpoint' | 'tdd',
+        size: 'small' as const,
+        estimatedMinutes: task.estimatedMinutes ?? 15,
+        dependsOn: task.dependsOn,
+        testCriteria: task.testCriteria ?? [],
+        files: task.files ?? [],
+      }));
+
+      // Check for cycles
+      const cycles: { taskIds: string[] }[] = this.resolver.detectCycles(planningTasks);
+      if (cycles.length > 0) {
+        throw new Error(`Dependency cycles detected: ${cycles.map(c => c.taskIds.join(' -> ')).join('; ')}`);
+      }
+
+      // Calculate waves from existing tasks
+      this.waves = this.resolver.calculateWaves(planningTasks);
+      this.totalTasks = allTasks.length;
+
+      console.log(`[NexusCoordinator] Calculated ${this.waves.length} waves`);
+
+      // Queue all tasks by wave
+      for (const wave of this.waves) {
+        for (const task of wave.tasks) {
+          const orchestrationTask: OrchestrationTask = {
+            ...task,
+            dependsOn: task.dependsOn,
+            status: 'pending',
+            waveId: wave.id,
+            priority: 1,
+            createdAt: new Date(),
+          };
+          this.taskQueue.enqueue(orchestrationTask, wave.id);
+        }
+      }
+
+      // Process waves with checkpoints (same as runOrchestrationLoop)
+      for (let waveIndex = 0; waveIndex < this.waves.length; waveIndex++) {
+        if (this.stopRequested) break;
+
+        this.currentWaveIndex = waveIndex;
+        this.emitEvent('wave:started', { waveId: waveIndex });
+
+        const wave = this.waves[waveIndex];
+        await this.processWave(wave);
+
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- stopRequested can be mutated during processWave
+        if (!this.stopRequested) {
+          this.emitEvent('wave:completed', { waveId: waveIndex });
+          await this.createWaveCheckpoint(waveIndex);
+        }
+      }
+
+      // Emit project:completed when all tasks are done
+      if (!this.stopRequested) {
+        const remainingTasks = this.totalTasks - this.completedTasks - this.failedTasks;
+
+        if (remainingTasks === 0 && this.completedTasks > 0) {
+          this.currentPhase = 'completion';
+          this.state = 'idle';
+
+          console.log(`[NexusCoordinator] Project completed: ${this.completedTasks}/${this.totalTasks} tasks completed, ${this.failedTasks} failed`);
+
+          this.emitEvent('project:completed', {
+            projectId: this.projectConfig?.projectId,
+            totalTasks: this.totalTasks,
+            completedTasks: this.completedTasks,
+            failedTasks: this.failedTasks,
+            totalWaves: this.waves.length,
+          });
+        } else if (this.failedTasks > 0 && this.failedTasks === this.totalTasks) {
+          console.log(`[NexusCoordinator] Project failed: all ${this.failedTasks} tasks failed`);
+
+          this.emitEvent('project:failed', {
+            projectId: this.projectConfig?.projectId,
+            error: 'All tasks failed',
+            totalTasks: this.totalTasks,
+            failedTasks: this.failedTasks,
+            recoverable: true,
+          });
+        }
+      }
+    } catch (error) {
+      console.error('[NexusCoordinator] Execution error:', error);
+
+      this.emitEvent('project:failed', {
+        projectId: this.projectConfig?.projectId,
+        error: error instanceof Error ? error.message : String(error),
+        recoverable: false,
+      });
+    }
   }
 
   /**
@@ -621,6 +784,7 @@ export class NexusCoordinator implements INexusCoordinator {
   /**
    * Execute a single task with per-task merge on success
    * Hotfix #5 - Issue 2: Added merge step after successful QA loop
+   * Fix: Now passes projectPath to QA engine for correct CLI working directory
    */
   private async executeTask(
     task: OrchestrationTask,
@@ -629,8 +793,12 @@ export class NexusCoordinator implements INexusCoordinator {
   ): Promise<void> {
     this.emitEvent('task:started', { taskId: task.id, agentId });
 
+    // Get project path from config - this is the user's project folder, NOT Nexus-master
+    const projectPath = this.projectConfig?.projectPath;
+    console.log(`[NexusCoordinator] executeTask: projectPath = ${projectPath ?? 'UNDEFINED'}`);
+
     try {
-      // Run QA loop
+      // Run QA loop with projectPath for correct working directory
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- qaEngine is any-typed
       const result = await this.qaEngine.run(
         {
@@ -639,6 +807,7 @@ export class NexusCoordinator implements INexusCoordinator {
           description: task.description,
           files: task.files ?? [],
           worktree: worktreePath,
+          projectPath: projectPath,  // Pass project path for Claude CLI working directory
         },
         null // coder would be passed here
       );

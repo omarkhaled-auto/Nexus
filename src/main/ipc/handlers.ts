@@ -426,7 +426,8 @@ export function registerIpcHandlers(): void {
   )
 
   // Task operations
-  ipcMain.handle('tasks:list', async (event) => {
+  // Fix #2: Add optional projectId parameter to filter tasks by project
+  ipcMain.handle('tasks:list', async (event, projectId?: string) => {
     if (!validateSender(event)) {
       throw new Error('Unauthorized IPC sender')
     }
@@ -435,8 +436,10 @@ export function registerIpcHandlers(): void {
     if (databaseClientRef) {
       try {
         const { tasks } = await import('../../persistence/database/schema')
+        const { eq } = await import('drizzle-orm')
 
-        const dbTasks = databaseClientRef.db.select().from(tasks).all() as Array<{
+        // Build query with optional projectId filter
+        let dbTasks: Array<{
           id: string
           featureId: string | null
           name: string
@@ -444,6 +447,17 @@ export function registerIpcHandlers(): void {
           status: string
           estimatedMinutes: number | null
         }>
+
+        if (projectId) {
+          console.log(`[IPC] tasks:list filtering by projectId: ${projectId}`)
+          dbTasks = databaseClientRef.db
+            .select()
+            .from(tasks)
+            .where(eq(tasks.projectId, projectId))
+            .all() as typeof dbTasks
+        } else {
+          dbTasks = databaseClientRef.db.select().from(tasks).all() as typeof dbTasks
+        }
 
         // Map to UI format
         const uiTasks = dbTasks.map(t => ({
@@ -455,7 +469,7 @@ export function registerIpcHandlers(): void {
           estimatedMinutes: t.estimatedMinutes
         }))
 
-        console.log('[IPC] tasks:list returning', uiTasks.length, 'tasks from database')
+        console.log('[IPC] tasks:list returning', uiTasks.length, 'tasks from database', projectId ? `(filtered by ${projectId})` : '(all)')
         return uiTasks
       } catch (error) {
         console.error('[IPC] tasks:list database query failed:', error)
@@ -866,9 +880,11 @@ export function registerIpcHandlers(): void {
 
   /**
    * List all features (for Kanban board)
+   * Fix #3: Add optional projectId parameter to filter features by project
+   * @param projectId - Optional project ID to filter features
    * @returns Array of features with their tasks
    */
-  ipcMain.handle('features:list', async (event) => {
+  ipcMain.handle('features:list', async (event, projectId?: string) => {
     if (!validateSender(event)) {
       throw new Error('Unauthorized IPC sender')
     }
@@ -878,9 +894,10 @@ export function registerIpcHandlers(): void {
       try {
         // Import schema dynamically to avoid circular dependency
         const { features, tasks } = await import('../../persistence/database/schema')
+        const { eq } = await import('drizzle-orm')
 
-        // Query all features from database
-        const dbFeatures = databaseClientRef.db.select().from(features).all() as Array<{
+        // Query features from database with optional project filter
+        let dbFeatures: Array<{
           id: string
           projectId: string
           name: string
@@ -894,13 +911,31 @@ export function registerIpcHandlers(): void {
           updatedAt: Date
         }>
 
-        // Query all tasks to associate with features
-        const dbTasks = databaseClientRef.db.select().from(tasks).all() as Array<{
+        let dbTasks: Array<{
           id: string
           featureId: string | null
           name: string
           status: string
         }>
+
+        if (projectId) {
+          console.log(`[IPC] features:list filtering by projectId: ${projectId}`)
+          dbFeatures = databaseClientRef.db
+            .select()
+            .from(features)
+            .where(eq(features.projectId, projectId))
+            .all() as typeof dbFeatures
+
+          // Also filter tasks by projectId
+          dbTasks = databaseClientRef.db
+            .select()
+            .from(tasks)
+            .where(eq(tasks.projectId, projectId))
+            .all() as typeof dbTasks
+        } else {
+          dbFeatures = databaseClientRef.db.select().from(features).all() as typeof dbFeatures
+          dbTasks = databaseClientRef.db.select().from(tasks).all() as typeof dbTasks
+        }
 
         // Map to UI format with tasks
         const uiFeatures: UIFeature[] = dbFeatures.map(f => {
@@ -928,7 +963,7 @@ export function registerIpcHandlers(): void {
           }
         })
 
-        console.log('[IPC] features:list returning', uiFeatures.length, 'features from database')
+        console.log('[IPC] features:list returning', uiFeatures.length, 'features from database', projectId ? `(filtered by ${projectId})` : '(all)')
         return uiFeatures
       } catch (error) {
         console.error('[IPC] features:list database query failed:', error)
@@ -1010,7 +1045,7 @@ export function registerIpcHandlers(): void {
    * @param id - Feature ID
    * @param update - Partial feature update
    */
-  ipcMain.handle('feature:update', (event, id: string, update: Partial<UIFeature>) => {
+  ipcMain.handle('feature:update', async (event, id: string, update: Partial<UIFeature>) => {
     if (!validateSender(event)) {
       throw new Error('Unauthorized IPC sender')
     }
@@ -1018,8 +1053,64 @@ export function registerIpcHandlers(): void {
       throw new Error('Invalid feature id')
     }
 
-    const feature = state.features.get(id)
+    console.log('[IPC] feature:update called with id:', id)
+
+    // First check in-memory state (for manually created features)
+    let feature = state.features.get(id)
+    let fromDatabase = false
+
+    // If not in memory, check database (same pattern as features:list)
+    if (!feature && databaseClientRef) {
+      console.log('[IPC] feature:update - not in memory, checking database...')
+      try {
+        // Dynamic imports to avoid circular dependency (same as features:list)
+        const { features } = await import('../../persistence/database/schema')
+        const { eq } = await import('drizzle-orm')
+
+        const dbFeature = databaseClientRef.db
+          .select()
+          .from(features)
+          .where(eq(features.id, id))
+          .get() as {
+            id: string
+            name: string
+            description: string | null
+            status: string
+            priority: string
+            complexity: string
+            estimatedTasks: number | null
+            completedTasks: number | null
+            createdAt: Date
+            updatedAt: Date
+          } | undefined
+
+        if (dbFeature) {
+          console.log('[IPC] feature:update - found in database')
+          fromDatabase = true
+          // Convert DB feature to UIFeature format
+          feature = {
+            id: dbFeature.id,
+            title: dbFeature.name,
+            description: dbFeature.description || '',
+            status: dbFeature.status,
+            priority: dbFeature.priority,
+            complexity: dbFeature.complexity,
+            progress: dbFeature.estimatedTasks && dbFeature.estimatedTasks > 0
+              ? Math.round((dbFeature.completedTasks || 0) / dbFeature.estimatedTasks * 100)
+              : 0,
+            tasks: [],
+            createdAt: dbFeature.createdAt instanceof Date ? dbFeature.createdAt.toISOString() : String(dbFeature.createdAt),
+            updatedAt: dbFeature.updatedAt instanceof Date ? dbFeature.updatedAt.toISOString() : String(dbFeature.updatedAt),
+          }
+        }
+      } catch (error) {
+        console.error('[IPC] feature:update database query failed:', error)
+      }
+    }
+
     if (!feature) {
+      console.log('[IPC] feature:update - Feature not found anywhere!')
+      console.log('[IPC] In-memory features:', Array.from(state.features.keys()))
       throw new Error(`Feature not found: ${id}`)
     }
 
@@ -1033,7 +1124,34 @@ export function registerIpcHandlers(): void {
       }
     }
     feature.updatedAt = new Date().toISOString()
+
+    // Update in-memory state
     state.features.set(id, feature)
+
+    // If from database, also persist update to database
+    if (fromDatabase && databaseClientRef) {
+      console.log('[IPC] feature:update - persisting to database...')
+      try {
+        const { features } = await import('../../persistence/database/schema')
+        const { eq } = await import('drizzle-orm')
+
+        databaseClientRef.db
+          .update(features)
+          .set({
+            name: feature.title,
+            description: feature.description,
+            status: feature.status,
+            priority: feature.priority,
+            complexity: feature.complexity,
+            updatedAt: new Date(),
+          })
+          .where(eq(features.id, id))
+          .run()
+        console.log('[IPC] feature:update - database updated successfully')
+      } catch (error) {
+        console.error('[IPC] feature:update database persist failed:', error)
+      }
+    }
 
     // Emit status change event if status changed
     if (update.status && update.status !== previousStatus) {
@@ -1056,6 +1174,7 @@ export function registerIpcHandlers(): void {
       }
     }
 
+    console.log('[IPC] feature:update - success')
     return feature
   })
 
@@ -1104,6 +1223,7 @@ export function registerIpcHandlers(): void {
   /**
    * Start execution for a project
    * Phase 20 Task 7: Wire manual execution start
+   * Phase 24 Fix: Fetch rootPath and tasks from DB, call executeExistingTasks
    * @param projectId - Project ID to start execution for
    * @returns Promise with success status
    */
@@ -1149,9 +1269,80 @@ export function registerIpcHandlers(): void {
         return { success: true, message: 'Execution resumed' }
       }
 
-      // Start execution
-      coordinator.start(projectId)
-      console.log('[ExecutionHandlers] Execution started successfully')
+      // Fetch project's rootPath from database
+      const { projects, tasks: tasksTable } = await import('../../persistence/database/schema')
+      const { eq } = await import('drizzle-orm')
+
+      const dbClient = bootstrappedNexus.databaseClient
+      if (!dbClient) {
+        throw new Error('Database client not available')
+      }
+
+      // Query project to get rootPath
+      const project = dbClient.db
+        .select()
+        .from(projects)
+        .where(eq(projects.id, projectId))
+        .get() as { id: string; rootPath: string; name: string } | undefined
+
+      if (!project) {
+        throw new Error(`Project not found: ${projectId}`)
+      }
+
+      const projectPath = project.rootPath
+      console.log('[ExecutionHandlers] Project path:', projectPath)
+
+      // Query tasks for this project
+      const dbTasks = dbClient.db
+        .select()
+        .from(tasksTable)
+        .where(eq(tasksTable.projectId, projectId))
+        .all() as Array<{
+          id: string
+          name: string
+          description: string | null
+          status: string
+          featureId: string | null
+          dependsOn: string | null
+          priority: number
+          estimatedMinutes: number | null
+        }>
+
+      console.log('[ExecutionHandlers] Found', dbTasks.length, 'tasks for project')
+
+      if (dbTasks.length === 0) {
+        return {
+          success: false,
+          error: 'No tasks found for project. Complete the interview to generate tasks.'
+        }
+      }
+
+      // Convert database tasks to OrchestrationTask format
+      // Include type and size fields required for PlanningTask compatibility
+      const orchestrationTasks = dbTasks.map(task => ({
+        id: task.id,
+        name: task.name,
+        description: task.description || '',
+        type: 'auto' as const, // Default task type
+        size: 'small' as const, // Default task size
+        status: 'pending' as const,
+        featureId: task.featureId || undefined,
+        dependsOn: task.dependsOn ? JSON.parse(task.dependsOn) as string[] : [],
+        priority: task.priority || 1,
+        estimatedMinutes: task.estimatedMinutes || 15,
+        files: [],
+        testCriteria: [],
+        waveId: 0,
+        createdAt: new Date(),
+      }))
+
+      // Record execution start time for metrics
+      const { recordExecutionStart } = await import('../NexusBootstrap')
+      recordExecutionStart(projectId)
+
+      // Use the new executeExistingTasks method that skips decomposition
+      coordinator.executeExistingTasks(projectId, orchestrationTasks, projectPath)
+      console.log('[ExecutionHandlers] Execution started with executeExistingTasks')
 
       // Forward event to UI
       if (eventForwardingWindow && !eventForwardingWindow.isDestroyed()) {

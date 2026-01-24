@@ -263,9 +263,9 @@ export function useNexusEvents(): void {
             const p = payload as PlanningEventPayload;
             console.log('[useNexusEvents] Planning completed for project:', p.projectId);
 
-            // Refresh features and tasks from backend
-            void loadFeatures();
-            void loadTasks();
+            // Refresh features and tasks from backend (filtered by projectId)
+            void loadFeatures(p.projectId);
+            void loadTasks(p.projectId);
 
             // Refresh metrics
             void refreshMetrics();

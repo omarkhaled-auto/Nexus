@@ -326,6 +326,7 @@ export class NexusFactory {
       maxIterations: config.qaConfig?.maxIterations ?? 50,
       stopOnFirstFailure: true,
       workingDir: config.workingDir,
+      agentPool, // Pass agentPool for code generation/fixing
     });
 
     // ========================================================================
@@ -492,6 +493,7 @@ export class NexusFactory {
       maxIterations: 50,
       stopOnFirstFailure: true,
       workingDir: config.workingDir,
+      agentPool, // Pass agentPool for code generation/fixing
     });
 
     // ========================================================================
@@ -635,7 +637,10 @@ export class NexusFactory {
     const backend = config.claudeBackend ?? DEFAULT_NEXUS_CONFIG.claudeBackend ?? 'cli';
 
     if (backend === 'cli') {
-      const cliClient = new ClaudeCodeCLIClient(config.claudeCliConfig);
+      const cliClient = new ClaudeCodeCLIClient({
+        ...config.claudeCliConfig,
+        workingDirectory: config.workingDir,
+      });
 
       // Check if CLI is available
       if (await cliClient.isAvailable()) {

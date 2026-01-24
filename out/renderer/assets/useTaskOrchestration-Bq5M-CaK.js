@@ -1,4 +1,4 @@
-import { c as createLucideIcon, o as create, r as reactExports } from "./index-BoQyQ-ap.js";
+import { c as createLucideIcon, o as create, r as reactExports } from "./index-Bw-1tXJs.js";
 /**
  * @license lucide-react v0.562.0 - ISC
  *
@@ -62,7 +62,7 @@ const useExecutionStore = create()((set, get) => ({
     set({ projectId });
   },
   setCurrentTask: (taskId) => {
-    set((state) => ({
+    set(() => ({
       currentTaskId: taskId,
       inProgressCount: taskId ? 1 : 0
     }));
@@ -228,7 +228,10 @@ function calculateExecutionOrder(tasks) {
       if (!adjacencyList.has(depId)) {
         adjacencyList.set(depId, []);
       }
-      adjacencyList.get(depId).push(task.id);
+      const depList = adjacencyList.get(depId);
+      if (depList) {
+        depList.push(task.id);
+      }
     });
   });
   const queue = [];
@@ -242,6 +245,7 @@ function calculateExecutionOrder(tasks) {
   const processed = /* @__PURE__ */ new Set();
   while (queue.length > 0) {
     const current = queue.shift();
+    if (!current) break;
     result.push(current);
     processed.add(current.id);
     const dependents = adjacencyList.get(current.id) || [];
@@ -378,7 +382,7 @@ function useTaskOrchestration() {
     store.setCurrentTask(nextTask.id);
     try {
       const nexusAPIExt = window.nexusAPI;
-      if (nexusAPIExt?.executeTask) {
+      if (nexusAPIExt.executeTask) {
         await nexusAPIExt.executeTask(nextTask.id);
       } else {
         await simulateTaskExecution(nextTask.id);
@@ -434,7 +438,37 @@ function useTaskOrchestration() {
         return;
       }
       store.start(projectId, tasks);
-      await executeNextTask();
+      if (window.nexusAPI?.startExecution) {
+        try {
+          const result = await window.nexusAPI.startExecution(projectId);
+          if (!result.success) {
+            console.error("[useTaskOrchestration] Backend execution failed:", result.error);
+            store.addError({
+              id: `error-${Date.now()}`,
+              timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+              taskId: null,
+              message: result.error || "Failed to start execution",
+              fatal: true
+            });
+            return;
+          }
+          console.log("[useTaskOrchestration] Backend execution started successfully");
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : "Failed to start execution";
+          console.error("[useTaskOrchestration] Backend execution error:", error);
+          store.addError({
+            id: `error-${Date.now()}`,
+            timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+            taskId: null,
+            message: errorMessage,
+            fatal: true
+          });
+          return;
+        }
+      } else {
+        console.warn("[useTaskOrchestration] No backend available, using simulation mode");
+        await executeNextTask();
+      }
     },
     [store, executeNextTask]
   );

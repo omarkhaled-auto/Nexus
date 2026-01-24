@@ -4,6 +4,7 @@ import { Loader2 } from 'lucide-react'
 import { KanbanBoard, KanbanHeader, ExecutionControls } from '@renderer/components/kanban'
 import { AnimatedPage } from '@renderer/components/AnimatedPage'
 import { useFeatureStore } from '@renderer/stores/featureStore'
+import { useCurrentProject } from '@renderer/stores/projectStore'
 import { useTaskOrchestration, useExecutionStore } from '@renderer/hooks/useTaskOrchestration'
 import type { Feature, FeatureStatus, FeaturePriority, FeatureComplexity } from '@renderer/types/feature'
 import type { KanbanTask, KanbanTaskStatus, TaskComplexity } from '@/types/execution'
@@ -100,6 +101,7 @@ export default function KanbanPage(): ReactElement {
   const updateFeature = useFeatureStore((s) => s.updateFeature)
   const addFeature = useFeatureStore((s) => s.addFeature)
   const features = useFeatureStore((s) => s.features)
+  const currentProject = useCurrentProject() // Get real project ID from store
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isEmpty, setIsEmpty] = useState(false)
@@ -156,6 +158,7 @@ export default function KanbanPage(): ReactElement {
 
   /**
    * Load features from backend API
+   * Fix #7: Pass currentProject?.id to filter features by project
    */
   const loadRealData = useCallback(async () => {
     if (!isElectronEnvironment()) {
@@ -170,8 +173,8 @@ export default function KanbanPage(): ReactElement {
       setIsLoading(true)
       setError(null)
 
-      // Fetch features from backend
-      const backendFeatures = await window.nexusAPI.getFeatures()
+      // Fix #7: Fetch features filtered by current project ID
+      const backendFeatures = await window.nexusAPI.getFeatures(currentProject?.id)
 
       if (Array.isArray(backendFeatures) && backendFeatures.length > 0) {
         // Map backend features to renderer format
@@ -188,11 +191,15 @@ export default function KanbanPage(): ReactElement {
     } catch (err) {
       console.error('Failed to load features:', err)
       setError('Failed to load features from backend.')
-      setIsEmpty(features.length === 0)
+      // Use functional update to avoid dependency on features.length
+      setFeatures(prev => {
+        setIsEmpty(prev.length === 0)
+        return prev
+      })
     } finally {
       setIsLoading(false)
     }
-  }, [features.length, setFeatures])
+  }, [setFeatures, currentProject?.id]) // Fix #7: Re-fetch when project changes
 
   /**
    * Subscribe to real-time feature updates
@@ -209,13 +216,10 @@ export default function KanbanPage(): ReactElement {
     })
 
     // Subscribe to task updates (which may affect feature progress)
-    const unsubscribeTaskUpdate = window.nexusAPI.onTaskUpdate((taskData) => {
-      const task = taskData as Record<string, unknown>
-      const featureId = task.featureId as string | undefined
-      if (featureId) {
-        // Refresh features when a task is updated
-        void loadRealData()
-      }
+    // Note: We don't reload all features on task update - updateFeature handles individual updates
+    const unsubscribeTaskUpdate = window.nexusAPI.onTaskUpdate((_taskData) => {
+      // Task updates are handled by the feature update subscription
+      // No need to reload all features here - this was causing infinite loops
     })
 
     // Return cleanup function
@@ -223,14 +227,15 @@ export default function KanbanPage(): ReactElement {
       unsubscribeFeatureUpdate()
       unsubscribeTaskUpdate()
     }
-  }, [updateFeature, loadRealData])
+  }, [updateFeature]) // Removed loadRealData to prevent circular dependency
 
-  // Initialize data and subscriptions on mount
+  // Initialize data and subscriptions on mount and when project changes
+  // Fix #7: Re-fetch when currentProject changes
   useEffect(() => {
     void loadRealData()
     const unsubscribe = subscribeToEvents()
     return unsubscribe
-  }, [loadRealData, subscribeToEvents])
+  }, [loadRealData, subscribeToEvents]) // Re-run when loadRealData changes (which includes project ID)
 
   /**
    * Handle creating a new feature via backend API
@@ -324,7 +329,7 @@ export default function KanbanPage(): ReactElement {
       return {
         id: feature.id,
         featureId: feature.id,
-        projectId: 'current',
+        projectId: currentProject?.id ?? 'unknown',
         title: feature.title,
         description: feature.description,
         acceptanceCriteria: [],
@@ -355,17 +360,23 @@ export default function KanbanPage(): ReactElement {
         updatedAt: feature.updatedAt
       }
     })
-  }, [])
+  }, [currentProject?.id])
 
   /**
    * Start execution - converts features to tasks and starts orchestration
+   * Uses real project ID from store instead of hardcoded 'current'
    */
   const handleStartExecution = useCallback(async () => {
+    if (!currentProject?.id) {
+      console.error('[KanbanPage] No project selected - cannot start execution')
+      return
+    }
     const tasks = convertFeaturesToTasks(features)
     if (tasks.length > 0) {
-      await startExecution('current', tasks)
+      console.log('[KanbanPage] Starting execution for project:', currentProject.id)
+      await startExecution(currentProject.id, tasks)
     }
-  }, [features, convertFeaturesToTasks, startExecution])
+  }, [features, convertFeaturesToTasks, startExecution, currentProject])
 
   /**
    * Pause execution
