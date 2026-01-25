@@ -386,6 +386,75 @@ const nexusAPI = {
       electron.ipcRenderer.removeListener("execution:status", handler);
     };
   },
+  // ========================================
+  // Planning API (Phase 25 - End-to-End Wiring)
+  // ========================================
+  /**
+   * Planning operations for task decomposition
+   */
+  planning: {
+    /**
+     * Start planning for a project
+     * Triggers TaskDecomposer to break down requirements into tasks
+     * @param projectId - Project ID to start planning for
+     * @returns Promise with success status and planning info
+     */
+    start: (projectId) => electron.ipcRenderer.invoke("planning:start", projectId),
+    /**
+     * Get planning status for a project
+     * @param projectId - Project ID to check
+     * @returns Promise with planning status and counts
+     */
+    getStatus: (projectId) => electron.ipcRenderer.invoke("planning:getStatus", projectId)
+  },
+  /**
+   * Subscribe to planning progress events
+   * @param callback - Called when planning progress updates
+   * @returns Unsubscribe function
+   */
+  onPlanningProgress: (callback) => {
+    const handler = (_event, data) => {
+      if (data.type === "planning:progress") {
+        callback(data.payload);
+      }
+    };
+    electron.ipcRenderer.on("nexus-event", handler);
+    return () => {
+      electron.ipcRenderer.removeListener("nexus-event", handler);
+    };
+  },
+  /**
+   * Subscribe to planning completed events
+   * @param callback - Called when planning completes
+   * @returns Unsubscribe function
+   */
+  onPlanningCompleted: (callback) => {
+    const handler = (_event, data) => {
+      if (data.type === "planning:completed") {
+        callback(data.payload);
+      }
+    };
+    electron.ipcRenderer.on("nexus-event", handler);
+    return () => {
+      electron.ipcRenderer.removeListener("nexus-event", handler);
+    };
+  },
+  /**
+   * Subscribe to planning error events
+   * @param callback - Called when planning fails
+   * @returns Unsubscribe function
+   */
+  onPlanningError: (callback) => {
+    const handler = (_event, data) => {
+      if (data.type === "planning:error") {
+        callback(data.payload);
+      }
+    };
+    electron.ipcRenderer.on("nexus-event", handler);
+    return () => {
+      electron.ipcRenderer.removeListener("nexus-event", handler);
+    };
+  },
   // Interview Events (BUILD-014)
   // ========================================
   /**

@@ -189,21 +189,55 @@ export function usePlanningProgress(): UsePlanningProgressReturn {
       return;
     }
 
-    // Note: The IPC event subscription would be handled here once the backend
-    // implements the planning progress events. For now, the PlanningPage
-    // includes a simulation mode for demo purposes.
-    //
-    // When backend is ready, we would subscribe to:
-    // - planning:progress
-    // - planning:task-created
-    // - planning:completed
-    // - planning:error
-    //
-    // The store actions (updateProgress, addTask, complete, setError) are ready
-    // to receive these events.
+    // Subscribe to planning progress events
+    const unsubProgress = window.nexusAPI.onPlanningProgress?.((data) => {
+      console.log('[usePlanningProgress] Received progress event:', data);
+      store.updateProgress({
+        projectId: data.projectId,
+        status: data.status as PlanningStatus,
+        progress: data.progress,
+        currentStep: data.currentStep,
+        tasksCreated: data.tasksCreated,
+        totalExpected: data.totalExpected,
+      });
+    });
+
+    // Subscribe to planning completed events
+    const unsubCompleted = window.nexusAPI.onPlanningCompleted?.((data) => {
+      console.log('[usePlanningProgress] Received completed event:', data);
+      // Add a synthetic task list based on the count (actual tasks come from features:list)
+      store.updateProgress({
+        projectId: data.projectId,
+        status: 'complete',
+        progress: 100,
+        currentStep: 'Planning complete!',
+        tasksCreated: data.taskCount,
+        totalExpected: data.taskCount,
+      });
+      store.complete();
+    });
+
+    // Subscribe to planning error events
+    const unsubError = window.nexusAPI.onPlanningError?.((data) => {
+      console.log('[usePlanningProgress] Received error event:', data);
+      store.setError(data.error);
+    });
+
+    // Also subscribe to nexus-event for any planning events not covered above
+    const unsubNexus = window.nexusAPI.onNexusEvent?.((event) => {
+      if (event.type === 'planning:started') {
+        const payload = event.payload as { projectId: string; requirementCount: number };
+        console.log('[usePlanningProgress] Planning started:', payload);
+        store.startPlanning(payload.projectId);
+      }
+    });
 
     return () => {
-      // Cleanup subscriptions when implemented
+      // Cleanup subscriptions
+      unsubProgress?.();
+      unsubCompleted?.();
+      unsubError?.();
+      unsubNexus?.();
     };
   }, [store]);
 
@@ -232,13 +266,26 @@ export function usePlanningProgress(): UsePlanningProgressReturn {
 
   // Start planning with project ID
   const startPlanning = useCallback(
-    (projectId: string) => {
+    async (projectId: string) => {
+      // Update local state immediately
       store.startPlanning(projectId);
 
-      // Note: Backend planning process would be triggered here once implemented.
-      // For now, the PlanningPage includes a simulation mode for demo purposes.
-      // When backend is ready:
-      // void window.nexusAPI?.planning?.start(projectId);
+      // Trigger backend planning process
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      if (window.nexusAPI?.planning?.start) {
+        try {
+          console.log('[usePlanningProgress] Starting planning for project:', projectId);
+          const result = await window.nexusAPI.planning.start(projectId);
+          console.log('[usePlanningProgress] Planning start result:', result);
+
+          if (!result.success && result.error) {
+            store.setError(result.error);
+          }
+        } catch (error) {
+          console.error('[usePlanningProgress] Failed to start planning:', error);
+          store.setError(error instanceof Error ? error.message : String(error));
+        }
+      }
     },
     [store]
   );

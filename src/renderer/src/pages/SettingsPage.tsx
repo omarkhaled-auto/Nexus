@@ -11,7 +11,7 @@
  * - Projects: Default values for new projects
  */
 
-import { useState, useEffect, type ReactElement } from 'react'
+import { useState, useEffect, useCallback, type ReactElement } from 'react'
 import {
   Eye,
   EyeOff,
@@ -36,6 +36,7 @@ import {
 import { cn } from '@renderer/lib/utils'
 import { Button } from '@renderer/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@renderer/components/ui/card'
+import { CheckpointList } from '@renderer/components/checkpoints/CheckpointList'
 import { Header } from '@renderer/components/layout/Header'
 import {
   useSettingsStore,
@@ -906,9 +907,43 @@ function AgentSettings({ settings, updateSetting }: SettingsTabProps): ReactElem
   )
 }
 
+interface ProjectInfo {
+  id: string;
+  name: string;
+}
+
 function CheckpointSettings({ settings, updateSetting }: SettingsTabProps): ReactElement {
+  const [projects, setProjects] = useState<ProjectInfo[]>([]);
+  const [selectedProjectId, setSelectedProjectId] = useState<string>('');
+  const [loadingProjects, setLoadingProjects] = useState(true);
+
+  // Load projects on mount
+  const loadProjects = useCallback(async () => {
+    if (!isElectronEnvironment()) {
+      setLoadingProjects(false);
+      return;
+    }
+    try {
+      const projectList = await window.nexusAPI.getProjects() as ProjectInfo[];
+      setProjects(projectList);
+      // Auto-select first project if available
+      if (projectList.length > 0 && !selectedProjectId) {
+        setSelectedProjectId(projectList[0].id);
+      }
+    } catch (err) {
+      console.error('Failed to load projects:', err);
+    } finally {
+      setLoadingProjects(false);
+    }
+  }, [selectedProjectId]);
+
+  useEffect(() => {
+    void loadProjects();
+  }, [loadProjects]);
+
   return (
     <div className="space-y-6" data-testid="checkpoints-tab">
+      {/* Automatic Checkpoint Settings */}
       <Card className="bg-bg-card border-border-default">
         <CardHeader>
           <CardTitle>Automatic Checkpoints</CardTitle>
@@ -955,6 +990,45 @@ function CheckpointSettings({ settings, updateSetting }: SettingsTabProps): Reac
             checked={settings.checkpoints.checkpointOnFeatureComplete}
             onChange={(e): void => { updateSetting('checkpoints', 'checkpointOnFeatureComplete', e.target.checked) }}
           />
+        </CardContent>
+      </Card>
+
+      {/* Project Checkpoints Management */}
+      <Card className="bg-bg-card border-border-default">
+        <CardHeader>
+          <CardTitle>Project Checkpoints</CardTitle>
+          <CardDescription>
+            View, restore, and manage checkpoints for your projects.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {loadingProjects ? (
+            <div className="flex items-center gap-2 text-text-secondary">
+              <div className="h-4 w-4 border-2 border-accent-primary border-t-transparent rounded-full animate-spin" />
+              <span className="text-sm">Loading projects...</span>
+            </div>
+          ) : projects.length === 0 ? (
+            <p className="text-sm text-text-secondary">
+              No projects found. Create a project to manage checkpoints.
+            </p>
+          ) : (
+            <>
+              <Select
+                id="checkpoint-project-selector"
+                label="Select Project"
+                description="Choose a project to view its checkpoints"
+                value={selectedProjectId}
+                onChange={(e) => setSelectedProjectId(e.target.value)}
+                options={projects.map(p => ({ value: p.id, label: p.name || p.id }))}
+              />
+
+              {selectedProjectId && (
+                <div className="mt-4 pt-4 border-t border-border-default">
+                  <CheckpointList projectId={selectedProjectId} />
+                </div>
+              )}
+            </>
+          )}
         </CardContent>
       </Card>
     </div>

@@ -1,36 +1,54 @@
-import { forwardRef, type HTMLAttributes } from 'react'
+import { forwardRef, useState, type HTMLAttributes } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { Card, CardContent, CardHeader, CardTitle } from '@renderer/components/ui/card'
 import { cn } from '@renderer/lib/utils'
 import type { Feature, FeaturePriority, FeatureComplexity } from '@renderer/types/feature'
-import { GripVertical, Circle, Clock } from 'lucide-react'
+import { Pencil, ArrowRight, Trash2, User, CheckCircle2, ListTodo } from 'lucide-react'
 
-const priorityColors: Record<FeaturePriority, string> = {
-  critical: 'bg-red-500',
-  high: 'bg-orange-500',
-  medium: 'bg-yellow-500',
-  low: 'bg-green-500'
+/**
+ * Priority colors for the left border indicator
+ * Linear-inspired: Clean, single-color bars
+ */
+const priorityBorderColors: Record<FeaturePriority, string> = {
+  critical: 'border-l-red-500',
+  high: 'border-l-orange-500',
+  medium: 'border-l-yellow-500',
+  low: 'border-l-green-500'
 }
 
-const complexityLabels: Record<FeatureComplexity, string> = {
-  simple: 'S',
-  moderate: 'M',
-  complex: 'L'
+/**
+ * Complexity badge colors and labels
+ */
+const complexityConfig: Record<FeatureComplexity, { color: string; bgColor: string; label: string }> = {
+  simple: { color: 'text-green-600', bgColor: 'bg-green-500/10', label: 'Simple' },
+  moderate: { color: 'text-yellow-600', bgColor: 'bg-yellow-500/10', label: 'Moderate' },
+  complex: { color: 'text-orange-600', bgColor: 'bg-orange-500/10', label: 'Complex' }
 }
 
-export interface FeatureCardProps extends Omit<HTMLAttributes<HTMLDivElement>, 'onClick'> {
+export interface FeatureCardProps extends Omit<HTMLAttributes<HTMLDivElement>, 'onClick' | 'onContextMenu'> {
   feature: Feature
   onClick?: (feature: Feature) => void
+  onEdit?: (feature: Feature) => void
+  onMove?: (feature: Feature) => void
+  onDelete?: (feature: Feature) => void
+  onContextMenu?: (e: React.MouseEvent, feature: Feature) => void
   isDragging?: boolean
   isOverlay?: boolean
 }
 
 /**
- * FeatureCard - Draggable feature card for the Kanban board.
+ * FeatureCard - Linear-inspired minimal draggable feature card.
+ *
+ * Design:
+ * - 4px colored left border indicating priority
+ * - Minimal content: title + assignee avatar
+ * - Ultra-thin progress bar at bottom when > 0
+ * - Hover: lift effect + shadow + reveal action buttons
  */
 export const FeatureCard = forwardRef<HTMLDivElement, FeatureCardProps>(
-  ({ feature, onClick, isDragging, isOverlay, className, ...props }, ref) => {
+  ({ feature, onClick, onEdit, onMove, onDelete, onContextMenu, isDragging, isOverlay, className, ...props }, ref) => {
+    const [isHovered, setIsHovered] = useState(false)
+
     const {
       attributes,
       listeners,
@@ -45,15 +63,40 @@ export const FeatureCard = forwardRef<HTMLDivElement, FeatureCardProps>(
 
     const style = {
       transform: CSS.Transform.toString(transform),
-      transition,
+      transition: transition || 'transform 150ms ease-out, box-shadow 150ms ease-out',
       opacity: isSortableDragging && !isOverlay ? 0.5 : 1
     }
 
+    // Calculate progress
     const completedTasks = feature.tasks.filter((t) => t.status === 'completed').length
     const totalTasks = feature.tasks.length
+    const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
+
+    // Get initials for avatar
+    const getInitials = (name: string) => {
+      return name
+        .split(/[\s-_]+/)
+        .map(part => part[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2)
+    }
+
+    const handleClick = (e: React.MouseEvent) => {
+      // Don't trigger click when clicking action buttons
+      if ((e.target as HTMLElement).closest('[data-action-button]')) {
+        return
+      }
+      onClick?.(feature)
+    }
+
+    const handleActionClick = (e: React.MouseEvent, action: () => void) => {
+      e.stopPropagation()
+      action()
+    }
 
     return (
-      <Card
+      <div
         ref={(node) => {
           setNodeRef(node)
           if (typeof ref === 'function') {
@@ -64,53 +107,154 @@ export const FeatureCard = forwardRef<HTMLDivElement, FeatureCardProps>(
         }}
         style={style}
         className={cn(
-          'cursor-pointer transition-shadow hover:shadow-md',
-          isDragging && 'ring-2 ring-primary',
-          isOverlay && 'shadow-lg',
+          // Base styles
+          'relative cursor-pointer rounded-lg bg-card border border-border/50',
+          // Priority left border
+          'border-l-4',
+          priorityBorderColors[feature.priority],
+          // Hover state with lift effect
+          'transition-all duration-150 ease-out',
+          isHovered && !isDragging && 'translate-y-[-2px] shadow-[0_4px_12px_rgba(0,0,0,0.15)]',
+          // Dragging states
+          isDragging && 'ring-2 ring-primary/50 shadow-lg',
+          isOverlay && 'shadow-xl scale-[1.02] opacity-90',
           className
         )}
-        onClick={() => onClick?.(feature)}
+        onClick={handleClick}
+        onContextMenu={(e) => onContextMenu?.(e, feature)}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        {...attributes}
+        {...listeners}
         {...props}
       >
-        <CardHeader className="p-3 pb-2">
-          <div className="flex items-start justify-between gap-2">
-            <CardTitle className="line-clamp-2 text-sm font-medium">
-              {feature.title}
-            </CardTitle>
-            <button
-              className="cursor-grab touch-none"
-              {...attributes}
-              {...listeners}
+        {/* Main content */}
+        <div className="p-3">
+          {/* Title */}
+          <h3 className="text-sm font-medium text-foreground line-clamp-2 pr-16">
+            {feature.title}
+          </h3>
+
+          {/* Metadata row: Complexity + Task count */}
+          <div className="mt-2 flex items-center gap-2 flex-wrap">
+            {/* Complexity badge */}
+            <span
+              className={cn(
+                'inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium',
+                complexityConfig[feature.complexity].bgColor,
+                complexityConfig[feature.complexity].color
+              )}
             >
-              <GripVertical className="h-4 w-4 text-muted-foreground" />
-            </button>
-          </div>
-        </CardHeader>
-        <CardContent className="p-3 pt-0">
-          <p className="mb-3 line-clamp-2 text-xs text-muted-foreground">
-            {feature.description}
-          </p>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Circle className={cn('h-2 w-2 fill-current', priorityColors[feature.priority])} />
-              <span className="rounded bg-muted px-1.5 py-0.5 text-xs">
-                {complexityLabels[feature.complexity]}
-              </span>
-            </div>
+              {complexityConfig[feature.complexity].label}
+            </span>
+
+            {/* Task count badge */}
             {totalTasks > 0 && (
-              <span className="text-xs text-muted-foreground">
-                {completedTasks}/{totalTasks} tasks
+              <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
+                <ListTodo className="h-3 w-3" />
+                <span>{completedTasks}/{totalTasks}</span>
+                {completedTasks === totalTasks && totalTasks > 0 && (
+                  <CheckCircle2 className="h-3 w-3 text-green-500" />
+                )}
               </span>
             )}
           </div>
-          {feature.assignedAgent && (
-            <div className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
-              <Clock className="h-3 w-3" />
-              <span className="truncate">{feature.assignedAgent}</span>
+
+          {/* Tags row */}
+          {feature.tags && feature.tags.length > 0 && (
+            <div className="mt-2 flex items-center gap-1 flex-wrap">
+              {feature.tags.slice(0, 3).map((tag, index) => (
+                <span
+                  key={index}
+                  className="inline-flex items-center px-1.5 py-0.5 rounded bg-muted text-[10px] text-muted-foreground"
+                >
+                  {tag}
+                </span>
+              ))}
+              {feature.tags.length > 3 && (
+                <span className="text-[10px] text-muted-foreground">
+                  +{feature.tags.length - 3}
+                </span>
+              )}
             </div>
           )}
-        </CardContent>
-      </Card>
+
+          {/* Bottom row: Assignee */}
+          <div className="mt-2 flex items-center justify-between">
+            {feature.assignedAgent ? (
+              <div
+                className="h-6 w-6 rounded-full bg-muted flex items-center justify-center text-[10px] font-medium text-muted-foreground cursor-default"
+                title={feature.assignedAgent}
+              >
+                {getInitials(feature.assignedAgent)}
+              </div>
+            ) : (
+              <div className="h-6 w-6 rounded-full bg-muted/50 flex items-center justify-center">
+                <User className="h-3 w-3 text-muted-foreground/50" />
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Progress bar - only show when > 0 */}
+        {progress > 0 && (
+          <div className="absolute bottom-0 left-0 right-0">
+            {/* Progress percentage label */}
+            <div className="absolute -top-4 right-2 text-[9px] text-muted-foreground tabular-nums">
+              {progress}%
+            </div>
+            <div className="h-1 bg-muted/50 rounded-b-lg overflow-hidden">
+              <div
+                className={cn(
+                  'h-full transition-all duration-300',
+                  progress === 100 ? 'bg-green-500' : 'bg-primary'
+                )}
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Hover action buttons */}
+        <div
+          className={cn(
+            'absolute top-2 right-2 flex items-center gap-1',
+            'transition-opacity duration-150',
+            isHovered && !isDragging ? 'opacity-100' : 'opacity-0 pointer-events-none'
+          )}
+        >
+          {onEdit && (
+            <button
+              data-action-button
+              onClick={(e) => handleActionClick(e, () => onEdit(feature))}
+              className="p-1.5 rounded-md bg-background/80 backdrop-blur-sm border border-border/50 text-muted-foreground hover:text-foreground hover:bg-background transition-colors"
+              title="Edit"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </button>
+          )}
+          {onMove && (
+            <button
+              data-action-button
+              onClick={(e) => handleActionClick(e, () => onMove(feature))}
+              className="p-1.5 rounded-md bg-background/80 backdrop-blur-sm border border-border/50 text-muted-foreground hover:text-foreground hover:bg-background transition-colors"
+              title="Move"
+            >
+              <ArrowRight className="h-3.5 w-3.5" />
+            </button>
+          )}
+          {onDelete && (
+            <button
+              data-action-button
+              onClick={(e) => handleActionClick(e, () => onDelete(feature))}
+              className="p-1.5 rounded-md bg-background/80 backdrop-blur-sm border border-border/50 text-muted-foreground hover:text-destructive hover:bg-background transition-colors"
+              title="Delete"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+      </div>
     )
   }
 )

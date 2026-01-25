@@ -71,6 +71,12 @@ export type EventType =
   | 'interview:cancelled'
   | 'interview:saved'
 
+  // Planning events (4 events)
+  | 'planning:started'
+  | 'planning:progress'
+  | 'planning:completed'
+  | 'planning:error'
+
   // Human review events (3 events)
   | 'review:requested'
   | 'review:approved'
@@ -377,6 +383,43 @@ export interface InterviewSavedPayload {
 }
 
 // ============================================
+// Planning Event Payloads
+// ============================================
+
+export interface PlanningStartedPayload {
+  projectId: string;
+  requirementCount: number;
+  startedAt: Date;
+}
+
+// Note: PlanningProgressPayload is defined in execution.ts and re-exported via index.ts
+// We extend it here for event-specific needs
+export interface EventPlanningProgressPayload {
+  projectId: string;
+  status: 'analyzing' | 'decomposing' | 'creating-tasks' | 'validating';
+  progress: number;
+  currentStep: string;
+  tasksCreated: number;
+  totalExpected: number;
+}
+
+// Note: PlanningCompletedPayload is defined in execution.ts with different shape
+// This is the event-specific payload for planning:completed events
+export interface EventPlanningCompletedPayload {
+  projectId: string;
+  featureCount: number;
+  taskCount: number;
+  totalMinutes: number;
+  waveCount: number;
+}
+
+export interface PlanningErrorPayload {
+  projectId: string;
+  error: string;
+  recoverable: boolean;
+}
+
+// ============================================
 // Human Review Event Payloads
 // ============================================
 
@@ -500,6 +543,12 @@ export interface EventPayloadMap {
   'interview:completed': InterviewCompletedPayload;
   'interview:cancelled': InterviewCancelledPayload;
   'interview:saved': InterviewSavedPayload;
+
+  // Planning events
+  'planning:started': PlanningStartedPayload;
+  'planning:progress': EventPlanningProgressPayload;
+  'planning:completed': EventPlanningCompletedPayload;
+  'planning:error': PlanningErrorPayload;
 
   // Human review events
   'review:requested': ReviewRequestedPayload;

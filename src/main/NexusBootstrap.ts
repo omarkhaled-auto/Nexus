@@ -29,6 +29,7 @@ import { StateManager } from '../persistence/state/StateManager';
 import { CheckpointManager } from '../persistence/checkpoints/CheckpointManager';
 import { HumanReviewService } from '../orchestration/review/HumanReviewService';
 import { GitService } from '../infrastructure/git/GitService';
+import { MergerRunner } from '../infrastructure/git/MergerRunner';
 import type { PlanningTask } from '../planning/types';
 import type { OrchestrationFeature } from '../orchestration/types';
 import { RepoMapGenerator } from '../infrastructure/analysis/RepoMapGenerator';
@@ -154,6 +155,7 @@ export class NexusBootstrap {
   private checkpointManager: CheckpointManager | null = null;
   private humanReviewService: HumanReviewService | null = null;
   private gitService: GitService | null = null;
+  private mergerRunner: MergerRunner | null = null;
   private repoMapGenerator: RepoMapGenerator | null = null;
   private unsubscribers: Array<() => void> = [];
   /** Track project start times for completion metrics */
@@ -230,6 +232,28 @@ export class NexusBootstrap {
       checkpointManager: this.checkpointManager,
     });
     console.log('[NexusBootstrap] HumanReviewService created');
+
+    // 5a-1. Inject HumanReviewService into the coordinator (Phase 3: Human Escalation)
+    if (this.nexus.coordinator && typeof this.nexus.coordinator.setHumanReviewService === 'function') {
+      this.nexus.coordinator.setHumanReviewService(this.humanReviewService);
+      console.log('[NexusBootstrap] HumanReviewService injected into coordinator');
+    } else {
+      console.warn('[NexusBootstrap] Coordinator does not support setHumanReviewService');
+    }
+
+    // 5a-2. Create and inject MergerRunner for worktree->main merging (Phase 3: Merge Verification)
+    this.mergerRunner = new MergerRunner({
+      baseDir: this.config.workingDir,
+      worktreeManager: this.nexus.worktreeManager,
+    });
+    console.log('[NexusBootstrap] MergerRunner created');
+
+    if (this.nexus.coordinator && typeof this.nexus.coordinator.setMergerRunner === 'function') {
+      this.nexus.coordinator.setMergerRunner(this.mergerRunner);
+      console.log('[NexusBootstrap] MergerRunner injected into coordinator');
+    } else {
+      console.warn('[NexusBootstrap] Coordinator does not support setMergerRunner');
+    }
 
     // 5b. Initialize RepoMapGenerator for Evolution mode
     this.repoMapGenerator = new RepoMapGenerator();
@@ -321,6 +345,20 @@ export class NexusBootstrap {
 
       console.log(`[NexusBootstrap] Interview completed for ${projectId} with ${totalRequirements} requirements`);
 
+      // Emit planning:started event to UI
+      if (mainWindowRef && !mainWindowRef.isDestroyed()) {
+        mainWindowRef.webContents.send('nexus-event', {
+          type: 'planning:started',
+          payload: {
+            projectId,
+            requirementCount: totalRequirements,
+            startedAt: new Date().toISOString(),
+          },
+          timestamp: new Date().toISOString(),
+        });
+        console.log(`[NexusBootstrap] Sent planning:started to UI`);
+      }
+
       // Emit project status change (use existing event type)
       await this.eventBus.emit('project:status-changed', {
         projectId,
@@ -334,18 +372,82 @@ export class NexusBootstrap {
         const requirements = this.requirementsDB!.getRequirements(projectId);
         console.log(`[NexusBootstrap] Retrieved ${requirements.length} requirements for decomposition`);
 
+        // Emit planning:progress - analyzing
+        if (mainWindowRef && !mainWindowRef.isDestroyed()) {
+          mainWindowRef.webContents.send('nexus-event', {
+            type: 'planning:progress',
+            payload: {
+              projectId,
+              status: 'analyzing',
+              progress: 10,
+              currentStep: 'Analyzing requirements...',
+              tasksCreated: 0,
+              totalExpected: requirements.length * 3, // Estimate 3 tasks per requirement
+            },
+            timestamp: new Date().toISOString(),
+          });
+        }
+
         // Build feature description from requirements
         const featureDescription = requirements
           .map(r => `- [${r.priority}] ${r.description}`)
           .join('\n');
 
+        // Emit planning:progress - decomposing
+        if (mainWindowRef && !mainWindowRef.isDestroyed()) {
+          mainWindowRef.webContents.send('nexus-event', {
+            type: 'planning:progress',
+            payload: {
+              projectId,
+              status: 'decomposing',
+              progress: 30,
+              currentStep: 'Breaking down into atomic tasks...',
+              tasksCreated: 0,
+              totalExpected: requirements.length * 3,
+            },
+            timestamp: new Date().toISOString(),
+          });
+        }
+
         // Decompose requirements into tasks
         const decomposedTasks = await decomposer.decompose(featureDescription);
         console.log(`[NexusBootstrap] Decomposed into ${decomposedTasks.length} tasks`);
 
+        // Emit planning:progress - creating tasks
+        if (mainWindowRef && !mainWindowRef.isDestroyed()) {
+          mainWindowRef.webContents.send('nexus-event', {
+            type: 'planning:progress',
+            payload: {
+              projectId,
+              status: 'creating-tasks',
+              progress: 60,
+              currentStep: `Creating ${decomposedTasks.length} tasks...`,
+              tasksCreated: 0,
+              totalExpected: decomposedTasks.length,
+            },
+            timestamp: new Date().toISOString(),
+          });
+        }
+
         // Store decomposition to database (Phase 20 Task 3)
         const { featureCount, taskCount } = await this.storeDecomposition(projectId, decomposedTasks);
         console.log(`[NexusBootstrap] Stored ${featureCount} features and ${taskCount} tasks to database`);
+
+        // Emit planning:progress - validating
+        if (mainWindowRef && !mainWindowRef.isDestroyed()) {
+          mainWindowRef.webContents.send('nexus-event', {
+            type: 'planning:progress',
+            payload: {
+              projectId,
+              status: 'validating',
+              progress: 85,
+              currentStep: 'Validating dependencies and calculating execution waves...',
+              tasksCreated: taskCount,
+              totalExpected: taskCount,
+            },
+            timestamp: new Date().toISOString(),
+          });
+        }
 
         // Resolve dependencies and calculate waves
         const waves = resolver.calculateWaves(decomposedTasks);
@@ -421,6 +523,20 @@ export class NexusBootstrap {
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         console.error('[NexusBootstrap] Planning failed:', errorMessage);
+
+        // Emit planning:error event to UI
+        if (mainWindowRef && !mainWindowRef.isDestroyed()) {
+          mainWindowRef.webContents.send('nexus-event', {
+            type: 'planning:error',
+            payload: {
+              projectId,
+              error: errorMessage,
+              recoverable: true,
+            },
+            timestamp: new Date().toISOString(),
+          });
+          console.log(`[NexusBootstrap] Sent planning:error to UI`);
+        }
 
         // Ensure coordinator is in clean state after planning failure
         try {
@@ -560,6 +676,11 @@ export class NexusBootstrap {
       'interview:question-asked',
       'interview:requirement-captured',
       'interview:completed',
+      // Planning events
+      'planning:started',
+      'planning:progress',
+      'planning:completed',
+      'planning:error',
       // Project events
       'project:status-changed',
       'project:failed',
@@ -1060,6 +1181,7 @@ export class NexusBootstrap {
     this.checkpointManager = null;
     this.humanReviewService = null;
     this.gitService = null;
+    this.mergerRunner = null;
     this.repoMapGenerator = null;
     this.databaseClient = null;
     bootstrappedNexus = null;

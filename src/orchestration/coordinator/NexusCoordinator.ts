@@ -31,6 +31,7 @@ import type {
 } from '@/planning/types';
 import { GitService } from '@/infrastructure/git/GitService';
 import { WorktreeManager } from '@/infrastructure/git/WorktreeManager';
+import { RepoMapGenerator } from '@/infrastructure/analysis/RepoMapGenerator';
 
 /**
  * NexusCoordinator constructor options
@@ -47,8 +48,19 @@ export interface NexusCoordinatorOptions {
   checkpointManager: any; // CheckpointManager type
   mergerRunner?: any; // MergerRunner for merging task branches
   agentWorktreeBridge?: any; // AgentWorktreeBridge for worktree management
+  humanReviewService?: any; // HumanReviewService for human escalation
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */
+
+/**
+ * MergerRunner result interface
+ */
+export interface MergeResult {
+  success: boolean;
+  commitHash?: string;
+  error?: string;
+  conflictFiles?: string[];
+}
 
 /**
  * NexusCoordinator is the main orchestration entry point.
@@ -72,10 +84,14 @@ export class NexusCoordinator implements INexusCoordinator {
   /* eslint-disable @typescript-eslint/no-explicit-any -- External service types to avoid circular dependencies */
   private readonly qaEngine: any;
   private worktreeManager: any; // Mutable - can be replaced with project-specific instance
-  private readonly checkpointManager: any;
-  private readonly mergerRunner?: any;
+  private checkpointManager: any; // Mutable - can be injected after creation
+  private mergerRunner?: any; // Mutable - can be injected after creation (Phase 3)
   private readonly agentWorktreeBridge?: any;
+  private humanReviewService?: any; // Mutable - can be injected after creation (Phase 3: HITL)
   /* eslint-enable @typescript-eslint/no-explicit-any */
+
+  // Escalation tracking - maps reviewId to taskId for review responses
+  private escalatedTasks: Map<string, { taskId: string; agentId: string; worktreePath?: string }> = new Map();
 
   // State
   private state: CoordinatorState = 'idle';
@@ -106,8 +122,44 @@ export class NexusCoordinator implements INexusCoordinator {
     this.checkpointManager = options.checkpointManager;
     this.mergerRunner = options.mergerRunner;
     this.agentWorktreeBridge = options.agentWorktreeBridge;
+    this.humanReviewService = options.humanReviewService;
     /* eslint-enable @typescript-eslint/no-unsafe-assignment */
   }
+
+  // ========================================
+  // Service Injection Methods (Phase 3)
+  // ========================================
+
+  /**
+   * Set the human review service for HITL escalation
+   * This allows the service to be injected after coordinator creation
+   * (since NexusFactory creates coordinator before HumanReviewService)
+   */
+  /* eslint-disable @typescript-eslint/no-explicit-any -- HumanReviewService type from external module */
+  setHumanReviewService(service: any): void {
+    this.humanReviewService = service;
+    console.log('[NexusCoordinator] HumanReviewService injected');
+  }
+  /* eslint-enable @typescript-eslint/no-explicit-any */
+
+  /**
+   * Set the merger runner for worktree->main merging
+   */
+  /* eslint-disable @typescript-eslint/no-explicit-any -- MergerRunner type from external module */
+  setMergerRunner(runner: any): void {
+    this.mergerRunner = runner;
+    console.log('[NexusCoordinator] MergerRunner injected');
+  }
+
+  /**
+   * Set the checkpoint manager for wave checkpoints
+   * Injected after construction since NexusFactory creates coordinator before CheckpointManager
+   */
+  setCheckpointManager(manager: any): void {
+    this.checkpointManager = manager;
+    console.log('[NexusCoordinator] CheckpointManager injected');
+  }
+  /* eslint-enable @typescript-eslint/no-explicit-any */
 
   /**
    * Initialize coordinator with project configuration
@@ -442,19 +494,161 @@ export class NexusCoordinator implements INexusCoordinator {
    * Create a checkpoint for later resumption
    */
   async createCheckpoint(name?: string): Promise<Checkpoint> {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- checkpointManager is any-typed
-    const checkpoint = await this.checkpointManager.create({
-      name,
-      projectId: this.projectConfig?.projectId,
-      waveId: this.currentWaveIndex,
-      completedTaskIds: [], // Would be tracked
-      pendingTaskIds: [], // Would be tracked
-      coordinatorState: this.state,
-    });
+    // Guard: Skip if no checkpoint manager
+    if (!this.checkpointManager) {
+      throw new Error('CheckpointManager not available');
+    }
 
-    this.emitEvent('checkpoint:created', { checkpointId: checkpoint.id, name });
+    const projectId = this.projectConfig?.projectId;
+    if (!projectId) {
+      throw new Error('No project configured');
+    }
+
+    const reason = name ?? `Manual checkpoint at wave ${this.currentWaveIndex}`;
+
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- checkpointManager is any-typed
+    const result = await this.checkpointManager.createCheckpoint(projectId, reason);
+
+    // Map CheckpointManager result to Checkpoint interface
+    const checkpoint: Checkpoint = {
+      id: result.id,
+      metadata: {
+        projectId,
+        waveId: this.currentWaveIndex,
+        completedTaskIds: [],
+        pendingTaskIds: [],
+        coordinatorState: this.state,
+      },
+      gitCommit: result.gitCommit ?? undefined,
+      createdAt: result.createdAt,
+    };
+
+    this.emitEvent('checkpoint:created', { checkpointId: checkpoint.id, name: reason });
 
     return checkpoint;
+  }
+
+  // ========================================
+  // Human Review Response Handlers (Phase 3)
+  // ========================================
+
+  /**
+   * Handle approval of an escalated task review
+   * This is called when a human approves a review request
+   *
+   * @param reviewId - ID of the review being approved
+   * @param resolution - Optional resolution notes from the human
+   */
+  async handleReviewApproved(reviewId: string, resolution?: string): Promise<void> {
+    const escalatedTask = this.escalatedTasks.get(reviewId);
+    if (!escalatedTask) {
+      console.warn(`[NexusCoordinator] Review ${reviewId} not found in escalated tasks`);
+      return;
+    }
+
+    const { taskId, agentId, worktreePath } = escalatedTask;
+    console.log(`[NexusCoordinator] Review ${reviewId} approved for task ${taskId}`);
+    console.log(`[NexusCoordinator] Resolution: ${resolution ?? 'No resolution provided'}`);
+
+    // Remove from tracking
+    this.escalatedTasks.delete(reviewId);
+
+    // Mark task as complete (human approved the escalation)
+    this.taskQueue.markComplete(taskId);
+    this.completedTasks++;
+
+    this.emitEvent('task:completed', {
+      taskId,
+      agentId,
+      resolution,
+      humanApproved: true,
+    });
+
+    // Clean up worktree if exists
+    if (worktreePath) {
+      try {
+        await this.worktreeManager.removeWorktree(taskId);
+      } catch {
+        // Ignore cleanup errors
+      }
+    }
+
+    // Release agent if still held
+    try {
+      this.agentPool.release(agentId);
+    } catch {
+      // Agent might already be released
+    }
+
+    // Resume orchestration if paused
+    if (this.state === 'paused' && this.pauseReason === 'review_pending') {
+      this.resume();
+    }
+  }
+
+  /**
+   * Handle rejection of an escalated task review
+   * This is called when a human rejects a review request
+   *
+   * @param reviewId - ID of the review being rejected
+   * @param feedback - Required feedback from the human
+   */
+  async handleReviewRejected(reviewId: string, feedback: string): Promise<void> {
+    const escalatedTask = this.escalatedTasks.get(reviewId);
+    if (!escalatedTask) {
+      console.warn(`[NexusCoordinator] Review ${reviewId} not found in escalated tasks`);
+      return;
+    }
+
+    const { taskId, agentId, worktreePath } = escalatedTask;
+    console.log(`[NexusCoordinator] Review ${reviewId} rejected for task ${taskId}`);
+    console.log(`[NexusCoordinator] Feedback: ${feedback}`);
+
+    // Remove from tracking
+    this.escalatedTasks.delete(reviewId);
+
+    // Mark task as failed (human rejected)
+    this.taskQueue.markFailed(taskId);
+    this.failedTasks++;
+
+    this.emitEvent('task:failed', {
+      taskId,
+      agentId,
+      error: `Human rejected: ${feedback}`,
+      humanRejected: true,
+      feedback,
+    });
+
+    // Clean up worktree if exists
+    if (worktreePath) {
+      try {
+        await this.worktreeManager.removeWorktree(taskId);
+      } catch {
+        // Ignore cleanup errors
+      }
+    }
+
+    // Release agent if still held
+    try {
+      this.agentPool.release(agentId);
+    } catch {
+      // Agent might already be released
+    }
+
+    // Resume orchestration if paused
+    if (this.state === 'paused' && this.pauseReason === 'review_pending') {
+      this.resume();
+    }
+  }
+
+  /**
+   * Get list of escalated tasks awaiting human review
+   */
+  getEscalatedTasks(): Array<{ reviewId: string; taskId: string }> {
+    return Array.from(this.escalatedTasks.entries()).map(([reviewId, { taskId }]) => ({
+      reviewId,
+      taskId,
+    }));
   }
 
   /**
@@ -632,10 +826,50 @@ export class NexusCoordinator implements INexusCoordinator {
       // Project exists - decompose features with awareness of existing code
       this.emitEvent('orchestration:mode', { mode: 'evolution', reason: 'Targeted changes to existing codebase' });
 
-      // TODO: In future, implement analyzeExistingCode() to understand current state
-      // For now, use same decomposition but flag for evolution-aware handling
+      // Analyze existing codebase to provide context for decomposition
+      let existingCodeContext = '';
+      if (config.projectPath) {
+        try {
+          console.log(`[NexusCoordinator] Analyzing existing codebase for Evolution mode at: ${config.projectPath}`);
+          this.emitEvent('evolution:analyzing', { projectPath: config.projectPath });
+
+          // Generate repo map for existing code
+          const repoMapGenerator = new RepoMapGenerator();
+          await repoMapGenerator.initialize();
+          const repoMap = await repoMapGenerator.generate(config.projectPath, {
+            maxFiles: 500,
+            countReferences: true,
+          });
+
+          // Format for context with token limit
+          existingCodeContext = repoMapGenerator.formatForContext({
+            maxTokens: 8000,
+            includeSignatures: true,
+            rankByReferences: true,
+          });
+
+          console.log(`[NexusCoordinator] Repo map generated: ${repoMap.stats.totalFiles} files, ${repoMap.stats.totalSymbols} symbols`);
+          this.emitEvent('evolution:analyzed', {
+            totalFiles: repoMap.stats.totalFiles,
+            totalSymbols: repoMap.stats.totalSymbols,
+          });
+        } catch (error) {
+          console.warn('[NexusCoordinator] Failed to analyze existing code (continuing without context):', error);
+          this.emitEvent('evolution:analysis-failed', {
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+      }
+
+      // Decompose features with existing code context
       for (const feature of features) {
-        const featureDesc = this.featureToDescription(feature);
+        let featureDesc = this.featureToDescription(feature);
+
+        // Prepend existing code context if available
+        if (existingCodeContext) {
+          featureDesc = `## Existing Codebase Context\n\nThe following is a map of the existing codebase. Use this to understand the current architecture and avoid conflicts:\n\n${existingCodeContext}\n\n---\n\n${featureDesc}`;
+        }
+
         const tasks = await this.decomposer.decompose(featureDesc);
 
         // Tag tasks as evolution-mode for downstream handling
@@ -667,21 +901,27 @@ export class NexusCoordinator implements INexusCoordinator {
    * Hotfix #5 - Issue 3: Per-wave checkpoints for recovery
    */
   private async createWaveCheckpoint(waveIndex: number): Promise<void> {
-    try {
-      const checkpointName = `Wave ${waveIndex} complete`;
+    // Guard: Skip if no checkpoint manager or projectId
+    if (!this.checkpointManager) {
+      console.log(`[NexusCoordinator] Skipping checkpoint for wave ${waveIndex} - no CheckpointManager`);
+      return;
+    }
 
-      await this.checkpointManager.create({
-        name: checkpointName,
-        projectId: this.projectConfig?.projectId,
-        waveId: waveIndex,
-        completedTaskIds: [], // Would be tracked in production
-        pendingTaskIds: [],
-        coordinatorState: this.state,
-      });
+    const projectId = this.projectConfig?.projectId;
+    if (!projectId) {
+      console.log(`[NexusCoordinator] Skipping checkpoint for wave ${waveIndex} - no projectId`);
+      return;
+    }
+
+    try {
+      const reason = `Wave ${waveIndex} complete`;
+
+      // CheckpointManager.createCheckpoint(projectId, reason) is the correct API
+      await this.checkpointManager.createCheckpoint(projectId, reason);
 
       this.emitEvent('checkpoint:created', {
         waveId: waveIndex,
-        reason: checkpointName,
+        reason,
       });
     } catch (error) {
       // Log but don't fail orchestration due to checkpoint error
@@ -816,11 +1056,89 @@ export class NexusCoordinator implements INexusCoordinator {
         // HOTFIX #5 - Issue 2: Merge to main on success
         // Code stays in worktree without this step
         if (worktreePath && this.mergerRunner) {
+          console.log(`[NexusCoordinator] Starting merge for task ${task.id}`);
+          console.log(`[NexusCoordinator] Worktree: ${worktreePath}`);
+          console.log(`[NexusCoordinator] Target branch: main`);
+
           try {
-            await this.mergerRunner.merge(worktreePath, 'main');
-            this.emitEvent('task:merged', { taskId: task.id, branch: 'main' });
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- mergerRunner is any-typed
+            const mergeResult: MergeResult = await this.mergerRunner.merge(worktreePath, 'main');
+
+            if (mergeResult.success) {
+              console.log(`[NexusCoordinator] Merge successful for task ${task.id}`);
+              console.log(`[NexusCoordinator] Commit: ${mergeResult.commitHash ?? 'unknown'}`);
+
+              this.emitEvent('task:merged', {
+                taskId: task.id,
+                branch: 'main',
+                commitHash: mergeResult.commitHash,
+              });
+
+              // Push merged changes to remote (non-blocking)
+              try {
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- mergerRunner is any-typed
+                const pushResult: { success: boolean; error?: string } = await this.mergerRunner.pushToRemote('main');
+                if (pushResult.success) {
+                  console.log(`[NexusCoordinator] Pushed to remote successfully for task ${task.id}`);
+                  this.emitEvent('task:pushed', { taskId: task.id, branch: 'main' });
+                } else {
+                  console.warn(`[NexusCoordinator] Push failed (non-blocking): ${pushResult.error ?? 'unknown error'}`);
+                }
+              } catch (pushError) {
+                console.warn(`[NexusCoordinator] Push exception (non-blocking):`, pushError);
+              }
+            } else {
+              console.error(`[NexusCoordinator] Merge failed for task ${task.id}: ${mergeResult.error ?? 'unknown error'}`);
+
+              // Check if merge conflict - escalate to human
+              if (mergeResult.conflictFiles && mergeResult.conflictFiles.length > 0) {
+                console.log(`[NexusCoordinator] Merge conflict detected, escalating to human review`);
+
+                if (this.humanReviewService) {
+                  try {
+                    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call -- humanReviewService is any-typed
+                    const review = await this.humanReviewService.requestReview({
+                      taskId: task.id,
+                      projectId: this.projectConfig?.projectId ?? 'unknown',
+                      reason: 'merge_conflict' as const,
+                      context: {
+                        conflictFiles: mergeResult.conflictFiles,
+                        error: mergeResult.error,
+                      },
+                    });
+                    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- review.id is any
+                    const reviewId = review.id as string;
+
+                    // Track this escalated task for review response handling
+                    this.escalatedTasks.set(reviewId, { taskId: task.id, agentId, worktreePath });
+
+                    // Emit escalation event but don't mark as failed yet
+                    this.emitEvent('task:escalated', {
+                      taskId: task.id,
+                      agentId,
+                      reason: `Merge conflict: ${mergeResult.conflictFiles?.join(', ') ?? 'unknown files'}`,
+                    });
+                    return; // Don't mark complete - wait for human review
+                  } catch (reviewError) {
+                    console.error(`[NexusCoordinator] Failed to create review for merge conflict:`, reviewError);
+                  }
+                }
+
+                // Fallback if HumanReviewService not available
+                this.emitEvent('task:merge-failed', {
+                  taskId: task.id,
+                  error: `Merge conflict: ${mergeResult.conflictFiles?.join(', ') ?? 'unknown files'}`,
+                });
+              } else {
+                // Non-conflict merge failure
+                this.emitEvent('task:merge-failed', {
+                  taskId: task.id,
+                  error: mergeResult.error ?? 'Unknown merge error',
+                });
+              }
+            }
           } catch (mergeError) {
-            // Log merge failure but don't fail the task
+            console.error(`[NexusCoordinator] Merge exception for task ${task.id}:`, mergeError);
             this.emitEvent('task:merge-failed', {
               taskId: task.id,
               error: mergeError instanceof Error ? mergeError.message : String(mergeError),
@@ -833,6 +1151,49 @@ export class NexusCoordinator implements INexusCoordinator {
         this.emitEvent('task:completed', { taskId: task.id, agentId });
       } else if (result.escalated) {
         // Task escalated - needs human intervention
+        // Phase 3 Fix: Properly integrate with HumanReviewService
+        console.log(`[NexusCoordinator] Task ${task.id} escalated: ${result.reason ?? 'Max QA iterations exceeded'}`);
+
+        if (this.humanReviewService) {
+          try {
+            // Create a review request for human intervention
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call -- humanReviewService is any-typed
+            const review = await this.humanReviewService.requestReview({
+              taskId: task.id,
+              projectId: this.projectConfig?.projectId ?? 'unknown',
+              reason: 'qa_exhausted' as const,
+              context: {
+                qaIterations: result.iterations ?? 50,
+                escalationReason: result.reason ?? 'Max QA iterations exceeded',
+                lastErrors: result.errors ?? [],
+              },
+            });
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- review.id is any
+            const reviewId = review.id as string;
+
+            console.log(`[NexusCoordinator] Created review request ${reviewId} for task ${task.id}`);
+
+            // Track this escalated task for review response handling
+            this.escalatedTasks.set(reviewId, { taskId: task.id, agentId, worktreePath });
+
+            // Emit escalation event
+            this.emitEvent('task:escalated', {
+              taskId: task.id,
+              agentId,
+              reason: result.reason ?? 'Max QA iterations exceeded',
+              reviewId, // Include review ID for UI correlation
+            });
+
+            // Don't mark as failed yet - wait for human review
+            // Task remains in 'escalated' status until human responds
+            return;
+          } catch (reviewError) {
+            console.error(`[NexusCoordinator] Failed to create review request:`, reviewError);
+            // Fallback to original behavior if review creation fails
+          }
+        }
+
+        // Fallback: Mark as failed if HumanReviewService not available
         this.taskQueue.markFailed(task.id);
         this.failedTasks++;
         this.emitEvent('task:escalated', {

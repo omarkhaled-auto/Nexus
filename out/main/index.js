@@ -15,10 +15,10 @@ import { simpleGit } from "simple-git";
 import { normalize, join, dirname } from "pathe";
 import fse, { ensureDirSync } from "fs-extra";
 import { execaCommand } from "execa";
+import fg from "fast-glob";
 import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import { migrate } from "drizzle-orm/better-sqlite3/migrator";
-import fg from "fast-glob";
 import __cjs_mod__ from "node:module";
 const __filename = import.meta.filename;
 const __dirname = import.meta.dirname;
@@ -504,6 +504,15 @@ function registerCheckpointReviewHandlers(checkpointManager, humanReviewService)
         throw new Error("HumanReviewService not initialized");
       }
       await humanReviewServiceRef.approveReview(reviewId, resolution);
+      try {
+        const { getBootstrappedNexus: getBootstrappedNexus2 } = await Promise.resolve().then(() => NexusBootstrap$1);
+        const bootstrappedNexus2 = getBootstrappedNexus2();
+        if (bootstrappedNexus2?.nexus.coordinator) {
+          await bootstrappedNexus2.nexus.coordinator.handleReviewApproved(reviewId, resolution);
+        }
+      } catch (coordError) {
+        console.warn("[IPC] Failed to notify coordinator of review approval:", coordError);
+      }
     }
   );
   ipcMain.handle(
@@ -522,6 +531,15 @@ function registerCheckpointReviewHandlers(checkpointManager, humanReviewService)
         throw new Error("HumanReviewService not initialized");
       }
       await humanReviewServiceRef.rejectReview(reviewId, feedback);
+      try {
+        const { getBootstrappedNexus: getBootstrappedNexus2 } = await Promise.resolve().then(() => NexusBootstrap$1);
+        const bootstrappedNexus2 = getBootstrappedNexus2();
+        if (bootstrappedNexus2?.nexus.coordinator) {
+          await bootstrappedNexus2.nexus.coordinator.handleReviewRejected(reviewId, feedback);
+        }
+      } catch (coordError) {
+        console.warn("[IPC] Failed to notify coordinator of review rejection:", coordError);
+      }
     }
   );
 }
@@ -941,6 +959,11 @@ ${"-".repeat(40)}
     if (!validateSender$4(event)) {
       throw new Error("Unauthorized IPC sender");
     }
+    console.log("[IPC] features:list called", {
+      projectId: projectId || "(none)",
+      databaseAvailable: !!databaseClientRef,
+      memoryFeatureCount: state.features.size
+    });
     if (databaseClientRef) {
       try {
         const { features: features2, tasks: tasks2 } = await Promise.resolve().then(() => schema$1);
@@ -1286,6 +1309,115 @@ ${"-".repeat(40)}
       };
     }
   });
+  ipcMain.handle("planning:start", async (event, projectId) => {
+    if (!validateSender$4(event)) {
+      throw new Error("Unauthorized IPC sender");
+    }
+    if (typeof projectId !== "string" || !projectId) {
+      throw new Error("Invalid projectId");
+    }
+    console.log("[IPC] planning:start called for projectId:", projectId);
+    try {
+      const { getBootstrappedNexus: getBootstrappedNexus2 } = await Promise.resolve().then(() => NexusBootstrap$1);
+      const bootstrappedNexus2 = getBootstrappedNexus2();
+      if (!bootstrappedNexus2) {
+        throw new Error("Nexus not initialized");
+      }
+      if (eventForwardingWindow && !eventForwardingWindow.isDestroyed()) {
+        eventForwardingWindow.webContents.send("nexus-event", {
+          type: "planning:started",
+          payload: {
+            projectId,
+            requirementCount: 0,
+            // Will be updated during progress
+            startedAt: (/* @__PURE__ */ new Date()).toISOString()
+          },
+          timestamp: (/* @__PURE__ */ new Date()).toISOString()
+        });
+      }
+      const coordinator = bootstrappedNexus2.nexus.coordinator;
+      const status = coordinator.getStatus();
+      if (status.state === "running") {
+        console.log("[IPC] planning:start - Execution already running");
+        return { success: true, message: "Execution already in progress" };
+      }
+      const eventBus = EventBus.getInstance();
+      let requirementCount = 0;
+      if (databaseClientRef) {
+        try {
+          const { eq: eq2, count } = await import("drizzle-orm");
+          const { requirements: requirements2 } = await Promise.resolve().then(() => schema$1);
+          const result = databaseClientRef.db.select({ count: count() }).from(requirements2).where(eq2(requirements2.projectId, projectId)).get();
+          requirementCount = result?.count ?? 0;
+        } catch (dbError) {
+          console.warn("[IPC] planning:start - Could not get requirement count:", dbError);
+        }
+      }
+      console.log("[IPC] planning:start - Starting planning with", requirementCount, "requirements");
+      return {
+        success: true,
+        message: "Planning started",
+        requirementCount
+      };
+    } catch (error) {
+      console.error("[IPC] planning:start failed:", error);
+      if (eventForwardingWindow && !eventForwardingWindow.isDestroyed()) {
+        eventForwardingWindow.webContents.send("nexus-event", {
+          type: "planning:error",
+          payload: {
+            projectId,
+            error: error instanceof Error ? error.message : String(error),
+            recoverable: true
+          },
+          timestamp: (/* @__PURE__ */ new Date()).toISOString()
+        });
+      }
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  });
+  ipcMain.handle("planning:getStatus", async (event, projectId) => {
+    if (!validateSender$4(event)) {
+      throw new Error("Unauthorized IPC sender");
+    }
+    if (typeof projectId !== "string" || !projectId) {
+      throw new Error("Invalid projectId");
+    }
+    if (databaseClientRef) {
+      try {
+        const { eq: eq2, count } = await import("drizzle-orm");
+        const { tasks: tasksTable, features: featuresTable } = await Promise.resolve().then(() => schema$1);
+        const taskResult = databaseClientRef.db.select({ count: count() }).from(tasksTable).where(eq2(tasksTable.projectId, projectId)).get();
+        const featureResult = databaseClientRef.db.select({ count: count() }).from(featuresTable).where(eq2(featuresTable.projectId, projectId)).get();
+        const taskCount = taskResult?.count ?? 0;
+        const featureCount = featureResult?.count ?? 0;
+        if (taskCount > 0) {
+          return {
+            status: "complete",
+            progress: 100,
+            taskCount,
+            featureCount
+          };
+        }
+        return {
+          status: "idle",
+          progress: 0,
+          taskCount: 0,
+          featureCount: 0
+        };
+      } catch (dbError) {
+        console.error("[IPC] planning:getStatus database error:", dbError);
+      }
+    }
+    return {
+      status: "unknown",
+      progress: 0,
+      taskCount: 0,
+      featureCount: 0
+    };
+  });
   ipcMain.handle(
     "interview:emit-started",
     (event, payload) => {
@@ -1498,6 +1630,8 @@ function setupEventForwarding(mainWindow2) {
       }
     });
   });
+  const globalAddExecutionLog = global.addExecutionLog;
+  const globalExecutionStatuses = global.executionStatuses;
   eventBus.on("qa:build-started", (event) => {
     forwardTimelineEvent({
       id: event.id,
@@ -1508,29 +1642,97 @@ function setupEventForwarding(mainWindow2) {
         taskId: event.payload.taskId
       }
     });
+    globalAddExecutionLog?.("build", `Build started for task ${event.payload.taskId}`);
+    globalExecutionStatuses?.set("build", "running");
+    if (eventForwardingWindow && !eventForwardingWindow.isDestroyed()) {
+      eventForwardingWindow.webContents.send("execution:log", {
+        type: "build",
+        status: "running",
+        message: `Build started for task ${event.payload.taskId}`
+      });
+    }
   });
   eventBus.on("qa:build-completed", (event) => {
+    const passed = event.payload.passed;
     forwardTimelineEvent({
       id: event.id,
       type: "build_completed",
-      title: event.payload.passed ? "Build succeeded" : "Build failed",
+      title: passed ? "Build succeeded" : "Build failed",
       timestamp: event.timestamp,
       metadata: {
         taskId: event.payload.taskId
       }
     });
+    globalAddExecutionLog?.("build", passed ? "Build succeeded" : "Build failed", void 0, passed ? "info" : "error");
+    globalExecutionStatuses?.set("build", passed ? "success" : "error");
+    if (eventForwardingWindow && !eventForwardingWindow.isDestroyed()) {
+      eventForwardingWindow.webContents.send("execution:log", {
+        type: "build",
+        status: passed ? "success" : "error",
+        message: passed ? "Build succeeded" : "Build failed"
+      });
+    }
   });
   eventBus.on("qa:loop-completed", (event) => {
+    const passed = event.payload.passed;
     forwardTimelineEvent({
       id: event.id,
-      type: event.payload.passed ? "qa_passed" : "qa_failed",
-      title: event.payload.passed ? `QA passed for task ${event.payload.taskId}` : `QA failed for task ${event.payload.taskId}`,
+      type: passed ? "qa_passed" : "qa_failed",
+      title: passed ? `QA passed for task ${event.payload.taskId}` : `QA failed for task ${event.payload.taskId}`,
       timestamp: event.timestamp,
       metadata: {
         taskId: event.payload.taskId,
         iterations: event.payload.iterations
       }
     });
+    globalAddExecutionLog?.(
+      "review",
+      passed ? `QA passed after ${event.payload.iterations} iterations` : `QA failed after ${event.payload.iterations} iterations`,
+      void 0,
+      passed ? "info" : "error"
+    );
+    globalExecutionStatuses?.set("review", passed ? "success" : "error");
+    if (eventForwardingWindow && !eventForwardingWindow.isDestroyed()) {
+      eventForwardingWindow.webContents.send("execution:log", {
+        type: "review",
+        status: passed ? "success" : "error",
+        message: passed ? `QA passed after ${event.payload.iterations} iterations` : `QA failed after ${event.payload.iterations} iterations`
+      });
+    }
+  });
+  eventBus.on("qa:lint-completed", (event) => {
+    const passed = event.payload.passed;
+    globalAddExecutionLog?.(
+      "lint",
+      passed ? "Lint passed" : "Lint failed",
+      void 0,
+      passed ? "info" : "error"
+    );
+    globalExecutionStatuses?.set("lint", passed ? "success" : "error");
+    if (eventForwardingWindow && !eventForwardingWindow.isDestroyed()) {
+      eventForwardingWindow.webContents.send("execution:log", {
+        type: "lint",
+        status: passed ? "success" : "error",
+        message: passed ? "Lint passed" : "Lint failed"
+      });
+    }
+  });
+  eventBus.on("qa:test-completed", (event) => {
+    const passed = event.payload.passed;
+    globalAddExecutionLog?.(
+      "test",
+      passed ? "All tests passed" : "Tests failed",
+      void 0,
+      passed ? "info" : "error"
+    );
+    globalExecutionStatuses?.set("test", passed ? "success" : "error");
+    if (eventForwardingWindow && !eventForwardingWindow.isDestroyed()) {
+      eventForwardingWindow.webContents.send("execution:log", {
+        type: "test",
+        status: passed ? "success" : "error",
+        message: passed ? "All tests passed" : "Tests failed"
+      });
+    }
   });
   eventBus.on("feature:status-changed", (event) => {
     forwardTimelineEvent({
@@ -1541,6 +1743,10 @@ function setupEventForwarding(mainWindow2) {
       metadata: {
         featureId: event.payload.featureId
       }
+    });
+    forwardFeatureUpdate({
+      featureId: event.payload.featureId,
+      status: event.payload.newStatus
     });
   });
   eventBus.on("feature:completed", (event) => {
@@ -1574,6 +1780,24 @@ function setupEventForwarding(mainWindow2) {
         checkpointId: event.payload.checkpointId,
         projectId: event.payload.projectId
       }
+    });
+  });
+  eventBus.on("task:completed", (event) => {
+    const tasks2 = Array.from(state.tasks.values());
+    const completedTasks = tasks2.filter((t) => t.status === "completed").length;
+    forwardMetricsUpdate({
+      completedTasks,
+      totalTasks: tasks2.length,
+      projectId: state.projectId || "current",
+      updatedAt: /* @__PURE__ */ new Date()
+    });
+  });
+  eventBus.on("feature:created", (event) => {
+    forwardFeatureUpdate({
+      featureId: event.payload.feature.id,
+      title: event.payload.feature.name,
+      status: event.payload.feature.status,
+      priority: event.payload.feature.priority
     });
   });
   eventBus.on("review:requested", (event) => {
@@ -1622,6 +1846,11 @@ function setupEventForwarding(mainWindow2) {
   });
 }
 let eventForwardingWindow = null;
+function forwardMetricsUpdate(metrics2) {
+  if (eventForwardingWindow && !eventForwardingWindow.isDestroyed()) {
+    eventForwardingWindow.webContents.send("metrics:updated", metrics2);
+  }
+}
 function forwardAgentMetrics(agentMetrics) {
   if (eventForwardingWindow && !eventForwardingWindow.isDestroyed()) {
     eventForwardingWindow.webContents.send("agent:metrics", agentMetrics);
@@ -1630,6 +1859,11 @@ function forwardAgentMetrics(agentMetrics) {
 function forwardTimelineEvent(timelineEvent) {
   if (eventForwardingWindow && !eventForwardingWindow.isDestroyed()) {
     eventForwardingWindow.webContents.send("timeline:event", timelineEvent);
+  }
+}
+function forwardFeatureUpdate(feature) {
+  if (eventForwardingWindow && !eventForwardingWindow.isDestroyed()) {
+    eventForwardingWindow.webContents.send("feature:updated", feature);
   }
 }
 function mapUIStatusToCoreStatus(status) {
@@ -3580,7 +3814,8 @@ class ClaudeCodeCLIClient {
       workingDirectory: config.workingDirectory ?? process.cwd(),
       timeout: config.timeout ?? DEFAULT_TIMEOUT$1,
       maxRetries: config.maxRetries ?? DEFAULT_MAX_RETRIES$1,
-      logger: config.logger
+      logger: config.logger,
+      skipPermissions: config.skipPermissions ?? false
     };
   }
   /**
@@ -3677,9 +3912,14 @@ class ClaudeCodeCLIClient {
     args.push("--output-format", "json");
     if (options?.disableTools) {
       args.push('--tools=""');
-    } else if (options?.tools && options.tools.length > 0) {
-      const toolNames = this.mapToolNames(options.tools);
-      args.push("--allowedTools", toolNames.join(","));
+    } else {
+      if (this.config.skipPermissions) {
+        args.push("--dangerously-skip-permissions");
+      }
+      if (options?.tools && options.tools.length > 0) {
+        const toolNames = this.mapToolNames(options.tools);
+        args.push("--allowedTools", toolNames.join(","));
+      }
     }
     const stdinPrompt = system ? `<system>
 ${system}
@@ -8071,13 +8311,15 @@ class BuildRunner {
    *
    * The callback captures the working directory in a closure, allowing
    * RalphStyleIterator to call it with just the taskId parameter.
+   * An optional workingDir parameter can override the default path.
    *
-   * @param workingDir - Directory containing the TypeScript project
-   * @returns Function that takes taskId and returns Promise<BuildResult>
+   * @param defaultWorkingDir - Default directory containing the TypeScript project
+   * @returns Function that takes taskId and optional workingDir, returns Promise<BuildResult>
    */
-  createCallback(workingDir) {
-    return async (_taskId) => {
-      return this.run(workingDir);
+  createCallback(defaultWorkingDir) {
+    return async (_taskId, workingDir) => {
+      const effectiveDir = workingDir ?? defaultWorkingDir;
+      return this.run(effectiveDir);
     };
   }
   /**
@@ -8265,13 +8507,15 @@ class LintRunner {
    *
    * The callback captures the working directory in a closure, allowing
    * RalphStyleIterator to call it with just the taskId parameter.
+   * An optional workingDir parameter can override the default path.
    *
-   * @param workingDir - Directory containing the project to lint
-   * @returns Function that takes taskId and returns Promise<LintResult>
+   * @param defaultWorkingDir - Default directory containing the project to lint
+   * @returns Function that takes taskId and optional workingDir, returns Promise<LintResult>
    */
-  createCallback(workingDir) {
-    return async (_taskId) => {
-      return this.run(workingDir);
+  createCallback(defaultWorkingDir) {
+    return async (_taskId, workingDir) => {
+      const effectiveDir = workingDir ?? defaultWorkingDir;
+      return this.run(effectiveDir);
     };
   }
   /**
@@ -8441,13 +8685,15 @@ class TestRunner {
    *
    * The callback captures the working directory in a closure, allowing
    * RalphStyleIterator to call it with just the taskId parameter.
+   * An optional workingDir parameter can override the default path.
    *
-   * @param workingDir - Directory containing the test project
-   * @returns Function that takes taskId and returns Promise<TestResult>
+   * @param defaultWorkingDir - Default directory containing the test project
+   * @returns Function that takes taskId and optional workingDir, returns Promise<TestResult>
    */
-  createCallback(workingDir) {
-    return async (_taskId) => {
-      return this.run(workingDir);
+  createCallback(defaultWorkingDir) {
+    return async (_taskId, workingDir) => {
+      const effectiveDir = workingDir ?? defaultWorkingDir;
+      return this.run(effectiveDir);
     };
   }
   /**
@@ -8473,8 +8719,11 @@ class TestRunner {
       proc.on("close", (code) => {
         const parsed = this.parseOutput(stdout, stderr);
         const duration = Date.now() - startTime;
+        const noTestsFound = parsed.passed === 0 && parsed.failed === 0;
+        const allTestsPassed = code === 0 && parsed.failed === 0;
+        const isSuccess = allTestsPassed || noTestsFound;
         resolve2({
-          success: code === 0 && parsed.failed === 0,
+          success: isSuccess,
           passed: parsed.passed,
           failed: parsed.failed,
           skipped: parsed.skipped,
@@ -8836,14 +9085,16 @@ ${unstagedDiff}` : unstagedDiff;
    *
    * The callback captures the working directory in a closure, allowing
    * RalphStyleIterator to call it with just the taskId parameter.
+   * An optional workingDir parameter can override the default path.
    *
-   * @param workingDir - Directory containing the git repository
+   * @param defaultWorkingDir - Default directory containing the git repository
    * @param context - Optional static context for all reviews
-   * @returns Function that takes taskId and returns Promise<ReviewResult>
+   * @returns Function that takes taskId and optional workingDir, returns Promise<ReviewResult>
    */
-  createCallback(workingDir, context) {
-    return async (taskId) => {
-      return this.run(workingDir, { ...context, taskId });
+  createCallback(defaultWorkingDir, context) {
+    return async (taskId, workingDir) => {
+      const effectiveDir = workingDir ?? defaultWorkingDir;
+      return this.run(effectiveDir, { ...context, taskId });
     };
   }
   /**
@@ -9474,11 +9725,85 @@ class QALoopEngine {
   maxIterations;
   stopOnFirstFailure;
   workingDir;
+  agentPool;
   constructor(config) {
     this.qaRunner = config.qaRunner;
     this.maxIterations = config.maxIterations ?? 50;
     this.stopOnFirstFailure = config.stopOnFirstFailure ?? true;
     this.workingDir = config.workingDir;
+    this.agentPool = config.agentPool;
+  }
+  /**
+   * Generate or fix code using the CoderAgent
+   *
+   * This method calls the CoderAgent to either:
+   * - Generate initial code for a task (mode='generate')
+   * - Fix errors from build/lint failures (mode='fix')
+   *
+   * @param task - The task being worked on
+   * @param mode - 'generate' for initial code, 'fix' for error fixing
+   * @param errors - Error details to fix (only used in 'fix' mode)
+   * @returns true if code generation/fix was successful
+   */
+  async generateOrFixCode(task, mode, errors) {
+    if (!this.agentPool) {
+      console.warn("[QALoopEngine] No agentPool - skipping code generation");
+      return false;
+    }
+    const workingDir = task.projectPath || task.worktree || this.workingDir;
+    if (!workingDir) {
+      console.error("[QALoopEngine] No working directory for code generation");
+      return false;
+    }
+    let coderAgent = this.agentPool.getAvailableByType("coder");
+    if (!coderAgent) {
+      try {
+        coderAgent = this.agentPool.spawn("coder");
+      } catch (spawnError) {
+        console.error("[QALoopEngine] Failed to spawn coder agent:", spawnError);
+        return false;
+      }
+    }
+    const context = {
+      workingDir,
+      relevantFiles: task.files,
+      previousAttempts: mode === "fix" ? errors : void 0
+    };
+    const agentTask = {
+      id: task.id,
+      name: task.name,
+      description: mode === "fix" ? `Fix the following errors:
+${errors?.join("\n")}
+
+Original task: ${task.description}` : task.description,
+      type: "auto",
+      status: "in_progress",
+      priority: "high",
+      files: task.files,
+      createdAt: /* @__PURE__ */ new Date()
+    };
+    console.log(`[QALoopEngine] Calling CoderAgent to ${mode} code...`);
+    console.log(`[QALoopEngine] Working directory: ${workingDir}`);
+    try {
+      const result = await this.agentPool.runTask(coderAgent, agentTask, context);
+      try {
+        this.agentPool.release(coderAgent.id);
+      } catch {
+      }
+      if (result.success) {
+        console.log(`[QALoopEngine] CoderAgent ${mode} succeeded`);
+      } else {
+        console.log(`[QALoopEngine] CoderAgent ${mode} failed: ${result.error ?? "unknown"}`);
+      }
+      return result.success;
+    } catch (error) {
+      console.error(`[QALoopEngine] CoderAgent ${mode} error:`, error);
+      try {
+        this.agentPool.release(coderAgent.id);
+      } catch {
+      }
+      return false;
+    }
   }
   /**
    * Run the QA loop on a task
@@ -9501,22 +9826,41 @@ class QALoopEngine {
     let lastLint;
     let lastTest;
     let lastReview;
+    const effectiveWorkingDir = task.projectPath || task.worktree || this.workingDir;
     console.log(`[QALoopEngine] Starting QA loop for task ${task.id}: ${task.name}`);
     console.log(`[QALoopEngine] Project path: ${task.projectPath ?? "NOT PROVIDED"}`);
     console.log(`[QALoopEngine] Worktree: ${task.worktree ?? "NONE"}`);
+    console.log(`[QALoopEngine] Effective working directory: ${effectiveWorkingDir ?? "NONE"}`);
+    if (this.agentPool) {
+      console.log(`[QALoopEngine] Generating initial code for task ${task.id}...`);
+      const generated = await this.generateOrFixCode(task, "generate");
+      if (!generated) {
+        console.warn(`[QALoopEngine] Initial code generation failed or skipped`);
+      }
+    } else {
+      console.log(`[QALoopEngine] No agentPool - skipping initial code generation`);
+    }
     while (iteration < this.maxIterations) {
       iteration++;
       console.log(`[QALoopEngine] Iteration ${iteration}/${this.maxIterations}`);
       let allPassed = true;
       const failureReasons = [];
+      const errorDetails = [];
       if (this.qaRunner.build) {
-        console.log(`[QALoopEngine] Running build step...`);
+        console.log(`[QALoopEngine] Running build step in ${effectiveWorkingDir}...`);
         try {
-          lastBuild = await this.qaRunner.build(task.id);
+          lastBuild = await this.qaRunner.build(task.id, effectiveWorkingDir);
           if (!lastBuild.success) {
             allPassed = false;
             failureReasons.push(`Build failed with ${lastBuild.errors.length} errors`);
+            errorDetails.push(...lastBuild.errors.map(
+              (e) => typeof e === "string" ? e : `${e.file ?? "unknown"}:${e.line ?? 0} - ${e.message}`
+            ));
             console.log(`[QALoopEngine] Build failed: ${lastBuild.errors.length} errors`);
+            if (this.agentPool && this.stopOnFirstFailure) {
+              console.log(`[QALoopEngine] Calling CoderAgent to fix build errors...`);
+              await this.generateOrFixCode(task, "fix", errorDetails);
+            }
             if (this.stopOnFirstFailure) {
               continue;
             }
@@ -9525,21 +9869,34 @@ class QALoopEngine {
           }
         } catch (error) {
           allPassed = false;
-          failureReasons.push(`Build error: ${error instanceof Error ? error.message : String(error)}`);
+          const errorMsg = error instanceof Error ? error.message : String(error);
+          failureReasons.push(`Build error: ${errorMsg}`);
+          errorDetails.push(`Build execution error: ${errorMsg}`);
           console.error(`[QALoopEngine] Build error:`, error);
+          if (this.agentPool && this.stopOnFirstFailure) {
+            console.log(`[QALoopEngine] Calling CoderAgent to fix build error...`);
+            await this.generateOrFixCode(task, "fix", errorDetails);
+          }
           if (this.stopOnFirstFailure) {
             continue;
           }
         }
       }
       if (this.qaRunner.lint && (allPassed || !this.stopOnFirstFailure)) {
-        console.log(`[QALoopEngine] Running lint step...`);
+        console.log(`[QALoopEngine] Running lint step in ${effectiveWorkingDir}...`);
         try {
-          lastLint = await this.qaRunner.lint(task.id);
+          lastLint = await this.qaRunner.lint(task.id, effectiveWorkingDir);
           if (!lastLint.success || lastLint.errors.length > 0) {
             allPassed = false;
             failureReasons.push(`Lint failed with ${lastLint.errors.length} errors`);
+            errorDetails.push(...lastLint.errors.map(
+              (e) => typeof e === "string" ? e : `${e.file ?? "unknown"}:${e.line ?? 0} - ${e.message}${e.code ? ` (${e.code})` : ""}`
+            ));
             console.log(`[QALoopEngine] Lint failed: ${lastLint.errors.length} errors`);
+            if (this.agentPool && this.stopOnFirstFailure) {
+              console.log(`[QALoopEngine] Calling CoderAgent to fix lint errors...`);
+              await this.generateOrFixCode(task, "fix", errorDetails);
+            }
             if (this.stopOnFirstFailure) {
               continue;
             }
@@ -9548,17 +9905,23 @@ class QALoopEngine {
           }
         } catch (error) {
           allPassed = false;
-          failureReasons.push(`Lint error: ${error instanceof Error ? error.message : String(error)}`);
+          const errorMsg = error instanceof Error ? error.message : String(error);
+          failureReasons.push(`Lint error: ${errorMsg}`);
+          errorDetails.push(`Lint execution error: ${errorMsg}`);
           console.error(`[QALoopEngine] Lint error:`, error);
+          if (this.agentPool && this.stopOnFirstFailure) {
+            console.log(`[QALoopEngine] Calling CoderAgent to fix lint error...`);
+            await this.generateOrFixCode(task, "fix", errorDetails);
+          }
           if (this.stopOnFirstFailure) {
             continue;
           }
         }
       }
       if (this.qaRunner.test && (allPassed || !this.stopOnFirstFailure)) {
-        console.log(`[QALoopEngine] Running test step...`);
+        console.log(`[QALoopEngine] Running test step in ${effectiveWorkingDir}...`);
         try {
-          lastTest = await this.qaRunner.test(task.id);
+          lastTest = await this.qaRunner.test(task.id, effectiveWorkingDir);
           if (!lastTest.success) {
             allPassed = false;
             failureReasons.push(`Tests failed: ${lastTest.failed}/${lastTest.passed + lastTest.failed} failed`);
@@ -9579,9 +9942,9 @@ class QALoopEngine {
         }
       }
       if (this.qaRunner.review && (allPassed || !this.stopOnFirstFailure)) {
-        console.log(`[QALoopEngine] Running review step...`);
+        console.log(`[QALoopEngine] Running review step in ${effectiveWorkingDir}...`);
         try {
-          lastReview = await this.qaRunner.review(task.id);
+          lastReview = await this.qaRunner.review(task.id, effectiveWorkingDir);
           if (!lastReview.approved) {
             allPassed = false;
             failureReasons.push(`Review not approved: ${lastReview.blockers.length} blockers`);
@@ -9657,817 +10020,6 @@ class QALoopEngine {
       }
     }
     return results;
-  }
-}
-class NexusCoordinator {
-  // Dependencies
-  taskQueue;
-  agentPool;
-  decomposer;
-  resolver;
-  estimator;
-  /* eslint-disable @typescript-eslint/no-explicit-any -- External service types to avoid circular dependencies */
-  qaEngine;
-  worktreeManager;
-  checkpointManager;
-  mergerRunner;
-  agentWorktreeBridge;
-  /* eslint-enable @typescript-eslint/no-explicit-any */
-  // State
-  state = "idle";
-  currentPhase = "planning";
-  pauseReason;
-  projectConfig;
-  waves = [];
-  currentWaveIndex = 0;
-  totalTasks = 0;
-  completedTasks = 0;
-  failedTasks = 0;
-  // Control
-  stopRequested = false;
-  pauseRequested = false;
-  orchestrationLoop;
-  eventHandlers = [];
-  constructor(options) {
-    this.taskQueue = options.taskQueue;
-    this.agentPool = options.agentPool;
-    this.decomposer = options.decomposer;
-    this.resolver = options.resolver;
-    this.estimator = options.estimator;
-    this.qaEngine = options.qaEngine;
-    this.worktreeManager = options.worktreeManager;
-    this.checkpointManager = options.checkpointManager;
-    this.mergerRunner = options.mergerRunner;
-    this.agentWorktreeBridge = options.agentWorktreeBridge;
-  }
-  /**
-   * Initialize coordinator with project configuration
-   */
-  initialize(config) {
-    this.projectConfig = config;
-    this.state = "idle";
-    this.currentPhase = "planning";
-    this.pauseReason = void 0;
-    this.waves = [];
-    this.currentWaveIndex = 0;
-    this.totalTasks = 0;
-    this.completedTasks = 0;
-    this.failedTasks = 0;
-    this.stopRequested = false;
-    this.pauseRequested = false;
-  }
-  /**
-   * Start orchestration for a project
-   */
-  start(projectId) {
-    if (!this.projectConfig) {
-      throw new Error("Coordinator not initialized");
-    }
-    this.state = "running";
-    this.currentPhase = "execution";
-    this.stopRequested = false;
-    this.pauseRequested = false;
-    this.emitEvent("coordinator:started", { projectId });
-    this.orchestrationLoop = this.runOrchestrationLoop();
-  }
-  /**
-   * Execute pre-decomposed tasks (skip decomposition phase)
-   * Used when tasks already exist in database from planning phase.
-   * This is the correct method to call when user clicks "Start Execution"
-   * after features/tasks have been generated during the interview.
-   *
-   * @param projectId - The project ID
-   * @param tasks - Array of existing tasks from database
-   * @param projectPath - Path to user's project folder (NOT Nexus-master)
-   */
-  executeExistingTasks(projectId, tasks2, projectPath) {
-    this.projectConfig = {
-      projectId,
-      projectPath,
-      // User's project folder, NOT Nexus-master
-      features: [],
-      mode: "evolution"
-    };
-    this.state = "running";
-    this.currentPhase = "execution";
-    this.stopRequested = false;
-    this.pauseRequested = false;
-    console.log(`[NexusCoordinator] Executing ${tasks2.length} existing tasks`);
-    console.log(`[NexusCoordinator] Project path: ${projectPath}`);
-    this.emitEvent("coordinator:started", { projectId });
-    this.orchestrationLoop = this.runExecutionLoop(tasks2, projectPath);
-  }
-  /**
-   * Run execution loop for existing tasks (no decomposition)
-   * This skips the decomposeByMode step and directly processes
-   * the provided tasks in waves.
-   */
-  async runExecutionLoop(allTasks, _projectPath) {
-    try {
-      if (!this.projectConfig) {
-        throw new Error("Project configuration not initialized");
-      }
-      console.log(`[NexusCoordinator] Running execution loop with ${allTasks.length} tasks`);
-      const planningTasks = allTasks.map((task) => ({
-        id: task.id,
-        name: task.name,
-        description: task.description,
-        type: task.type ?? "auto",
-        size: "small",
-        estimatedMinutes: task.estimatedMinutes ?? 15,
-        dependsOn: task.dependsOn,
-        testCriteria: task.testCriteria ?? [],
-        files: task.files ?? []
-      }));
-      const cycles = this.resolver.detectCycles(planningTasks);
-      if (cycles.length > 0) {
-        throw new Error(`Dependency cycles detected: ${cycles.map((c) => c.taskIds.join(" -> ")).join("; ")}`);
-      }
-      this.waves = this.resolver.calculateWaves(planningTasks);
-      this.totalTasks = allTasks.length;
-      console.log(`[NexusCoordinator] Calculated ${this.waves.length} waves`);
-      for (const wave of this.waves) {
-        for (const task of wave.tasks) {
-          const orchestrationTask = {
-            ...task,
-            dependsOn: task.dependsOn,
-            status: "pending",
-            waveId: wave.id,
-            priority: 1,
-            createdAt: /* @__PURE__ */ new Date()
-          };
-          this.taskQueue.enqueue(orchestrationTask, wave.id);
-        }
-      }
-      for (let waveIndex = 0; waveIndex < this.waves.length; waveIndex++) {
-        if (this.stopRequested) break;
-        this.currentWaveIndex = waveIndex;
-        this.emitEvent("wave:started", { waveId: waveIndex });
-        const wave = this.waves[waveIndex];
-        await this.processWave(wave);
-        if (!this.stopRequested) {
-          this.emitEvent("wave:completed", { waveId: waveIndex });
-          await this.createWaveCheckpoint(waveIndex);
-        }
-      }
-      if (!this.stopRequested) {
-        const remainingTasks = this.totalTasks - this.completedTasks - this.failedTasks;
-        if (remainingTasks === 0 && this.completedTasks > 0) {
-          this.currentPhase = "completion";
-          this.state = "idle";
-          console.log(`[NexusCoordinator] Project completed: ${this.completedTasks}/${this.totalTasks} tasks completed, ${this.failedTasks} failed`);
-          this.emitEvent("project:completed", {
-            projectId: this.projectConfig?.projectId,
-            totalTasks: this.totalTasks,
-            completedTasks: this.completedTasks,
-            failedTasks: this.failedTasks,
-            totalWaves: this.waves.length
-          });
-        } else if (this.failedTasks > 0 && this.failedTasks === this.totalTasks) {
-          console.log(`[NexusCoordinator] Project failed: all ${this.failedTasks} tasks failed`);
-          this.emitEvent("project:failed", {
-            projectId: this.projectConfig?.projectId,
-            error: "All tasks failed",
-            totalTasks: this.totalTasks,
-            failedTasks: this.failedTasks,
-            recoverable: true
-          });
-        }
-      }
-    } catch (error) {
-      console.error("[NexusCoordinator] Execution error:", error);
-      this.emitEvent("project:failed", {
-        projectId: this.projectConfig?.projectId,
-        error: error instanceof Error ? error.message : String(error),
-        recoverable: false
-      });
-    }
-  }
-  /**
-   * Pause execution gracefully
-   */
-  async pause(reason) {
-    if (this.state !== "running") {
-      return;
-    }
-    this.pauseRequested = true;
-    this.pauseReason = reason;
-    await new Promise((resolve2) => setTimeout(resolve2, 10));
-    this.state = "paused";
-    this.emitEvent("coordinator:paused", { reason });
-  }
-  /**
-   * Resume from paused state
-   */
-  resume() {
-    if (this.state !== "paused") {
-      return;
-    }
-    this.pauseRequested = false;
-    this.pauseReason = void 0;
-    this.state = "running";
-    this.emitEvent("coordinator:resumed");
-    if (!this.orchestrationLoop) {
-      this.orchestrationLoop = this.runOrchestrationLoop();
-    }
-  }
-  /**
-   * Stop execution and clean up
-   */
-  async stop() {
-    this.stopRequested = true;
-    this.state = "stopping";
-    if (this.orchestrationLoop) {
-      await Promise.race([
-        this.orchestrationLoop,
-        new Promise((resolve2) => setTimeout(resolve2, 1e3))
-      ]);
-      this.orchestrationLoop = void 0;
-    }
-    for (const agent of this.agentPool.getAll()) {
-      try {
-        this.agentPool.terminate(agent.id);
-      } catch {
-      }
-    }
-    this.state = "idle";
-    this.emitEvent("coordinator:stopped");
-  }
-  /**
-   * Get current coordinator status
-   */
-  getStatus() {
-    return {
-      state: this.state,
-      projectId: this.projectConfig?.projectId,
-      activeAgents: this.agentPool.getActive().length,
-      queuedTasks: this.taskQueue.size(),
-      completedTasks: this.completedTasks,
-      failedTasks: this.failedTasks,
-      currentPhase: this.currentPhase,
-      currentWave: this.currentWaveIndex,
-      totalWaves: this.waves.length,
-      pauseReason: this.pauseReason
-    };
-  }
-  /**
-   * Get project progress metrics
-   */
-  getProgress() {
-    const progressPercent = this.totalTasks > 0 ? Math.round(this.completedTasks / this.totalTasks * 100) : 0;
-    const averageTaskMinutes = 15;
-    const remainingTasks = this.totalTasks - this.completedTasks - this.failedTasks;
-    const estimatedRemainingMinutes = remainingTasks * averageTaskMinutes;
-    return {
-      projectId: this.projectConfig?.projectId ?? "",
-      totalTasks: this.totalTasks,
-      completedTasks: this.completedTasks,
-      failedTasks: this.failedTasks,
-      progressPercent,
-      estimatedRemainingMinutes,
-      currentWave: this.currentWaveIndex,
-      totalWaves: this.waves.length,
-      activeAgents: this.agentPool.getActive().length
-    };
-  }
-  /**
-   * Get all currently active agents
-   */
-  getActiveAgents() {
-    return this.agentPool.getActive();
-  }
-  /**
-   * Get all pending tasks in queue
-   */
-  getPendingTasks() {
-    return this.taskQueue.getReadyTasks();
-  }
-  /**
-   * Register event handler
-   */
-  onEvent(handler) {
-    this.eventHandlers.push(handler);
-  }
-  /**
-   * Create a checkpoint for later resumption
-   */
-  async createCheckpoint(name) {
-    const checkpoint = await this.checkpointManager.create({
-      name,
-      projectId: this.projectConfig?.projectId,
-      waveId: this.currentWaveIndex,
-      completedTaskIds: [],
-      // Would be tracked
-      pendingTaskIds: [],
-      // Would be tracked
-      coordinatorState: this.state
-    });
-    this.emitEvent("checkpoint:created", { checkpointId: checkpoint.id, name });
-    return checkpoint;
-  }
-  /**
-   * Emit an event to all registered handlers
-   */
-  emitEvent(type, data) {
-    const event = {
-      type,
-      timestamp: /* @__PURE__ */ new Date(),
-      projectId: this.projectConfig?.projectId,
-      data
-    };
-    for (const handler of this.eventHandlers) {
-      try {
-        handler(event);
-      } catch {
-      }
-    }
-  }
-  /**
-   * Main orchestration loop
-   * Hotfix #5 - Issue 3: Added per-wave checkpoints
-   * Hotfix #5 - Issue 4: Added Genesis/Evolution mode branching
-   */
-  async runOrchestrationLoop() {
-    try {
-      if (!this.projectConfig) {
-        throw new Error("Project configuration not initialized");
-      }
-      const config = this.projectConfig;
-      const allTasks = await this.decomposeByMode(config);
-      const cycles = this.resolver.detectCycles(allTasks);
-      if (cycles.length > 0) {
-        throw new Error(`Dependency cycles detected: ${cycles.map((c) => c.taskIds.join(" -> ")).join("; ")}`);
-      }
-      this.waves = this.resolver.calculateWaves(allTasks);
-      this.totalTasks = allTasks.length;
-      for (const wave of this.waves) {
-        for (const task of wave.tasks) {
-          const orchestrationTask = {
-            ...task,
-            dependsOn: task.dependsOn,
-            status: "pending",
-            waveId: wave.id,
-            priority: 1,
-            createdAt: /* @__PURE__ */ new Date()
-          };
-          this.taskQueue.enqueue(orchestrationTask, wave.id);
-        }
-      }
-      for (let waveIndex = 0; waveIndex < this.waves.length; waveIndex++) {
-        if (this.stopRequested) break;
-        this.currentWaveIndex = waveIndex;
-        this.emitEvent("wave:started", { waveId: waveIndex });
-        const wave = this.waves[waveIndex];
-        await this.processWave(wave);
-        if (!this.stopRequested) {
-          this.emitEvent("wave:completed", { waveId: waveIndex });
-          await this.createWaveCheckpoint(waveIndex);
-        }
-      }
-      if (!this.stopRequested) {
-        const remainingTasks = this.totalTasks - this.completedTasks - this.failedTasks;
-        if (remainingTasks === 0 && this.completedTasks > 0) {
-          this.currentPhase = "completion";
-          this.state = "idle";
-          console.log(`[NexusCoordinator] Project completed: ${this.completedTasks}/${this.totalTasks} tasks completed, ${this.failedTasks} failed`);
-          this.emitEvent("project:completed", {
-            projectId: this.projectConfig?.projectId,
-            totalTasks: this.totalTasks,
-            completedTasks: this.completedTasks,
-            failedTasks: this.failedTasks,
-            totalWaves: this.waves.length
-          });
-        } else if (this.failedTasks > 0 && this.failedTasks === this.totalTasks) {
-          console.log(`[NexusCoordinator] Project failed: all ${this.failedTasks} tasks failed`);
-          this.emitEvent("project:failed", {
-            projectId: this.projectConfig?.projectId,
-            error: "All tasks failed",
-            totalTasks: this.totalTasks,
-            failedTasks: this.failedTasks,
-            recoverable: true
-          });
-        }
-      }
-    } catch (error) {
-      console.error("Orchestration error:", error);
-      this.emitEvent("project:failed", {
-        projectId: this.projectConfig?.projectId,
-        error: error instanceof Error ? error.message : String(error),
-        recoverable: false
-      });
-    }
-  }
-  /**
-   * Decompose features based on project mode
-   * Hotfix #5 - Issue 4: Genesis vs Evolution mode distinction
-   *
-   * Genesis mode: Full decomposition from requirements (greenfield project)
-   * Evolution mode: Analyze existing code, targeted changes (existing codebase)
-   */
-  async decomposeByMode(config) {
-    const mode = config.mode ?? "genesis";
-    const features2 = config.features ?? [];
-    const allTasks = [];
-    if (mode === "genesis") {
-      this.emitEvent("orchestration:mode", { mode: "genesis", reason: "Full decomposition from requirements" });
-      for (const feature of features2) {
-        const featureDesc = this.featureToDescription(feature);
-        const tasks2 = await this.decomposer.decompose(featureDesc);
-        allTasks.push(...tasks2);
-      }
-      if (allTasks.length === 0) {
-        const mockFeature = {
-          id: "mock",
-          name: "Mock",
-          description: "Mock",
-          priority: "must",
-          status: "backlog",
-          complexity: "simple",
-          subFeatures: [],
-          estimatedTasks: 1,
-          completedTasks: 0,
-          createdAt: /* @__PURE__ */ new Date(),
-          updatedAt: /* @__PURE__ */ new Date(),
-          projectId: config.projectId
-        };
-        const mockFeatureDesc = this.featureToDescription(mockFeature);
-        const tasks2 = await this.decomposer.decompose(mockFeatureDesc);
-        allTasks.push(...tasks2);
-      }
-    } else {
-      this.emitEvent("orchestration:mode", { mode: "evolution", reason: "Targeted changes to existing codebase" });
-      for (const feature of features2) {
-        const featureDesc = this.featureToDescription(feature);
-        const tasks2 = await this.decomposer.decompose(featureDesc);
-        for (const task of tasks2) {
-          task.testCriteria.push("Evolution: Verify compatibility with existing code");
-        }
-        allTasks.push(...tasks2);
-      }
-    }
-    return allTasks;
-  }
-  /**
-   * Convert a Feature object to a string description for decomposition
-   * Fix: TaskDecomposer expects string, not Feature object
-   */
-  featureToDescription(feature) {
-    let desc2 = `## Feature: ${feature.name}
-`;
-    desc2 += `Priority: ${feature.priority}
-`;
-    desc2 += `Description: ${feature.description}`;
-    return desc2;
-  }
-  /**
-   * Create checkpoint after wave completion
-   * Hotfix #5 - Issue 3: Per-wave checkpoints for recovery
-   */
-  async createWaveCheckpoint(waveIndex) {
-    try {
-      const checkpointName = `Wave ${waveIndex} complete`;
-      await this.checkpointManager.create({
-        name: checkpointName,
-        projectId: this.projectConfig?.projectId,
-        waveId: waveIndex,
-        completedTaskIds: [],
-        // Would be tracked in production
-        pendingTaskIds: [],
-        coordinatorState: this.state
-      });
-      this.emitEvent("checkpoint:created", {
-        waveId: waveIndex,
-        reason: checkpointName
-      });
-    } catch (error) {
-      console.error("Failed to create wave checkpoint:", error);
-      this.emitEvent("checkpoint:failed", {
-        waveId: waveIndex,
-        error: error instanceof Error ? error.message : String(error)
-      });
-    }
-  }
-  /**
-   * Process a single wave of tasks
-   */
-  async processWave(wave) {
-    const runningTasks = /* @__PURE__ */ new Map();
-    while (!this.stopRequested) {
-      if (this.pauseRequested) {
-        await Promise.all(runningTasks.values());
-        while (this.pauseRequested && !this.stopRequested) {
-          await new Promise((resolve2) => setTimeout(resolve2, 50));
-        }
-        if (this.stopRequested) break;
-      }
-      const waveTasks = this.taskQueue.getByWave(wave.id);
-      if (waveTasks.length === 0 && runningTasks.size === 0) {
-        break;
-      }
-      const readyTasks = this.taskQueue.getReadyTasks();
-      const waveReadyTasks = readyTasks.filter((t) => t.waveId === wave.id);
-      for (const _task of waveReadyTasks) {
-        if (this.stopRequested || this.pauseRequested) break;
-        let agent = this.agentPool.getAvailable();
-        if (!agent && this.agentPool.size() < 4) {
-          try {
-            agent = this.agentPool.spawn("coder");
-          } catch {
-            break;
-          }
-        }
-        if (!agent) {
-          break;
-        }
-        const dequeuedTask = this.taskQueue.dequeue();
-        if (!dequeuedTask) break;
-        let worktreePath;
-        try {
-          const worktree = await this.worktreeManager.createWorktree(dequeuedTask.id);
-          worktreePath = worktree.path;
-        } catch {
-        }
-        this.agentPool.assign(agent.id, dequeuedTask.id, worktreePath);
-        this.emitEvent("task:assigned", { taskId: dequeuedTask.id, agentId: agent.id });
-        const taskPromise = this.executeTask(dequeuedTask, agent.id, worktreePath);
-        runningTasks.set(dequeuedTask.id, taskPromise);
-        void taskPromise.finally(() => {
-          runningTasks.delete(dequeuedTask.id);
-        });
-      }
-      await new Promise((resolve2) => setTimeout(resolve2, 50));
-    }
-    await Promise.all(runningTasks.values());
-  }
-  /**
-   * Execute a single task with per-task merge on success
-   * Hotfix #5 - Issue 2: Added merge step after successful QA loop
-   * Fix: Now passes projectPath to QA engine for correct CLI working directory
-   */
-  async executeTask(task, agentId, worktreePath) {
-    this.emitEvent("task:started", { taskId: task.id, agentId });
-    const projectPath = this.projectConfig?.projectPath;
-    console.log(`[NexusCoordinator] executeTask: projectPath = ${projectPath ?? "UNDEFINED"}`);
-    try {
-      const result = await this.qaEngine.run(
-        {
-          id: task.id,
-          name: task.name,
-          description: task.description,
-          files: task.files ?? [],
-          worktree: worktreePath,
-          projectPath
-          // Pass project path for Claude CLI working directory
-        },
-        null
-        // coder would be passed here
-      );
-      if (result.success) {
-        if (worktreePath && this.mergerRunner) {
-          try {
-            await this.mergerRunner.merge(worktreePath, "main");
-            this.emitEvent("task:merged", { taskId: task.id, branch: "main" });
-          } catch (mergeError) {
-            this.emitEvent("task:merge-failed", {
-              taskId: task.id,
-              error: mergeError instanceof Error ? mergeError.message : String(mergeError)
-            });
-          }
-        }
-        this.taskQueue.markComplete(task.id);
-        this.completedTasks++;
-        this.emitEvent("task:completed", { taskId: task.id, agentId });
-      } else if (result.escalated) {
-        this.taskQueue.markFailed(task.id);
-        this.failedTasks++;
-        this.emitEvent("task:escalated", {
-          taskId: task.id,
-          agentId,
-          reason: result.reason ?? "Max QA iterations exceeded"
-        });
-      } else {
-        this.taskQueue.markFailed(task.id);
-        this.failedTasks++;
-        this.emitEvent("task:failed", {
-          taskId: task.id,
-          agentId,
-          escalated: result.escalated
-        });
-      }
-    } catch (error) {
-      this.taskQueue.markFailed(task.id);
-      this.failedTasks++;
-      this.emitEvent("task:failed", {
-        taskId: task.id,
-        agentId,
-        error: error instanceof Error ? error.message : String(error)
-      });
-    } finally {
-      if (this.agentWorktreeBridge) {
-        try {
-          await this.agentWorktreeBridge.releaseWorktree(agentId);
-        } catch {
-        }
-      }
-      try {
-        this.agentPool.release(agentId);
-        this.emitEvent("agent:released", { agentId });
-      } catch {
-      }
-      if (worktreePath) {
-        try {
-          await this.worktreeManager.removeWorktree(task.id);
-        } catch {
-        }
-      }
-    }
-  }
-}
-class TaskQueue {
-  /** Main task storage: taskId -> task */
-  tasks = /* @__PURE__ */ new Map();
-  /** Tasks by wave: waveId -> Set<taskId> */
-  waveIndex = /* @__PURE__ */ new Map();
-  /** Completed task IDs for dependency resolution */
-  completedTaskIds = /* @__PURE__ */ new Set();
-  /** Failed task IDs */
-  failedTaskIds = /* @__PURE__ */ new Set();
-  /** Current active wave being processed */
-  currentWave = 0;
-  /**
-   * Add task to queue with optional wave assignment
-   */
-  enqueue(task, waveId) {
-    const queuedTask = {
-      ...task,
-      status: "queued",
-      waveId: waveId ?? task.waveId ?? 0
-    };
-    this.tasks.set(queuedTask.id, queuedTask);
-    const wave = queuedTask.waveId ?? 0;
-    if (!this.waveIndex.has(wave)) {
-      this.waveIndex.set(wave, /* @__PURE__ */ new Set());
-    }
-    const waveSet = this.waveIndex.get(wave);
-    if (waveSet) waveSet.add(queuedTask.id);
-  }
-  /**
-   * Get and remove next ready task
-   * Returns undefined if no tasks are ready (dependencies unmet or queue empty)
-   */
-  dequeue() {
-    const readyTask = this.findNextReadyTask();
-    if (!readyTask) {
-      return void 0;
-    }
-    readyTask.status = "assigned";
-    this.tasks.delete(readyTask.id);
-    const waveId = readyTask.waveId ?? 0;
-    this.waveIndex.get(waveId)?.delete(readyTask.id);
-    return readyTask;
-  }
-  /**
-   * View next ready task without removing
-   */
-  peek() {
-    return this.findNextReadyTask();
-  }
-  /**
-   * Mark task as complete, enabling dependent tasks
-   */
-  markComplete(taskId) {
-    this.completedTaskIds.add(taskId);
-    this.updateCurrentWave();
-  }
-  /**
-   * Mark task as failed
-   */
-  markFailed(taskId) {
-    this.failedTaskIds.add(taskId);
-    this.updateCurrentWave();
-  }
-  /**
-   * Get all tasks whose dependencies are satisfied
-   */
-  getReadyTasks() {
-    const ready = [];
-    for (const task of this.tasks.values()) {
-      if (this.isTaskReady(task)) {
-        ready.push(task);
-      }
-    }
-    return this.sortTasks(ready);
-  }
-  /**
-   * Get all tasks in a specific wave
-   */
-  getByWave(waveId) {
-    const taskIds = this.waveIndex.get(waveId);
-    if (!taskIds || taskIds.size === 0) {
-      return [];
-    }
-    const tasks2 = [];
-    for (const id of taskIds) {
-      const task = this.tasks.get(id);
-      if (task) {
-        tasks2.push(task);
-      }
-    }
-    return tasks2;
-  }
-  /**
-   * Get number of tasks in queue
-   */
-  size() {
-    return this.tasks.size;
-  }
-  /**
-   * Check if queue is empty
-   */
-  isEmpty() {
-    return this.tasks.size === 0;
-  }
-  /**
-   * Clear all tasks and reset state
-   */
-  clear() {
-    this.tasks.clear();
-    this.waveIndex.clear();
-    this.completedTaskIds.clear();
-    this.failedTaskIds.clear();
-    this.currentWave = 0;
-  }
-  /**
-   * Get count of completed tasks
-   */
-  getCompletedCount() {
-    return this.completedTaskIds.size;
-  }
-  /**
-   * Get count of failed tasks
-   */
-  getFailedCount() {
-    return this.failedTaskIds.size;
-  }
-  /**
-   * Find the next ready task respecting wave ordering and priorities
-   */
-  findNextReadyTask() {
-    const readyTasks = this.getReadyTasks();
-    if (readyTasks.length === 0) {
-      return null;
-    }
-    return readyTasks[0] ?? null;
-  }
-  /**
-   * Check if a task is ready to be dequeued
-   */
-  isTaskReady(task) {
-    const taskWave = task.waveId ?? 0;
-    if (taskWave > this.currentWave) {
-      return false;
-    }
-    for (const depId of task.dependsOn) {
-      if (!this.completedTaskIds.has(depId)) {
-        return false;
-      }
-    }
-    return true;
-  }
-  /**
-   * Sort tasks by wave, priority, then createdAt
-   */
-  sortTasks(tasks2) {
-    return tasks2.sort((a, b) => {
-      const waveA = a.waveId ?? 0;
-      const waveB = b.waveId ?? 0;
-      if (waveA !== waveB) {
-        return waveA - waveB;
-      }
-      if (a.priority !== b.priority) {
-        return a.priority - b.priority;
-      }
-      return a.createdAt.getTime() - b.createdAt.getTime();
-    });
-  }
-  /**
-   * Update current wave if all tasks in current wave are complete
-   */
-  updateCurrentWave() {
-    const currentWaveTasks = this.waveIndex.get(this.currentWave);
-    if (currentWaveTasks && currentWaveTasks.size > 0) {
-      return;
-    }
-    const waves = Array.from(this.waveIndex.keys()).sort((a, b) => a - b);
-    for (const wave of waves) {
-      if (wave > this.currentWave) {
-        const waveTasks = this.waveIndex.get(wave);
-        if (waveTasks && waveTasks.size > 0) {
-          this.currentWave = wave;
-          return;
-        }
-      }
-    }
   }
 }
 class WorktreeError extends Error {
@@ -10824,2245 +10376,6 @@ class WorktreeManager {
       info.status = "stale";
     }
     await this.saveRegistry(registry);
-  }
-}
-const DEFAULT_NEXUS_CONFIG = {
-  claudeBackend: "cli",
-  geminiBackend: "cli",
-  embeddingsBackend: "local"
-};
-class NexusFactory {
-  /**
-   * Create a complete Nexus instance with all dependencies wired.
-   *
-   * This is the primary factory method for production use.
-   *
-   * Backend selection (Phase 16 - Task 12):
-   * - CLI-first: Prefers CLI clients over API when available
-   * - Smart fallback: Falls back to API if CLI unavailable and API key exists
-   * - Helpful errors: Throws descriptive errors with install instructions
-   *
-   * @param config - Factory configuration
-   * @returns Promise resolving to fully-wired Nexus instance
-   */
-  static async create(config) {
-    const [claudeResult, geminiResult] = await Promise.all([
-      this.createClaudeClient(config),
-      this.createGeminiClient(config)
-    ]);
-    const claudeClient = claudeResult.client;
-    const geminiClient = geminiResult.client;
-    const claudeBackend = claudeResult.backend;
-    const geminiBackend = geminiResult.backend;
-    let embeddingsResult;
-    let embeddingsBackend = config.embeddingsBackend ?? "local";
-    try {
-      embeddingsResult = await this.createEmbeddingsService(config);
-      embeddingsBackend = embeddingsResult.backend;
-    } catch (error) {
-      console.warn("[NexusFactory] Embeddings service unavailable:", error instanceof Error ? error.message : error);
-    }
-    const taskDecomposer = new TaskDecomposer(claudeClient);
-    const dependencyResolver = new DependencyResolver();
-    const timeEstimator = new TimeEstimator();
-    const agentPool = new AgentPool({
-      claudeClient,
-      geminiClient,
-      maxAgentsByType: config.maxAgentsByType
-    });
-    const gitService = new GitService({ baseDir: config.workingDir });
-    const qaRunner = QARunnerFactory.create({
-      workingDir: config.workingDir,
-      geminiClient,
-      gitService,
-      buildConfig: {
-        timeout: config.qaConfig?.buildTimeout
-      },
-      lintConfig: {
-        timeout: config.qaConfig?.lintTimeout,
-        autoFix: config.qaConfig?.autoFixLint
-      },
-      testConfig: {
-        timeout: config.qaConfig?.testTimeout
-      }
-    });
-    const qaEngine = new QALoopEngine({
-      qaRunner,
-      maxIterations: config.qaConfig?.maxIterations ?? 50,
-      stopOnFirstFailure: true,
-      workingDir: config.workingDir
-    });
-    const taskQueue = new TaskQueue();
-    const eventBus = EventBus.getInstance();
-    const worktreeManager = new WorktreeManager({
-      baseDir: config.workingDir,
-      gitService,
-      worktreeDir: `${config.workingDir}/.nexus/worktrees`
-    });
-    const checkpointManager = null;
-    const coordinatorOptions = {
-      taskQueue,
-      agentPool,
-      decomposer: taskDecomposer,
-      resolver: dependencyResolver,
-      estimator: timeEstimator,
-      qaEngine,
-      worktreeManager,
-      checkpointManager
-    };
-    const coordinator = new NexusCoordinator(coordinatorOptions);
-    const shutdown = async () => {
-      try {
-        await coordinator.stop();
-      } catch {
-      }
-      try {
-        await agentPool.terminateAll();
-      } catch {
-      }
-      try {
-        if (worktreeManager && typeof worktreeManager.cleanup === "function") {
-          await worktreeManager.cleanup();
-        }
-      } catch {
-      }
-      try {
-        if (eventBus && typeof eventBus.removeAllListeners === "function") {
-          eventBus.removeAllListeners();
-        }
-      } catch {
-      }
-    };
-    return {
-      coordinator,
-      agentPool,
-      taskQueue,
-      eventBus,
-      llm: {
-        claude: claudeClient,
-        gemini: geminiClient
-      },
-      planning: {
-        decomposer: taskDecomposer,
-        resolver: dependencyResolver,
-        estimator: timeEstimator
-      },
-      embeddings: embeddingsResult?.service,
-      backends: {
-        claude: claudeBackend,
-        gemini: geminiBackend,
-        embeddings: embeddingsBackend
-      },
-      shutdown
-    };
-  }
-  /**
-   * Create a Nexus instance optimized for testing.
-   *
-   * This version:
-   * - Uses mocked QA runners for faster execution
-   * - Reduces iteration limits
-   * - Maintains full functionality for integration testing
-   * - Supports backend selection with fallback (Phase 16 - Task 12)
-   *
-   * @param config - Testing configuration
-   * @returns Promise resolving to Nexus instance optimized for testing
-   */
-  static async createForTesting(config) {
-    const [claudeResult, geminiResult] = await Promise.all([
-      this.createClaudeClient(config),
-      this.createGeminiClient(config)
-    ]);
-    const claudeClient = claudeResult.client;
-    const geminiClient = geminiResult.client;
-    const claudeBackend = claudeResult.backend;
-    const geminiBackend = geminiResult.backend;
-    let embeddingsResult;
-    let embeddingsBackend = config.embeddingsBackend ?? "local";
-    try {
-      embeddingsResult = await this.createEmbeddingsService(config);
-      embeddingsBackend = embeddingsResult.backend;
-    } catch {
-    }
-    const taskDecomposer = new TaskDecomposer(claudeClient);
-    const dependencyResolver = new DependencyResolver();
-    const timeEstimator = new TimeEstimator();
-    const agentPool = new AgentPool({
-      claudeClient,
-      geminiClient,
-      maxAgentsByType: config.maxAgentsByType
-    });
-    const qaRunner = config.mockQA ? QARunnerFactory.createMock() : QARunnerFactory.create({
-      workingDir: config.workingDir,
-      geminiClient
-    });
-    const qaEngine = new QALoopEngine({
-      qaRunner,
-      maxIterations: 50,
-      stopOnFirstFailure: true,
-      workingDir: config.workingDir
-    });
-    const taskQueue = new TaskQueue();
-    const eventBus = EventBus.getInstance();
-    const gitService = new GitService({ baseDir: config.workingDir });
-    const worktreeManager = new WorktreeManager({
-      baseDir: config.workingDir,
-      gitService,
-      worktreeDir: `${config.workingDir}/.nexus/test-worktrees`
-    });
-    const checkpointManager = null;
-    const coordinator = new NexusCoordinator({
-      taskQueue,
-      agentPool,
-      decomposer: taskDecomposer,
-      resolver: dependencyResolver,
-      estimator: timeEstimator,
-      qaEngine,
-      worktreeManager,
-      checkpointManager
-    });
-    const shutdown = async () => {
-      try {
-        await coordinator.stop();
-      } catch {
-      }
-      try {
-        await agentPool.terminateAll();
-      } catch {
-      }
-      try {
-        if (worktreeManager && typeof worktreeManager.cleanup === "function") {
-          await worktreeManager.cleanup();
-        }
-      } catch {
-      }
-      try {
-        if (eventBus && typeof eventBus.removeAllListeners === "function") {
-          eventBus.removeAllListeners();
-        }
-      } catch {
-      }
-    };
-    return {
-      coordinator,
-      agentPool,
-      taskQueue,
-      eventBus,
-      llm: {
-        claude: claudeClient,
-        gemini: geminiClient
-      },
-      planning: {
-        decomposer: taskDecomposer,
-        resolver: dependencyResolver,
-        estimator: timeEstimator
-      },
-      embeddings: embeddingsResult?.service,
-      backends: {
-        claude: claudeBackend,
-        gemini: geminiBackend,
-        embeddings: embeddingsBackend
-      },
-      shutdown
-    };
-  }
-  /**
-   * Create a minimal Nexus instance with only planning components.
-   *
-   * Useful for scenarios where you only need task decomposition
-   * and dependency resolution without full orchestration.
-   *
-   * @param claudeApiKey - Anthropic API key
-   * @returns Minimal Nexus instance with planning only
-   */
-  static createPlanningOnly(claudeApiKey) {
-    const claudeClient = new ClaudeClient({ apiKey: claudeApiKey });
-    const geminiClient = null;
-    const taskDecomposer = new TaskDecomposer(claudeClient);
-    const dependencyResolver = new DependencyResolver();
-    const timeEstimator = new TimeEstimator();
-    return {
-      llm: {
-        claude: claudeClient,
-        gemini: geminiClient
-      },
-      planning: {
-        decomposer: taskDecomposer,
-        resolver: dependencyResolver,
-        estimator: timeEstimator
-      },
-      shutdown: async () => {
-      }
-    };
-  }
-  // ==========================================================================
-  // Private Backend Selection Methods (Task 12)
-  // ==========================================================================
-  /**
-   * Create a Claude client based on backend preference.
-   *
-   * Order of precedence:
-   * 1. If backend='cli' → try CLI, fallback to API if available
-   * 2. If backend='api' → require API key, throw if not available
-   *
-   * @param config - Factory configuration
-   * @returns Claude client (CLI or API)
-   * @throws CLINotFoundError when CLI unavailable and no API fallback
-   */
-  static async createClaudeClient(config) {
-    const backend = config.claudeBackend ?? DEFAULT_NEXUS_CONFIG.claudeBackend ?? "cli";
-    if (backend === "cli") {
-      const cliClient = new ClaudeCodeCLIClient({
-        ...config.claudeCliConfig,
-        workingDirectory: config.workingDir
-      });
-      if (await cliClient.isAvailable()) {
-        return { client: cliClient, backend: "cli" };
-      }
-      if (config.claudeApiKey) {
-        console.warn(
-          "[NexusFactory] Claude CLI not available, falling back to API backend"
-        );
-        return {
-          client: new ClaudeClient({
-            apiKey: config.claudeApiKey,
-            ...config.claudeConfig
-          }),
-          backend: "api"
-        };
-      }
-      throw new CLINotFoundError();
-    }
-    if (!config.claudeApiKey) {
-      throw new APIKeyMissingError("claude");
-    }
-    return {
-      client: new ClaudeClient({
-        apiKey: config.claudeApiKey,
-        ...config.claudeConfig
-      }),
-      backend: "api"
-    };
-  }
-  /**
-   * Create a Gemini client based on backend preference.
-   *
-   * Order of precedence:
-   * 1. If backend='cli' → try CLI, fallback to API if available
-   * 2. If backend='api' → require API key, throw if not available
-   *
-   * @param config - Factory configuration
-   * @returns Gemini client (CLI or API)
-   * @throws GeminiCLINotFoundError when CLI unavailable and no API fallback
-   */
-  static async createGeminiClient(config) {
-    const backend = config.geminiBackend ?? DEFAULT_NEXUS_CONFIG.geminiBackend ?? "cli";
-    if (backend === "cli") {
-      const cliClient = new GeminiCLIClient(config.geminiCliConfig);
-      if (await cliClient.isAvailable()) {
-        return { client: cliClient, backend: "cli" };
-      }
-      if (config.geminiApiKey) {
-        console.warn(
-          "[NexusFactory] Gemini CLI not available, falling back to API backend"
-        );
-        return {
-          client: new GeminiClient({
-            apiKey: config.geminiApiKey,
-            ...config.geminiConfig
-          }),
-          backend: "api"
-        };
-      }
-      throw new GeminiCLINotFoundError();
-    }
-    if (!config.geminiApiKey) {
-      throw new APIKeyMissingError("gemini");
-    }
-    return {
-      client: new GeminiClient({
-        apiKey: config.geminiApiKey,
-        ...config.geminiConfig
-      }),
-      backend: "api"
-    };
-  }
-  /**
-   * Create an embeddings service based on backend preference.
-   *
-   * Order of precedence:
-   * 1. If backend='local' → try local, fallback to API if available
-   * 2. If backend='api' → require OpenAI API key, throw if not available
-   *
-   * @param config - Factory configuration
-   * @returns Embeddings service (local or API)
-   * @throws LocalEmbeddingsInitError when local unavailable and no API fallback
-   */
-  static async createEmbeddingsService(config) {
-    const backend = config.embeddingsBackend ?? DEFAULT_NEXUS_CONFIG.embeddingsBackend ?? "local";
-    if (backend === "local") {
-      const localService = new LocalEmbeddingsService(config.localEmbeddingsConfig);
-      if (await localService.isAvailable()) {
-        return { service: localService, backend: "local" };
-      }
-      if (config.openaiApiKey) {
-        console.warn(
-          "[NexusFactory] Local embeddings not available, falling back to OpenAI API"
-        );
-        return {
-          service: new EmbeddingsService({ apiKey: config.openaiApiKey }),
-          backend: "api"
-        };
-      }
-      throw new LocalEmbeddingsInitError(
-        config.localEmbeddingsConfig?.model ?? "default",
-        new Error("Local embeddings initialization failed and no API key fallback available")
-      );
-    }
-    if (!config.openaiApiKey) {
-      throw new APIKeyMissingError("embeddings");
-    }
-    return {
-      service: new EmbeddingsService({ apiKey: config.openaiApiKey }),
-      backend: "api"
-    };
-  }
-}
-const DEFAULT_CONFIDENCE_THRESHOLD = 0.7;
-const DEFAULT_CONFIDENCE = 0.5;
-const DEFAULT_PRIORITY = "should";
-const CATEGORY_MAP = {
-  functional: "functional",
-  non_functional: "non-functional",
-  "non-functional": "non-functional",
-  technical: "technical",
-  constraint: "constraint",
-  assumption: "assumption"
-};
-const VALID_CATEGORIES = /* @__PURE__ */ new Set([
-  "functional",
-  "non-functional",
-  "technical",
-  "constraint",
-  "assumption"
-]);
-const VALID_PRIORITIES = /* @__PURE__ */ new Set([
-  "must",
-  "should",
-  "could",
-  "wont"
-]);
-class RequirementExtractor {
-  confidenceThreshold;
-  /**
-   * Create a new RequirementExtractor
-   * @param options Configuration options
-   */
-  constructor(options) {
-    this.confidenceThreshold = options?.confidenceThreshold ?? DEFAULT_CONFIDENCE_THRESHOLD;
-  }
-  /**
-   * Extract requirements from LLM response text
-   * @param responseText The full LLM response text
-   * @param sourceMessageId ID of the message this response belongs to
-   * @returns ExtractionResult with requirements, raw count, and filtered count
-   */
-  extract(responseText, sourceMessageId) {
-    const requirements2 = [];
-    const rawRequirements = [];
-    const requirementRegex = /<requirement>([\s\S]*?)<\/requirement>/g;
-    let match;
-    while ((match = requirementRegex.exec(responseText)) !== null) {
-      const block = match[1];
-      if (!block) continue;
-      const parsed = this.parseRequirementBlock(block, sourceMessageId);
-      if (parsed) {
-        rawRequirements.push(parsed);
-        if (parsed.confidence >= this.confidenceThreshold) {
-          requirements2.push(parsed);
-        }
-      }
-    }
-    return {
-      requirements: requirements2,
-      rawCount: rawRequirements.length,
-      filteredCount: requirements2.length
-    };
-  }
-  /**
-   * Set the confidence threshold for filtering
-   * @param threshold New threshold (0.0 to 1.0)
-   */
-  setConfidenceThreshold(threshold) {
-    this.confidenceThreshold = threshold;
-  }
-  /**
-   * Parse a single requirement block into a structured requirement
-   * @param block The content inside <requirement>...</requirement>
-   * @param sourceMessageId Source message ID
-   * @returns ExtractedRequirement or null if invalid
-   */
-  parseRequirementBlock(block, sourceMessageId) {
-    const text2 = this.extractTag(block, "text");
-    const categoryRaw = this.extractTag(block, "category");
-    if (!text2 || !categoryRaw) {
-      return null;
-    }
-    const category = this.mapCategory(categoryRaw);
-    if (!category) {
-      return null;
-    }
-    const priorityRaw = this.extractTag(block, "priority");
-    const priority = this.mapPriority(priorityRaw) ?? DEFAULT_PRIORITY;
-    const confidenceRaw = this.extractTag(block, "confidence");
-    const confidence = confidenceRaw ? parseFloat(confidenceRaw) : DEFAULT_CONFIDENCE;
-    const area = this.extractTag(block, "area") ?? void 0;
-    return {
-      id: nanoid(),
-      text: text2,
-      category,
-      priority,
-      confidence: isNaN(confidence) ? DEFAULT_CONFIDENCE : confidence,
-      area,
-      sourceMessageId
-    };
-  }
-  /**
-   * Extract content from an XML tag
-   * @param content The content to search
-   * @param tag The tag name
-   * @returns Trimmed content or null if not found
-   */
-  extractTag(content, tag) {
-    const regex = new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`);
-    const match = content.match(regex);
-    return match?.[1] ? match[1].trim() : null;
-  }
-  /**
-   * Map LLM category to internal format
-   * @param raw The raw category string from LLM
-   * @returns Mapped category or null if invalid
-   */
-  mapCategory(raw) {
-    const normalized = raw.trim().toLowerCase();
-    const mapped = CATEGORY_MAP[normalized];
-    return mapped && VALID_CATEGORIES.has(mapped) ? mapped : null;
-  }
-  /**
-   * Map LLM priority to internal format
-   * @param raw The raw priority string from LLM
-   * @returns Mapped priority or null if invalid
-   */
-  mapPriority(raw) {
-    if (!raw) return null;
-    const normalized = raw.trim().toLowerCase();
-    return VALID_PRIORITIES.has(normalized) ? normalized : null;
-  }
-}
-const STANDARD_AREAS = [
-  "authentication",
-  "authorization",
-  "data_model",
-  "api",
-  "ui_ux",
-  "performance",
-  "security",
-  "integrations",
-  "deployment"
-];
-const INTERVIEWER_SYSTEM_PROMPT = `You are an expert requirements analyst conducting a discovery interview for a software project.
-
-Your role:
-- Ask clarifying questions to understand the user's vision
-- Extract clear, actionable requirements from their descriptions
-- Identify gaps and suggest areas to explore
-- Maintain a conversational, non-interrogative tone
-
-Behavior:
-- Start broad, then go detailed per area
-- Summarize periodically to confirm understanding
-- Suggest missing areas when appropriate ("You haven't mentioned authentication...")
-- Be adaptive - follow the user's thread of thought
-- Keep responses focused and not too long
-
-Requirement Extraction:
-When the user describes features, needs, or constraints, extract them as requirements.
-For each requirement found, output in this format BEFORE your conversational response:
-
-<requirement>
-  <text>Clear description of the requirement</text>
-  <category>functional|non_functional|technical|constraint|assumption</category>
-  <priority>must|should|could|wont</priority>
-  <confidence>0.0-1.0 (how certain you are this is a real requirement)</confidence>
-  <area>domain area like "authentication", "payments", "ui"</area>
-</requirement>
-
-Category definitions:
-- functional: What the system does (features, behaviors)
-- non_functional: How well the system does it (performance, scalability, reliability)
-- technical: Technology choices, architecture decisions
-- constraint: Limitations, boundaries, rules
-- assumption: Things taken as given but should be validated
-
-Priority definitions (MoSCoW):
-- must: Critical for MVP, cannot ship without
-- should: Important but not critical
-- could: Nice to have
-- wont: Explicitly out of scope for now
-
-Rules for extraction:
-- Only extract requirements the user explicitly stated or clearly implied
-- Do NOT invent requirements or assume features not mentioned
-- Set confidence based on how explicit the user was (0.9+ for explicit, 0.5-0.7 for implied)
-- One requirement per <requirement> block
-- Multiple requirements can be extracted from a single message
-
-After extracting requirements (if any), continue the natural conversation with:
-- A brief acknowledgment of what you understood
-- A follow-up question to explore deeper or a new area
-
-Example response format:
-<requirement>
-  <text>Users must be able to log in with email and password</text>
-  <category>functional</category>
-  <priority>must</priority>
-  <confidence>0.95</confidence>
-  <area>authentication</area>
-</requirement>
-
-Got it! You need email/password authentication. Do you also want to support social logins like Google or GitHub?`;
-const INITIAL_GREETING = `Hello! I'm here to help you define the requirements for your software project.
-
-Let's start with the big picture: What are you building, and what problem does it solve?
-
-Feel free to describe your vision in your own words - I'll ask follow-up questions to make sure I understand everything correctly.`;
-const EVOLUTION_INITIAL_GREETING = `Hello! I see you want to enhance an existing project.
-
-I've analyzed your codebase and have context about its structure. What changes or features would you like to add?
-
-You can describe:
-- New features to add
-- Existing functionality to modify
-- Bugs to fix
-- Performance improvements
-- Refactoring goals
-
-I'll help translate your ideas into actionable requirements that work with your existing code.`;
-function getEvolutionSystemPrompt(repoMapContext) {
-  return `${INTERVIEWER_SYSTEM_PROMPT}
-
----
-
-EVOLUTION MODE: You are enhancing an existing project, not creating one from scratch.
-
-EXISTING CODEBASE CONTEXT:
-${repoMapContext}
-
-Additional Evolution Mode Guidelines:
-- Reference existing files, functions, and patterns when discussing changes
-- Consider backward compatibility with existing code
-- Identify potential conflicts with current implementation
-- Suggest integration points based on the existing architecture
-- Extract requirements that account for existing functionality
-- Mark requirements that modify existing code vs add new code
-
-When extracting requirements in Evolution mode, add this field:
-<modification_type>add|modify|extend|refactor|fix</modification_type>
-
-Where:
-- add: Completely new functionality
-- modify: Changes to existing behavior
-- extend: Building on existing features
-- refactor: Code improvement without behavior change
-- fix: Bug fixes or corrections`;
-}
-function getGapSuggestionPrompt(gaps) {
-  if (gaps.length === 0) return "";
-  const topGaps = gaps.slice(0, 3);
-  return `
-
-Note: You haven't discussed these areas yet: ${topGaps.join(", ")}. Consider asking about them if relevant to this project.`;
-}
-const MIN_REQUIREMENTS_FOR_GAPS = 3;
-const MIN_EXPLORED_AREAS_FOR_GAPS = 2;
-class QuestionGenerator {
-  llmClient;
-  logger;
-  constructor(options) {
-    this.llmClient = options.llmClient;
-    this.logger = options.logger;
-  }
-  /**
-   * Generate a follow-up question based on context
-   *
-   * @param context The current conversation context
-   * @returns Generated question with metadata
-   */
-  async generate(context) {
-    this.logger?.debug("Generating question", {
-      messageCount: context.conversationHistory.length,
-      requirementCount: context.extractedRequirements.length,
-      exploredAreas: context.exploredAreas
-    });
-    const gaps = this.detectGaps(context.exploredAreas);
-    const shouldSuggestGaps = this.shouldSuggestGap(context);
-    const systemPrompt = this.buildQuestionPrompt(context, shouldSuggestGaps ? gaps : []);
-    const messages = [
-      { role: "system", content: systemPrompt },
-      ...context.conversationHistory.map((msg) => ({
-        role: msg.role,
-        content: msg.content
-      }))
-    ];
-    const options = {
-      maxTokens: 1024,
-      temperature: 0.7
-    };
-    const response = await this.llmClient.chat(messages, options);
-    const question = this.parseQuestionResponse(response.content, context);
-    this.logger?.info("Generated question", {
-      area: question.area,
-      depth: question.depth,
-      gapsFound: gaps.length
-    });
-    return {
-      question,
-      suggestedGaps: gaps,
-      shouldSuggestGaps
-    };
-  }
-  /**
-   * Detect unexplored standard areas
-   *
-   * @param exploredAreas Areas that have been discussed
-   * @returns Array of standard areas not yet explored
-   */
-  detectGaps(exploredAreas) {
-    const explored = new Set(exploredAreas.map((a) => a.toLowerCase()));
-    return STANDARD_AREAS.filter((area) => !explored.has(area));
-  }
-  /**
-   * Determine if gaps should be suggested to the user
-   *
-   * Gaps are only suggested after enough context has been gathered
-   * (minimum requirements and explored areas)
-   *
-   * @param context The generation context
-   * @returns True if gaps should be surfaced
-   */
-  shouldSuggestGap(context) {
-    const hasEnoughRequirements = context.extractedRequirements.length >= MIN_REQUIREMENTS_FOR_GAPS;
-    const hasEnoughExploration = context.exploredAreas.length >= MIN_EXPLORED_AREAS_FOR_GAPS;
-    const hasGaps = this.detectGaps(context.exploredAreas).length > 0;
-    return hasEnoughRequirements && hasEnoughExploration && hasGaps;
-  }
-  /**
-   * Get the interviewer system prompt
-   *
-   * @returns The full system prompt for the interviewer
-   */
-  getSystemPrompt() {
-    return INTERVIEWER_SYSTEM_PROMPT;
-  }
-  /**
-   * Build the question generation prompt
-   */
-  buildQuestionPrompt(context, gaps) {
-    let prompt = INTERVIEWER_SYSTEM_PROMPT;
-    if (context.projectDescription) {
-      prompt += `
-
-Project Context:
-${context.projectDescription}`;
-    }
-    if (context.extractedRequirements.length > 0) {
-      const reqSummary = context.extractedRequirements.slice(-10).map((r) => `- [${r.category}] ${r.text}`).join("\n");
-      prompt += `
-
-Requirements captured so far:
-${reqSummary}`;
-    }
-    if (context.exploredAreas.length > 0) {
-      prompt += `
-
-Areas already discussed: ${context.exploredAreas.join(", ")}`;
-    }
-    if (gaps.length > 0) {
-      prompt += getGapSuggestionPrompt(gaps);
-    }
-    return prompt;
-  }
-  /**
-   * Parse LLM response to extract question metadata
-   */
-  parseQuestionResponse(response, context) {
-    let depth = "broad";
-    if (context.conversationHistory.length === 0) {
-      depth = "broad";
-    } else if (context.extractedRequirements.length > 5) {
-      depth = "detailed";
-    } else if (context.conversationHistory.length > 2) {
-      depth = "clarifying";
-    }
-    const area = this.inferAreaFromResponse(response, context);
-    const lastUserMessage = context.conversationHistory.filter((m) => m.role === "user").pop();
-    return {
-      question: response,
-      area,
-      depth,
-      followsUp: lastUserMessage?.id
-    };
-  }
-  /**
-   * Infer the domain area from response content
-   */
-  inferAreaFromResponse(response, context) {
-    const responseLower = response.toLowerCase();
-    for (const area of STANDARD_AREAS) {
-      if (responseLower.includes(area.replace("_", " "))) {
-        return area;
-      }
-    }
-    const areaKeywords = [
-      // Check security first - has specific keywords that shouldn't be confused with data_model
-      ["security", ["encrypt", "secure", "vulnerability", "protect", "safety", "threat"]],
-      // Authentication - specific keywords
-      ["authentication", ["login", "sign in", "password", "auth", "sso", "oauth", "credential"]],
-      // Authorization - distinct from authentication
-      ["authorization", ["permission", "role", "access control", "admin", "privilege"]],
-      // Performance - specific metrics
-      ["performance", ["speed", "latency", "response time", "load", "throughput", "benchmark"]],
-      // Integrations - external connections
-      ["integrations", ["integrate", "third-party", "external", "connect", "plugin"]],
-      // Deployment - infrastructure
-      ["deployment", ["deploy", "hosting", "cloud", "infrastructure", "server", "container"]],
-      // UI/UX - user interface
-      ["ui_ux", ["interface", "design", "user experience", "layout", "screen", "component"]],
-      // API - endpoints
-      ["api", ["endpoint", "rest", "graphql", "webhook", "route"]],
-      // Data model - last since 'data' is generic
-      ["data_model", ["database", "schema", "entity", "model", "table", "migration"]]
-    ];
-    for (const [area, keywords] of areaKeywords) {
-      for (const keyword of keywords) {
-        if (responseLower.includes(keyword)) {
-          return area;
-        }
-      }
-    }
-    return context.exploredAreas[context.exploredAreas.length - 1] || "general";
-  }
-}
-const CATEGORY_MAPPING$1 = {
-  "functional": "functional",
-  "non-functional": "non-functional",
-  "technical": "technical",
-  "constraint": "technical",
-  // Map to technical as constraint isn't in RequirementsDB
-  "assumption": "functional"
-  // Map assumptions to functional for now
-};
-class InterviewEngine {
-  llmClient;
-  requirementsDB;
-  eventBus;
-  logger;
-  extractor;
-  questionGenerator;
-  /** Active sessions indexed by session ID */
-  sessions = /* @__PURE__ */ new Map();
-  constructor(options) {
-    this.llmClient = options.llmClient;
-    this.requirementsDB = options.requirementsDB;
-    this.eventBus = options.eventBus;
-    this.logger = options.logger;
-    this.extractor = new RequirementExtractor();
-    this.questionGenerator = new QuestionGenerator({
-      llmClient: this.llmClient,
-      logger: this.logger
-    });
-  }
-  /**
-   * Start a new interview session
-   *
-   * @param projectId The project to conduct interview for
-   * @param options Optional session configuration (mode, evolution context)
-   * @returns The new interview session
-   */
-  startSession(projectId, options) {
-    const now = /* @__PURE__ */ new Date();
-    const mode = options?.mode ?? "genesis";
-    const evolutionContext = options?.evolutionContext;
-    if (mode === "evolution" && !evolutionContext) {
-      this.logger?.warn("Evolution mode started without context", { projectId });
-    }
-    const session2 = {
-      id: nanoid(),
-      projectId,
-      status: "active",
-      mode,
-      evolutionContext,
-      messages: [],
-      extractedRequirements: [],
-      exploredAreas: [],
-      startedAt: now,
-      lastActivityAt: now
-    };
-    this.sessions.set(session2.id, session2);
-    this.logger?.info("Started interview session", {
-      sessionId: session2.id,
-      projectId,
-      mode,
-      hasEvolutionContext: !!evolutionContext
-    });
-    void this.eventBus.emit("interview:started", {
-      projectId,
-      projectName: projectId,
-      // Will be resolved from DB if needed
-      mode
-    });
-    return session2;
-  }
-  /**
-   * Process a user message in the interview
-   *
-   * Flow:
-   * 1. Add user message to session
-   * 2. Build messages array with system prompt + history
-   * 3. Call LLM
-   * 4. Add assistant response to session
-   * 5. Extract requirements
-   * 6. Store requirements in DB
-   * 7. Update explored areas
-   * 8. Check for gaps to suggest
-   * 9. Emit events
-   *
-   * @param sessionId The session ID
-   * @param userMessage The user's message content
-   * @returns Processing result with response, requirements, and gaps
-   */
-  async processMessage(sessionId, userMessage) {
-    const session2 = this.sessions.get(sessionId);
-    if (!session2) {
-      throw new Error(`Session not found: ${sessionId}`);
-    }
-    if (session2.status !== "active") {
-      throw new Error(`Session is not active: ${session2.status}`);
-    }
-    const userMsgId = nanoid();
-    const userMsg = {
-      id: userMsgId,
-      role: "user",
-      content: userMessage,
-      timestamp: /* @__PURE__ */ new Date()
-    };
-    session2.messages.push(userMsg);
-    this.logger?.debug("Processing user message", {
-      sessionId,
-      messageId: userMsgId,
-      contentLength: userMessage.length
-    });
-    this.emitMessageEvent(session2, userMsg);
-    const llmMessages = this.buildLLMMessages(session2);
-    this.logger?.debug("Calling LLM", {
-      sessionId,
-      messageCount: llmMessages.length,
-      clientType: this.llmClient.constructor.name
-    });
-    const options = {
-      maxTokens: 2048,
-      temperature: 0.7,
-      disableTools: true
-      // Chat-only mode for interview
-    };
-    const llmResponse = await this.llmClient.chat(llmMessages, options);
-    const responseContent = llmResponse.content;
-    const assistantMsgId = nanoid();
-    const assistantMsg = {
-      id: assistantMsgId,
-      role: "assistant",
-      content: responseContent,
-      timestamp: /* @__PURE__ */ new Date()
-    };
-    session2.messages.push(assistantMsg);
-    this.emitMessageEvent(session2, assistantMsg);
-    const extractionResult = this.extractor.extract(responseContent, assistantMsgId);
-    const newRequirements = extractionResult.requirements;
-    this.logger?.info("Extracted requirements", {
-      sessionId,
-      rawCount: extractionResult.rawCount,
-      filteredCount: extractionResult.filteredCount
-    });
-    for (const req of newRequirements) {
-      try {
-        const dbCategory = CATEGORY_MAPPING$1[req.category] ?? "functional";
-        this.requirementsDB.addRequirement(session2.projectId, {
-          category: dbCategory,
-          description: req.text,
-          priority: req.priority,
-          source: `interview:${session2.id}`,
-          confidence: req.confidence,
-          tags: req.area ? [req.area] : []
-        });
-        session2.extractedRequirements.push(req);
-        this.emitRequirementEvent(session2, req);
-      } catch (error) {
-        this.logger?.warn("Failed to store requirement", {
-          sessionId,
-          requirementId: req.id,
-          error: error instanceof Error ? error.message : "Unknown error"
-        });
-      }
-    }
-    this.updateExploredAreas(session2, newRequirements);
-    const context = {
-      conversationHistory: session2.messages,
-      extractedRequirements: session2.extractedRequirements,
-      exploredAreas: session2.exploredAreas
-    };
-    const gaps = this.questionGenerator.detectGaps(session2.exploredAreas);
-    const suggestedGaps = this.questionGenerator.shouldSuggestGap(context) ? gaps : [];
-    session2.lastActivityAt = /* @__PURE__ */ new Date();
-    return {
-      response: responseContent,
-      extractedRequirements: newRequirements,
-      suggestedGaps
-    };
-  }
-  /**
-   * Get a session by ID
-   *
-   * @param sessionId The session ID
-   * @returns The session or null if not found
-   */
-  getSession(sessionId) {
-    return this.sessions.get(sessionId) ?? null;
-  }
-  /**
-   * End an interview session
-   *
-   * @param sessionId The session ID
-   */
-  endSession(sessionId) {
-    const session2 = this.sessions.get(sessionId);
-    if (!session2) {
-      throw new Error(`Session not found: ${sessionId}`);
-    }
-    session2.status = "completed";
-    session2.completedAt = /* @__PURE__ */ new Date();
-    this.logger?.info("Ended interview session", {
-      sessionId,
-      projectId: session2.projectId,
-      requirementCount: session2.extractedRequirements.length,
-      messageCount: session2.messages.length
-    });
-    void this.eventBus.emit("interview:completed", {
-      projectId: session2.projectId,
-      totalRequirements: session2.extractedRequirements.length,
-      categories: [...new Set(session2.extractedRequirements.map((r) => r.category))],
-      duration: session2.completedAt.getTime() - session2.startedAt.getTime()
-    });
-  }
-  /**
-   * Pause an interview session
-   *
-   * @param sessionId The session ID
-   */
-  pauseSession(sessionId) {
-    const session2 = this.sessions.get(sessionId);
-    if (!session2) {
-      throw new Error(`Session not found: ${sessionId}`);
-    }
-    session2.status = "paused";
-    session2.lastActivityAt = /* @__PURE__ */ new Date();
-    this.logger?.info("Paused interview session", {
-      sessionId,
-      projectId: session2.projectId
-    });
-  }
-  /**
-   * Resume a paused interview session
-   *
-   * @param sessionId The session ID
-   */
-  resumeSession(sessionId) {
-    const session2 = this.sessions.get(sessionId);
-    if (!session2) {
-      throw new Error(`Session not found: ${sessionId}`);
-    }
-    if (session2.status !== "paused") {
-      throw new Error(`Session is not paused: ${session2.status}`);
-    }
-    session2.status = "active";
-    session2.lastActivityAt = /* @__PURE__ */ new Date();
-    this.logger?.info("Resumed interview session", {
-      sessionId,
-      projectId: session2.projectId
-    });
-  }
-  /**
-   * Get the initial greeting for a new session
-   * @param mode The interview mode (genesis or evolution)
-   */
-  getInitialGreeting(mode = "genesis") {
-    return mode === "evolution" ? EVOLUTION_INITIAL_GREETING : INITIAL_GREETING;
-  }
-  /**
-   * Build messages array for LLM call
-   */
-  buildLLMMessages(session2) {
-    let systemPrompt = INTERVIEWER_SYSTEM_PROMPT;
-    if (session2.mode === "evolution" && session2.evolutionContext) {
-      systemPrompt = getEvolutionSystemPrompt(session2.evolutionContext.repoMapContext);
-    }
-    const messages = [
-      { role: "system", content: systemPrompt }
-    ];
-    for (const msg of session2.messages) {
-      messages.push({
-        role: msg.role,
-        content: msg.content
-      });
-    }
-    return messages;
-  }
-  /**
-   * Update explored areas based on extracted requirements
-   */
-  updateExploredAreas(session2, requirements2) {
-    for (const req of requirements2) {
-      if (req.area && !session2.exploredAreas.includes(req.area)) {
-        session2.exploredAreas.push(req.area);
-      }
-    }
-  }
-  /**
-   * Emit message event (fire-and-forget)
-   */
-  emitMessageEvent(session2, message) {
-    void this.eventBus.emit("interview:question-asked", {
-      projectId: session2.projectId,
-      questionId: message.id,
-      question: message.content,
-      category: void 0
-    });
-  }
-  /**
-   * Emit requirement captured event (fire-and-forget)
-   */
-  emitRequirementEvent(session2, requirement) {
-    const mappedCategory = CATEGORY_MAPPING$1[requirement.category] ?? "functional";
-    const now = /* @__PURE__ */ new Date();
-    void this.eventBus.emit("interview:requirement-captured", {
-      projectId: session2.projectId,
-      requirement: {
-        id: requirement.id,
-        projectId: session2.projectId,
-        category: mappedCategory,
-        content: requirement.text,
-        priority: requirement.priority,
-        source: "interview",
-        createdAt: now,
-        updatedAt: now
-      }
-    });
-  }
-}
-const CATEGORY_MAPPING = {
-  "functional": "functional",
-  "non-functional": "non-functional",
-  "technical": "technical",
-  "constraint": "technical",
-  "assumption": "functional"
-};
-class InterviewSessionManager {
-  db;
-  eventBus;
-  logger;
-  autoSaveIntervalMs;
-  autoSaveTimer = null;
-  currentSession = null;
-  constructor(options) {
-    this.db = options.db;
-    this.eventBus = options.eventBus;
-    this.logger = options.logger;
-    this.autoSaveIntervalMs = options.autoSaveInterval ?? 3e4;
-  }
-  /**
-   * Save an interview session to the database
-   *
-   * @param session The session to save
-   */
-  save(session2) {
-    const serialized = this.serializeSession(session2);
-    const now = /* @__PURE__ */ new Date();
-    const existing = this.db.db.select().from(sessions).where(eq(sessions.id, session2.id)).get();
-    if (existing) {
-      this.db.db.update(sessions).set({
-        status: session2.status,
-        data: JSON.stringify(serialized),
-        endedAt: session2.status === "completed" ? now : null
-      }).where(eq(sessions.id, session2.id)).run();
-      this.logger?.debug("Updated interview session", { sessionId: session2.id });
-    } else {
-      this.db.db.insert(sessions).values({
-        id: session2.id,
-        projectId: session2.projectId,
-        type: "interview",
-        status: session2.status,
-        data: JSON.stringify(serialized),
-        startedAt: session2.startedAt,
-        endedAt: session2.status === "completed" ? now : null
-      }).run();
-      this.logger?.info("Created interview session", { sessionId: session2.id });
-    }
-    void this.eventBus.emit("interview:saved", {
-      projectId: session2.projectId,
-      sessionId: session2.id
-    });
-  }
-  /**
-   * Load an interview session by ID
-   *
-   * @param sessionId The session ID to load
-   * @returns The session or null if not found
-   */
-  load(sessionId) {
-    const row = this.db.db.select().from(sessions).where(
-      and(
-        eq(sessions.id, sessionId),
-        eq(sessions.type, "interview")
-      )
-    ).get();
-    if (!row || !row.data) {
-      return null;
-    }
-    return this.deserializeSession(row.data);
-  }
-  /**
-   * Load the active or paused interview session for a project
-   *
-   * @param projectId The project ID
-   * @returns The resumable session or null if none found
-   */
-  loadByProject(projectId) {
-    const row = this.db.db.select().from(sessions).where(
-      and(
-        eq(sessions.projectId, projectId),
-        eq(sessions.type, "interview"),
-        or(
-          eq(sessions.status, "active"),
-          eq(sessions.status, "paused")
-        )
-      )
-    ).orderBy(desc(sessions.startedAt)).get();
-    if (!row || !row.data) {
-      return null;
-    }
-    return this.deserializeSession(row.data);
-  }
-  /**
-   * Delete an interview session
-   *
-   * @param sessionId The session ID to delete
-   */
-  delete(sessionId) {
-    this.db.db.delete(sessions).where(
-      and(
-        eq(sessions.id, sessionId),
-        eq(sessions.type, "interview")
-      )
-    ).run();
-    this.logger?.info("Deleted interview session", { sessionId });
-  }
-  /**
-   * Start auto-save for a session
-   *
-   * @param session The session to auto-save
-   */
-  startAutoSave(session2) {
-    this.stopAutoSave();
-    this.currentSession = session2;
-    this.autoSaveTimer = setInterval(() => {
-      if (this.currentSession) {
-        this.save(this.currentSession);
-        this.logger?.debug("Auto-saved interview session", {
-          sessionId: this.currentSession.id
-        });
-      }
-    }, this.autoSaveIntervalMs);
-    this.logger?.info("Started auto-save for interview session", {
-      sessionId: session2.id,
-      intervalMs: this.autoSaveIntervalMs
-    });
-  }
-  /**
-   * Stop auto-save
-   */
-  stopAutoSave() {
-    if (this.autoSaveTimer) {
-      clearInterval(this.autoSaveTimer);
-      this.autoSaveTimer = null;
-      this.currentSession = null;
-      this.logger?.debug("Stopped auto-save");
-    }
-  }
-  /**
-   * Export session requirements to RequirementsDB
-   *
-   * @param session The session containing requirements
-   * @param requirementsDB The RequirementsDB instance
-   * @returns Number of requirements exported
-   */
-  exportToRequirementsDB(session2, requirementsDB) {
-    let exported = 0;
-    for (const req of session2.extractedRequirements) {
-      try {
-        const dbCategory = CATEGORY_MAPPING[req.category] ?? "functional";
-        requirementsDB.addRequirement(session2.projectId, {
-          category: dbCategory,
-          description: req.text,
-          priority: req.priority,
-          source: `interview:${session2.id}`,
-          confidence: req.confidence,
-          tags: req.area ? [req.area] : []
-        });
-        exported++;
-      } catch (error) {
-        this.logger?.warn("Failed to export requirement", {
-          requirementId: req.id,
-          error: error instanceof Error ? error.message : "Unknown error"
-        });
-      }
-    }
-    this.logger?.info("Exported requirements to RequirementsDB", {
-      sessionId: session2.id,
-      exportedCount: exported,
-      totalCount: session2.extractedRequirements.length
-    });
-    return exported;
-  }
-  /**
-   * Serialize session for database storage
-   */
-  serializeSession(session2) {
-    return {
-      id: session2.id,
-      projectId: session2.projectId,
-      status: session2.status,
-      mode: session2.mode,
-      evolutionContext: session2.evolutionContext,
-      messages: session2.messages.map((msg) => ({
-        id: msg.id,
-        role: msg.role,
-        content: msg.content,
-        timestamp: msg.timestamp.toISOString()
-      })),
-      extractedRequirements: session2.extractedRequirements,
-      exploredAreas: session2.exploredAreas,
-      startedAt: session2.startedAt.toISOString(),
-      lastActivityAt: session2.lastActivityAt.toISOString(),
-      completedAt: session2.completedAt?.toISOString()
-    };
-  }
-  /**
-   * Deserialize session from database storage
-   */
-  deserializeSession(data) {
-    const parsed = JSON.parse(data);
-    return {
-      id: parsed.id,
-      projectId: parsed.projectId,
-      status: parsed.status,
-      mode: parsed.mode ?? "genesis",
-      // Default to genesis for backward compatibility
-      evolutionContext: parsed.evolutionContext,
-      messages: parsed.messages.map((msg) => ({
-        id: msg.id,
-        role: msg.role,
-        content: msg.content,
-        timestamp: new Date(msg.timestamp)
-      })),
-      extractedRequirements: parsed.extractedRequirements,
-      exploredAreas: parsed.exploredAreas,
-      startedAt: new Date(parsed.startedAt),
-      lastActivityAt: new Date(parsed.lastActivityAt),
-      completedAt: parsed.completedAt ? new Date(parsed.completedAt) : void 0
-    };
-  }
-}
-class RequirementsDB {
-  db;
-  /**
-   * In-memory storage for requirements
-   * TODO: Replace with actual database table queries
-   */
-  requirements = /* @__PURE__ */ new Map();
-  constructor(db) {
-    this.db = db;
-  }
-  /**
-   * Add a new requirement to a project
-   *
-   * @param projectId - The project ID
-   * @param input - The requirement data
-   * @returns The created requirement
-   */
-  addRequirement(projectId, input) {
-    const now = /* @__PURE__ */ new Date();
-    const requirement = {
-      id: nanoid(),
-      projectId,
-      category: input.category,
-      description: input.description,
-      priority: input.priority,
-      source: input.source,
-      confidence: input.confidence ?? 0.8,
-      tags: input.tags ?? [],
-      userStories: input.userStories ?? [],
-      acceptanceCriteria: input.acceptanceCriteria ?? [],
-      linkedFeatures: [],
-      validated: false,
-      createdAt: now
-    };
-    const existing = Array.from(this.requirements.values()).find(
-      (r) => r.projectId === projectId && r.description === input.description
-    );
-    if (existing) {
-      throw new Error(`Duplicate requirement: ${input.description.substring(0, 50)}...`);
-    }
-    this.requirements.set(requirement.id, requirement);
-    return requirement;
-  }
-  /**
-   * Get a requirement by ID
-   *
-   * @param id - The requirement ID
-   * @returns The requirement or null if not found
-   */
-  getRequirement(id) {
-    return this.requirements.get(id) ?? null;
-  }
-  /**
-   * Get all requirements for a project
-   *
-   * @param projectId - The project ID
-   * @param options - Query options
-   * @returns Array of requirements
-   */
-  getRequirements(projectId, options = {}) {
-    let results = Array.from(this.requirements.values()).filter((r) => r.projectId === projectId);
-    if (options.category) {
-      results = results.filter((r) => r.category === options.category);
-    }
-    if (options.priority) {
-      results = results.filter((r) => r.priority === options.priority);
-    }
-    if (options.validated !== void 0) {
-      results = results.filter((r) => r.validated === options.validated);
-    }
-    if (options.tags && options.tags.length > 0) {
-      const tagList = options.tags;
-      results = results.filter((r) => tagList.some((tag) => r.tags.includes(tag)));
-    }
-    if (options.offset) {
-      results = results.slice(options.offset);
-    }
-    if (options.limit) {
-      results = results.slice(0, options.limit);
-    }
-    return results;
-  }
-  /**
-   * Update a requirement
-   *
-   * @param id - The requirement ID
-   * @param updates - The fields to update
-   * @returns The updated requirement
-   */
-  updateRequirement(id, updates) {
-    const existing = this.requirements.get(id);
-    if (!existing) {
-      throw new Error(`Requirement not found: ${id}`);
-    }
-    const updated = {
-      ...existing,
-      ...updates,
-      updatedAt: /* @__PURE__ */ new Date()
-    };
-    this.requirements.set(id, updated);
-    return updated;
-  }
-  /**
-   * Delete a requirement
-   *
-   * @param id - The requirement ID
-   * @returns True if deleted, false if not found
-   */
-  deleteRequirement(id) {
-    return this.requirements.delete(id);
-  }
-  /**
-   * Validate a requirement (mark as reviewed and approved)
-   *
-   * @param id - The requirement ID
-   * @returns The updated requirement
-   */
-  validateRequirement(id) {
-    return this.updateRequirement(id, { validated: true });
-  }
-  /**
-   * Link a requirement to a feature
-   *
-   * @param requirementId - The requirement ID
-   * @param featureId - The feature ID
-   * @returns The updated requirement
-   */
-  linkToFeature(requirementId, featureId) {
-    const existing = this.requirements.get(requirementId);
-    if (!existing) {
-      throw new Error(`Requirement not found: ${requirementId}`);
-    }
-    if (!existing.linkedFeatures.includes(featureId)) {
-      existing.linkedFeatures.push(featureId);
-      existing.updatedAt = /* @__PURE__ */ new Date();
-    }
-    return existing;
-  }
-  /**
-   * Get requirements statistics for a project
-   *
-   * @param projectId - The project ID
-   * @returns Statistics about the requirements
-   */
-  getStatistics(projectId) {
-    const requirements2 = this.getRequirements(projectId);
-    const byCategory = {
-      functional: 0,
-      "non-functional": 0,
-      technical: 0
-    };
-    const byPriority = {
-      must: 0,
-      should: 0,
-      could: 0,
-      wont: 0
-    };
-    let validated = 0;
-    for (const req of requirements2) {
-      byCategory[req.category]++;
-      byPriority[req.priority]++;
-      if (req.validated) validated++;
-    }
-    return {
-      total: requirements2.length,
-      byCategory,
-      byPriority,
-      validated,
-      unvalidated: requirements2.length - validated
-    };
-  }
-  /**
-   * Clear all requirements for a project (for testing)
-   *
-   * @param projectId - The project ID
-   */
-  clearProject(projectId) {
-    const toDelete = Array.from(this.requirements.entries()).filter(([, r]) => r.projectId === projectId).map(([id]) => id);
-    for (const id of toDelete) {
-      this.requirements.delete(id);
-    }
-  }
-}
-class DatabaseClient {
-  sqlite;
-  _db;
-  options;
-  constructor(options) {
-    this.options = options;
-    if (options.path !== ":memory:") {
-      ensureDirSync(dirname(options.path));
-    }
-    this.sqlite = new Database(options.path);
-    this.sqlite.pragma("journal_mode = WAL");
-    this.sqlite.pragma("foreign_keys = ON");
-    this.sqlite.pragma("busy_timeout = 5000");
-    this._db = drizzle(this.sqlite, {
-      schema: schema$1,
-      logger: options.debug
-    });
-  }
-  /**
-   * Create and initialize a DatabaseClient.
-   *
-   * @param options - Configuration options
-   * @returns Initialized DatabaseClient
-   */
-  static create(options) {
-    const client = new DatabaseClient(options);
-    if (options.migrationsDir) {
-      client.migrate(options.migrationsDir);
-    }
-    return client;
-  }
-  /**
-   * Create an in-memory database (useful for testing).
-   *
-   * @param migrationsDir - Optional migrations directory
-   * @returns In-memory DatabaseClient
-   */
-  static createInMemory(migrationsDir) {
-    return DatabaseClient.create({
-      path: ":memory:",
-      migrationsDir,
-      debug: false
-    });
-  }
-  /**
-   * Get the Drizzle database instance for queries.
-   */
-  get db() {
-    return this._db;
-  }
-  /**
-   * Get the raw better-sqlite3 database instance.
-   * Use with caution - prefer Drizzle queries.
-   */
-  get raw() {
-    return this.sqlite;
-  }
-  /**
-   * Run database migrations.
-   *
-   * @param migrationsDir - Path to migrations folder
-   */
-  migrate(migrationsDir) {
-    try {
-      migrate(this._db, { migrationsFolder: migrationsDir });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      throw new Error(`Migration failed: ${message}`);
-    }
-  }
-  /**
-   * Get list of all tables in the database.
-   *
-   * @returns Array of table names
-   */
-  tables() {
-    const result = this.sqlite.prepare(
-      "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '__%'"
-    ).all();
-    return result.map((r) => r.name);
-  }
-  /**
-   * Check database health status.
-   *
-   * @returns Health status object
-   */
-  health() {
-    try {
-      this.sqlite.prepare("SELECT 1").get();
-      const journalMode = this.sqlite.pragma("journal_mode");
-      const walMode = journalMode[0]?.journal_mode.toLowerCase() === "wal";
-      const foreignKeys = this.sqlite.pragma("foreign_keys");
-      const foreignKeysEnabled = foreignKeys[0]?.foreign_keys === 1;
-      const tables = this.tables();
-      return {
-        healthy: true,
-        walMode,
-        foreignKeys: foreignKeysEnabled,
-        tables
-      };
-    } catch {
-      return {
-        healthy: false,
-        walMode: false,
-        foreignKeys: false,
-        tables: []
-      };
-    }
-  }
-  /**
-   * Simple health check ping.
-   *
-   * @returns true if database is responsive
-   */
-  ping() {
-    try {
-      this.sqlite.prepare("SELECT 1").get();
-      return true;
-    } catch {
-      return false;
-    }
-  }
-  /**
-   * Execute operations within a transaction.
-   *
-   * @param fn - Function to execute within transaction
-   * @returns Result of the function
-   */
-  transaction(fn) {
-    return this.sqlite.transaction(() => {
-      return fn(this._db);
-    })();
-  }
-  /**
-   * Execute raw SQL (use with caution).
-   *
-   * @param sql - SQL statement to execute
-   */
-  exec(sql) {
-    this.sqlite.exec(sql);
-  }
-  /**
-   * Close the database connection.
-   */
-  close() {
-    try {
-      if (this.options.path !== ":memory:") {
-        this.sqlite.pragma("wal_checkpoint(TRUNCATE)");
-      }
-      this.sqlite.close();
-    } catch {
-    }
-  }
-  /**
-   * Get database file path.
-   */
-  get path() {
-    return this.options.path;
-  }
-  /**
-   * Check if this is an in-memory database.
-   */
-  get isInMemory() {
-    return this.options.path === ":memory:";
-  }
-}
-class StateManager {
-  db;
-  autoPersist;
-  states;
-  constructor(options) {
-    this.db = options.db;
-    this.autoPersist = options.autoPersist ?? true;
-    this.states = /* @__PURE__ */ new Map();
-  }
-  /**
-   * Load state for a project
-   * @param projectId Project to load state for
-   * @returns State if found, null otherwise
-   */
-  loadState(projectId) {
-    const cached = this.states.get(projectId);
-    if (cached) {
-      return cached;
-    }
-    return null;
-  }
-  /**
-   * Save state for a project
-   * @param state State to save
-   */
-  saveState(state2) {
-    state2.lastUpdatedAt = /* @__PURE__ */ new Date();
-    this.states.set(state2.projectId, state2);
-  }
-  /**
-   * Update partial state for a project
-   * @param projectId Project to update
-   * @param updates Partial state updates
-   * @returns Updated state
-   */
-  updateState(projectId, updates) {
-    const current = this.loadState(projectId);
-    if (!current) {
-      return null;
-    }
-    const updated = {
-      ...current,
-      ...updates,
-      projectId,
-      // Ensure projectId doesn't change
-      lastUpdatedAt: /* @__PURE__ */ new Date()
-    };
-    this.saveState(updated);
-    return updated;
-  }
-  /**
-   * Delete state for a project
-   * @param projectId Project to delete state for
-   */
-  deleteState(projectId) {
-    return this.states.delete(projectId);
-  }
-  /**
-   * Check if state exists for a project
-   * @param projectId Project to check
-   */
-  hasState(projectId) {
-    return this.states.has(projectId);
-  }
-  /**
-   * Get all project IDs with state
-   */
-  getAllProjectIds() {
-    return Array.from(this.states.keys());
-  }
-  /**
-   * Create a new state for a project
-   * @param projectId Project identifier
-   * @param projectName Human-readable project name
-   * @param mode Genesis or evolution mode
-   * @returns Created state
-   */
-  createState(projectId, projectName, mode) {
-    const now = /* @__PURE__ */ new Date();
-    const state2 = {
-      projectId,
-      projectName,
-      status: "initializing",
-      mode,
-      features: [],
-      currentFeatureIndex: 0,
-      currentTaskIndex: 0,
-      completedTasks: 0,
-      totalTasks: 0,
-      lastUpdatedAt: now,
-      createdAt: now
-    };
-    this.saveState(state2);
-    return state2;
-  }
-  /**
-   * Clear all in-memory state (for testing)
-   */
-  clearAll() {
-    this.states.clear();
-  }
-}
-class CheckpointError extends Error {
-  constructor(message) {
-    super(message);
-    this.name = "CheckpointError";
-    Object.setPrototypeOf(this, new.target.prototype);
-  }
-}
-class CheckpointNotFoundError extends CheckpointError {
-  checkpointId;
-  constructor(checkpointId) {
-    super(`Checkpoint not found: ${checkpointId}`);
-    this.name = "CheckpointNotFoundError";
-    this.checkpointId = checkpointId;
-  }
-}
-class RestoreError extends CheckpointError {
-  checkpointId;
-  reason;
-  constructor(checkpointId, reason) {
-    super(`Failed to restore checkpoint ${checkpointId}: ${reason}`);
-    this.name = "RestoreError";
-    this.checkpointId = checkpointId;
-    this.reason = reason;
-  }
-}
-class CheckpointManager {
-  db;
-  stateManager;
-  gitService;
-  eventBus;
-  maxCheckpoints;
-  logger;
-  constructor(options) {
-    this.db = options.db;
-    this.stateManager = options.stateManager;
-    this.gitService = options.gitService;
-    this.eventBus = options.eventBus;
-    this.maxCheckpoints = options.maxCheckpoints ?? 50;
-    this.logger = options.logger;
-  }
-  /**
-   * Log a message if logger is available
-   */
-  log(level, message, ...args) {
-    if (this.logger) {
-      this.logger[level](message, ...args);
-    }
-  }
-  /**
-   * Create a checkpoint for a project.
-   * @param projectId Project to checkpoint
-   * @param reason Human-readable reason for checkpoint
-   * @returns Created checkpoint with id and timestamp
-   */
-  async createCheckpoint(projectId, reason) {
-    this.log("debug", `Creating checkpoint for project ${projectId}: ${reason}`);
-    const state2 = this.stateManager.loadState(projectId);
-    if (!state2) {
-      throw new CheckpointError(`Project not found: ${projectId}`);
-    }
-    let gitCommit = null;
-    try {
-      const log = await this.gitService.getLog(1);
-      if (log.length > 0 && log[0]) {
-        gitCommit = log[0].hash;
-      }
-    } catch {
-      this.log("warn", "Could not get git commit hash");
-    }
-    const stateJson = JSON.stringify(state2);
-    const checkpointId = v4();
-    const now = /* @__PURE__ */ new Date();
-    const newCheckpoint = {
-      id: checkpointId,
-      projectId,
-      name: `Checkpoint: ${reason}`,
-      reason,
-      state: stateJson,
-      gitCommit,
-      createdAt: now
-    };
-    this.db.db.insert(checkpoints).values(newCheckpoint).run();
-    const pruned = this.pruneOldCheckpoints(projectId);
-    if (pruned > 0) {
-      this.log("info", `Pruned ${String(pruned)} old checkpoints for project ${projectId}`);
-    }
-    if (this.eventBus) {
-      void this.eventBus.emit(
-        "system:checkpoint-created",
-        {
-          checkpointId,
-          projectId,
-          reason,
-          gitCommit: gitCommit ?? ""
-        },
-        { source: "CheckpointManager" }
-      );
-    }
-    return {
-      id: checkpointId,
-      projectId,
-      name: `Checkpoint: ${reason}`,
-      reason,
-      state: stateJson,
-      gitCommit,
-      createdAt: now
-    };
-  }
-  /**
-   * Restore state from a checkpoint.
-   * @param checkpointId Checkpoint to restore
-   * @param options Restore options (e.g., restore git state)
-   * @throws CheckpointNotFoundError if checkpoint doesn't exist
-   */
-  async restoreCheckpoint(checkpointId, options) {
-    this.log("debug", `Restoring checkpoint ${checkpointId}`);
-    const checkpoint = this.db.db.select().from(checkpoints).where(eq(checkpoints.id, checkpointId)).get();
-    if (!checkpoint) {
-      throw new CheckpointNotFoundError(checkpointId);
-    }
-    if (!checkpoint.state) {
-      throw new RestoreError(checkpointId, "Checkpoint has no state data");
-    }
-    let state2;
-    try {
-      state2 = JSON.parse(checkpoint.state);
-    } catch {
-      throw new RestoreError(checkpointId, "Invalid state data");
-    }
-    this.stateManager.saveState(state2);
-    if (options?.restoreGit && checkpoint.gitCommit) {
-      try {
-        await this.gitService.checkoutBranch(checkpoint.gitCommit);
-      } catch (err) {
-        this.log(
-          "warn",
-          `Could not restore git state: ${err.message}`
-        );
-      }
-    }
-    if (this.eventBus) {
-      void this.eventBus.emit(
-        "system:checkpoint-restored",
-        {
-          checkpointId,
-          projectId: checkpoint.projectId,
-          gitCommit: checkpoint.gitCommit ?? ""
-        },
-        { source: "CheckpointManager" }
-      );
-    }
-  }
-  /**
-   * List all checkpoints for a project.
-   * @param projectId Project to list checkpoints for
-   * @returns Checkpoints ordered by date descending
-   */
-  listCheckpoints(projectId) {
-    this.log("debug", `Listing checkpoints for project ${projectId}`);
-    const result = this.db.db.select().from(checkpoints).where(eq(checkpoints.projectId, projectId)).orderBy(desc(checkpoints.createdAt)).all();
-    return result;
-  }
-  /**
-   * Delete a checkpoint.
-   * @param checkpointId Checkpoint to delete
-   */
-  deleteCheckpoint(checkpointId) {
-    this.log("debug", `Deleting checkpoint ${checkpointId}`);
-    this.db.db.delete(checkpoints).where(eq(checkpoints.id, checkpointId)).run();
-  }
-  /**
-   * Create automatic checkpoint based on system event.
-   * @param projectId Project to checkpoint
-   * @param trigger System event that triggered checkpoint
-   */
-  async createAutoCheckpoint(projectId, trigger) {
-    const reason = `Auto-checkpoint: ${trigger}`;
-    return this.createCheckpoint(projectId, reason);
-  }
-  /**
-   * Prune old checkpoints beyond maxCheckpoints limit.
-   * Keeps the N most recent checkpoints and deletes the rest.
-   * @param projectId Project to prune checkpoints for
-   * @returns Number of checkpoints deleted
-   */
-  pruneOldCheckpoints(projectId) {
-    const allCheckpoints = this.listCheckpoints(projectId);
-    if (allCheckpoints.length <= this.maxCheckpoints) {
-      return 0;
-    }
-    const toDelete = allCheckpoints.slice(this.maxCheckpoints);
-    for (const cp of toDelete) {
-      this.deleteCheckpoint(cp.id);
-    }
-    this.log(
-      "debug",
-      `Pruned ${String(toDelete.length)} checkpoints for project ${projectId}`
-    );
-    return toDelete.length;
-  }
-}
-class ReviewNotFoundError extends Error {
-  reviewId;
-  constructor(reviewId) {
-    super(`Review not found: ${reviewId}`);
-    this.name = "ReviewNotFoundError";
-    this.reviewId = reviewId;
-    Object.setPrototypeOf(this, new.target.prototype);
-  }
-}
-class HumanReviewService {
-  db;
-  eventBus;
-  checkpointManager;
-  logger;
-  /** In-memory cache of pending reviews */
-  pendingReviews = /* @__PURE__ */ new Map();
-  constructor(options) {
-    this.db = options.db;
-    this.eventBus = options.eventBus;
-    this.checkpointManager = options.checkpointManager;
-    this.logger = options.logger;
-    this.loadPendingReviews();
-  }
-  /**
-   * Log a message if logger is available
-   */
-  log(level, message, ...args) {
-    if (this.logger) {
-      this.logger[level](message, ...args);
-    }
-  }
-  /**
-   * Load pending reviews from database into memory cache
-   */
-  loadPendingReviews() {
-    this.log("debug", "Loading pending reviews from database");
-    const rows = this.db.db.select().from(sessions).where(
-      and(
-        eq(sessions.type, "review"),
-        eq(sessions.status, "pending")
-      )
-    ).all();
-    for (const row of rows) {
-      if (row.data) {
-        try {
-          const review = this.deserializeReview(row.data);
-          if (review.status === "pending") {
-            this.pendingReviews.set(review.id, review);
-          }
-        } catch (err) {
-          this.log("warn", "Failed to deserialize review", {
-            sessionId: row.id,
-            error: err instanceof Error ? err.message : "Unknown error"
-          });
-        }
-      }
-    }
-    this.log("info", `Loaded ${String(this.pendingReviews.size)} pending reviews`);
-  }
-  /**
-   * Create a new review request
-   */
-  async requestReview(options) {
-    const reviewId = v4();
-    const now = /* @__PURE__ */ new Date();
-    const review = {
-      id: reviewId,
-      taskId: options.taskId,
-      projectId: options.projectId,
-      reason: options.reason,
-      context: options.context ?? {},
-      status: "pending",
-      createdAt: now
-    };
-    const serialized = this.serializeReview(review);
-    this.db.db.insert(sessions).values({
-      id: reviewId,
-      projectId: options.projectId,
-      type: "review",
-      status: "pending",
-      data: serialized,
-      startedAt: now
-    }).run();
-    this.log("info", "Created review request", {
-      reviewId,
-      taskId: options.taskId,
-      reason: options.reason
-    });
-    if (this.checkpointManager) {
-      try {
-        await this.checkpointManager.createCheckpoint(
-          options.projectId,
-          `Review requested: ${options.reason}`
-        );
-        this.log("debug", "Created safety checkpoint for review", { reviewId });
-      } catch (err) {
-        this.log("warn", "Failed to create safety checkpoint", {
-          reviewId,
-          error: err instanceof Error ? err.message : "Unknown error"
-        });
-      }
-    }
-    this.pendingReviews.set(reviewId, review);
-    void this.eventBus.emit(
-      "review:requested",
-      {
-        reviewId,
-        taskId: options.taskId,
-        reason: options.reason,
-        context: review.context
-      },
-      { source: "HumanReviewService" }
-    );
-    return review;
-  }
-  /**
-   * Approve a pending review
-   */
-  approveReview(reviewId, resolution) {
-    const review = this.pendingReviews.get(reviewId);
-    if (!review) {
-      return Promise.reject(new ReviewNotFoundError(reviewId));
-    }
-    const now = /* @__PURE__ */ new Date();
-    review.status = "approved";
-    review.resolvedAt = now;
-    review.resolution = resolution;
-    const serialized = this.serializeReview(review);
-    this.db.db.update(sessions).set({
-      status: "approved",
-      data: serialized,
-      endedAt: now
-    }).where(eq(sessions.id, reviewId)).run();
-    this.log("info", "Review approved", { reviewId, resolution });
-    this.pendingReviews.delete(reviewId);
-    void this.eventBus.emit(
-      "review:approved",
-      {
-        reviewId,
-        resolution
-      },
-      { source: "HumanReviewService" }
-    );
-    return Promise.resolve();
-  }
-  /**
-   * Reject a pending review
-   */
-  rejectReview(reviewId, feedback) {
-    const review = this.pendingReviews.get(reviewId);
-    if (!review) {
-      return Promise.reject(new ReviewNotFoundError(reviewId));
-    }
-    const now = /* @__PURE__ */ new Date();
-    review.status = "rejected";
-    review.resolvedAt = now;
-    review.resolution = feedback;
-    const serialized = this.serializeReview(review);
-    this.db.db.update(sessions).set({
-      status: "rejected",
-      data: serialized,
-      endedAt: now
-    }).where(eq(sessions.id, reviewId)).run();
-    this.log("info", "Review rejected", { reviewId, feedback });
-    this.pendingReviews.delete(reviewId);
-    void this.eventBus.emit(
-      "review:rejected",
-      {
-        reviewId,
-        feedback
-      },
-      { source: "HumanReviewService" }
-    );
-    return Promise.resolve();
-  }
-  /**
-   * List all pending reviews
-   */
-  listPendingReviews() {
-    return Array.from(this.pendingReviews.values());
-  }
-  /**
-   * Get a specific review by ID
-   */
-  getReview(reviewId) {
-    return this.pendingReviews.get(reviewId);
-  }
-  /**
-   * Serialize a review for database storage
-   */
-  serializeReview(review) {
-    const serialized = {
-      id: review.id,
-      taskId: review.taskId,
-      projectId: review.projectId,
-      reason: review.reason,
-      context: review.context,
-      status: review.status,
-      createdAt: review.createdAt.toISOString(),
-      resolvedAt: review.resolvedAt?.toISOString(),
-      resolution: review.resolution
-    };
-    return JSON.stringify(serialized);
-  }
-  /**
-   * Deserialize a review from database storage
-   */
-  deserializeReview(data) {
-    const parsed = JSON.parse(data);
-    return {
-      id: parsed.id,
-      taskId: parsed.taskId,
-      projectId: parsed.projectId,
-      reason: parsed.reason,
-      context: parsed.context,
-      status: parsed.status,
-      createdAt: new Date(parsed.createdAt),
-      resolvedAt: parsed.resolvedAt ? new Date(parsed.resolvedAt) : void 0,
-      resolution: parsed.resolution
-    };
   }
 }
 const DEFAULT_REPO_MAP_OPTIONS = {
@@ -15917,6 +13230,3585 @@ class RepoMapGenerator {
     return filePath.replace(/\\/g, "/");
   }
 }
+class NexusCoordinator {
+  // Dependencies
+  taskQueue;
+  agentPool;
+  decomposer;
+  resolver;
+  estimator;
+  /* eslint-disable @typescript-eslint/no-explicit-any -- External service types to avoid circular dependencies */
+  qaEngine;
+  worktreeManager;
+  // Mutable - can be replaced with project-specific instance
+  checkpointManager;
+  // Mutable - can be injected after creation
+  mergerRunner;
+  // Mutable - can be injected after creation (Phase 3)
+  agentWorktreeBridge;
+  humanReviewService;
+  // Mutable - can be injected after creation (Phase 3: HITL)
+  /* eslint-enable @typescript-eslint/no-explicit-any */
+  // Escalation tracking - maps reviewId to taskId for review responses
+  escalatedTasks = /* @__PURE__ */ new Map();
+  // State
+  state = "idle";
+  currentPhase = "planning";
+  pauseReason;
+  projectConfig;
+  waves = [];
+  currentWaveIndex = 0;
+  totalTasks = 0;
+  completedTasks = 0;
+  failedTasks = 0;
+  // Control
+  stopRequested = false;
+  pauseRequested = false;
+  orchestrationLoop;
+  eventHandlers = [];
+  constructor(options) {
+    this.taskQueue = options.taskQueue;
+    this.agentPool = options.agentPool;
+    this.decomposer = options.decomposer;
+    this.resolver = options.resolver;
+    this.estimator = options.estimator;
+    this.qaEngine = options.qaEngine;
+    this.worktreeManager = options.worktreeManager;
+    this.checkpointManager = options.checkpointManager;
+    this.mergerRunner = options.mergerRunner;
+    this.agentWorktreeBridge = options.agentWorktreeBridge;
+    this.humanReviewService = options.humanReviewService;
+  }
+  // ========================================
+  // Service Injection Methods (Phase 3)
+  // ========================================
+  /**
+   * Set the human review service for HITL escalation
+   * This allows the service to be injected after coordinator creation
+   * (since NexusFactory creates coordinator before HumanReviewService)
+   */
+  /* eslint-disable @typescript-eslint/no-explicit-any -- HumanReviewService type from external module */
+  setHumanReviewService(service) {
+    this.humanReviewService = service;
+    console.log("[NexusCoordinator] HumanReviewService injected");
+  }
+  /* eslint-enable @typescript-eslint/no-explicit-any */
+  /**
+   * Set the merger runner for worktree->main merging
+   */
+  /* eslint-disable @typescript-eslint/no-explicit-any -- MergerRunner type from external module */
+  setMergerRunner(runner) {
+    this.mergerRunner = runner;
+    console.log("[NexusCoordinator] MergerRunner injected");
+  }
+  /**
+   * Set the checkpoint manager for wave checkpoints
+   * Injected after construction since NexusFactory creates coordinator before CheckpointManager
+   */
+  setCheckpointManager(manager) {
+    this.checkpointManager = manager;
+    console.log("[NexusCoordinator] CheckpointManager injected");
+  }
+  /* eslint-enable @typescript-eslint/no-explicit-any */
+  /**
+   * Initialize coordinator with project configuration
+   */
+  initialize(config) {
+    this.projectConfig = config;
+    this.state = "idle";
+    this.currentPhase = "planning";
+    this.pauseReason = void 0;
+    this.waves = [];
+    this.currentWaveIndex = 0;
+    this.totalTasks = 0;
+    this.completedTasks = 0;
+    this.failedTasks = 0;
+    this.stopRequested = false;
+    this.pauseRequested = false;
+  }
+  /**
+   * Start orchestration for a project
+   */
+  start(projectId) {
+    if (!this.projectConfig) {
+      throw new Error("Coordinator not initialized");
+    }
+    this.state = "running";
+    this.currentPhase = "execution";
+    this.stopRequested = false;
+    this.pauseRequested = false;
+    this.emitEvent("coordinator:started", { projectId });
+    this.orchestrationLoop = this.runOrchestrationLoop();
+  }
+  /**
+   * Execute pre-decomposed tasks (skip decomposition phase)
+   * Used when tasks already exist in database from planning phase.
+   * This is the correct method to call when user clicks "Start Execution"
+   * after features/tasks have been generated during the interview.
+   *
+   * @param projectId - The project ID
+   * @param tasks - Array of existing tasks from database
+   * @param projectPath - Path to user's project folder (NOT Nexus-master)
+   */
+  executeExistingTasks(projectId, tasks2, projectPath) {
+    this.projectConfig = {
+      projectId,
+      projectPath,
+      // User's project folder, NOT Nexus-master
+      features: [],
+      mode: "evolution"
+    };
+    this.state = "running";
+    this.currentPhase = "execution";
+    this.stopRequested = false;
+    this.pauseRequested = false;
+    console.log(`[NexusCoordinator] Executing ${tasks2.length} existing tasks`);
+    console.log(`[NexusCoordinator] Project path: ${projectPath}`);
+    const projectGitService = new GitService({ baseDir: projectPath });
+    this.worktreeManager = new WorktreeManager({
+      baseDir: projectPath,
+      gitService: projectGitService,
+      worktreeDir: `${projectPath}/.nexus/worktrees`
+    });
+    console.log(`[NexusCoordinator] Created WorktreeManager for project: ${projectPath}`);
+    this.emitEvent("coordinator:started", { projectId });
+    this.orchestrationLoop = this.runExecutionLoop(tasks2, projectPath);
+  }
+  /**
+   * Run execution loop for existing tasks (no decomposition)
+   * This skips the decomposeByMode step and directly processes
+   * the provided tasks in waves.
+   */
+  async runExecutionLoop(allTasks, _projectPath) {
+    try {
+      if (!this.projectConfig) {
+        throw new Error("Project configuration not initialized");
+      }
+      console.log(`[NexusCoordinator] Running execution loop with ${allTasks.length} tasks`);
+      const planningTasks = allTasks.map((task) => ({
+        id: task.id,
+        name: task.name,
+        description: task.description,
+        type: task.type ?? "auto",
+        size: "small",
+        estimatedMinutes: task.estimatedMinutes ?? 15,
+        dependsOn: task.dependsOn,
+        testCriteria: task.testCriteria ?? [],
+        files: task.files ?? []
+      }));
+      const cycles = this.resolver.detectCycles(planningTasks);
+      if (cycles.length > 0) {
+        throw new Error(`Dependency cycles detected: ${cycles.map((c) => c.taskIds.join(" -> ")).join("; ")}`);
+      }
+      this.waves = this.resolver.calculateWaves(planningTasks);
+      this.totalTasks = allTasks.length;
+      console.log(`[NexusCoordinator] Calculated ${this.waves.length} waves`);
+      for (const wave of this.waves) {
+        for (const task of wave.tasks) {
+          const orchestrationTask = {
+            ...task,
+            dependsOn: task.dependsOn,
+            status: "pending",
+            waveId: wave.id,
+            priority: 1,
+            createdAt: /* @__PURE__ */ new Date()
+          };
+          this.taskQueue.enqueue(orchestrationTask, wave.id);
+        }
+      }
+      for (let waveIndex = 0; waveIndex < this.waves.length; waveIndex++) {
+        if (this.stopRequested) break;
+        this.currentWaveIndex = waveIndex;
+        this.emitEvent("wave:started", { waveId: waveIndex });
+        const wave = this.waves[waveIndex];
+        await this.processWave(wave);
+        if (!this.stopRequested) {
+          this.emitEvent("wave:completed", { waveId: waveIndex });
+          await this.createWaveCheckpoint(waveIndex);
+        }
+      }
+      if (!this.stopRequested) {
+        const remainingTasks = this.totalTasks - this.completedTasks - this.failedTasks;
+        if (remainingTasks === 0 && this.completedTasks > 0) {
+          this.currentPhase = "completion";
+          this.state = "idle";
+          console.log(`[NexusCoordinator] Project completed: ${this.completedTasks}/${this.totalTasks} tasks completed, ${this.failedTasks} failed`);
+          this.emitEvent("project:completed", {
+            projectId: this.projectConfig?.projectId,
+            totalTasks: this.totalTasks,
+            completedTasks: this.completedTasks,
+            failedTasks: this.failedTasks,
+            totalWaves: this.waves.length
+          });
+        } else if (this.failedTasks > 0 && this.failedTasks === this.totalTasks) {
+          console.log(`[NexusCoordinator] Project failed: all ${this.failedTasks} tasks failed`);
+          this.emitEvent("project:failed", {
+            projectId: this.projectConfig?.projectId,
+            error: "All tasks failed",
+            totalTasks: this.totalTasks,
+            failedTasks: this.failedTasks,
+            recoverable: true
+          });
+        }
+      }
+    } catch (error) {
+      console.error("[NexusCoordinator] Execution error:", error);
+      this.emitEvent("project:failed", {
+        projectId: this.projectConfig?.projectId,
+        error: error instanceof Error ? error.message : String(error),
+        recoverable: false
+      });
+    }
+  }
+  /**
+   * Pause execution gracefully
+   */
+  async pause(reason) {
+    if (this.state !== "running") {
+      return;
+    }
+    this.pauseRequested = true;
+    this.pauseReason = reason;
+    await new Promise((resolve2) => setTimeout(resolve2, 10));
+    this.state = "paused";
+    this.emitEvent("coordinator:paused", { reason });
+  }
+  /**
+   * Resume from paused state
+   */
+  resume() {
+    if (this.state !== "paused") {
+      return;
+    }
+    this.pauseRequested = false;
+    this.pauseReason = void 0;
+    this.state = "running";
+    this.emitEvent("coordinator:resumed");
+    if (!this.orchestrationLoop) {
+      this.orchestrationLoop = this.runOrchestrationLoop();
+    }
+  }
+  /**
+   * Stop execution and clean up
+   */
+  async stop() {
+    this.stopRequested = true;
+    this.state = "stopping";
+    if (this.orchestrationLoop) {
+      await Promise.race([
+        this.orchestrationLoop,
+        new Promise((resolve2) => setTimeout(resolve2, 1e3))
+      ]);
+      this.orchestrationLoop = void 0;
+    }
+    for (const agent of this.agentPool.getAll()) {
+      try {
+        this.agentPool.terminate(agent.id);
+      } catch {
+      }
+    }
+    this.state = "idle";
+    this.emitEvent("coordinator:stopped");
+  }
+  /**
+   * Get current coordinator status
+   */
+  getStatus() {
+    return {
+      state: this.state,
+      projectId: this.projectConfig?.projectId,
+      activeAgents: this.agentPool.getActive().length,
+      queuedTasks: this.taskQueue.size(),
+      completedTasks: this.completedTasks,
+      failedTasks: this.failedTasks,
+      currentPhase: this.currentPhase,
+      currentWave: this.currentWaveIndex,
+      totalWaves: this.waves.length,
+      pauseReason: this.pauseReason
+    };
+  }
+  /**
+   * Get project progress metrics
+   */
+  getProgress() {
+    const progressPercent = this.totalTasks > 0 ? Math.round(this.completedTasks / this.totalTasks * 100) : 0;
+    const averageTaskMinutes = 15;
+    const remainingTasks = this.totalTasks - this.completedTasks - this.failedTasks;
+    const estimatedRemainingMinutes = remainingTasks * averageTaskMinutes;
+    return {
+      projectId: this.projectConfig?.projectId ?? "",
+      totalTasks: this.totalTasks,
+      completedTasks: this.completedTasks,
+      failedTasks: this.failedTasks,
+      progressPercent,
+      estimatedRemainingMinutes,
+      currentWave: this.currentWaveIndex,
+      totalWaves: this.waves.length,
+      activeAgents: this.agentPool.getActive().length
+    };
+  }
+  /**
+   * Get all currently active agents
+   */
+  getActiveAgents() {
+    return this.agentPool.getActive();
+  }
+  /**
+   * Get all pending tasks in queue
+   */
+  getPendingTasks() {
+    return this.taskQueue.getReadyTasks();
+  }
+  /**
+   * Register event handler
+   */
+  onEvent(handler) {
+    this.eventHandlers.push(handler);
+  }
+  /**
+   * Create a checkpoint for later resumption
+   */
+  async createCheckpoint(name) {
+    if (!this.checkpointManager) {
+      throw new Error("CheckpointManager not available");
+    }
+    const projectId = this.projectConfig?.projectId;
+    if (!projectId) {
+      throw new Error("No project configured");
+    }
+    const reason = name ?? `Manual checkpoint at wave ${this.currentWaveIndex}`;
+    const result = await this.checkpointManager.createCheckpoint(projectId, reason);
+    const checkpoint = {
+      id: result.id,
+      metadata: {
+        projectId,
+        waveId: this.currentWaveIndex,
+        completedTaskIds: [],
+        pendingTaskIds: [],
+        coordinatorState: this.state
+      },
+      gitCommit: result.gitCommit ?? void 0,
+      createdAt: result.createdAt
+    };
+    this.emitEvent("checkpoint:created", { checkpointId: checkpoint.id, name: reason });
+    return checkpoint;
+  }
+  // ========================================
+  // Human Review Response Handlers (Phase 3)
+  // ========================================
+  /**
+   * Handle approval of an escalated task review
+   * This is called when a human approves a review request
+   *
+   * @param reviewId - ID of the review being approved
+   * @param resolution - Optional resolution notes from the human
+   */
+  async handleReviewApproved(reviewId, resolution) {
+    const escalatedTask = this.escalatedTasks.get(reviewId);
+    if (!escalatedTask) {
+      console.warn(`[NexusCoordinator] Review ${reviewId} not found in escalated tasks`);
+      return;
+    }
+    const { taskId, agentId, worktreePath } = escalatedTask;
+    console.log(`[NexusCoordinator] Review ${reviewId} approved for task ${taskId}`);
+    console.log(`[NexusCoordinator] Resolution: ${resolution ?? "No resolution provided"}`);
+    this.escalatedTasks.delete(reviewId);
+    this.taskQueue.markComplete(taskId);
+    this.completedTasks++;
+    this.emitEvent("task:completed", {
+      taskId,
+      agentId,
+      resolution,
+      humanApproved: true
+    });
+    if (worktreePath) {
+      try {
+        await this.worktreeManager.removeWorktree(taskId);
+      } catch {
+      }
+    }
+    try {
+      this.agentPool.release(agentId);
+    } catch {
+    }
+    if (this.state === "paused" && this.pauseReason === "review_pending") {
+      this.resume();
+    }
+  }
+  /**
+   * Handle rejection of an escalated task review
+   * This is called when a human rejects a review request
+   *
+   * @param reviewId - ID of the review being rejected
+   * @param feedback - Required feedback from the human
+   */
+  async handleReviewRejected(reviewId, feedback) {
+    const escalatedTask = this.escalatedTasks.get(reviewId);
+    if (!escalatedTask) {
+      console.warn(`[NexusCoordinator] Review ${reviewId} not found in escalated tasks`);
+      return;
+    }
+    const { taskId, agentId, worktreePath } = escalatedTask;
+    console.log(`[NexusCoordinator] Review ${reviewId} rejected for task ${taskId}`);
+    console.log(`[NexusCoordinator] Feedback: ${feedback}`);
+    this.escalatedTasks.delete(reviewId);
+    this.taskQueue.markFailed(taskId);
+    this.failedTasks++;
+    this.emitEvent("task:failed", {
+      taskId,
+      agentId,
+      error: `Human rejected: ${feedback}`,
+      humanRejected: true,
+      feedback
+    });
+    if (worktreePath) {
+      try {
+        await this.worktreeManager.removeWorktree(taskId);
+      } catch {
+      }
+    }
+    try {
+      this.agentPool.release(agentId);
+    } catch {
+    }
+    if (this.state === "paused" && this.pauseReason === "review_pending") {
+      this.resume();
+    }
+  }
+  /**
+   * Get list of escalated tasks awaiting human review
+   */
+  getEscalatedTasks() {
+    return Array.from(this.escalatedTasks.entries()).map(([reviewId, { taskId }]) => ({
+      reviewId,
+      taskId
+    }));
+  }
+  /**
+   * Emit an event to all registered handlers
+   */
+  emitEvent(type, data) {
+    const event = {
+      type,
+      timestamp: /* @__PURE__ */ new Date(),
+      projectId: this.projectConfig?.projectId,
+      data
+    };
+    for (const handler of this.eventHandlers) {
+      try {
+        handler(event);
+      } catch {
+      }
+    }
+  }
+  /**
+   * Main orchestration loop
+   * Hotfix #5 - Issue 3: Added per-wave checkpoints
+   * Hotfix #5 - Issue 4: Added Genesis/Evolution mode branching
+   */
+  async runOrchestrationLoop() {
+    try {
+      if (!this.projectConfig) {
+        throw new Error("Project configuration not initialized");
+      }
+      const config = this.projectConfig;
+      const allTasks = await this.decomposeByMode(config);
+      const cycles = this.resolver.detectCycles(allTasks);
+      if (cycles.length > 0) {
+        throw new Error(`Dependency cycles detected: ${cycles.map((c) => c.taskIds.join(" -> ")).join("; ")}`);
+      }
+      this.waves = this.resolver.calculateWaves(allTasks);
+      this.totalTasks = allTasks.length;
+      for (const wave of this.waves) {
+        for (const task of wave.tasks) {
+          const orchestrationTask = {
+            ...task,
+            dependsOn: task.dependsOn,
+            status: "pending",
+            waveId: wave.id,
+            priority: 1,
+            createdAt: /* @__PURE__ */ new Date()
+          };
+          this.taskQueue.enqueue(orchestrationTask, wave.id);
+        }
+      }
+      for (let waveIndex = 0; waveIndex < this.waves.length; waveIndex++) {
+        if (this.stopRequested) break;
+        this.currentWaveIndex = waveIndex;
+        this.emitEvent("wave:started", { waveId: waveIndex });
+        const wave = this.waves[waveIndex];
+        await this.processWave(wave);
+        if (!this.stopRequested) {
+          this.emitEvent("wave:completed", { waveId: waveIndex });
+          await this.createWaveCheckpoint(waveIndex);
+        }
+      }
+      if (!this.stopRequested) {
+        const remainingTasks = this.totalTasks - this.completedTasks - this.failedTasks;
+        if (remainingTasks === 0 && this.completedTasks > 0) {
+          this.currentPhase = "completion";
+          this.state = "idle";
+          console.log(`[NexusCoordinator] Project completed: ${this.completedTasks}/${this.totalTasks} tasks completed, ${this.failedTasks} failed`);
+          this.emitEvent("project:completed", {
+            projectId: this.projectConfig?.projectId,
+            totalTasks: this.totalTasks,
+            completedTasks: this.completedTasks,
+            failedTasks: this.failedTasks,
+            totalWaves: this.waves.length
+          });
+        } else if (this.failedTasks > 0 && this.failedTasks === this.totalTasks) {
+          console.log(`[NexusCoordinator] Project failed: all ${this.failedTasks} tasks failed`);
+          this.emitEvent("project:failed", {
+            projectId: this.projectConfig?.projectId,
+            error: "All tasks failed",
+            totalTasks: this.totalTasks,
+            failedTasks: this.failedTasks,
+            recoverable: true
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Orchestration error:", error);
+      this.emitEvent("project:failed", {
+        projectId: this.projectConfig?.projectId,
+        error: error instanceof Error ? error.message : String(error),
+        recoverable: false
+      });
+    }
+  }
+  /**
+   * Decompose features based on project mode
+   * Hotfix #5 - Issue 4: Genesis vs Evolution mode distinction
+   *
+   * Genesis mode: Full decomposition from requirements (greenfield project)
+   * Evolution mode: Analyze existing code, targeted changes (existing codebase)
+   */
+  async decomposeByMode(config) {
+    const mode = config.mode ?? "genesis";
+    const features2 = config.features ?? [];
+    const allTasks = [];
+    if (mode === "genesis") {
+      this.emitEvent("orchestration:mode", { mode: "genesis", reason: "Full decomposition from requirements" });
+      for (const feature of features2) {
+        const featureDesc = this.featureToDescription(feature);
+        const tasks2 = await this.decomposer.decompose(featureDesc);
+        allTasks.push(...tasks2);
+      }
+      if (allTasks.length === 0) {
+        const mockFeature = {
+          id: "mock",
+          name: "Mock",
+          description: "Mock",
+          priority: "must",
+          status: "backlog",
+          complexity: "simple",
+          subFeatures: [],
+          estimatedTasks: 1,
+          completedTasks: 0,
+          createdAt: /* @__PURE__ */ new Date(),
+          updatedAt: /* @__PURE__ */ new Date(),
+          projectId: config.projectId
+        };
+        const mockFeatureDesc = this.featureToDescription(mockFeature);
+        const tasks2 = await this.decomposer.decompose(mockFeatureDesc);
+        allTasks.push(...tasks2);
+      }
+    } else {
+      this.emitEvent("orchestration:mode", { mode: "evolution", reason: "Targeted changes to existing codebase" });
+      let existingCodeContext = "";
+      if (config.projectPath) {
+        try {
+          console.log(`[NexusCoordinator] Analyzing existing codebase for Evolution mode at: ${config.projectPath}`);
+          this.emitEvent("evolution:analyzing", { projectPath: config.projectPath });
+          const repoMapGenerator = new RepoMapGenerator();
+          await repoMapGenerator.initialize();
+          const repoMap = await repoMapGenerator.generate(config.projectPath, {
+            maxFiles: 500,
+            countReferences: true
+          });
+          existingCodeContext = repoMapGenerator.formatForContext({
+            maxTokens: 8e3,
+            includeSignatures: true,
+            rankByReferences: true
+          });
+          console.log(`[NexusCoordinator] Repo map generated: ${repoMap.stats.totalFiles} files, ${repoMap.stats.totalSymbols} symbols`);
+          this.emitEvent("evolution:analyzed", {
+            totalFiles: repoMap.stats.totalFiles,
+            totalSymbols: repoMap.stats.totalSymbols
+          });
+        } catch (error) {
+          console.warn("[NexusCoordinator] Failed to analyze existing code (continuing without context):", error);
+          this.emitEvent("evolution:analysis-failed", {
+            error: error instanceof Error ? error.message : String(error)
+          });
+        }
+      }
+      for (const feature of features2) {
+        let featureDesc = this.featureToDescription(feature);
+        if (existingCodeContext) {
+          featureDesc = `## Existing Codebase Context
+
+The following is a map of the existing codebase. Use this to understand the current architecture and avoid conflicts:
+
+${existingCodeContext}
+
+---
+
+${featureDesc}`;
+        }
+        const tasks2 = await this.decomposer.decompose(featureDesc);
+        for (const task of tasks2) {
+          task.testCriteria.push("Evolution: Verify compatibility with existing code");
+        }
+        allTasks.push(...tasks2);
+      }
+    }
+    return allTasks;
+  }
+  /**
+   * Convert a Feature object to a string description for decomposition
+   * Fix: TaskDecomposer expects string, not Feature object
+   */
+  featureToDescription(feature) {
+    let desc2 = `## Feature: ${feature.name}
+`;
+    desc2 += `Priority: ${feature.priority}
+`;
+    desc2 += `Description: ${feature.description}`;
+    return desc2;
+  }
+  /**
+   * Create checkpoint after wave completion
+   * Hotfix #5 - Issue 3: Per-wave checkpoints for recovery
+   */
+  async createWaveCheckpoint(waveIndex) {
+    if (!this.checkpointManager) {
+      console.log(`[NexusCoordinator] Skipping checkpoint for wave ${waveIndex} - no CheckpointManager`);
+      return;
+    }
+    const projectId = this.projectConfig?.projectId;
+    if (!projectId) {
+      console.log(`[NexusCoordinator] Skipping checkpoint for wave ${waveIndex} - no projectId`);
+      return;
+    }
+    try {
+      const reason = `Wave ${waveIndex} complete`;
+      await this.checkpointManager.createCheckpoint(projectId, reason);
+      this.emitEvent("checkpoint:created", {
+        waveId: waveIndex,
+        reason
+      });
+    } catch (error) {
+      console.error("Failed to create wave checkpoint:", error);
+      this.emitEvent("checkpoint:failed", {
+        waveId: waveIndex,
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  }
+  /**
+   * Process a single wave of tasks
+   */
+  async processWave(wave) {
+    const runningTasks = /* @__PURE__ */ new Map();
+    while (!this.stopRequested) {
+      if (this.pauseRequested) {
+        await Promise.all(runningTasks.values());
+        while (this.pauseRequested && !this.stopRequested) {
+          await new Promise((resolve2) => setTimeout(resolve2, 50));
+        }
+        if (this.stopRequested) break;
+      }
+      const waveTasks = this.taskQueue.getByWave(wave.id);
+      if (waveTasks.length === 0 && runningTasks.size === 0) {
+        break;
+      }
+      const readyTasks = this.taskQueue.getReadyTasks();
+      const waveReadyTasks = readyTasks.filter((t) => t.waveId === wave.id);
+      for (const _task of waveReadyTasks) {
+        if (this.stopRequested || this.pauseRequested) break;
+        let agent = this.agentPool.getAvailable();
+        if (!agent && this.agentPool.size() < 4) {
+          try {
+            agent = this.agentPool.spawn("coder");
+          } catch {
+            break;
+          }
+        }
+        if (!agent) {
+          break;
+        }
+        const dequeuedTask = this.taskQueue.dequeue();
+        if (!dequeuedTask) break;
+        let worktreePath;
+        try {
+          const worktree = await this.worktreeManager.createWorktree(dequeuedTask.id);
+          worktreePath = worktree.path;
+        } catch {
+        }
+        this.agentPool.assign(agent.id, dequeuedTask.id, worktreePath);
+        this.emitEvent("task:assigned", { taskId: dequeuedTask.id, agentId: agent.id });
+        const taskPromise = this.executeTask(dequeuedTask, agent.id, worktreePath);
+        runningTasks.set(dequeuedTask.id, taskPromise);
+        void taskPromise.finally(() => {
+          runningTasks.delete(dequeuedTask.id);
+        });
+      }
+      await new Promise((resolve2) => setTimeout(resolve2, 50));
+    }
+    await Promise.all(runningTasks.values());
+  }
+  /**
+   * Execute a single task with per-task merge on success
+   * Hotfix #5 - Issue 2: Added merge step after successful QA loop
+   * Fix: Now passes projectPath to QA engine for correct CLI working directory
+   */
+  async executeTask(task, agentId, worktreePath) {
+    this.emitEvent("task:started", { taskId: task.id, agentId });
+    const projectPath = this.projectConfig?.projectPath;
+    console.log(`[NexusCoordinator] executeTask: projectPath = ${projectPath ?? "UNDEFINED"}`);
+    try {
+      const result = await this.qaEngine.run(
+        {
+          id: task.id,
+          name: task.name,
+          description: task.description,
+          files: task.files ?? [],
+          worktree: worktreePath,
+          projectPath
+          // Pass project path for Claude CLI working directory
+        },
+        null
+        // coder would be passed here
+      );
+      if (result.success) {
+        if (worktreePath && this.mergerRunner) {
+          console.log(`[NexusCoordinator] Starting merge for task ${task.id}`);
+          console.log(`[NexusCoordinator] Worktree: ${worktreePath}`);
+          console.log(`[NexusCoordinator] Target branch: main`);
+          try {
+            const mergeResult = await this.mergerRunner.merge(worktreePath, "main");
+            if (mergeResult.success) {
+              console.log(`[NexusCoordinator] Merge successful for task ${task.id}`);
+              console.log(`[NexusCoordinator] Commit: ${mergeResult.commitHash ?? "unknown"}`);
+              this.emitEvent("task:merged", {
+                taskId: task.id,
+                branch: "main",
+                commitHash: mergeResult.commitHash
+              });
+              try {
+                const pushResult = await this.mergerRunner.pushToRemote("main");
+                if (pushResult.success) {
+                  console.log(`[NexusCoordinator] Pushed to remote successfully for task ${task.id}`);
+                  this.emitEvent("task:pushed", { taskId: task.id, branch: "main" });
+                } else {
+                  console.warn(`[NexusCoordinator] Push failed (non-blocking): ${pushResult.error ?? "unknown error"}`);
+                }
+              } catch (pushError) {
+                console.warn(`[NexusCoordinator] Push exception (non-blocking):`, pushError);
+              }
+            } else {
+              console.error(`[NexusCoordinator] Merge failed for task ${task.id}: ${mergeResult.error ?? "unknown error"}`);
+              if (mergeResult.conflictFiles && mergeResult.conflictFiles.length > 0) {
+                console.log(`[NexusCoordinator] Merge conflict detected, escalating to human review`);
+                if (this.humanReviewService) {
+                  try {
+                    const review = await this.humanReviewService.requestReview({
+                      taskId: task.id,
+                      projectId: this.projectConfig?.projectId ?? "unknown",
+                      reason: "merge_conflict",
+                      context: {
+                        conflictFiles: mergeResult.conflictFiles,
+                        error: mergeResult.error
+                      }
+                    });
+                    const reviewId = review.id;
+                    this.escalatedTasks.set(reviewId, { taskId: task.id, agentId, worktreePath });
+                    this.emitEvent("task:escalated", {
+                      taskId: task.id,
+                      agentId,
+                      reason: `Merge conflict: ${mergeResult.conflictFiles?.join(", ") ?? "unknown files"}`
+                    });
+                    return;
+                  } catch (reviewError) {
+                    console.error(`[NexusCoordinator] Failed to create review for merge conflict:`, reviewError);
+                  }
+                }
+                this.emitEvent("task:merge-failed", {
+                  taskId: task.id,
+                  error: `Merge conflict: ${mergeResult.conflictFiles?.join(", ") ?? "unknown files"}`
+                });
+              } else {
+                this.emitEvent("task:merge-failed", {
+                  taskId: task.id,
+                  error: mergeResult.error ?? "Unknown merge error"
+                });
+              }
+            }
+          } catch (mergeError) {
+            console.error(`[NexusCoordinator] Merge exception for task ${task.id}:`, mergeError);
+            this.emitEvent("task:merge-failed", {
+              taskId: task.id,
+              error: mergeError instanceof Error ? mergeError.message : String(mergeError)
+            });
+          }
+        }
+        this.taskQueue.markComplete(task.id);
+        this.completedTasks++;
+        this.emitEvent("task:completed", { taskId: task.id, agentId });
+      } else if (result.escalated) {
+        console.log(`[NexusCoordinator] Task ${task.id} escalated: ${result.reason ?? "Max QA iterations exceeded"}`);
+        if (this.humanReviewService) {
+          try {
+            const review = await this.humanReviewService.requestReview({
+              taskId: task.id,
+              projectId: this.projectConfig?.projectId ?? "unknown",
+              reason: "qa_exhausted",
+              context: {
+                qaIterations: result.iterations ?? 50,
+                escalationReason: result.reason ?? "Max QA iterations exceeded",
+                lastErrors: result.errors ?? []
+              }
+            });
+            const reviewId = review.id;
+            console.log(`[NexusCoordinator] Created review request ${reviewId} for task ${task.id}`);
+            this.escalatedTasks.set(reviewId, { taskId: task.id, agentId, worktreePath });
+            this.emitEvent("task:escalated", {
+              taskId: task.id,
+              agentId,
+              reason: result.reason ?? "Max QA iterations exceeded",
+              reviewId
+              // Include review ID for UI correlation
+            });
+            return;
+          } catch (reviewError) {
+            console.error(`[NexusCoordinator] Failed to create review request:`, reviewError);
+          }
+        }
+        this.taskQueue.markFailed(task.id);
+        this.failedTasks++;
+        this.emitEvent("task:escalated", {
+          taskId: task.id,
+          agentId,
+          reason: result.reason ?? "Max QA iterations exceeded"
+        });
+      } else {
+        this.taskQueue.markFailed(task.id);
+        this.failedTasks++;
+        this.emitEvent("task:failed", {
+          taskId: task.id,
+          agentId,
+          escalated: result.escalated
+        });
+      }
+    } catch (error) {
+      this.taskQueue.markFailed(task.id);
+      this.failedTasks++;
+      this.emitEvent("task:failed", {
+        taskId: task.id,
+        agentId,
+        error: error instanceof Error ? error.message : String(error)
+      });
+    } finally {
+      if (this.agentWorktreeBridge) {
+        try {
+          await this.agentWorktreeBridge.releaseWorktree(agentId);
+        } catch {
+        }
+      }
+      try {
+        this.agentPool.release(agentId);
+        this.emitEvent("agent:released", { agentId });
+      } catch {
+      }
+      if (worktreePath) {
+        try {
+          await this.worktreeManager.removeWorktree(task.id);
+        } catch {
+        }
+      }
+    }
+  }
+}
+class TaskQueue {
+  /** Main task storage: taskId -> task */
+  tasks = /* @__PURE__ */ new Map();
+  /** Tasks by wave: waveId -> Set<taskId> */
+  waveIndex = /* @__PURE__ */ new Map();
+  /** Completed task IDs for dependency resolution */
+  completedTaskIds = /* @__PURE__ */ new Set();
+  /** Failed task IDs */
+  failedTaskIds = /* @__PURE__ */ new Set();
+  /** Current active wave being processed */
+  currentWave = 0;
+  /**
+   * Add task to queue with optional wave assignment
+   */
+  enqueue(task, waveId) {
+    const queuedTask = {
+      ...task,
+      status: "queued",
+      waveId: waveId ?? task.waveId ?? 0
+    };
+    this.tasks.set(queuedTask.id, queuedTask);
+    const wave = queuedTask.waveId ?? 0;
+    if (!this.waveIndex.has(wave)) {
+      this.waveIndex.set(wave, /* @__PURE__ */ new Set());
+    }
+    const waveSet = this.waveIndex.get(wave);
+    if (waveSet) waveSet.add(queuedTask.id);
+  }
+  /**
+   * Get and remove next ready task
+   * Returns undefined if no tasks are ready (dependencies unmet or queue empty)
+   */
+  dequeue() {
+    const readyTask = this.findNextReadyTask();
+    if (!readyTask) {
+      return void 0;
+    }
+    readyTask.status = "assigned";
+    this.tasks.delete(readyTask.id);
+    const waveId = readyTask.waveId ?? 0;
+    this.waveIndex.get(waveId)?.delete(readyTask.id);
+    return readyTask;
+  }
+  /**
+   * View next ready task without removing
+   */
+  peek() {
+    return this.findNextReadyTask();
+  }
+  /**
+   * Mark task as complete, enabling dependent tasks
+   */
+  markComplete(taskId) {
+    this.completedTaskIds.add(taskId);
+    this.updateCurrentWave();
+  }
+  /**
+   * Mark task as failed
+   */
+  markFailed(taskId) {
+    this.failedTaskIds.add(taskId);
+    this.updateCurrentWave();
+  }
+  /**
+   * Get all tasks whose dependencies are satisfied
+   */
+  getReadyTasks() {
+    const ready = [];
+    for (const task of this.tasks.values()) {
+      if (this.isTaskReady(task)) {
+        ready.push(task);
+      }
+    }
+    return this.sortTasks(ready);
+  }
+  /**
+   * Get all tasks in a specific wave
+   */
+  getByWave(waveId) {
+    const taskIds = this.waveIndex.get(waveId);
+    if (!taskIds || taskIds.size === 0) {
+      return [];
+    }
+    const tasks2 = [];
+    for (const id of taskIds) {
+      const task = this.tasks.get(id);
+      if (task) {
+        tasks2.push(task);
+      }
+    }
+    return tasks2;
+  }
+  /**
+   * Get number of tasks in queue
+   */
+  size() {
+    return this.tasks.size;
+  }
+  /**
+   * Check if queue is empty
+   */
+  isEmpty() {
+    return this.tasks.size === 0;
+  }
+  /**
+   * Clear all tasks and reset state
+   */
+  clear() {
+    this.tasks.clear();
+    this.waveIndex.clear();
+    this.completedTaskIds.clear();
+    this.failedTaskIds.clear();
+    this.currentWave = 0;
+  }
+  /**
+   * Get count of completed tasks
+   */
+  getCompletedCount() {
+    return this.completedTaskIds.size;
+  }
+  /**
+   * Get count of failed tasks
+   */
+  getFailedCount() {
+    return this.failedTaskIds.size;
+  }
+  /**
+   * Find the next ready task respecting wave ordering and priorities
+   */
+  findNextReadyTask() {
+    const readyTasks = this.getReadyTasks();
+    if (readyTasks.length === 0) {
+      return null;
+    }
+    return readyTasks[0] ?? null;
+  }
+  /**
+   * Check if a task is ready to be dequeued
+   */
+  isTaskReady(task) {
+    const taskWave = task.waveId ?? 0;
+    if (taskWave > this.currentWave) {
+      return false;
+    }
+    for (const depId of task.dependsOn) {
+      if (!this.completedTaskIds.has(depId)) {
+        return false;
+      }
+    }
+    return true;
+  }
+  /**
+   * Sort tasks by wave, priority, then createdAt
+   */
+  sortTasks(tasks2) {
+    return tasks2.sort((a, b) => {
+      const waveA = a.waveId ?? 0;
+      const waveB = b.waveId ?? 0;
+      if (waveA !== waveB) {
+        return waveA - waveB;
+      }
+      if (a.priority !== b.priority) {
+        return a.priority - b.priority;
+      }
+      return a.createdAt.getTime() - b.createdAt.getTime();
+    });
+  }
+  /**
+   * Update current wave if all tasks in current wave are complete
+   */
+  updateCurrentWave() {
+    const currentWaveTasks = this.waveIndex.get(this.currentWave);
+    if (currentWaveTasks && currentWaveTasks.size > 0) {
+      return;
+    }
+    const waves = Array.from(this.waveIndex.keys()).sort((a, b) => a - b);
+    for (const wave of waves) {
+      if (wave > this.currentWave) {
+        const waveTasks = this.waveIndex.get(wave);
+        if (waveTasks && waveTasks.size > 0) {
+          this.currentWave = wave;
+          return;
+        }
+      }
+    }
+  }
+}
+const DEFAULT_NEXUS_CONFIG = {
+  claudeBackend: "cli",
+  geminiBackend: "cli",
+  embeddingsBackend: "local"
+};
+class NexusFactory {
+  /**
+   * Create a complete Nexus instance with all dependencies wired.
+   *
+   * This is the primary factory method for production use.
+   *
+   * Backend selection (Phase 16 - Task 12):
+   * - CLI-first: Prefers CLI clients over API when available
+   * - Smart fallback: Falls back to API if CLI unavailable and API key exists
+   * - Helpful errors: Throws descriptive errors with install instructions
+   *
+   * @param config - Factory configuration
+   * @returns Promise resolving to fully-wired Nexus instance
+   */
+  static async create(config) {
+    const [claudeResult, geminiResult] = await Promise.all([
+      this.createClaudeClient(config),
+      this.createGeminiClient(config)
+    ]);
+    const claudeClient = claudeResult.client;
+    const geminiClient = geminiResult.client;
+    const claudeBackend = claudeResult.backend;
+    const geminiBackend = geminiResult.backend;
+    let embeddingsResult;
+    let embeddingsBackend = config.embeddingsBackend ?? "local";
+    try {
+      embeddingsResult = await this.createEmbeddingsService(config);
+      embeddingsBackend = embeddingsResult.backend;
+    } catch (error) {
+      console.warn("[NexusFactory] Embeddings service unavailable:", error instanceof Error ? error.message : error);
+    }
+    const taskDecomposer = new TaskDecomposer(claudeClient);
+    const dependencyResolver = new DependencyResolver();
+    const timeEstimator = new TimeEstimator();
+    const agentPool = new AgentPool({
+      claudeClient,
+      geminiClient,
+      maxAgentsByType: config.maxAgentsByType
+    });
+    const gitService = new GitService({ baseDir: config.workingDir });
+    const qaRunner = QARunnerFactory.create({
+      workingDir: config.workingDir,
+      geminiClient,
+      gitService,
+      buildConfig: {
+        timeout: config.qaConfig?.buildTimeout
+      },
+      lintConfig: {
+        timeout: config.qaConfig?.lintTimeout,
+        autoFix: config.qaConfig?.autoFixLint
+      },
+      testConfig: {
+        timeout: config.qaConfig?.testTimeout
+      }
+    });
+    const qaEngine = new QALoopEngine({
+      qaRunner,
+      maxIterations: config.qaConfig?.maxIterations ?? 50,
+      stopOnFirstFailure: true,
+      workingDir: config.workingDir,
+      agentPool
+      // Pass agentPool for code generation/fixing
+    });
+    const taskQueue = new TaskQueue();
+    const eventBus = EventBus.getInstance();
+    const worktreeManager = new WorktreeManager({
+      baseDir: config.workingDir,
+      gitService,
+      worktreeDir: `${config.workingDir}/.nexus/worktrees`
+    });
+    const checkpointManager = null;
+    const coordinatorOptions = {
+      taskQueue,
+      agentPool,
+      decomposer: taskDecomposer,
+      resolver: dependencyResolver,
+      estimator: timeEstimator,
+      qaEngine,
+      worktreeManager,
+      checkpointManager
+    };
+    const coordinator = new NexusCoordinator(coordinatorOptions);
+    const shutdown = async () => {
+      try {
+        await coordinator.stop();
+      } catch {
+      }
+      try {
+        await agentPool.terminateAll();
+      } catch {
+      }
+      try {
+        if (worktreeManager && typeof worktreeManager.cleanup === "function") {
+          await worktreeManager.cleanup();
+        }
+      } catch {
+      }
+      try {
+        if (eventBus && typeof eventBus.removeAllListeners === "function") {
+          eventBus.removeAllListeners();
+        }
+      } catch {
+      }
+    };
+    return {
+      coordinator,
+      agentPool,
+      taskQueue,
+      eventBus,
+      worktreeManager,
+      llm: {
+        claude: claudeClient,
+        gemini: geminiClient
+      },
+      planning: {
+        decomposer: taskDecomposer,
+        resolver: dependencyResolver,
+        estimator: timeEstimator
+      },
+      embeddings: embeddingsResult?.service,
+      backends: {
+        claude: claudeBackend,
+        gemini: geminiBackend,
+        embeddings: embeddingsBackend
+      },
+      shutdown
+    };
+  }
+  /**
+   * Create a Nexus instance optimized for testing.
+   *
+   * This version:
+   * - Uses mocked QA runners for faster execution
+   * - Reduces iteration limits
+   * - Maintains full functionality for integration testing
+   * - Supports backend selection with fallback (Phase 16 - Task 12)
+   *
+   * @param config - Testing configuration
+   * @returns Promise resolving to Nexus instance optimized for testing
+   */
+  static async createForTesting(config) {
+    const [claudeResult, geminiResult] = await Promise.all([
+      this.createClaudeClient(config),
+      this.createGeminiClient(config)
+    ]);
+    const claudeClient = claudeResult.client;
+    const geminiClient = geminiResult.client;
+    const claudeBackend = claudeResult.backend;
+    const geminiBackend = geminiResult.backend;
+    let embeddingsResult;
+    let embeddingsBackend = config.embeddingsBackend ?? "local";
+    try {
+      embeddingsResult = await this.createEmbeddingsService(config);
+      embeddingsBackend = embeddingsResult.backend;
+    } catch {
+    }
+    const taskDecomposer = new TaskDecomposer(claudeClient);
+    const dependencyResolver = new DependencyResolver();
+    const timeEstimator = new TimeEstimator();
+    const agentPool = new AgentPool({
+      claudeClient,
+      geminiClient,
+      maxAgentsByType: config.maxAgentsByType
+    });
+    const qaRunner = config.mockQA ? QARunnerFactory.createMock() : QARunnerFactory.create({
+      workingDir: config.workingDir,
+      geminiClient
+    });
+    const qaEngine = new QALoopEngine({
+      qaRunner,
+      maxIterations: 50,
+      stopOnFirstFailure: true,
+      workingDir: config.workingDir,
+      agentPool
+      // Pass agentPool for code generation/fixing
+    });
+    const taskQueue = new TaskQueue();
+    const eventBus = EventBus.getInstance();
+    const gitService = new GitService({ baseDir: config.workingDir });
+    const worktreeManager = new WorktreeManager({
+      baseDir: config.workingDir,
+      gitService,
+      worktreeDir: `${config.workingDir}/.nexus/test-worktrees`
+    });
+    const checkpointManager = null;
+    const coordinator = new NexusCoordinator({
+      taskQueue,
+      agentPool,
+      decomposer: taskDecomposer,
+      resolver: dependencyResolver,
+      estimator: timeEstimator,
+      qaEngine,
+      worktreeManager,
+      checkpointManager
+    });
+    const shutdown = async () => {
+      try {
+        await coordinator.stop();
+      } catch {
+      }
+      try {
+        await agentPool.terminateAll();
+      } catch {
+      }
+      try {
+        if (worktreeManager && typeof worktreeManager.cleanup === "function") {
+          await worktreeManager.cleanup();
+        }
+      } catch {
+      }
+      try {
+        if (eventBus && typeof eventBus.removeAllListeners === "function") {
+          eventBus.removeAllListeners();
+        }
+      } catch {
+      }
+    };
+    return {
+      coordinator,
+      agentPool,
+      taskQueue,
+      eventBus,
+      worktreeManager,
+      llm: {
+        claude: claudeClient,
+        gemini: geminiClient
+      },
+      planning: {
+        decomposer: taskDecomposer,
+        resolver: dependencyResolver,
+        estimator: timeEstimator
+      },
+      embeddings: embeddingsResult?.service,
+      backends: {
+        claude: claudeBackend,
+        gemini: geminiBackend,
+        embeddings: embeddingsBackend
+      },
+      shutdown
+    };
+  }
+  /**
+   * Create a minimal Nexus instance with only planning components.
+   *
+   * Useful for scenarios where you only need task decomposition
+   * and dependency resolution without full orchestration.
+   *
+   * @param claudeApiKey - Anthropic API key
+   * @returns Minimal Nexus instance with planning only
+   */
+  static createPlanningOnly(claudeApiKey) {
+    const claudeClient = new ClaudeClient({ apiKey: claudeApiKey });
+    const geminiClient = null;
+    const taskDecomposer = new TaskDecomposer(claudeClient);
+    const dependencyResolver = new DependencyResolver();
+    const timeEstimator = new TimeEstimator();
+    return {
+      llm: {
+        claude: claudeClient,
+        gemini: geminiClient
+      },
+      planning: {
+        decomposer: taskDecomposer,
+        resolver: dependencyResolver,
+        estimator: timeEstimator
+      },
+      shutdown: async () => {
+      }
+    };
+  }
+  // ==========================================================================
+  // Private Backend Selection Methods (Task 12)
+  // ==========================================================================
+  /**
+   * Create a Claude client based on backend preference.
+   *
+   * Order of precedence:
+   * 1. If backend='cli' → try CLI, fallback to API if available
+   * 2. If backend='api' → require API key, throw if not available
+   *
+   * @param config - Factory configuration
+   * @returns Claude client (CLI or API)
+   * @throws CLINotFoundError when CLI unavailable and no API fallback
+   */
+  static async createClaudeClient(config) {
+    const backend = config.claudeBackend ?? DEFAULT_NEXUS_CONFIG.claudeBackend ?? "cli";
+    if (backend === "cli") {
+      const cliClient = new ClaudeCodeCLIClient({
+        ...config.claudeCliConfig,
+        workingDirectory: config.workingDir
+      });
+      if (await cliClient.isAvailable()) {
+        return { client: cliClient, backend: "cli" };
+      }
+      if (config.claudeApiKey) {
+        console.warn(
+          "[NexusFactory] Claude CLI not available, falling back to API backend"
+        );
+        return {
+          client: new ClaudeClient({
+            apiKey: config.claudeApiKey,
+            ...config.claudeConfig
+          }),
+          backend: "api"
+        };
+      }
+      throw new CLINotFoundError();
+    }
+    if (!config.claudeApiKey) {
+      throw new APIKeyMissingError("claude");
+    }
+    return {
+      client: new ClaudeClient({
+        apiKey: config.claudeApiKey,
+        ...config.claudeConfig
+      }),
+      backend: "api"
+    };
+  }
+  /**
+   * Create a Gemini client based on backend preference.
+   *
+   * Order of precedence:
+   * 1. If backend='cli' → try CLI, fallback to API if available
+   * 2. If backend='api' → require API key, throw if not available
+   *
+   * @param config - Factory configuration
+   * @returns Gemini client (CLI or API)
+   * @throws GeminiCLINotFoundError when CLI unavailable and no API fallback
+   */
+  static async createGeminiClient(config) {
+    const backend = config.geminiBackend ?? DEFAULT_NEXUS_CONFIG.geminiBackend ?? "cli";
+    if (backend === "cli") {
+      const cliClient = new GeminiCLIClient(config.geminiCliConfig);
+      if (await cliClient.isAvailable()) {
+        return { client: cliClient, backend: "cli" };
+      }
+      if (config.geminiApiKey) {
+        console.warn(
+          "[NexusFactory] Gemini CLI not available, falling back to API backend"
+        );
+        return {
+          client: new GeminiClient({
+            apiKey: config.geminiApiKey,
+            ...config.geminiConfig
+          }),
+          backend: "api"
+        };
+      }
+      throw new GeminiCLINotFoundError();
+    }
+    if (!config.geminiApiKey) {
+      throw new APIKeyMissingError("gemini");
+    }
+    return {
+      client: new GeminiClient({
+        apiKey: config.geminiApiKey,
+        ...config.geminiConfig
+      }),
+      backend: "api"
+    };
+  }
+  /**
+   * Create an embeddings service based on backend preference.
+   *
+   * Order of precedence:
+   * 1. If backend='local' → try local, fallback to API if available
+   * 2. If backend='api' → require OpenAI API key, throw if not available
+   *
+   * @param config - Factory configuration
+   * @returns Embeddings service (local or API)
+   * @throws LocalEmbeddingsInitError when local unavailable and no API fallback
+   */
+  static async createEmbeddingsService(config) {
+    const backend = config.embeddingsBackend ?? DEFAULT_NEXUS_CONFIG.embeddingsBackend ?? "local";
+    if (backend === "local") {
+      const localService = new LocalEmbeddingsService(config.localEmbeddingsConfig);
+      if (await localService.isAvailable()) {
+        return { service: localService, backend: "local" };
+      }
+      if (config.openaiApiKey) {
+        console.warn(
+          "[NexusFactory] Local embeddings not available, falling back to OpenAI API"
+        );
+        return {
+          service: new EmbeddingsService({ apiKey: config.openaiApiKey }),
+          backend: "api"
+        };
+      }
+      throw new LocalEmbeddingsInitError(
+        config.localEmbeddingsConfig?.model ?? "default",
+        new Error("Local embeddings initialization failed and no API key fallback available")
+      );
+    }
+    if (!config.openaiApiKey) {
+      throw new APIKeyMissingError("embeddings");
+    }
+    return {
+      service: new EmbeddingsService({ apiKey: config.openaiApiKey }),
+      backend: "api"
+    };
+  }
+}
+const DEFAULT_CONFIDENCE_THRESHOLD = 0.7;
+const DEFAULT_CONFIDENCE = 0.5;
+const DEFAULT_PRIORITY = "should";
+const CATEGORY_MAP = {
+  functional: "functional",
+  non_functional: "non-functional",
+  "non-functional": "non-functional",
+  technical: "technical",
+  constraint: "constraint",
+  assumption: "assumption"
+};
+const VALID_CATEGORIES = /* @__PURE__ */ new Set([
+  "functional",
+  "non-functional",
+  "technical",
+  "constraint",
+  "assumption"
+]);
+const VALID_PRIORITIES = /* @__PURE__ */ new Set([
+  "must",
+  "should",
+  "could",
+  "wont"
+]);
+class RequirementExtractor {
+  confidenceThreshold;
+  /**
+   * Create a new RequirementExtractor
+   * @param options Configuration options
+   */
+  constructor(options) {
+    this.confidenceThreshold = options?.confidenceThreshold ?? DEFAULT_CONFIDENCE_THRESHOLD;
+  }
+  /**
+   * Extract requirements from LLM response text
+   * @param responseText The full LLM response text
+   * @param sourceMessageId ID of the message this response belongs to
+   * @returns ExtractionResult with requirements, raw count, and filtered count
+   */
+  extract(responseText, sourceMessageId) {
+    const requirements2 = [];
+    const rawRequirements = [];
+    const requirementRegex = /<requirement>([\s\S]*?)<\/requirement>/g;
+    let match;
+    while ((match = requirementRegex.exec(responseText)) !== null) {
+      const block = match[1];
+      if (!block) continue;
+      const parsed = this.parseRequirementBlock(block, sourceMessageId);
+      if (parsed) {
+        rawRequirements.push(parsed);
+        if (parsed.confidence >= this.confidenceThreshold) {
+          requirements2.push(parsed);
+        }
+      }
+    }
+    return {
+      requirements: requirements2,
+      rawCount: rawRequirements.length,
+      filteredCount: requirements2.length
+    };
+  }
+  /**
+   * Set the confidence threshold for filtering
+   * @param threshold New threshold (0.0 to 1.0)
+   */
+  setConfidenceThreshold(threshold) {
+    this.confidenceThreshold = threshold;
+  }
+  /**
+   * Parse a single requirement block into a structured requirement
+   * @param block The content inside <requirement>...</requirement>
+   * @param sourceMessageId Source message ID
+   * @returns ExtractedRequirement or null if invalid
+   */
+  parseRequirementBlock(block, sourceMessageId) {
+    const text2 = this.extractTag(block, "text");
+    const categoryRaw = this.extractTag(block, "category");
+    if (!text2 || !categoryRaw) {
+      return null;
+    }
+    const category = this.mapCategory(categoryRaw);
+    if (!category) {
+      return null;
+    }
+    const priorityRaw = this.extractTag(block, "priority");
+    const priority = this.mapPriority(priorityRaw) ?? DEFAULT_PRIORITY;
+    const confidenceRaw = this.extractTag(block, "confidence");
+    const confidence = confidenceRaw ? parseFloat(confidenceRaw) : DEFAULT_CONFIDENCE;
+    const area = this.extractTag(block, "area") ?? void 0;
+    return {
+      id: nanoid(),
+      text: text2,
+      category,
+      priority,
+      confidence: isNaN(confidence) ? DEFAULT_CONFIDENCE : confidence,
+      area,
+      sourceMessageId
+    };
+  }
+  /**
+   * Extract content from an XML tag
+   * @param content The content to search
+   * @param tag The tag name
+   * @returns Trimmed content or null if not found
+   */
+  extractTag(content, tag) {
+    const regex = new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`);
+    const match = content.match(regex);
+    return match?.[1] ? match[1].trim() : null;
+  }
+  /**
+   * Map LLM category to internal format
+   * @param raw The raw category string from LLM
+   * @returns Mapped category or null if invalid
+   */
+  mapCategory(raw) {
+    const normalized = raw.trim().toLowerCase();
+    const mapped = CATEGORY_MAP[normalized];
+    return mapped && VALID_CATEGORIES.has(mapped) ? mapped : null;
+  }
+  /**
+   * Map LLM priority to internal format
+   * @param raw The raw priority string from LLM
+   * @returns Mapped priority or null if invalid
+   */
+  mapPriority(raw) {
+    if (!raw) return null;
+    const normalized = raw.trim().toLowerCase();
+    return VALID_PRIORITIES.has(normalized) ? normalized : null;
+  }
+}
+const STANDARD_AREAS = [
+  "authentication",
+  "authorization",
+  "data_model",
+  "api",
+  "ui_ux",
+  "performance",
+  "security",
+  "integrations",
+  "deployment"
+];
+const INTERVIEWER_SYSTEM_PROMPT = `You are an expert requirements analyst conducting a discovery interview for a software project.
+
+Your role:
+- Ask clarifying questions to understand the user's vision
+- Extract clear, actionable requirements from their descriptions
+- Identify gaps and suggest areas to explore
+- Maintain a conversational, non-interrogative tone
+
+Behavior:
+- Start broad, then go detailed per area
+- Summarize periodically to confirm understanding
+- Suggest missing areas when appropriate ("You haven't mentioned authentication...")
+- Be adaptive - follow the user's thread of thought
+- Keep responses focused and not too long
+
+Requirement Extraction:
+When the user describes features, needs, or constraints, extract them as requirements.
+For each requirement found, output in this format BEFORE your conversational response:
+
+<requirement>
+  <text>Clear description of the requirement</text>
+  <category>functional|non_functional|technical|constraint|assumption</category>
+  <priority>must|should|could|wont</priority>
+  <confidence>0.0-1.0 (how certain you are this is a real requirement)</confidence>
+  <area>domain area like "authentication", "payments", "ui"</area>
+</requirement>
+
+Category definitions:
+- functional: What the system does (features, behaviors)
+- non_functional: How well the system does it (performance, scalability, reliability)
+- technical: Technology choices, architecture decisions
+- constraint: Limitations, boundaries, rules
+- assumption: Things taken as given but should be validated
+
+Priority definitions (MoSCoW):
+- must: Critical for MVP, cannot ship without
+- should: Important but not critical
+- could: Nice to have
+- wont: Explicitly out of scope for now
+
+Rules for extraction:
+- Only extract requirements the user explicitly stated or clearly implied
+- Do NOT invent requirements or assume features not mentioned
+- Set confidence based on how explicit the user was (0.9+ for explicit, 0.5-0.7 for implied)
+- One requirement per <requirement> block
+- Multiple requirements can be extracted from a single message
+
+After extracting requirements (if any), continue the natural conversation with:
+- A brief acknowledgment of what you understood
+- A follow-up question to explore deeper or a new area
+
+Example response format:
+<requirement>
+  <text>Users must be able to log in with email and password</text>
+  <category>functional</category>
+  <priority>must</priority>
+  <confidence>0.95</confidence>
+  <area>authentication</area>
+</requirement>
+
+Got it! You need email/password authentication. Do you also want to support social logins like Google or GitHub?`;
+const INITIAL_GREETING = `Hello! I'm here to help you define the requirements for your software project.
+
+Let's start with the big picture: What are you building, and what problem does it solve?
+
+Feel free to describe your vision in your own words - I'll ask follow-up questions to make sure I understand everything correctly.`;
+const EVOLUTION_INITIAL_GREETING = `Hello! I see you want to enhance an existing project.
+
+I've analyzed your codebase and have context about its structure. What changes or features would you like to add?
+
+You can describe:
+- New features to add
+- Existing functionality to modify
+- Bugs to fix
+- Performance improvements
+- Refactoring goals
+
+I'll help translate your ideas into actionable requirements that work with your existing code.`;
+function getEvolutionSystemPrompt(repoMapContext) {
+  return `${INTERVIEWER_SYSTEM_PROMPT}
+
+---
+
+EVOLUTION MODE: You are enhancing an existing project, not creating one from scratch.
+
+EXISTING CODEBASE CONTEXT:
+${repoMapContext}
+
+Additional Evolution Mode Guidelines:
+- Reference existing files, functions, and patterns when discussing changes
+- Consider backward compatibility with existing code
+- Identify potential conflicts with current implementation
+- Suggest integration points based on the existing architecture
+- Extract requirements that account for existing functionality
+- Mark requirements that modify existing code vs add new code
+
+When extracting requirements in Evolution mode, add this field:
+<modification_type>add|modify|extend|refactor|fix</modification_type>
+
+Where:
+- add: Completely new functionality
+- modify: Changes to existing behavior
+- extend: Building on existing features
+- refactor: Code improvement without behavior change
+- fix: Bug fixes or corrections`;
+}
+function getGapSuggestionPrompt(gaps) {
+  if (gaps.length === 0) return "";
+  const topGaps = gaps.slice(0, 3);
+  return `
+
+Note: You haven't discussed these areas yet: ${topGaps.join(", ")}. Consider asking about them if relevant to this project.`;
+}
+const MIN_REQUIREMENTS_FOR_GAPS = 3;
+const MIN_EXPLORED_AREAS_FOR_GAPS = 2;
+class QuestionGenerator {
+  llmClient;
+  logger;
+  constructor(options) {
+    this.llmClient = options.llmClient;
+    this.logger = options.logger;
+  }
+  /**
+   * Generate a follow-up question based on context
+   *
+   * @param context The current conversation context
+   * @returns Generated question with metadata
+   */
+  async generate(context) {
+    this.logger?.debug("Generating question", {
+      messageCount: context.conversationHistory.length,
+      requirementCount: context.extractedRequirements.length,
+      exploredAreas: context.exploredAreas
+    });
+    const gaps = this.detectGaps(context.exploredAreas);
+    const shouldSuggestGaps = this.shouldSuggestGap(context);
+    const systemPrompt = this.buildQuestionPrompt(context, shouldSuggestGaps ? gaps : []);
+    const messages = [
+      { role: "system", content: systemPrompt },
+      ...context.conversationHistory.map((msg) => ({
+        role: msg.role,
+        content: msg.content
+      }))
+    ];
+    const options = {
+      maxTokens: 1024,
+      temperature: 0.7
+    };
+    const response = await this.llmClient.chat(messages, options);
+    const question = this.parseQuestionResponse(response.content, context);
+    this.logger?.info("Generated question", {
+      area: question.area,
+      depth: question.depth,
+      gapsFound: gaps.length
+    });
+    return {
+      question,
+      suggestedGaps: gaps,
+      shouldSuggestGaps
+    };
+  }
+  /**
+   * Detect unexplored standard areas
+   *
+   * @param exploredAreas Areas that have been discussed
+   * @returns Array of standard areas not yet explored
+   */
+  detectGaps(exploredAreas) {
+    const explored = new Set(exploredAreas.map((a) => a.toLowerCase()));
+    return STANDARD_AREAS.filter((area) => !explored.has(area));
+  }
+  /**
+   * Determine if gaps should be suggested to the user
+   *
+   * Gaps are only suggested after enough context has been gathered
+   * (minimum requirements and explored areas)
+   *
+   * @param context The generation context
+   * @returns True if gaps should be surfaced
+   */
+  shouldSuggestGap(context) {
+    const hasEnoughRequirements = context.extractedRequirements.length >= MIN_REQUIREMENTS_FOR_GAPS;
+    const hasEnoughExploration = context.exploredAreas.length >= MIN_EXPLORED_AREAS_FOR_GAPS;
+    const hasGaps = this.detectGaps(context.exploredAreas).length > 0;
+    return hasEnoughRequirements && hasEnoughExploration && hasGaps;
+  }
+  /**
+   * Get the interviewer system prompt
+   *
+   * @returns The full system prompt for the interviewer
+   */
+  getSystemPrompt() {
+    return INTERVIEWER_SYSTEM_PROMPT;
+  }
+  /**
+   * Build the question generation prompt
+   */
+  buildQuestionPrompt(context, gaps) {
+    let prompt = INTERVIEWER_SYSTEM_PROMPT;
+    if (context.projectDescription) {
+      prompt += `
+
+Project Context:
+${context.projectDescription}`;
+    }
+    if (context.extractedRequirements.length > 0) {
+      const reqSummary = context.extractedRequirements.slice(-10).map((r) => `- [${r.category}] ${r.text}`).join("\n");
+      prompt += `
+
+Requirements captured so far:
+${reqSummary}`;
+    }
+    if (context.exploredAreas.length > 0) {
+      prompt += `
+
+Areas already discussed: ${context.exploredAreas.join(", ")}`;
+    }
+    if (gaps.length > 0) {
+      prompt += getGapSuggestionPrompt(gaps);
+    }
+    return prompt;
+  }
+  /**
+   * Parse LLM response to extract question metadata
+   */
+  parseQuestionResponse(response, context) {
+    let depth = "broad";
+    if (context.conversationHistory.length === 0) {
+      depth = "broad";
+    } else if (context.extractedRequirements.length > 5) {
+      depth = "detailed";
+    } else if (context.conversationHistory.length > 2) {
+      depth = "clarifying";
+    }
+    const area = this.inferAreaFromResponse(response, context);
+    const lastUserMessage = context.conversationHistory.filter((m) => m.role === "user").pop();
+    return {
+      question: response,
+      area,
+      depth,
+      followsUp: lastUserMessage?.id
+    };
+  }
+  /**
+   * Infer the domain area from response content
+   */
+  inferAreaFromResponse(response, context) {
+    const responseLower = response.toLowerCase();
+    for (const area of STANDARD_AREAS) {
+      if (responseLower.includes(area.replace("_", " "))) {
+        return area;
+      }
+    }
+    const areaKeywords = [
+      // Check security first - has specific keywords that shouldn't be confused with data_model
+      ["security", ["encrypt", "secure", "vulnerability", "protect", "safety", "threat"]],
+      // Authentication - specific keywords
+      ["authentication", ["login", "sign in", "password", "auth", "sso", "oauth", "credential"]],
+      // Authorization - distinct from authentication
+      ["authorization", ["permission", "role", "access control", "admin", "privilege"]],
+      // Performance - specific metrics
+      ["performance", ["speed", "latency", "response time", "load", "throughput", "benchmark"]],
+      // Integrations - external connections
+      ["integrations", ["integrate", "third-party", "external", "connect", "plugin"]],
+      // Deployment - infrastructure
+      ["deployment", ["deploy", "hosting", "cloud", "infrastructure", "server", "container"]],
+      // UI/UX - user interface
+      ["ui_ux", ["interface", "design", "user experience", "layout", "screen", "component"]],
+      // API - endpoints
+      ["api", ["endpoint", "rest", "graphql", "webhook", "route"]],
+      // Data model - last since 'data' is generic
+      ["data_model", ["database", "schema", "entity", "model", "table", "migration"]]
+    ];
+    for (const [area, keywords] of areaKeywords) {
+      for (const keyword of keywords) {
+        if (responseLower.includes(keyword)) {
+          return area;
+        }
+      }
+    }
+    return context.exploredAreas[context.exploredAreas.length - 1] || "general";
+  }
+}
+const CATEGORY_MAPPING$1 = {
+  "functional": "functional",
+  "non-functional": "non-functional",
+  "technical": "technical",
+  "constraint": "technical",
+  // Map to technical as constraint isn't in RequirementsDB
+  "assumption": "functional"
+  // Map assumptions to functional for now
+};
+class InterviewEngine {
+  llmClient;
+  requirementsDB;
+  eventBus;
+  logger;
+  extractor;
+  questionGenerator;
+  /** Active sessions indexed by session ID */
+  sessions = /* @__PURE__ */ new Map();
+  constructor(options) {
+    this.llmClient = options.llmClient;
+    this.requirementsDB = options.requirementsDB;
+    this.eventBus = options.eventBus;
+    this.logger = options.logger;
+    this.extractor = new RequirementExtractor();
+    this.questionGenerator = new QuestionGenerator({
+      llmClient: this.llmClient,
+      logger: this.logger
+    });
+  }
+  /**
+   * Start a new interview session
+   *
+   * @param projectId The project to conduct interview for
+   * @param options Optional session configuration (mode, evolution context)
+   * @returns The new interview session
+   */
+  startSession(projectId, options) {
+    const now = /* @__PURE__ */ new Date();
+    const mode = options?.mode ?? "genesis";
+    const evolutionContext = options?.evolutionContext;
+    if (mode === "evolution" && !evolutionContext) {
+      this.logger?.warn("Evolution mode started without context", { projectId });
+    }
+    const session2 = {
+      id: nanoid(),
+      projectId,
+      status: "active",
+      mode,
+      evolutionContext,
+      messages: [],
+      extractedRequirements: [],
+      exploredAreas: [],
+      startedAt: now,
+      lastActivityAt: now
+    };
+    this.sessions.set(session2.id, session2);
+    this.logger?.info("Started interview session", {
+      sessionId: session2.id,
+      projectId,
+      mode,
+      hasEvolutionContext: !!evolutionContext
+    });
+    void this.eventBus.emit("interview:started", {
+      projectId,
+      projectName: projectId,
+      // Will be resolved from DB if needed
+      mode
+    });
+    return session2;
+  }
+  /**
+   * Process a user message in the interview
+   *
+   * Flow:
+   * 1. Add user message to session
+   * 2. Build messages array with system prompt + history
+   * 3. Call LLM
+   * 4. Add assistant response to session
+   * 5. Extract requirements
+   * 6. Store requirements in DB
+   * 7. Update explored areas
+   * 8. Check for gaps to suggest
+   * 9. Emit events
+   *
+   * @param sessionId The session ID
+   * @param userMessage The user's message content
+   * @returns Processing result with response, requirements, and gaps
+   */
+  async processMessage(sessionId, userMessage) {
+    const session2 = this.sessions.get(sessionId);
+    if (!session2) {
+      throw new Error(`Session not found: ${sessionId}`);
+    }
+    if (session2.status !== "active") {
+      throw new Error(`Session is not active: ${session2.status}`);
+    }
+    const userMsgId = nanoid();
+    const userMsg = {
+      id: userMsgId,
+      role: "user",
+      content: userMessage,
+      timestamp: /* @__PURE__ */ new Date()
+    };
+    session2.messages.push(userMsg);
+    this.logger?.debug("Processing user message", {
+      sessionId,
+      messageId: userMsgId,
+      contentLength: userMessage.length
+    });
+    this.emitMessageEvent(session2, userMsg);
+    const llmMessages = this.buildLLMMessages(session2);
+    this.logger?.debug("Calling LLM", {
+      sessionId,
+      messageCount: llmMessages.length,
+      clientType: this.llmClient.constructor.name
+    });
+    const options = {
+      maxTokens: 2048,
+      temperature: 0.7,
+      disableTools: true
+      // Chat-only mode for interview
+    };
+    const llmResponse = await this.llmClient.chat(llmMessages, options);
+    const responseContent = llmResponse.content;
+    const assistantMsgId = nanoid();
+    const assistantMsg = {
+      id: assistantMsgId,
+      role: "assistant",
+      content: responseContent,
+      timestamp: /* @__PURE__ */ new Date()
+    };
+    session2.messages.push(assistantMsg);
+    this.emitMessageEvent(session2, assistantMsg);
+    const extractionResult = this.extractor.extract(responseContent, assistantMsgId);
+    const newRequirements = extractionResult.requirements;
+    this.logger?.info("Extracted requirements", {
+      sessionId,
+      rawCount: extractionResult.rawCount,
+      filteredCount: extractionResult.filteredCount
+    });
+    for (const req of newRequirements) {
+      try {
+        const dbCategory = CATEGORY_MAPPING$1[req.category] ?? "functional";
+        this.requirementsDB.addRequirement(session2.projectId, {
+          category: dbCategory,
+          description: req.text,
+          priority: req.priority,
+          source: `interview:${session2.id}`,
+          confidence: req.confidence,
+          tags: req.area ? [req.area] : []
+        });
+        session2.extractedRequirements.push(req);
+        this.emitRequirementEvent(session2, req);
+      } catch (error) {
+        this.logger?.warn("Failed to store requirement", {
+          sessionId,
+          requirementId: req.id,
+          error: error instanceof Error ? error.message : "Unknown error"
+        });
+      }
+    }
+    this.updateExploredAreas(session2, newRequirements);
+    const context = {
+      conversationHistory: session2.messages,
+      extractedRequirements: session2.extractedRequirements,
+      exploredAreas: session2.exploredAreas
+    };
+    const gaps = this.questionGenerator.detectGaps(session2.exploredAreas);
+    const suggestedGaps = this.questionGenerator.shouldSuggestGap(context) ? gaps : [];
+    session2.lastActivityAt = /* @__PURE__ */ new Date();
+    return {
+      response: responseContent,
+      extractedRequirements: newRequirements,
+      suggestedGaps
+    };
+  }
+  /**
+   * Get a session by ID
+   *
+   * @param sessionId The session ID
+   * @returns The session or null if not found
+   */
+  getSession(sessionId) {
+    return this.sessions.get(sessionId) ?? null;
+  }
+  /**
+   * End an interview session
+   *
+   * @param sessionId The session ID
+   */
+  endSession(sessionId) {
+    const session2 = this.sessions.get(sessionId);
+    if (!session2) {
+      throw new Error(`Session not found: ${sessionId}`);
+    }
+    session2.status = "completed";
+    session2.completedAt = /* @__PURE__ */ new Date();
+    this.logger?.info("Ended interview session", {
+      sessionId,
+      projectId: session2.projectId,
+      requirementCount: session2.extractedRequirements.length,
+      messageCount: session2.messages.length
+    });
+    void this.eventBus.emit("interview:completed", {
+      projectId: session2.projectId,
+      totalRequirements: session2.extractedRequirements.length,
+      categories: [...new Set(session2.extractedRequirements.map((r) => r.category))],
+      duration: session2.completedAt.getTime() - session2.startedAt.getTime()
+    });
+  }
+  /**
+   * Pause an interview session
+   *
+   * @param sessionId The session ID
+   */
+  pauseSession(sessionId) {
+    const session2 = this.sessions.get(sessionId);
+    if (!session2) {
+      throw new Error(`Session not found: ${sessionId}`);
+    }
+    session2.status = "paused";
+    session2.lastActivityAt = /* @__PURE__ */ new Date();
+    this.logger?.info("Paused interview session", {
+      sessionId,
+      projectId: session2.projectId
+    });
+  }
+  /**
+   * Resume a paused interview session
+   *
+   * @param sessionId The session ID
+   */
+  resumeSession(sessionId) {
+    const session2 = this.sessions.get(sessionId);
+    if (!session2) {
+      throw new Error(`Session not found: ${sessionId}`);
+    }
+    if (session2.status !== "paused") {
+      throw new Error(`Session is not paused: ${session2.status}`);
+    }
+    session2.status = "active";
+    session2.lastActivityAt = /* @__PURE__ */ new Date();
+    this.logger?.info("Resumed interview session", {
+      sessionId,
+      projectId: session2.projectId
+    });
+  }
+  /**
+   * Get the initial greeting for a new session
+   * @param mode The interview mode (genesis or evolution)
+   */
+  getInitialGreeting(mode = "genesis") {
+    return mode === "evolution" ? EVOLUTION_INITIAL_GREETING : INITIAL_GREETING;
+  }
+  /**
+   * Build messages array for LLM call
+   */
+  buildLLMMessages(session2) {
+    let systemPrompt = INTERVIEWER_SYSTEM_PROMPT;
+    if (session2.mode === "evolution" && session2.evolutionContext) {
+      systemPrompt = getEvolutionSystemPrompt(session2.evolutionContext.repoMapContext);
+    }
+    const messages = [
+      { role: "system", content: systemPrompt }
+    ];
+    for (const msg of session2.messages) {
+      messages.push({
+        role: msg.role,
+        content: msg.content
+      });
+    }
+    return messages;
+  }
+  /**
+   * Update explored areas based on extracted requirements
+   */
+  updateExploredAreas(session2, requirements2) {
+    for (const req of requirements2) {
+      if (req.area && !session2.exploredAreas.includes(req.area)) {
+        session2.exploredAreas.push(req.area);
+      }
+    }
+  }
+  /**
+   * Emit message event (fire-and-forget)
+   */
+  emitMessageEvent(session2, message) {
+    void this.eventBus.emit("interview:question-asked", {
+      projectId: session2.projectId,
+      questionId: message.id,
+      question: message.content,
+      category: void 0
+    });
+  }
+  /**
+   * Emit requirement captured event (fire-and-forget)
+   */
+  emitRequirementEvent(session2, requirement) {
+    const mappedCategory = CATEGORY_MAPPING$1[requirement.category] ?? "functional";
+    const now = /* @__PURE__ */ new Date();
+    void this.eventBus.emit("interview:requirement-captured", {
+      projectId: session2.projectId,
+      requirement: {
+        id: requirement.id,
+        projectId: session2.projectId,
+        category: mappedCategory,
+        content: requirement.text,
+        priority: requirement.priority,
+        source: "interview",
+        createdAt: now,
+        updatedAt: now
+      }
+    });
+  }
+}
+const CATEGORY_MAPPING = {
+  "functional": "functional",
+  "non-functional": "non-functional",
+  "technical": "technical",
+  "constraint": "technical",
+  "assumption": "functional"
+};
+class InterviewSessionManager {
+  db;
+  eventBus;
+  logger;
+  autoSaveIntervalMs;
+  autoSaveTimer = null;
+  currentSession = null;
+  constructor(options) {
+    this.db = options.db;
+    this.eventBus = options.eventBus;
+    this.logger = options.logger;
+    this.autoSaveIntervalMs = options.autoSaveInterval ?? 3e4;
+  }
+  /**
+   * Save an interview session to the database
+   *
+   * @param session The session to save
+   */
+  save(session2) {
+    const serialized = this.serializeSession(session2);
+    const now = /* @__PURE__ */ new Date();
+    const existing = this.db.db.select().from(sessions).where(eq(sessions.id, session2.id)).get();
+    if (existing) {
+      this.db.db.update(sessions).set({
+        status: session2.status,
+        data: JSON.stringify(serialized),
+        endedAt: session2.status === "completed" ? now : null
+      }).where(eq(sessions.id, session2.id)).run();
+      this.logger?.debug("Updated interview session", { sessionId: session2.id });
+    } else {
+      this.db.db.insert(sessions).values({
+        id: session2.id,
+        projectId: session2.projectId,
+        type: "interview",
+        status: session2.status,
+        data: JSON.stringify(serialized),
+        startedAt: session2.startedAt,
+        endedAt: session2.status === "completed" ? now : null
+      }).run();
+      this.logger?.info("Created interview session", { sessionId: session2.id });
+    }
+    void this.eventBus.emit("interview:saved", {
+      projectId: session2.projectId,
+      sessionId: session2.id
+    });
+  }
+  /**
+   * Load an interview session by ID
+   *
+   * @param sessionId The session ID to load
+   * @returns The session or null if not found
+   */
+  load(sessionId) {
+    const row = this.db.db.select().from(sessions).where(
+      and(
+        eq(sessions.id, sessionId),
+        eq(sessions.type, "interview")
+      )
+    ).get();
+    if (!row || !row.data) {
+      return null;
+    }
+    return this.deserializeSession(row.data);
+  }
+  /**
+   * Load the active or paused interview session for a project
+   *
+   * @param projectId The project ID
+   * @returns The resumable session or null if none found
+   */
+  loadByProject(projectId) {
+    const row = this.db.db.select().from(sessions).where(
+      and(
+        eq(sessions.projectId, projectId),
+        eq(sessions.type, "interview"),
+        or(
+          eq(sessions.status, "active"),
+          eq(sessions.status, "paused")
+        )
+      )
+    ).orderBy(desc(sessions.startedAt)).get();
+    if (!row || !row.data) {
+      return null;
+    }
+    return this.deserializeSession(row.data);
+  }
+  /**
+   * Delete an interview session
+   *
+   * @param sessionId The session ID to delete
+   */
+  delete(sessionId) {
+    this.db.db.delete(sessions).where(
+      and(
+        eq(sessions.id, sessionId),
+        eq(sessions.type, "interview")
+      )
+    ).run();
+    this.logger?.info("Deleted interview session", { sessionId });
+  }
+  /**
+   * Start auto-save for a session
+   *
+   * @param session The session to auto-save
+   */
+  startAutoSave(session2) {
+    this.stopAutoSave();
+    this.currentSession = session2;
+    this.autoSaveTimer = setInterval(() => {
+      if (this.currentSession) {
+        this.save(this.currentSession);
+        this.logger?.debug("Auto-saved interview session", {
+          sessionId: this.currentSession.id
+        });
+      }
+    }, this.autoSaveIntervalMs);
+    this.logger?.info("Started auto-save for interview session", {
+      sessionId: session2.id,
+      intervalMs: this.autoSaveIntervalMs
+    });
+  }
+  /**
+   * Stop auto-save
+   */
+  stopAutoSave() {
+    if (this.autoSaveTimer) {
+      clearInterval(this.autoSaveTimer);
+      this.autoSaveTimer = null;
+      this.currentSession = null;
+      this.logger?.debug("Stopped auto-save");
+    }
+  }
+  /**
+   * Export session requirements to RequirementsDB
+   *
+   * @param session The session containing requirements
+   * @param requirementsDB The RequirementsDB instance
+   * @returns Number of requirements exported
+   */
+  exportToRequirementsDB(session2, requirementsDB) {
+    let exported = 0;
+    for (const req of session2.extractedRequirements) {
+      try {
+        const dbCategory = CATEGORY_MAPPING[req.category] ?? "functional";
+        requirementsDB.addRequirement(session2.projectId, {
+          category: dbCategory,
+          description: req.text,
+          priority: req.priority,
+          source: `interview:${session2.id}`,
+          confidence: req.confidence,
+          tags: req.area ? [req.area] : []
+        });
+        exported++;
+      } catch (error) {
+        this.logger?.warn("Failed to export requirement", {
+          requirementId: req.id,
+          error: error instanceof Error ? error.message : "Unknown error"
+        });
+      }
+    }
+    this.logger?.info("Exported requirements to RequirementsDB", {
+      sessionId: session2.id,
+      exportedCount: exported,
+      totalCount: session2.extractedRequirements.length
+    });
+    return exported;
+  }
+  /**
+   * Serialize session for database storage
+   */
+  serializeSession(session2) {
+    return {
+      id: session2.id,
+      projectId: session2.projectId,
+      status: session2.status,
+      mode: session2.mode,
+      evolutionContext: session2.evolutionContext,
+      messages: session2.messages.map((msg) => ({
+        id: msg.id,
+        role: msg.role,
+        content: msg.content,
+        timestamp: msg.timestamp.toISOString()
+      })),
+      extractedRequirements: session2.extractedRequirements,
+      exploredAreas: session2.exploredAreas,
+      startedAt: session2.startedAt.toISOString(),
+      lastActivityAt: session2.lastActivityAt.toISOString(),
+      completedAt: session2.completedAt?.toISOString()
+    };
+  }
+  /**
+   * Deserialize session from database storage
+   */
+  deserializeSession(data) {
+    const parsed = JSON.parse(data);
+    return {
+      id: parsed.id,
+      projectId: parsed.projectId,
+      status: parsed.status,
+      mode: parsed.mode ?? "genesis",
+      // Default to genesis for backward compatibility
+      evolutionContext: parsed.evolutionContext,
+      messages: parsed.messages.map((msg) => ({
+        id: msg.id,
+        role: msg.role,
+        content: msg.content,
+        timestamp: new Date(msg.timestamp)
+      })),
+      extractedRequirements: parsed.extractedRequirements,
+      exploredAreas: parsed.exploredAreas,
+      startedAt: new Date(parsed.startedAt),
+      lastActivityAt: new Date(parsed.lastActivityAt),
+      completedAt: parsed.completedAt ? new Date(parsed.completedAt) : void 0
+    };
+  }
+}
+class RequirementsDB {
+  db;
+  /**
+   * In-memory storage for requirements
+   * TODO: Replace with actual database table queries
+   */
+  requirements = /* @__PURE__ */ new Map();
+  constructor(db) {
+    this.db = db;
+  }
+  /**
+   * Add a new requirement to a project
+   *
+   * @param projectId - The project ID
+   * @param input - The requirement data
+   * @returns The created requirement
+   */
+  addRequirement(projectId, input) {
+    const now = /* @__PURE__ */ new Date();
+    const requirement = {
+      id: nanoid(),
+      projectId,
+      category: input.category,
+      description: input.description,
+      priority: input.priority,
+      source: input.source,
+      confidence: input.confidence ?? 0.8,
+      tags: input.tags ?? [],
+      userStories: input.userStories ?? [],
+      acceptanceCriteria: input.acceptanceCriteria ?? [],
+      linkedFeatures: [],
+      validated: false,
+      createdAt: now
+    };
+    const existing = Array.from(this.requirements.values()).find(
+      (r) => r.projectId === projectId && r.description === input.description
+    );
+    if (existing) {
+      throw new Error(`Duplicate requirement: ${input.description.substring(0, 50)}...`);
+    }
+    this.requirements.set(requirement.id, requirement);
+    return requirement;
+  }
+  /**
+   * Get a requirement by ID
+   *
+   * @param id - The requirement ID
+   * @returns The requirement or null if not found
+   */
+  getRequirement(id) {
+    return this.requirements.get(id) ?? null;
+  }
+  /**
+   * Get all requirements for a project
+   *
+   * @param projectId - The project ID
+   * @param options - Query options
+   * @returns Array of requirements
+   */
+  getRequirements(projectId, options = {}) {
+    let results = Array.from(this.requirements.values()).filter((r) => r.projectId === projectId);
+    if (options.category) {
+      results = results.filter((r) => r.category === options.category);
+    }
+    if (options.priority) {
+      results = results.filter((r) => r.priority === options.priority);
+    }
+    if (options.validated !== void 0) {
+      results = results.filter((r) => r.validated === options.validated);
+    }
+    if (options.tags && options.tags.length > 0) {
+      const tagList = options.tags;
+      results = results.filter((r) => tagList.some((tag) => r.tags.includes(tag)));
+    }
+    if (options.offset) {
+      results = results.slice(options.offset);
+    }
+    if (options.limit) {
+      results = results.slice(0, options.limit);
+    }
+    return results;
+  }
+  /**
+   * Update a requirement
+   *
+   * @param id - The requirement ID
+   * @param updates - The fields to update
+   * @returns The updated requirement
+   */
+  updateRequirement(id, updates) {
+    const existing = this.requirements.get(id);
+    if (!existing) {
+      throw new Error(`Requirement not found: ${id}`);
+    }
+    const updated = {
+      ...existing,
+      ...updates,
+      updatedAt: /* @__PURE__ */ new Date()
+    };
+    this.requirements.set(id, updated);
+    return updated;
+  }
+  /**
+   * Delete a requirement
+   *
+   * @param id - The requirement ID
+   * @returns True if deleted, false if not found
+   */
+  deleteRequirement(id) {
+    return this.requirements.delete(id);
+  }
+  /**
+   * Validate a requirement (mark as reviewed and approved)
+   *
+   * @param id - The requirement ID
+   * @returns The updated requirement
+   */
+  validateRequirement(id) {
+    return this.updateRequirement(id, { validated: true });
+  }
+  /**
+   * Link a requirement to a feature
+   *
+   * @param requirementId - The requirement ID
+   * @param featureId - The feature ID
+   * @returns The updated requirement
+   */
+  linkToFeature(requirementId, featureId) {
+    const existing = this.requirements.get(requirementId);
+    if (!existing) {
+      throw new Error(`Requirement not found: ${requirementId}`);
+    }
+    if (!existing.linkedFeatures.includes(featureId)) {
+      existing.linkedFeatures.push(featureId);
+      existing.updatedAt = /* @__PURE__ */ new Date();
+    }
+    return existing;
+  }
+  /**
+   * Get requirements statistics for a project
+   *
+   * @param projectId - The project ID
+   * @returns Statistics about the requirements
+   */
+  getStatistics(projectId) {
+    const requirements2 = this.getRequirements(projectId);
+    const byCategory = {
+      functional: 0,
+      "non-functional": 0,
+      technical: 0
+    };
+    const byPriority = {
+      must: 0,
+      should: 0,
+      could: 0,
+      wont: 0
+    };
+    let validated = 0;
+    for (const req of requirements2) {
+      byCategory[req.category]++;
+      byPriority[req.priority]++;
+      if (req.validated) validated++;
+    }
+    return {
+      total: requirements2.length,
+      byCategory,
+      byPriority,
+      validated,
+      unvalidated: requirements2.length - validated
+    };
+  }
+  /**
+   * Clear all requirements for a project (for testing)
+   *
+   * @param projectId - The project ID
+   */
+  clearProject(projectId) {
+    const toDelete = Array.from(this.requirements.entries()).filter(([, r]) => r.projectId === projectId).map(([id]) => id);
+    for (const id of toDelete) {
+      this.requirements.delete(id);
+    }
+  }
+}
+class DatabaseClient {
+  sqlite;
+  _db;
+  options;
+  constructor(options) {
+    this.options = options;
+    if (options.path !== ":memory:") {
+      ensureDirSync(dirname(options.path));
+    }
+    this.sqlite = new Database(options.path);
+    this.sqlite.pragma("journal_mode = WAL");
+    this.sqlite.pragma("foreign_keys = ON");
+    this.sqlite.pragma("busy_timeout = 5000");
+    this._db = drizzle(this.sqlite, {
+      schema: schema$1,
+      logger: options.debug
+    });
+  }
+  /**
+   * Create and initialize a DatabaseClient.
+   *
+   * @param options - Configuration options
+   * @returns Initialized DatabaseClient
+   */
+  static create(options) {
+    const client = new DatabaseClient(options);
+    if (options.migrationsDir) {
+      client.migrate(options.migrationsDir);
+    }
+    return client;
+  }
+  /**
+   * Create an in-memory database (useful for testing).
+   *
+   * @param migrationsDir - Optional migrations directory
+   * @returns In-memory DatabaseClient
+   */
+  static createInMemory(migrationsDir) {
+    return DatabaseClient.create({
+      path: ":memory:",
+      migrationsDir,
+      debug: false
+    });
+  }
+  /**
+   * Get the Drizzle database instance for queries.
+   */
+  get db() {
+    return this._db;
+  }
+  /**
+   * Get the raw better-sqlite3 database instance.
+   * Use with caution - prefer Drizzle queries.
+   */
+  get raw() {
+    return this.sqlite;
+  }
+  /**
+   * Run database migrations.
+   *
+   * @param migrationsDir - Path to migrations folder
+   */
+  migrate(migrationsDir) {
+    try {
+      migrate(this._db, { migrationsFolder: migrationsDir });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`Migration failed: ${message}`);
+    }
+  }
+  /**
+   * Get list of all tables in the database.
+   *
+   * @returns Array of table names
+   */
+  tables() {
+    const result = this.sqlite.prepare(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '__%'"
+    ).all();
+    return result.map((r) => r.name);
+  }
+  /**
+   * Check database health status.
+   *
+   * @returns Health status object
+   */
+  health() {
+    try {
+      this.sqlite.prepare("SELECT 1").get();
+      const journalMode = this.sqlite.pragma("journal_mode");
+      const walMode = journalMode[0]?.journal_mode.toLowerCase() === "wal";
+      const foreignKeys = this.sqlite.pragma("foreign_keys");
+      const foreignKeysEnabled = foreignKeys[0]?.foreign_keys === 1;
+      const tables = this.tables();
+      return {
+        healthy: true,
+        walMode,
+        foreignKeys: foreignKeysEnabled,
+        tables
+      };
+    } catch {
+      return {
+        healthy: false,
+        walMode: false,
+        foreignKeys: false,
+        tables: []
+      };
+    }
+  }
+  /**
+   * Simple health check ping.
+   *
+   * @returns true if database is responsive
+   */
+  ping() {
+    try {
+      this.sqlite.prepare("SELECT 1").get();
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  /**
+   * Execute operations within a transaction.
+   *
+   * @param fn - Function to execute within transaction
+   * @returns Result of the function
+   */
+  transaction(fn) {
+    return this.sqlite.transaction(() => {
+      return fn(this._db);
+    })();
+  }
+  /**
+   * Execute raw SQL (use with caution).
+   *
+   * @param sql - SQL statement to execute
+   */
+  exec(sql) {
+    this.sqlite.exec(sql);
+  }
+  /**
+   * Close the database connection.
+   */
+  close() {
+    try {
+      if (this.options.path !== ":memory:") {
+        this.sqlite.pragma("wal_checkpoint(TRUNCATE)");
+      }
+      this.sqlite.close();
+    } catch {
+    }
+  }
+  /**
+   * Get database file path.
+   */
+  get path() {
+    return this.options.path;
+  }
+  /**
+   * Check if this is an in-memory database.
+   */
+  get isInMemory() {
+    return this.options.path === ":memory:";
+  }
+}
+class StateManager {
+  db;
+  autoPersist;
+  states;
+  constructor(options) {
+    this.db = options.db;
+    this.autoPersist = options.autoPersist ?? true;
+    this.states = /* @__PURE__ */ new Map();
+  }
+  /**
+   * Load state for a project
+   * @param projectId Project to load state for
+   * @returns State if found, null otherwise
+   */
+  loadState(projectId) {
+    const cached = this.states.get(projectId);
+    if (cached) {
+      return cached;
+    }
+    return null;
+  }
+  /**
+   * Save state for a project
+   * @param state State to save
+   */
+  saveState(state2) {
+    state2.lastUpdatedAt = /* @__PURE__ */ new Date();
+    this.states.set(state2.projectId, state2);
+  }
+  /**
+   * Update partial state for a project
+   * @param projectId Project to update
+   * @param updates Partial state updates
+   * @returns Updated state
+   */
+  updateState(projectId, updates) {
+    const current = this.loadState(projectId);
+    if (!current) {
+      return null;
+    }
+    const updated = {
+      ...current,
+      ...updates,
+      projectId,
+      // Ensure projectId doesn't change
+      lastUpdatedAt: /* @__PURE__ */ new Date()
+    };
+    this.saveState(updated);
+    return updated;
+  }
+  /**
+   * Delete state for a project
+   * @param projectId Project to delete state for
+   */
+  deleteState(projectId) {
+    return this.states.delete(projectId);
+  }
+  /**
+   * Check if state exists for a project
+   * @param projectId Project to check
+   */
+  hasState(projectId) {
+    return this.states.has(projectId);
+  }
+  /**
+   * Get all project IDs with state
+   */
+  getAllProjectIds() {
+    return Array.from(this.states.keys());
+  }
+  /**
+   * Create a new state for a project
+   * @param projectId Project identifier
+   * @param projectName Human-readable project name
+   * @param mode Genesis or evolution mode
+   * @returns Created state
+   */
+  createState(projectId, projectName, mode) {
+    const now = /* @__PURE__ */ new Date();
+    const state2 = {
+      projectId,
+      projectName,
+      status: "initializing",
+      mode,
+      features: [],
+      currentFeatureIndex: 0,
+      currentTaskIndex: 0,
+      completedTasks: 0,
+      totalTasks: 0,
+      lastUpdatedAt: now,
+      createdAt: now
+    };
+    this.saveState(state2);
+    return state2;
+  }
+  /**
+   * Clear all in-memory state (for testing)
+   */
+  clearAll() {
+    this.states.clear();
+  }
+}
+class CheckpointError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "CheckpointError";
+    Object.setPrototypeOf(this, new.target.prototype);
+  }
+}
+class CheckpointNotFoundError extends CheckpointError {
+  checkpointId;
+  constructor(checkpointId) {
+    super(`Checkpoint not found: ${checkpointId}`);
+    this.name = "CheckpointNotFoundError";
+    this.checkpointId = checkpointId;
+  }
+}
+class RestoreError extends CheckpointError {
+  checkpointId;
+  reason;
+  constructor(checkpointId, reason) {
+    super(`Failed to restore checkpoint ${checkpointId}: ${reason}`);
+    this.name = "RestoreError";
+    this.checkpointId = checkpointId;
+    this.reason = reason;
+  }
+}
+class CheckpointManager {
+  db;
+  stateManager;
+  gitService;
+  eventBus;
+  maxCheckpoints;
+  logger;
+  constructor(options) {
+    this.db = options.db;
+    this.stateManager = options.stateManager;
+    this.gitService = options.gitService;
+    this.eventBus = options.eventBus;
+    this.maxCheckpoints = options.maxCheckpoints ?? 50;
+    this.logger = options.logger;
+  }
+  /**
+   * Log a message if logger is available
+   */
+  log(level, message, ...args) {
+    if (this.logger) {
+      this.logger[level](message, ...args);
+    }
+  }
+  /**
+   * Create a checkpoint for a project.
+   * @param projectId Project to checkpoint
+   * @param reason Human-readable reason for checkpoint
+   * @returns Created checkpoint with id and timestamp
+   */
+  async createCheckpoint(projectId, reason) {
+    this.log("debug", `Creating checkpoint for project ${projectId}: ${reason}`);
+    const state2 = this.stateManager.loadState(projectId);
+    if (!state2) {
+      throw new CheckpointError(`Project not found: ${projectId}`);
+    }
+    let gitCommit = null;
+    try {
+      const log = await this.gitService.getLog(1);
+      if (log.length > 0 && log[0]) {
+        gitCommit = log[0].hash;
+      }
+    } catch {
+      this.log("warn", "Could not get git commit hash");
+    }
+    const stateJson = JSON.stringify(state2);
+    const checkpointId = v4();
+    const now = /* @__PURE__ */ new Date();
+    const newCheckpoint = {
+      id: checkpointId,
+      projectId,
+      name: `Checkpoint: ${reason}`,
+      reason,
+      state: stateJson,
+      gitCommit,
+      createdAt: now
+    };
+    this.db.db.insert(checkpoints).values(newCheckpoint).run();
+    const pruned = this.pruneOldCheckpoints(projectId);
+    if (pruned > 0) {
+      this.log("info", `Pruned ${String(pruned)} old checkpoints for project ${projectId}`);
+    }
+    if (this.eventBus) {
+      void this.eventBus.emit(
+        "system:checkpoint-created",
+        {
+          checkpointId,
+          projectId,
+          reason,
+          gitCommit: gitCommit ?? ""
+        },
+        { source: "CheckpointManager" }
+      );
+    }
+    return {
+      id: checkpointId,
+      projectId,
+      name: `Checkpoint: ${reason}`,
+      reason,
+      state: stateJson,
+      gitCommit,
+      createdAt: now
+    };
+  }
+  /**
+   * Restore state from a checkpoint.
+   * @param checkpointId Checkpoint to restore
+   * @param options Restore options (e.g., restore git state)
+   * @throws CheckpointNotFoundError if checkpoint doesn't exist
+   */
+  async restoreCheckpoint(checkpointId, options) {
+    this.log("debug", `Restoring checkpoint ${checkpointId}`);
+    const checkpoint = this.db.db.select().from(checkpoints).where(eq(checkpoints.id, checkpointId)).get();
+    if (!checkpoint) {
+      throw new CheckpointNotFoundError(checkpointId);
+    }
+    if (!checkpoint.state) {
+      throw new RestoreError(checkpointId, "Checkpoint has no state data");
+    }
+    let state2;
+    try {
+      state2 = JSON.parse(checkpoint.state);
+    } catch {
+      throw new RestoreError(checkpointId, "Invalid state data");
+    }
+    this.stateManager.saveState(state2);
+    if (options?.restoreGit && checkpoint.gitCommit) {
+      try {
+        await this.gitService.checkoutBranch(checkpoint.gitCommit);
+      } catch (err) {
+        this.log(
+          "warn",
+          `Could not restore git state: ${err.message}`
+        );
+      }
+    }
+    if (this.eventBus) {
+      void this.eventBus.emit(
+        "system:checkpoint-restored",
+        {
+          checkpointId,
+          projectId: checkpoint.projectId,
+          gitCommit: checkpoint.gitCommit ?? ""
+        },
+        { source: "CheckpointManager" }
+      );
+    }
+  }
+  /**
+   * List all checkpoints for a project.
+   * @param projectId Project to list checkpoints for
+   * @returns Checkpoints ordered by date descending
+   */
+  listCheckpoints(projectId) {
+    this.log("debug", `Listing checkpoints for project ${projectId}`);
+    const result = this.db.db.select().from(checkpoints).where(eq(checkpoints.projectId, projectId)).orderBy(desc(checkpoints.createdAt)).all();
+    return result;
+  }
+  /**
+   * Delete a checkpoint.
+   * @param checkpointId Checkpoint to delete
+   */
+  deleteCheckpoint(checkpointId) {
+    this.log("debug", `Deleting checkpoint ${checkpointId}`);
+    this.db.db.delete(checkpoints).where(eq(checkpoints.id, checkpointId)).run();
+  }
+  /**
+   * Create automatic checkpoint based on system event.
+   * @param projectId Project to checkpoint
+   * @param trigger System event that triggered checkpoint
+   */
+  async createAutoCheckpoint(projectId, trigger) {
+    const reason = `Auto-checkpoint: ${trigger}`;
+    return this.createCheckpoint(projectId, reason);
+  }
+  /**
+   * Prune old checkpoints beyond maxCheckpoints limit.
+   * Keeps the N most recent checkpoints and deletes the rest.
+   * @param projectId Project to prune checkpoints for
+   * @returns Number of checkpoints deleted
+   */
+  pruneOldCheckpoints(projectId) {
+    const allCheckpoints = this.listCheckpoints(projectId);
+    if (allCheckpoints.length <= this.maxCheckpoints) {
+      return 0;
+    }
+    const toDelete = allCheckpoints.slice(this.maxCheckpoints);
+    for (const cp of toDelete) {
+      this.deleteCheckpoint(cp.id);
+    }
+    this.log(
+      "debug",
+      `Pruned ${String(toDelete.length)} checkpoints for project ${projectId}`
+    );
+    return toDelete.length;
+  }
+}
+class ReviewNotFoundError extends Error {
+  reviewId;
+  constructor(reviewId) {
+    super(`Review not found: ${reviewId}`);
+    this.name = "ReviewNotFoundError";
+    this.reviewId = reviewId;
+    Object.setPrototypeOf(this, new.target.prototype);
+  }
+}
+class HumanReviewService {
+  db;
+  eventBus;
+  checkpointManager;
+  logger;
+  /** In-memory cache of pending reviews */
+  pendingReviews = /* @__PURE__ */ new Map();
+  constructor(options) {
+    this.db = options.db;
+    this.eventBus = options.eventBus;
+    this.checkpointManager = options.checkpointManager;
+    this.logger = options.logger;
+    this.loadPendingReviews();
+  }
+  /**
+   * Log a message if logger is available
+   */
+  log(level, message, ...args) {
+    if (this.logger) {
+      this.logger[level](message, ...args);
+    }
+  }
+  /**
+   * Load pending reviews from database into memory cache
+   */
+  loadPendingReviews() {
+    this.log("debug", "Loading pending reviews from database");
+    const rows = this.db.db.select().from(sessions).where(
+      and(
+        eq(sessions.type, "review"),
+        eq(sessions.status, "pending")
+      )
+    ).all();
+    for (const row of rows) {
+      if (row.data) {
+        try {
+          const review = this.deserializeReview(row.data);
+          if (review.status === "pending") {
+            this.pendingReviews.set(review.id, review);
+          }
+        } catch (err) {
+          this.log("warn", "Failed to deserialize review", {
+            sessionId: row.id,
+            error: err instanceof Error ? err.message : "Unknown error"
+          });
+        }
+      }
+    }
+    this.log("info", `Loaded ${String(this.pendingReviews.size)} pending reviews`);
+  }
+  /**
+   * Create a new review request
+   */
+  async requestReview(options) {
+    const reviewId = v4();
+    const now = /* @__PURE__ */ new Date();
+    const review = {
+      id: reviewId,
+      taskId: options.taskId,
+      projectId: options.projectId,
+      reason: options.reason,
+      context: options.context ?? {},
+      status: "pending",
+      createdAt: now
+    };
+    const serialized = this.serializeReview(review);
+    this.db.db.insert(sessions).values({
+      id: reviewId,
+      projectId: options.projectId,
+      type: "review",
+      status: "pending",
+      data: serialized,
+      startedAt: now
+    }).run();
+    this.log("info", "Created review request", {
+      reviewId,
+      taskId: options.taskId,
+      reason: options.reason
+    });
+    if (this.checkpointManager) {
+      try {
+        await this.checkpointManager.createCheckpoint(
+          options.projectId,
+          `Review requested: ${options.reason}`
+        );
+        this.log("debug", "Created safety checkpoint for review", { reviewId });
+      } catch (err) {
+        this.log("warn", "Failed to create safety checkpoint", {
+          reviewId,
+          error: err instanceof Error ? err.message : "Unknown error"
+        });
+      }
+    }
+    this.pendingReviews.set(reviewId, review);
+    void this.eventBus.emit(
+      "review:requested",
+      {
+        reviewId,
+        taskId: options.taskId,
+        reason: options.reason,
+        context: review.context
+      },
+      { source: "HumanReviewService" }
+    );
+    return review;
+  }
+  /**
+   * Approve a pending review
+   */
+  approveReview(reviewId, resolution) {
+    const review = this.pendingReviews.get(reviewId);
+    if (!review) {
+      return Promise.reject(new ReviewNotFoundError(reviewId));
+    }
+    const now = /* @__PURE__ */ new Date();
+    review.status = "approved";
+    review.resolvedAt = now;
+    review.resolution = resolution;
+    const serialized = this.serializeReview(review);
+    this.db.db.update(sessions).set({
+      status: "approved",
+      data: serialized,
+      endedAt: now
+    }).where(eq(sessions.id, reviewId)).run();
+    this.log("info", "Review approved", { reviewId, resolution });
+    this.pendingReviews.delete(reviewId);
+    void this.eventBus.emit(
+      "review:approved",
+      {
+        reviewId,
+        resolution
+      },
+      { source: "HumanReviewService" }
+    );
+    return Promise.resolve();
+  }
+  /**
+   * Reject a pending review
+   */
+  rejectReview(reviewId, feedback) {
+    const review = this.pendingReviews.get(reviewId);
+    if (!review) {
+      return Promise.reject(new ReviewNotFoundError(reviewId));
+    }
+    const now = /* @__PURE__ */ new Date();
+    review.status = "rejected";
+    review.resolvedAt = now;
+    review.resolution = feedback;
+    const serialized = this.serializeReview(review);
+    this.db.db.update(sessions).set({
+      status: "rejected",
+      data: serialized,
+      endedAt: now
+    }).where(eq(sessions.id, reviewId)).run();
+    this.log("info", "Review rejected", { reviewId, feedback });
+    this.pendingReviews.delete(reviewId);
+    void this.eventBus.emit(
+      "review:rejected",
+      {
+        reviewId,
+        feedback
+      },
+      { source: "HumanReviewService" }
+    );
+    return Promise.resolve();
+  }
+  /**
+   * List all pending reviews
+   */
+  listPendingReviews() {
+    return Array.from(this.pendingReviews.values());
+  }
+  /**
+   * Get a specific review by ID
+   */
+  getReview(reviewId) {
+    return this.pendingReviews.get(reviewId);
+  }
+  /**
+   * Serialize a review for database storage
+   */
+  serializeReview(review) {
+    const serialized = {
+      id: review.id,
+      taskId: review.taskId,
+      projectId: review.projectId,
+      reason: review.reason,
+      context: review.context,
+      status: review.status,
+      createdAt: review.createdAt.toISOString(),
+      resolvedAt: review.resolvedAt?.toISOString(),
+      resolution: review.resolution
+    };
+    return JSON.stringify(serialized);
+  }
+  /**
+   * Deserialize a review from database storage
+   */
+  deserializeReview(data) {
+    const parsed = JSON.parse(data);
+    return {
+      id: parsed.id,
+      taskId: parsed.taskId,
+      projectId: parsed.projectId,
+      reason: parsed.reason,
+      context: parsed.context,
+      status: parsed.status,
+      createdAt: new Date(parsed.createdAt),
+      resolvedAt: parsed.resolvedAt ? new Date(parsed.resolvedAt) : void 0,
+      resolution: parsed.resolution
+    };
+  }
+}
+class MergerRunner {
+  baseDir;
+  worktreeManager;
+  constructor(config) {
+    this.baseDir = config.baseDir;
+    this.worktreeManager = config.worktreeManager;
+  }
+  /**
+   * Merge a worktree branch to the target branch
+   *
+   * @param worktreePath - Path to the worktree or branch name
+   * @param targetBranch - Target branch to merge into (default: 'main')
+   * @param options - Additional merge options
+   * @returns MergeResult with success/failure and details
+   */
+  async merge(worktreePath, targetBranch = "main", options = {}) {
+    console.log(`[MergerRunner] Starting merge: ${worktreePath} -> ${targetBranch}`);
+    try {
+      const branchName = await this.getBranchFromWorktree(worktreePath);
+      if (!branchName) {
+        return {
+          success: false,
+          error: `Could not determine branch for worktree: ${worktreePath}`
+        };
+      }
+      console.log(`[MergerRunner] Source branch: ${branchName}`);
+      await this.checkoutTargetBranch(targetBranch);
+      await this.pullLatestChanges(targetBranch);
+      const mergeResult = await this.performMerge(branchName, targetBranch, options);
+      if (mergeResult.success) {
+        console.log(`[MergerRunner] Merge successful: ${mergeResult.commitHash}`);
+      } else {
+        console.log(`[MergerRunner] Merge failed: ${mergeResult.error}`);
+      }
+      return mergeResult;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error(`[MergerRunner] Merge exception: ${errorMessage}`);
+      return {
+        success: false,
+        error: errorMessage
+      };
+    }
+  }
+  /**
+   * Get the branch name from a worktree path
+   */
+  async getBranchFromWorktree(worktreePath) {
+    if (this.worktreeManager) {
+      try {
+        const info = await this.getWorktreeInfoByPath(worktreePath);
+        if (info?.branch) {
+          return info.branch;
+        }
+      } catch {
+      }
+    }
+    try {
+      const { stdout } = await execaCommand("git rev-parse --abbrev-ref HEAD", {
+        cwd: worktreePath
+      });
+      return stdout.trim();
+    } catch {
+      if (!worktreePath.includes("/") && !worktreePath.includes("\\")) {
+        return worktreePath;
+      }
+      return null;
+    }
+  }
+  /**
+   * Get worktree info by path (if worktreeManager available)
+   */
+  async getWorktreeInfoByPath(path2) {
+    return null;
+  }
+  /**
+   * Checkout the target branch in the base directory
+   */
+  async checkoutTargetBranch(targetBranch) {
+    console.log(`[MergerRunner] Checking out target branch: ${targetBranch}`);
+    try {
+      const { stdout: statusOutput } = await execaCommand("git status --porcelain", {
+        cwd: this.baseDir
+      });
+      if (statusOutput.trim()) {
+        console.warn(`[MergerRunner] Warning: Working directory has uncommitted changes`);
+        await execaCommand('git stash push -m "nexus-merge-autostash"', {
+          cwd: this.baseDir
+        });
+      }
+      await execaCommand(`git checkout ${targetBranch}`, {
+        cwd: this.baseDir
+      });
+    } catch (error) {
+      throw new Error(`Failed to checkout ${targetBranch}: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+  /**
+   * Pull latest changes from remote
+   */
+  async pullLatestChanges(branch) {
+    console.log(`[MergerRunner] Pulling latest changes for: ${branch}`);
+    try {
+      const { stdout: remoteOutput } = await execaCommand("git remote", {
+        cwd: this.baseDir
+      });
+      if (remoteOutput.trim()) {
+        const remote = remoteOutput.trim().split("\n")[0];
+        await execaCommand(`git pull ${remote} ${branch} --ff-only`, {
+          cwd: this.baseDir
+        });
+      }
+    } catch {
+      console.log(`[MergerRunner] Could not pull latest changes (continuing with local state)`);
+    }
+  }
+  /**
+   * Perform the actual merge operation
+   */
+  async performMerge(sourceBranch, targetBranch, options) {
+    const message = options.message || `Merge ${sourceBranch} into ${targetBranch} (Nexus task completion)`;
+    try {
+      let mergeCmd = `git merge ${sourceBranch}`;
+      if (options.squash) {
+        mergeCmd += " --squash";
+      }
+      if (options.fastForward === false) {
+        mergeCmd += " --no-ff";
+      }
+      mergeCmd += ` -m "${message}"`;
+      console.log(`[MergerRunner] Executing: ${mergeCmd}`);
+      const { stdout } = await execaCommand(mergeCmd, {
+        cwd: this.baseDir
+      });
+      const { stdout: commitHash } = await execaCommand("git rev-parse HEAD", {
+        cwd: this.baseDir
+      });
+      const stats = this.parseMergeStats(stdout);
+      return {
+        success: true,
+        commitHash: commitHash.trim(),
+        filesChanged: stats.filesChanged,
+        insertions: stats.insertions,
+        deletions: stats.deletions
+      };
+    } catch (error) {
+      const conflictFiles = await this.checkForConflicts();
+      if (conflictFiles.length > 0) {
+        try {
+          await execaCommand("git merge --abort", { cwd: this.baseDir });
+        } catch {
+        }
+        return {
+          success: false,
+          error: `Merge conflict in ${conflictFiles.length} file(s)`,
+          conflictFiles
+        };
+      }
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  }
+  /**
+   * Check for merge conflicts
+   */
+  async checkForConflicts() {
+    try {
+      const { stdout } = await execaCommand("git diff --name-only --diff-filter=U", {
+        cwd: this.baseDir
+      });
+      if (stdout.trim()) {
+        return stdout.trim().split("\n").filter(Boolean);
+      }
+    } catch {
+    }
+    return [];
+  }
+  /**
+   * Parse merge output for statistics
+   */
+  parseMergeStats(output) {
+    const stats = { filesChanged: 0, insertions: 0, deletions: 0 };
+    const statsMatch = output.match(/(\d+) files? changed(?:, (\d+) insertions?\(\+\))?(?:, (\d+) deletions?\(-\))?/);
+    if (statsMatch) {
+      stats.filesChanged = parseInt(statsMatch[1], 10) || 0;
+      stats.insertions = parseInt(statsMatch[2], 10) || 0;
+      stats.deletions = parseInt(statsMatch[3], 10) || 0;
+    }
+    return stats;
+  }
+  /**
+   * Push merged changes to remote
+   */
+  async pushToRemote(branch = "main") {
+    console.log(`[MergerRunner] Pushing to remote: ${branch}`);
+    try {
+      const { stdout: remoteOutput } = await execaCommand("git remote", {
+        cwd: this.baseDir
+      });
+      if (!remoteOutput.trim()) {
+        return { success: false, error: "No remote configured" };
+      }
+      const remote = remoteOutput.trim().split("\n")[0];
+      await execaCommand(`git push ${remote} ${branch}`, {
+        cwd: this.baseDir
+      });
+      return { success: true };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  }
+  /**
+   * Abort an in-progress merge
+   */
+  async abortMerge() {
+    try {
+      await execaCommand("git merge --abort", { cwd: this.baseDir });
+      console.log(`[MergerRunner] Merge aborted`);
+    } catch {
+    }
+  }
+  /**
+   * Check if a merge is currently in progress
+   */
+  async isMergeInProgress() {
+    try {
+      const { stdout } = await execaCommand("git merge HEAD", {
+        cwd: this.baseDir
+      });
+      return false;
+    } catch {
+      try {
+        const { stdout } = await execaCommand("git rev-parse -q --verify MERGE_HEAD", {
+          cwd: this.baseDir
+        });
+        return !!stdout.trim();
+      } catch {
+        return false;
+      }
+    }
+  }
+}
 let bootstrappedNexus = null;
 let bootstrapInstance = null;
 let mainWindowRef = null;
@@ -15932,6 +16824,7 @@ class NexusBootstrap {
   checkpointManager = null;
   humanReviewService = null;
   gitService = null;
+  mergerRunner = null;
   repoMapGenerator = null;
   unsubscribers = [];
   /** Track project start times for completion metrics */
@@ -15988,6 +16881,23 @@ class NexusBootstrap {
       checkpointManager: this.checkpointManager
     });
     console.log("[NexusBootstrap] HumanReviewService created");
+    if (this.nexus.coordinator && typeof this.nexus.coordinator.setHumanReviewService === "function") {
+      this.nexus.coordinator.setHumanReviewService(this.humanReviewService);
+      console.log("[NexusBootstrap] HumanReviewService injected into coordinator");
+    } else {
+      console.warn("[NexusBootstrap] Coordinator does not support setHumanReviewService");
+    }
+    this.mergerRunner = new MergerRunner({
+      baseDir: this.config.workingDir,
+      worktreeManager: this.nexus.worktreeManager
+    });
+    console.log("[NexusBootstrap] MergerRunner created");
+    if (this.nexus.coordinator && typeof this.nexus.coordinator.setMergerRunner === "function") {
+      this.nexus.coordinator.setMergerRunner(this.mergerRunner);
+      console.log("[NexusBootstrap] MergerRunner injected into coordinator");
+    } else {
+      console.warn("[NexusBootstrap] Coordinator does not support setMergerRunner");
+    }
     this.repoMapGenerator = new RepoMapGenerator();
     console.log("[NexusBootstrap] RepoMapGenerator created");
     const interviewOptions = {
@@ -16047,6 +16957,18 @@ class NexusBootstrap {
     const interviewCompletedUnsub = this.eventBus.on("interview:completed", async (event) => {
       const { projectId, totalRequirements } = event.payload;
       console.log(`[NexusBootstrap] Interview completed for ${projectId} with ${totalRequirements} requirements`);
+      if (mainWindowRef && !mainWindowRef.isDestroyed()) {
+        mainWindowRef.webContents.send("nexus-event", {
+          type: "planning:started",
+          payload: {
+            projectId,
+            requirementCount: totalRequirements,
+            startedAt: (/* @__PURE__ */ new Date()).toISOString()
+          },
+          timestamp: (/* @__PURE__ */ new Date()).toISOString()
+        });
+        console.log(`[NexusBootstrap] Sent planning:started to UI`);
+      }
       await this.eventBus.emit("project:status-changed", {
         projectId,
         previousStatus: "planning",
@@ -16056,11 +16978,68 @@ class NexusBootstrap {
       try {
         const requirements2 = this.requirementsDB.getRequirements(projectId);
         console.log(`[NexusBootstrap] Retrieved ${requirements2.length} requirements for decomposition`);
+        if (mainWindowRef && !mainWindowRef.isDestroyed()) {
+          mainWindowRef.webContents.send("nexus-event", {
+            type: "planning:progress",
+            payload: {
+              projectId,
+              status: "analyzing",
+              progress: 10,
+              currentStep: "Analyzing requirements...",
+              tasksCreated: 0,
+              totalExpected: requirements2.length * 3
+              // Estimate 3 tasks per requirement
+            },
+            timestamp: (/* @__PURE__ */ new Date()).toISOString()
+          });
+        }
         const featureDescription = requirements2.map((r) => `- [${r.priority}] ${r.description}`).join("\n");
+        if (mainWindowRef && !mainWindowRef.isDestroyed()) {
+          mainWindowRef.webContents.send("nexus-event", {
+            type: "planning:progress",
+            payload: {
+              projectId,
+              status: "decomposing",
+              progress: 30,
+              currentStep: "Breaking down into atomic tasks...",
+              tasksCreated: 0,
+              totalExpected: requirements2.length * 3
+            },
+            timestamp: (/* @__PURE__ */ new Date()).toISOString()
+          });
+        }
         const decomposedTasks = await decomposer.decompose(featureDescription);
         console.log(`[NexusBootstrap] Decomposed into ${decomposedTasks.length} tasks`);
+        if (mainWindowRef && !mainWindowRef.isDestroyed()) {
+          mainWindowRef.webContents.send("nexus-event", {
+            type: "planning:progress",
+            payload: {
+              projectId,
+              status: "creating-tasks",
+              progress: 60,
+              currentStep: `Creating ${decomposedTasks.length} tasks...`,
+              tasksCreated: 0,
+              totalExpected: decomposedTasks.length
+            },
+            timestamp: (/* @__PURE__ */ new Date()).toISOString()
+          });
+        }
         const { featureCount, taskCount } = await this.storeDecomposition(projectId, decomposedTasks);
         console.log(`[NexusBootstrap] Stored ${featureCount} features and ${taskCount} tasks to database`);
+        if (mainWindowRef && !mainWindowRef.isDestroyed()) {
+          mainWindowRef.webContents.send("nexus-event", {
+            type: "planning:progress",
+            payload: {
+              projectId,
+              status: "validating",
+              progress: 85,
+              currentStep: "Validating dependencies and calculating execution waves...",
+              tasksCreated: taskCount,
+              totalExpected: taskCount
+            },
+            timestamp: (/* @__PURE__ */ new Date()).toISOString()
+          });
+        }
         const waves = resolver.calculateWaves(decomposedTasks);
         console.log(`[NexusBootstrap] Calculated ${waves.length} execution waves`);
         const totalMinutes = await this.nexus.planning.estimator.estimateTotal(decomposedTasks);
@@ -16112,6 +17091,18 @@ class NexusBootstrap {
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         console.error("[NexusBootstrap] Planning failed:", errorMessage);
+        if (mainWindowRef && !mainWindowRef.isDestroyed()) {
+          mainWindowRef.webContents.send("nexus-event", {
+            type: "planning:error",
+            payload: {
+              projectId,
+              error: errorMessage,
+              recoverable: true
+            },
+            timestamp: (/* @__PURE__ */ new Date()).toISOString()
+          });
+          console.log(`[NexusBootstrap] Sent planning:error to UI`);
+        }
         try {
           const coordStatus = coordinator.getStatus();
           if (coordStatus.state !== "idle") {
@@ -16223,6 +17214,11 @@ class NexusBootstrap {
       "interview:question-asked",
       "interview:requirement-captured",
       "interview:completed",
+      // Planning events
+      "planning:started",
+      "planning:progress",
+      "planning:completed",
+      "planning:error",
       // Project events
       "project:status-changed",
       "project:failed",
@@ -16608,6 +17604,7 @@ class NexusBootstrap {
     this.checkpointManager = null;
     this.humanReviewService = null;
     this.gitService = null;
+    this.mergerRunner = null;
     this.repoMapGenerator = null;
     this.databaseClient = null;
     bootstrappedNexus = null;

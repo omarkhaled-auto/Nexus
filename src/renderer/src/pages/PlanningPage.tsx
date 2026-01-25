@@ -11,7 +11,7 @@
 import { useEffect, useState, type ReactElement } from 'react';
 import { useNavigate, useLocation } from 'react-router';
 import { AnimatedPage } from '@renderer/components/AnimatedPage';
-import { usePlanningProgress, usePlanningStore } from '@renderer/hooks/usePlanningProgress';
+import { usePlanningProgress } from '@renderer/hooks/usePlanningProgress';
 import { cn } from '@renderer/lib/utils';
 import {
   Sparkles,
@@ -282,11 +282,10 @@ export default function PlanningPage(): ReactElement {
     const projectId = locationState?.projectId ?? 'current';
 
     if (status === 'idle' && requirements && requirements.length > 0) {
-      // Start the planning process
-      startPlanning(projectId);
-
-      // DEMO: Simulate planning progress for now (remove when backend is connected)
-      simulatePlanningProgress(requirements);
+      // Start the real planning process via backend
+      // The usePlanningProgress hook will receive events and update the UI
+      console.log('[PlanningPage] Starting planning for project:', projectId, 'with', requirements.length, 'requirements');
+      void startPlanning(projectId);
     }
   }, [locationState, status, startPlanning]);
 
@@ -317,113 +316,9 @@ export default function PlanningPage(): ReactElement {
     void navigate('/evolution');
   };
 
-  // Handle retry
+  // Handle retry - triggers real backend planning again
   const handleRetry = () => {
     retry();
-    // Re-trigger simulation if needed
-    const requirements = locationState?.requirements;
-    if (requirements) {
-      simulatePlanningProgress(requirements);
-    }
-  };
-
-  // DEMO: Simulate planning progress (remove when backend is connected)
-  const simulatePlanningProgress = (
-    requirements: Array<{ id: string; summary: string; priority?: string }>
-  ) => {
-    const store = usePlanningStore.getState();
-
-    // Phase 1: Analyzing (0-25%)
-    setTimeout(() => {
-      store.updateProgress({
-        projectId: 'current',
-        status: 'analyzing',
-        progress: 15,
-        currentStep: 'Analyzing requirements...',
-        tasksCreated: 0,
-        totalExpected: requirements.length * 3,
-      });
-    }, 500);
-
-    // Phase 2: Decomposing (25-50%)
-    setTimeout(() => {
-      store.updateProgress({
-        projectId: 'current',
-        status: 'decomposing',
-        progress: 35,
-        currentStep: 'Breaking down into features...',
-        tasksCreated: 0,
-        totalExpected: requirements.length * 3,
-      });
-
-      // Add features
-      requirements.forEach((req, index) => {
-        setTimeout(() => {
-          store.addFeature({
-            id: `feature-${index + 1}`,
-            name: req.summary.slice(0, 50),
-            taskCount: 3,
-            status: 'identified',
-          });
-        }, index * 300);
-      });
-    }, 1500);
-
-    // Phase 3: Creating tasks (50-90%)
-    setTimeout(() => {
-      store.setStatus('creating-tasks');
-
-      const totalTasks = requirements.length * 3;
-      let taskIndex = 0;
-
-      requirements.forEach((req, reqIndex) => {
-        const taskTypes = ['Setup', 'Implementation', 'Testing'];
-        taskTypes.forEach((type, typeIndex) => {
-          const currentIndex = taskIndex++;
-          setTimeout(
-            () => {
-              store.addTask({
-                id: `task-${currentIndex + 1}`,
-                title: `${type}: ${req.summary.slice(0, 40)}`,
-                featureId: `feature-${reqIndex + 1}`,
-                priority: req.priority === 'must' ? 'critical' : req.priority === 'should' ? 'high' : 'normal',
-                complexity: typeIndex === 1 ? 'moderate' : 'simple',
-                estimatedMinutes: typeIndex === 1 ? 30 : 15,
-                dependsOn: typeIndex > 0 ? [`task-${currentIndex}`] : [],
-                status: 'created',
-              });
-
-              store.updateProgress({
-                projectId: 'current',
-                status: 'creating-tasks',
-                progress: 50 + ((currentIndex + 1) / totalTasks) * 40,
-                currentStep: `Creating task ${currentIndex + 1} of ${totalTasks}...`,
-                tasksCreated: currentIndex + 1,
-                totalExpected: totalTasks,
-              });
-            },
-            currentIndex * 400
-          );
-        });
-      });
-    }, 3000);
-
-    // Phase 4: Validating and Complete (90-100%)
-    const totalTime = 3000 + requirements.length * 3 * 400 + 1000;
-    setTimeout(() => {
-      store.updateProgress({
-        projectId: 'current',
-        status: 'validating',
-        progress: 95,
-        currentStep: 'Validating dependencies...',
-        tasksCreated: requirements.length * 3,
-        totalExpected: requirements.length * 3,
-      });
-    }, totalTime);
-
-    setTimeout(() => {
-      store.complete();
-    }, totalTime + 1500);
   };
 
   return (

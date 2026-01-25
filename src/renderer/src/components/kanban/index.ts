@@ -8,9 +8,9 @@ export { KanbanHeader } from './KanbanHeader'
 export { FeatureCard } from './FeatureCard'
 export { KanbanCard } from './KanbanCard'
 
-// Modal components
-export { FeatureDetailModal } from './FeatureDetailModal'
-export { TaskDetailModal } from './TaskDetailModal'
+// Panel components (replaces legacy modals)
+export { DetailPanel } from './DetailPanel'
+export type { DetailPanelProps, DetailPanelMode } from './DetailPanel'
 
 // Execution controls
 export { ExecutionControls } from './ExecutionControls'
@@ -18,4 +18,3 @@ export { ExecutionControls } from './ExecutionControls'
 // Re-export types for convenience
 export type { ExecutionControlsProps } from './ExecutionControls'
 export type { KanbanCardProps } from './KanbanCard'
-export type { TaskDetailModalProps } from './TaskDetailModal'

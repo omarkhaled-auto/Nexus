@@ -1,0 +1,48 @@
+{
+  "messages": [
+    "I want to build a simple todo app inspired by Monday.com's clean design. This will be a React + Vite web application that runs entirely in the browser.",
+
+    "The app needs these features:\n1. Display a list of tasks as cards\n2. Each task has a title, optional description, and completion status\n3. Add new tasks via an input form at the top\n4. Edit task titles inline by clicking on them\n5. Delete tasks with a trash icon (show confirmation)\n6. Toggle task completion with a checkbox\n7. Filter tasks: Show All, Active only, or Completed only\n8. Store all tasks in localStorage so they persist on refresh",
+
+    "For the UI design:\n- Use Monday.com's purple (#6161FF) as the accent color\n- Clean white background with subtle gray borders\n- Cards have rounded corners and subtle shadows\n- Smooth hover animations on interactive elements\n- Responsive: stack vertically on mobile, horizontal filters on desktop",
+
+    "Technical stack:\n- React 18 with TypeScript\n- Vite as the build tool\n- Tailwind CSS for styling\n- No external state management (React useState is fine)\n- No backend - pure client-side localStorage\n- Structure: components/, hooks/, types/ folders"
+  ],
+  "expectedRequirements": {
+    "minCount": 8,
+    "categories": ["functional", "technical", "non-functional"],
+    "mustInclude": [
+      "task list",
+      "add tasks",
+      "edit tasks",
+      "delete tasks",
+      "completion status",
+      "localStorage",
+      "React",
+      "Tailwind"
+    ]
+  },
+  "expectedTasks": {
+    "minCount": 10,
+    "mustInclude": [
+      "project setup",
+      "Task type",
+      "localStorage",
+      "TaskCard",
+      "TaskList",
+      "AddTaskForm",
+      "FilterBar"
+    ]
+  },
+  "expectedFiles": [
+    "package.json",
+    "vite.config.ts",
+    "src/App.tsx",
+    "src/main.tsx",
+    "src/types/Task.ts",
+    "src/hooks/useLocalStorage.ts",
+    "src/components/TaskCard.tsx",
+    "src/components/TaskList.tsx",
+    "src/components/FilterBar.tsx"
+  ]
+}

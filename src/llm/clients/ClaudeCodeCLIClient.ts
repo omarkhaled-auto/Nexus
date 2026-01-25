@@ -26,6 +26,8 @@ export interface ClaudeCodeCLIConfig {
   maxRetries?: number;
   /** Optional logger */
   logger?: Logger;
+  /** Skip permission prompts for automated usage, default: false */
+  skipPermissions?: boolean;
 }
 
 /**
@@ -100,6 +102,7 @@ export class ClaudeCodeCLIClient implements LLMClient {
       timeout: config.timeout ?? DEFAULT_TIMEOUT,
       maxRetries: config.maxRetries ?? DEFAULT_MAX_RETRIES,
       logger: config.logger,
+      skipPermissions: config.skipPermissions ?? false,
     };
   }
 
@@ -248,10 +251,17 @@ export class ClaudeCodeCLIClient implements LLMClient {
       // Explicitly disable all tools for chat-only mode (e.g., interviews)
       // Use combined arg format for Windows shell compatibility
       args.push('--tools=""');
-    } else if (options?.tools && options.tools.length > 0) {
-      // Specific tools requested
-      const toolNames = this.mapToolNames(options.tools);
-      args.push('--allowedTools', toolNames.join(','));
+    } else {
+      // Tools are enabled - add skip permissions flag for automated execution
+      if (this.config.skipPermissions) {
+        args.push('--dangerously-skip-permissions');
+      }
+
+      if (options?.tools && options.tools.length > 0) {
+        // Specific tools requested
+        const toolNames = this.mapToolNames(options.tools);
+        args.push('--allowedTools', toolNames.join(','));
+      }
     }
     // If neither disableTools nor tools specified, CLI uses default (all tools)
 

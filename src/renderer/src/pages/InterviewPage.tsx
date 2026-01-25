@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactElement } from 'react';
 import { useNavigate } from 'react-router';
 import { InterviewLayout, ChatPanel, RequirementsSidebar } from '@renderer/components/interview';
 import { useInterviewStore, useIsInterviewing, useRequirements, useSessionId } from '@renderer/stores/interviewStore';
+import { useCurrentProject } from '@renderer/stores/projectStore';
 import { useInterviewPersistence } from '@renderer/hooks';
 import { AnimatedPage } from '@renderer/components/AnimatedPage';
 import {
@@ -28,6 +29,7 @@ export default function InterviewPage(): ReactElement {
   const isInterviewing = useIsInterviewing();
   const requirements = useRequirements();
   const sessionId = useSessionId();
+  const currentProject = useCurrentProject();
   const startInterview = useInterviewStore((s) => s.startInterview);
   const completeInterviewStore = useInterviewStore((s) => s.completeInterview);
   const reset = useInterviewStore((s) => s.reset);
@@ -120,14 +122,16 @@ export default function InterviewPage(): ReactElement {
       // Complete the interview in the store (emits INTERVIEW_COMPLETED event)
       completeInterviewStore();
 
-      // Navigate to planning page with requirements context
+      // Navigate to planning page with requirements context and projectId
       // Planning page will show progress while tasks are created, then auto-navigate to Kanban
-      void navigate('/planning', { state: { requirements } });
+      const projectId = currentProject?.id ?? sessionId ?? `temp-${Date.now()}`;
+      void navigate('/planning', { state: { requirements, projectId } });
     } catch (err) {
       console.error('Failed to complete interview:', err);
       // Still navigate even if backend call fails - requirements are in store
       completeInterviewStore();
-      void navigate('/planning', { state: { requirements } });
+      const projectId = currentProject?.id ?? sessionId ?? `temp-${Date.now()}`;
+      void navigate('/planning', { state: { requirements, projectId } });
     } finally {
       setIsCompleting(false);
     }

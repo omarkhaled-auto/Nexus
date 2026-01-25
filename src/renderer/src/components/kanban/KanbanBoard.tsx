@@ -17,8 +17,9 @@ import { useFeatureStore } from '@renderer/stores/featureStore'
 import { useExecutionStore } from '@renderer/hooks/useTaskOrchestration'
 import { KanbanColumn } from './KanbanColumn'
 import { FeatureCard } from './FeatureCard'
-import { FeatureDetailModal } from './FeatureDetailModal'
-import { TaskDetailModal } from './TaskDetailModal'
+import { DetailPanel, type DetailPanelMode } from './DetailPanel'
+import { CardContextMenu } from './CardContextMenu'
+import { CommandPalette } from './CommandPalette'
 
 // 6-column Kanban configuration
 export const COLUMNS: {
@@ -36,14 +37,23 @@ export const COLUMNS: {
 
 export function KanbanBoard() {
   const [activeId, setActiveId] = useState<string | null>(null)
+
+  // Panel state
+  const [panelOpen, setPanelOpen] = useState(false)
+  const [panelMode, setPanelMode] = useState<DetailPanelMode>('feature')
   const [selectedFeature, setSelectedFeature] = useState<Feature | null>(null)
   const [selectedTask, setSelectedTask] = useState<KanbanTask | null>(null)
+
+  // Context menu state
+  const [contextMenuFeature, setContextMenuFeature] = useState<Feature | null>(null)
+  const [contextMenuPosition, setContextMenuPosition] = useState({ x: 0, y: 0 })
 
   // Get raw features and filter from store
   const allFeatures = useFeatureStore((s) => s.features)
   const filter = useFeatureStore((s) => s.filter)
   const moveFeature = useFeatureStore((s) => s.moveFeature)
   const reorderFeatures = useFeatureStore((s) => s.reorderFeatures)
+  const removeFeature = useFeatureStore((s) => s.removeFeature)
 
   // Get execution store state and actions
   const executionTasks = useExecutionStore((s) => s.tasks)
@@ -54,7 +64,6 @@ export function KanbanBoard() {
   const isExecutionMode = executionTasks.length > 0 && executionStatus !== 'idle'
 
   // Memoize filtered features to avoid infinite loop
-  // (useFilteredFeatures creates new array each render, causing React sync issues)
   const features = useMemo(() => {
     if (!filter.search && !filter.priority && !filter.status) {
       return allFeatures
@@ -163,21 +172,63 @@ export function KanbanBoard() {
     setActiveId(null)
   }
 
-  // Handle feature click - only open modal if not dragging
-  function handleFeatureClick(feature: Feature) {
-    // Only open modal if we're not in the middle of a drag operation
+  // Handle feature click - open detail panel
+  const handleFeatureClick = useCallback((feature: Feature) => {
+    // Only open panel if we're not in the middle of a drag operation
     if (!activeId) {
-      // If in execution mode, find the corresponding task and open task modal
+      // If in execution mode, find the corresponding task and open task panel
       if (isExecutionMode) {
         const task = executionTasks.find(t => t.id === feature.id || t.featureId === feature.id)
         if (task) {
           setSelectedTask(task)
+          setSelectedFeature(null)
+          setPanelMode('task')
+          setPanelOpen(true)
           return
         }
       }
       setSelectedFeature(feature)
+      setSelectedTask(null)
+      setPanelMode('feature')
+      setPanelOpen(true)
     }
-  }
+  }, [activeId, isExecutionMode, executionTasks])
+
+  // Handle feature edit (same as click for now)
+  const handleFeatureEdit = useCallback((feature: Feature) => {
+    handleFeatureClick(feature)
+  }, [handleFeatureClick])
+
+  // Handle feature move (open move menu via context menu)
+  const handleFeatureMove = useCallback((feature: Feature, event?: React.MouseEvent) => {
+    // If we have an event, use its position
+    if (event) {
+      setContextMenuFeature(feature)
+      setContextMenuPosition({ x: event.clientX, y: event.clientY })
+    }
+  }, [])
+
+  // Handle feature delete
+  const handleFeatureDelete = useCallback(async (featureId: string) => {
+    const result = await window.nexusAPI.deleteFeature(featureId)
+    if (result.success) {
+      removeFeature(featureId)
+    }
+  }, [removeFeature])
+
+  // Handle context menu
+  const handleContextMenu = useCallback((e: React.MouseEvent, feature: Feature) => {
+    e.preventDefault()
+    setContextMenuFeature(feature)
+    setContextMenuPosition({ x: e.clientX, y: e.clientY })
+  }, [])
+
+  // Close panel
+  const handleClosePanel = useCallback(() => {
+    setPanelOpen(false)
+    setSelectedFeature(null)
+    setSelectedTask(null)
+  }, [])
 
   // Task modal action handlers
   const handleStartTask = useCallback((taskId: string): void => {
@@ -193,8 +244,8 @@ export function KanbanBoard() {
       status: 'cancelled' as KanbanTaskStatus,
       completedAt: new Date().toISOString()
     })
-    setSelectedTask(null)
-  }, [updateTask])
+    handleClosePanel()
+  }, [updateTask, handleClosePanel])
 
   const handleRetryTask = useCallback((taskId: string): void => {
     const task = executionTasks.find(t => t.id === taskId)
@@ -214,8 +265,8 @@ export function KanbanBoard() {
       status: 'cancelled' as KanbanTaskStatus,
       completedAt: new Date().toISOString()
     })
-    setSelectedTask(null)
-  }, [updateTask])
+    handleClosePanel()
+  }, [updateTask, handleClosePanel])
 
   const handleReopenTask = useCallback((taskId: string): void => {
     updateTask(taskId, {
@@ -224,6 +275,56 @@ export function KanbanBoard() {
       completedAt: null
     })
   }, [updateTask])
+
+  // Handle move from context menu
+  const handleMoveToColumn = useCallback((feature: Feature, column: FeatureStatus) => {
+    if (feature.status !== column) {
+      moveFeature(feature.id, column)
+    }
+    setContextMenuFeature(null)
+  }, [moveFeature])
+
+  // Handle priority change from context menu
+  const handleChangePriority = useCallback(async (feature: Feature, priority: Feature['priority']) => {
+    // Update feature priority via API and store
+    try {
+      const result = await window.nexusAPI.updateFeature(feature.id, { priority })
+      if (result) {
+        // Update local store
+        const updateFeatureStore = useFeatureStore.getState().updateFeature
+        updateFeatureStore(feature.id, { priority })
+      }
+    } catch (error) {
+      console.error('[KanbanBoard] Failed to update feature priority:', error)
+    }
+    setContextMenuFeature(null)
+  }, [])
+
+  // Handle feature update from DetailPanel inline editing
+  const handleUpdateFeature = useCallback(async (featureId: string, updates: Partial<Feature>) => {
+    try {
+      const result = await window.nexusAPI.updateFeature(featureId, updates)
+      if (result) {
+        // Update local store
+        const updateFeatureStore = useFeatureStore.getState().updateFeature
+        updateFeatureStore(featureId, updates)
+        // Update selected feature if it's the one being edited
+        if (selectedFeature?.id === featureId) {
+          setSelectedFeature({ ...selectedFeature, ...updates })
+        }
+      }
+    } catch (error) {
+      console.error('[KanbanBoard] Failed to update feature:', error)
+    }
+  }, [selectedFeature])
+
+  // Handle command palette actions
+  const handleCommandSelect = useCallback((featureId: string) => {
+    const feature = features.find(f => f.id === featureId)
+    if (feature) {
+      handleFeatureClick(feature)
+    }
+  }, [features, handleFeatureClick])
 
   return (
     <>
@@ -234,13 +335,16 @@ export function KanbanBoard() {
         onDragEnd={handleDragEnd}
         onDragCancel={handleDragCancel}
       >
-        <div className="flex h-full gap-4 overflow-x-auto p-4">
+        <div className="flex h-full gap-6 overflow-x-auto p-4">
           {COLUMNS.map((column) => (
             <KanbanColumn
               key={column.id}
               column={column}
               features={featuresByColumn[column.id]}
               onFeatureClick={handleFeatureClick}
+              onFeatureEdit={handleFeatureEdit}
+              onFeatureDelete={(feature) => void handleFeatureDelete(feature.id)}
+              onContextMenu={handleContextMenu}
             />
           ))}
         </div>
@@ -249,22 +353,39 @@ export function KanbanBoard() {
         </DragOverlay>
       </DndContext>
 
-      <FeatureDetailModal
+      {/* Detail Panel (replaces both modals) */}
+      <DetailPanel
+        open={panelOpen}
+        onClose={handleClosePanel}
+        mode={panelMode}
         feature={selectedFeature}
-        open={!!selectedFeature}
-        onOpenChange={(open) => { if (!open) setSelectedFeature(null) }}
-      />
-
-      <TaskDetailModal
         task={selectedTask}
         allTasks={executionTasks}
-        open={!!selectedTask}
-        onOpenChange={(open) => { if (!open) setSelectedTask(null) }}
+        onDeleteFeature={handleFeatureDelete}
+        onUpdateFeature={handleUpdateFeature}
         onStartTask={handleStartTask}
         onCancelTask={handleCancelTask}
         onRetryTask={handleRetryTask}
         onSkipTask={handleSkipTask}
         onReopenTask={handleReopenTask}
+      />
+
+      {/* Context Menu */}
+      <CardContextMenu
+        feature={contextMenuFeature}
+        position={contextMenuPosition}
+        columns={COLUMNS}
+        onClose={() => setContextMenuFeature(null)}
+        onEdit={handleFeatureEdit}
+        onMoveTo={handleMoveToColumn}
+        onChangePriority={handleChangePriority}
+        onDelete={(feature) => void handleFeatureDelete(feature.id)}
+      />
+
+      {/* Command Palette */}
+      <CommandPalette
+        features={features}
+        onSelectFeature={handleCommandSelect}
       />
     </>
   )

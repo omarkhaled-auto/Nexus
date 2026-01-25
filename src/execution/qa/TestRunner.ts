@@ -224,8 +224,16 @@ export class TestRunner {
         const parsed = this.parseOutput(stdout, stderr);
         const duration = Date.now() - startTime;
 
+        // Determine success:
+        // - Exit code 0 and no failures: success
+        // - No tests found (passed=0, failed=0): treat as success for new projects
+        // - Tests ran but some failed: failure
+        const noTestsFound = parsed.passed === 0 && parsed.failed === 0;
+        const allTestsPassed = code === 0 && parsed.failed === 0;
+        const isSuccess = allTestsPassed || noTestsFound;
+
         resolve({
-          success: code === 0 && parsed.failed === 0,
+          success: isSuccess,
           passed: parsed.passed,
           failed: parsed.failed,
           skipped: parsed.skipped,

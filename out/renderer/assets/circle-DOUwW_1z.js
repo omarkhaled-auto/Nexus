@@ -1,0 +1,12 @@
+import { c as createLucideIcon } from "./index-BAupzAA3.js";
+/**
+ * @license lucide-react v0.562.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode = [["circle", { cx: "12", cy: "12", r: "10", key: "1mglay" }]];
+const Circle = createLucideIcon("circle", __iconNode);
+export {
+  Circle as C
+};

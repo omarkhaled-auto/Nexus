@@ -51,3 +51,7 @@ __test_output__/
 
 # Build artifacts
 *.tsbuildinfo
+
+# E2E test artifacts
+.nexus-e2e-data/
+todo-app/

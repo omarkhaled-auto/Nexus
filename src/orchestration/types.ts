@@ -35,6 +35,7 @@ export type ExecutionPhase =
   | 'planning'    // Decomposing and planning tasks
   | 'execution'   // Executing tasks
   | 'review'      // Human review checkpoint
+  | 'completion'  // All tasks completed
   | 'completed';  // All tasks done
 
 /**
@@ -253,10 +254,17 @@ export type NexusEventType =
   | 'task:escalated'
   | 'task:merged'
   | 'task:merge-failed'
+  | 'task:pushed'
   | 'agent:released'
   | 'checkpoint:created'
   | 'checkpoint:failed'
-  | 'orchestration:mode';
+  | 'orchestration:mode'
+  | 'evolution:analyzing'
+  | 'evolution:analyzed'
+  | 'evolution:analysis-failed'
+  | 'project:completed'
+  | 'project:failed'
+  | 'review:requested';
 
 /**
  * Orchestration event structure

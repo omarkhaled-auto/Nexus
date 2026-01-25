@@ -360,6 +360,130 @@ const nexusAPI = {
     }
   },
 
+  // ========================================
+  // Planning API (Phase 25 - End-to-End Wiring)
+  // ========================================
+
+  /**
+   * Planning operations for task decomposition
+   */
+  planning: {
+    /**
+     * Start planning for a project
+     * Triggers TaskDecomposer to break down requirements into tasks
+     * @param projectId - Project ID to start planning for
+     * @returns Promise with success status and planning info
+     */
+    start: (projectId: string): Promise<{ success: boolean; message?: string; error?: string; requirementCount?: number }> =>
+      ipcRenderer.invoke('planning:start', projectId),
+
+    /**
+     * Get planning status for a project
+     * @param projectId - Project ID to check
+     * @returns Promise with planning status and counts
+     */
+    getStatus: (projectId: string): Promise<{
+      status: 'idle' | 'analyzing' | 'decomposing' | 'creating-tasks' | 'validating' | 'complete' | 'error' | 'unknown';
+      progress: number;
+      taskCount: number;
+      featureCount: number;
+    }> => ipcRenderer.invoke('planning:getStatus', projectId),
+  },
+
+  /**
+   * Subscribe to planning progress events
+   * @param callback - Called when planning progress updates
+   * @returns Unsubscribe function
+   */
+  onPlanningProgress: (callback: (data: {
+    projectId: string;
+    status: string;
+    progress: number;
+    currentStep: string;
+    tasksCreated: number;
+    totalExpected: number;
+  }) => void): Unsubscribe => {
+    const handler = (_event: IpcRendererEvent, data: {
+      type: string;
+      payload: {
+        projectId: string;
+        status: string;
+        progress: number;
+        currentStep: string;
+        tasksCreated: number;
+        totalExpected: number;
+      };
+    }): void => {
+      if (data.type === 'planning:progress') {
+        callback(data.payload)
+      }
+    }
+    ipcRenderer.on('nexus-event', handler)
+    return () => {
+      ipcRenderer.removeListener('nexus-event', handler)
+    }
+  },
+
+  /**
+   * Subscribe to planning completed events
+   * @param callback - Called when planning completes
+   * @returns Unsubscribe function
+   */
+  onPlanningCompleted: (callback: (data: {
+    projectId: string;
+    featureCount: number;
+    taskCount: number;
+    totalMinutes: number;
+    waveCount: number;
+  }) => void): Unsubscribe => {
+    const handler = (_event: IpcRendererEvent, data: {
+      type: string;
+      payload: {
+        projectId: string;
+        featureCount: number;
+        taskCount: number;
+        totalMinutes: number;
+        waveCount: number;
+      };
+    }): void => {
+      if (data.type === 'planning:completed') {
+        callback(data.payload)
+      }
+    }
+    ipcRenderer.on('nexus-event', handler)
+    return () => {
+      ipcRenderer.removeListener('nexus-event', handler)
+    }
+  },
+
+  /**
+   * Subscribe to planning error events
+   * @param callback - Called when planning fails
+   * @returns Unsubscribe function
+   */
+  onPlanningError: (callback: (data: {
+    projectId: string;
+    error: string;
+    recoverable: boolean;
+  }) => void): Unsubscribe => {
+    const handler = (_event: IpcRendererEvent, data: {
+      type: string;
+      payload: {
+        projectId: string;
+        error: string;
+        recoverable: boolean;
+      };
+    }): void => {
+      if (data.type === 'planning:error') {
+        callback(data.payload)
+      }
+    }
+    ipcRenderer.on('nexus-event', handler)
+    return () => {
+      ipcRenderer.removeListener('nexus-event', handler)
+    }
+  },
+
   // Interview Events (BUILD-014)
   // ========================================
 

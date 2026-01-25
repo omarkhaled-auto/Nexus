@@ -156,6 +156,8 @@ export function useRealTimeUpdates(): void {
         }
       });
       unsubscribers.push(unsubMetrics);
+    } else {
+      console.warn('[useRealTimeUpdates] onMetricsUpdate not available - real-time metrics updates disabled');
     }
 
     // Subscribe to timeline events
@@ -179,6 +181,8 @@ export function useRealTimeUpdates(): void {
         }
       });
       unsubscribers.push(unsubTimeline);
+    } else {
+      console.warn('[useRealTimeUpdates] onTimelineEvent not available - timeline updates disabled');
     }
 
     // Subscribe to cost updates
@@ -214,6 +218,8 @@ export function useRealTimeUpdates(): void {
         }
       });
       unsubscribers.push(unsubCosts);
+    } else {
+      console.warn('[useRealTimeUpdates] onCostUpdate not available - cost tracking updates disabled');
     }
 
     // ========================================
@@ -244,6 +250,8 @@ export function useRealTimeUpdates(): void {
         }
       });
       unsubscribers.push(unsubAgentMetrics);
+    } else {
+      console.warn('[useRealTimeUpdates] onAgentStatusUpdate not available - agent metrics updates disabled');
     }
 
     // Subscribe to agent status changes (for agentStore)
@@ -264,6 +272,8 @@ export function useRealTimeUpdates(): void {
         }
       });
       unsubscribers.push(unsubAgentStatus);
+    } else {
+      console.warn('[useRealTimeUpdates] onAgentStatus not available - agent status updates disabled');
     }
 
     // ========================================
@@ -292,6 +302,8 @@ export function useRealTimeUpdates(): void {
         }
       });
       unsubscribers.push(unsubProgress);
+    } else {
+      console.warn('[useRealTimeUpdates] onExecutionProgress not available - execution progress updates disabled');
     }
 
     // Subscribe to execution log updates
@@ -315,6 +327,8 @@ export function useRealTimeUpdates(): void {
         }
       });
       unsubscribers.push(unsubLogs);
+    } else {
+      console.warn('[useRealTimeUpdates] onExecutionLogUpdate not available - execution log updates disabled');
     }
 
     // ========================================
@@ -339,6 +353,8 @@ export function useRealTimeUpdates(): void {
         }
       });
       unsubscribers.push(unsubFeature);
+    } else {
+      console.warn('[useRealTimeUpdates] onFeatureUpdate not available - Kanban real-time updates disabled');
     }
 
     // Cleanup on unmount

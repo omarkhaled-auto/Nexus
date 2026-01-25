@@ -1,9 +1,11 @@
 import type { ReactElement } from 'react';
 import { Header } from '@renderer/components/layout/Header';
-import { Terminal, Trash2, Download, CheckCircle, XCircle, Loader2, AlertTriangle } from 'lucide-react';
+import { Terminal, Trash2, Download, CheckCircle, XCircle, Loader2, AlertTriangle, AlertCircle } from 'lucide-react';
 import { Button } from '@renderer/components/ui/button';
 import { useState, useEffect, useCallback } from 'react';
 import { cn } from '@renderer/lib/utils';
+import { useCheckpoint } from '@renderer/hooks/useCheckpoint';
+import { ReviewModal } from '@renderer/components/checkpoints/ReviewModal';
 
 // ============================================================================
 // Helper Functions
@@ -203,6 +205,16 @@ export default function ExecutionPage(): ReactElement {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Human review state
+  const {
+    pendingReviews,
+    activeReview,
+    loadPendingReviews,
+    selectReview,
+    approveReview,
+    rejectReview,
+  } = useCheckpoint();
+
   // Load real data from backend
   const loadRealData = useCallback(async () => {
     if (!isElectronEnvironment()) {
@@ -288,6 +300,31 @@ export default function ExecutionPage(): ReactElement {
     };
   }, [loadRealData, subscribeToEvents]);
 
+  // Human review: Load pending reviews on mount and periodically
+  useEffect(() => {
+    if (!isElectronEnvironment()) return;
+
+    void loadPendingReviews();
+    const reviewInterval = setInterval(() => void loadPendingReviews(), 5000);
+
+    return () => clearInterval(reviewInterval);
+  }, [loadPendingReviews]);
+
+  // Human review: Subscribe to review:requested events
+  useEffect(() => {
+    if (!isElectronEnvironment()) return;
+
+    const unsubscribe = window.nexusAPI.onNexusEvent?.((event: { type: string }) => {
+      if (event.type === 'review:requested' || event.type === 'task:escalated') {
+        void loadPendingReviews();
+      }
+    });
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [loadPendingReviews]);
+
   const activeTabData = tabs.find((t) => t.id === activeTab) || tabs[0];
 
   const handleClearLogs = async () => {
@@ -370,6 +407,34 @@ export default function ExecutionPage(): ReactElement {
           <span className="text-sm text-accent-error">{error}</span>
         </div>
       )}
+
+      {/* Human Review Required Banner */}
+      {pendingReviews.length > 0 && (
+        <div className="mx-6 mt-4 px-4 py-3 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 text-amber-500" />
+            <span className="text-sm text-amber-200">
+              {pendingReviews.length} task{pendingReviews.length > 1 ? 's' : ''} need{pendingReviews.length === 1 ? 's' : ''} human review
+            </span>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => selectReview(pendingReviews[0])}
+            className="border-amber-500/50 text-amber-200 hover:bg-amber-500/20"
+          >
+            Review Now
+          </Button>
+        </div>
+      )}
+
+      {/* Human Review Modal */}
+      <ReviewModal
+        review={activeReview}
+        onApprove={approveReview}
+        onReject={rejectReview}
+        onClose={() => selectReview(null)}
+      />
 
       {/* Loading State */}
       {loading && (

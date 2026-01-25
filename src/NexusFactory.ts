@@ -182,6 +182,8 @@ export interface NexusInstance {
   taskQueue: TaskQueue;
   /** Event bus for observability */
   eventBus: EventBus;
+  /** Worktree manager for isolated task branches (Phase 3) */
+  worktreeManager: WorktreeManager;
   /**
    * LLM clients
    * Note: These implement LLMClient interface and can be either API or CLI clients
@@ -403,6 +405,7 @@ export class NexusFactory {
       agentPool,
       taskQueue,
       eventBus,
+      worktreeManager,
       llm: {
         claude: claudeClient,
         gemini: geminiClient,
@@ -562,6 +565,7 @@ export class NexusFactory {
       agentPool,
       taskQueue,
       eventBus,
+      worktreeManager,
       llm: {
         claude: claudeClient,
         gemini: geminiClient,
