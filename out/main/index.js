@@ -395,6 +395,81 @@ function getEventBus() {
   }
   return globalEventBus;
 }
+const DEFAULT_CLAUDE_MODEL = "claude-sonnet-4-5-20250929";
+const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";
+const LOCAL_EMBEDDING_MODELS = {
+  "Xenova/all-MiniLM-L6-v2": {
+    id: "Xenova/all-MiniLM-L6-v2",
+    name: "MiniLM L6 v2",
+    dimensions: 384,
+    description: "Fast, lightweight - Best for most use cases",
+    isDefault: true
+  },
+  "Xenova/all-mpnet-base-v2": {
+    id: "Xenova/all-mpnet-base-v2",
+    name: "MPNet Base v2",
+    dimensions: 768,
+    description: "Higher quality - Larger model"
+  },
+  "Xenova/bge-small-en-v1.5": {
+    id: "Xenova/bge-small-en-v1.5",
+    name: "BGE Small English",
+    dimensions: 384,
+    description: "Optimized for retrieval tasks"
+  },
+  "Xenova/bge-base-en-v1.5": {
+    id: "Xenova/bge-base-en-v1.5",
+    name: "BGE Base English",
+    dimensions: 768,
+    description: "Higher quality BGE model"
+  }
+};
+const DEFAULT_LOCAL_EMBEDDING_MODEL = "Xenova/all-MiniLM-L6-v2";
+const MODEL_PRICING_INFO = {
+  // Claude 4.5 Family
+  "claude-opus-4-5-20251101": {
+    inputPerMillion: 5,
+    outputPerMillion: 25
+  },
+  "claude-sonnet-4-5-20250929": {
+    inputPerMillion: 3,
+    outputPerMillion: 15
+  },
+  "claude-haiku-4-5-20251001": {
+    inputPerMillion: 1,
+    outputPerMillion: 5
+  },
+  // Claude 4.x Family
+  "claude-opus-4-1-20250805": {
+    inputPerMillion: 15,
+    outputPerMillion: 75
+  },
+  "claude-sonnet-4-20250514": {
+    inputPerMillion: 3,
+    outputPerMillion: 15
+  },
+  // Gemini models (approximate)
+  "gemini-3-pro": {
+    inputPerMillion: 1.25,
+    outputPerMillion: 5
+  },
+  "gemini-3-flash": {
+    inputPerMillion: 0.075,
+    outputPerMillion: 0.3
+  },
+  "gemini-2.5-pro": {
+    inputPerMillion: 1.25,
+    outputPerMillion: 5
+  },
+  "gemini-2.5-flash": {
+    inputPerMillion: 0.075,
+    outputPerMillion: 0.3
+  },
+  "gemini-2.5-flash-lite": {
+    inputPerMillion: 0.0375,
+    outputPerMillion: 0.15
+  }
+};
 function validateSender$4(event) {
   const url = event.sender.getURL();
   return url.startsWith("http://localhost:") || url.startsWith("file://");
@@ -410,6 +485,83 @@ const state = {
 let checkpointManagerRef = null;
 let humanReviewServiceRef = null;
 let databaseClientRef = null;
+const DEFAULT_INPUT_COST_PER_MILLION = 3;
+const DEFAULT_OUTPUT_COST_PER_MILLION = 15;
+const tokenUsage = {
+  totalInputTokens: 0,
+  totalOutputTokens: 0,
+  totalCalls: 0,
+  byModel: {},
+  byAgent: {},
+  updatedAt: /* @__PURE__ */ new Date()
+};
+function accumulateTokenUsage(usage) {
+  tokenUsage.totalInputTokens += usage.inputTokens;
+  tokenUsage.totalOutputTokens += usage.outputTokens;
+  tokenUsage.totalCalls++;
+  tokenUsage.updatedAt = /* @__PURE__ */ new Date();
+  forwardCostUpdate(getTokenUsageAndCosts());
+  if (usage.model) {
+    if (!tokenUsage.byModel[usage.model]) {
+      tokenUsage.byModel[usage.model] = { inputTokens: 0, outputTokens: 0, calls: 0 };
+    }
+    tokenUsage.byModel[usage.model].inputTokens += usage.inputTokens;
+    tokenUsage.byModel[usage.model].outputTokens += usage.outputTokens;
+    tokenUsage.byModel[usage.model].calls++;
+  }
+  if (usage.agentId) {
+    if (!tokenUsage.byAgent[usage.agentId]) {
+      tokenUsage.byAgent[usage.agentId] = { inputTokens: 0, outputTokens: 0, calls: 0 };
+    }
+    tokenUsage.byAgent[usage.agentId].inputTokens += usage.inputTokens;
+    tokenUsage.byAgent[usage.agentId].outputTokens += usage.outputTokens;
+    tokenUsage.byAgent[usage.agentId].calls++;
+  }
+}
+function getTokenUsageAndCosts() {
+  const calculateCostForModel = (input, output, model) => {
+    const pricing = model ? MODEL_PRICING_INFO[model] : void 0;
+    const inputRate = pricing?.inputPerMillion ?? DEFAULT_INPUT_COST_PER_MILLION;
+    const outputRate = pricing?.outputPerMillion ?? DEFAULT_OUTPUT_COST_PER_MILLION;
+    return (input * inputRate + output * outputRate) / 1e6;
+  };
+  let totalCost = 0;
+  for (const [model, data] of Object.entries(tokenUsage.byModel)) {
+    totalCost += calculateCostForModel(data.inputTokens, data.outputTokens, model);
+  }
+  if (Object.keys(tokenUsage.byModel).length === 0) {
+    totalCost = calculateCostForModel(tokenUsage.totalInputTokens, tokenUsage.totalOutputTokens);
+  }
+  return {
+    totalCost,
+    totalTokensUsed: tokenUsage.totalInputTokens + tokenUsage.totalOutputTokens,
+    inputTokens: tokenUsage.totalInputTokens,
+    outputTokens: tokenUsage.totalOutputTokens,
+    estimatedCostUSD: totalCost,
+    breakdownByModel: Object.entries(tokenUsage.byModel).map(([model, data]) => ({
+      model,
+      inputTokens: data.inputTokens,
+      outputTokens: data.outputTokens,
+      cost: calculateCostForModel(data.inputTokens, data.outputTokens, model)
+    })),
+    breakdownByAgent: Object.entries(tokenUsage.byAgent).map(([agentId, data]) => ({
+      agentId,
+      inputTokens: data.inputTokens,
+      outputTokens: data.outputTokens,
+      cost: calculateCostForModel(data.inputTokens, data.outputTokens)
+    })),
+    updatedAt: tokenUsage.updatedAt
+  };
+}
+function resetTokenUsage() {
+  tokenUsage.totalInputTokens = 0;
+  tokenUsage.totalOutputTokens = 0;
+  tokenUsage.totalCalls = 0;
+  tokenUsage.byModel = {};
+  tokenUsage.byAgent = {};
+  tokenUsage.updatedAt = /* @__PURE__ */ new Date();
+}
+global.accumulateTokenUsage = accumulateTokenUsage;
 function registerCheckpointReviewHandlers(checkpointManager, humanReviewService) {
   checkpointManagerRef = checkpointManager;
   humanReviewServiceRef = humanReviewService;
@@ -560,6 +712,7 @@ function registerIpcHandlers() {
       name: `Genesis Project ${state.projects.size + 1}`,
       mode: "genesis"
     });
+    resetTokenUsage();
     return { success: true, projectId };
   });
   ipcMain.handle("mode:evolution", (event, projectId) => {
@@ -574,6 +727,7 @@ function registerIpcHandlers() {
     }
     state.mode = "evolution";
     state.projectId = projectId;
+    resetTokenUsage();
     return { success: true };
   });
   ipcMain.handle("project:get", (event, id) => {
@@ -626,16 +780,7 @@ function registerIpcHandlers() {
     if (!validateSender$4(event)) {
       throw new Error("Unauthorized IPC sender");
     }
-    return {
-      totalCost: 0,
-      totalTokensUsed: 0,
-      inputTokens: 0,
-      outputTokens: 0,
-      estimatedCostUSD: 0,
-      breakdownByModel: [],
-      breakdownByAgent: [],
-      updatedAt: /* @__PURE__ */ new Date()
-    };
+    return getTokenUsageAndCosts();
   });
   ipcMain.handle("dashboard:getHistoricalProgress", (event) => {
     if (!validateSender$4(event)) {
@@ -824,7 +969,8 @@ function registerIpcHandlers() {
     if (typeof id !== "string" || !id) {
       throw new Error("Invalid agent id");
     }
-    return [];
+    const buffer = agentOutputBuffers.get(id);
+    return buffer ? [...buffer] : [];
   });
   ipcMain.handle("agents:getQAStatus", (event) => {
     if (!validateSender$4(event)) {
@@ -847,6 +993,25 @@ function registerIpcHandlers() {
     ["test", []],
     ["review", []]
   ]);
+  const MAX_OUTPUT_LINES_PER_AGENT = 1e3;
+  const agentOutputBuffers = /* @__PURE__ */ new Map();
+  function addAgentOutput(agentId, line) {
+    let buffer = agentOutputBuffers.get(agentId);
+    if (!buffer) {
+      buffer = [];
+      agentOutputBuffers.set(agentId, buffer);
+    }
+    buffer.push(line);
+    if (buffer.length > MAX_OUTPUT_LINES_PER_AGENT) {
+      buffer.splice(0, buffer.length - MAX_OUTPUT_LINES_PER_AGENT);
+    }
+  }
+  function clearAgentOutput(agentId) {
+    agentOutputBuffers.delete(agentId);
+  }
+  global.addAgentOutput = addAgentOutput;
+  global.clearAgentOutput = clearAgentOutput;
+  global.agentOutputBuffers = agentOutputBuffers;
   const executionStatuses = /* @__PURE__ */ new Map([
     ["build", "pending"],
     ["lint", "pending"],
@@ -1630,6 +1795,18 @@ function setupEventForwarding(mainWindow2) {
       }
     });
   });
+  const globalAddAgentOutput = global.addAgentOutput;
+  eventBus.on("agent:output", (event) => {
+    const { agentId, line } = event.payload;
+    globalAddAgentOutput?.(agentId, line);
+    if (eventForwardingWindow && !eventForwardingWindow.isDestroyed()) {
+      eventForwardingWindow.webContents.send("agent:output", {
+        agentId,
+        line,
+        timestamp: event.timestamp
+      });
+    }
+  });
   const globalAddExecutionLog = global.addExecutionLog;
   const globalExecutionStatuses = global.executionStatuses;
   eventBus.on("qa:build-started", (event) => {
@@ -1859,6 +2036,11 @@ function forwardAgentMetrics(agentMetrics) {
 function forwardTimelineEvent(timelineEvent) {
   if (eventForwardingWindow && !eventForwardingWindow.isDestroyed()) {
     eventForwardingWindow.webContents.send("timeline:event", timelineEvent);
+  }
+}
+function forwardCostUpdate(costs) {
+  if (eventForwardingWindow && !eventForwardingWindow.isDestroyed()) {
+    eventForwardingWindow.webContents.send("costs:updated", costs);
   }
 }
 function forwardFeatureUpdate(feature) {
@@ -3105,36 +3287,6 @@ function registerFallbackInterviewHandlers(initError) {
   );
   console.log("[InterviewHandlers] Registered fallback handlers (Nexus not initialized)");
 }
-const DEFAULT_CLAUDE_MODEL = "claude-sonnet-4-5-20250929";
-const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";
-const LOCAL_EMBEDDING_MODELS = {
-  "Xenova/all-MiniLM-L6-v2": {
-    id: "Xenova/all-MiniLM-L6-v2",
-    name: "MiniLM L6 v2",
-    dimensions: 384,
-    description: "Fast, lightweight - Best for most use cases",
-    isDefault: true
-  },
-  "Xenova/all-mpnet-base-v2": {
-    id: "Xenova/all-mpnet-base-v2",
-    name: "MPNet Base v2",
-    dimensions: 768,
-    description: "Higher quality - Larger model"
-  },
-  "Xenova/bge-small-en-v1.5": {
-    id: "Xenova/bge-small-en-v1.5",
-    name: "BGE Small English",
-    dimensions: 384,
-    description: "Optimized for retrieval tasks"
-  },
-  "Xenova/bge-base-en-v1.5": {
-    id: "Xenova/bge-base-en-v1.5",
-    name: "BGE Base English",
-    dimensions: 768,
-    description: "Higher quality BGE model"
-  }
-};
-const DEFAULT_LOCAL_EMBEDDING_MODEL = "Xenova/all-MiniLM-L6-v2";
 const DEFAULT_AGENT_MODEL_ASSIGNMENTS = {
   planner: { provider: "claude", model: "claude-opus-4-5-20251101" },
   coder: { provider: "claude", model: "claude-sonnet-4-5-20250929" },
@@ -3826,7 +3978,8 @@ class ClaudeCodeCLIClient {
     const prompt = this.messagesToPrompt(messages);
     const systemPrompt = this.extractSystemPrompt(messages);
     const [args, stdinPrompt] = this.buildArgs(prompt, systemPrompt, options);
-    const result = await this.executeWithRetry(args, stdinPrompt, options?.workingDirectory);
+    const agentContext = options?.agentId ? { agentId: options.agentId, taskId: options.taskId } : void 0;
+    const result = await this.executeWithRetry(args, stdinPrompt, options?.workingDirectory, agentContext);
     return this.parseResponse(result, options);
   }
   /**
@@ -3871,7 +4024,8 @@ class ClaudeCodeCLIClient {
       const cliToolNames = tools.map((t) => this.mapToolName(t.name));
       args.push("--allowedTools", cliToolNames.join(","));
     }
-    const result = await this.executeWithRetry(args, stdinPrompt, options?.workingDirectory);
+    const agentContext = options?.agentId ? { agentId: options.agentId, taskId: options.taskId } : void 0;
+    const result = await this.executeWithRetry(args, stdinPrompt, options?.workingDirectory, agentContext);
     return this.parseResponse(result, options);
   }
   /**
@@ -3911,7 +4065,7 @@ class ClaudeCodeCLIClient {
     const args = ["--print"];
     args.push("--output-format", "json");
     if (options?.disableTools) {
-      args.push('--tools=""');
+      args.push("--tools", "");
     } else {
       if (this.config.skipPermissions) {
         args.push("--dangerously-skip-permissions");
@@ -3933,12 +4087,13 @@ ${prompt}` : prompt;
    * @param args CLI arguments
    * @param stdinPrompt Optional prompt to pass via stdin (avoids shell escaping issues)
    * @param workingDirectory Optional per-call working directory override
+   * @param agentContext Optional agent context for output streaming
    */
-  async executeWithRetry(args, stdinPrompt, workingDirectory) {
+  async executeWithRetry(args, stdinPrompt, workingDirectory, agentContext) {
     let lastError = null;
     for (let attempt = 0; attempt <= this.config.maxRetries; attempt++) {
       try {
-        return await this.execute(args, stdinPrompt, workingDirectory);
+        return await this.execute(args, stdinPrompt, workingDirectory, agentContext);
       } catch (error) {
         lastError = error;
         this.config.logger?.warn(
@@ -3957,8 +4112,9 @@ ${prompt}` : prompt;
    * @param args CLI arguments
    * @param stdinPrompt Optional prompt to pass via stdin (avoids shell escaping issues)
    * @param workingDirectory Optional per-call working directory override
+   * @param agentContext Optional agent context for output streaming
    */
-  execute(args, stdinPrompt, workingDirectory) {
+  execute(args, stdinPrompt, workingDirectory, agentContext) {
     return new Promise((resolve2, reject) => {
       const cwd = workingDirectory || this.config.workingDirectory;
       this.config.logger?.debug("Executing Claude CLI", { args: args.join(" "), cwd });
@@ -3971,7 +4127,9 @@ ${prompt}` : prompt;
       console.log("[ClaudeCodeCLIClient] Per-call override:", workingDirectory ?? "NONE");
       console.log("[ClaudeCodeCLIClient] Resolved working dir:", cwd);
       console.log("[ClaudeCodeCLIClient] Shell mode:", process.platform === "win32");
+      console.log("[ClaudeCodeCLIClient] Agent context:", agentContext?.agentId ?? "NONE");
       console.log("[ClaudeCodeCLIClient] ========== DEBUG END ==========");
+      const eventBus = agentContext?.agentId ? EventBus.getInstance() : null;
       const child = spawn(this.config.claudePath, args, {
         cwd,
         // Use resolved cwd (per-call or config default)
@@ -3992,11 +4150,35 @@ ${prompt}` : prompt;
         const chunk = data.toString();
         stdout += chunk;
         console.log("[ClaudeCodeCLIClient] stdout chunk:", chunk.substring(0, 200));
+        if (eventBus && agentContext?.agentId) {
+          const lines = chunk.split("\n").filter((line) => line.trim());
+          for (const line of lines) {
+            void eventBus.emit("agent:output", {
+              agentId: agentContext.agentId,
+              taskId: agentContext.taskId,
+              line,
+              stream: "stdout",
+              timestamp: /* @__PURE__ */ new Date()
+            }, { source: "ClaudeCodeCLIClient" });
+          }
+        }
       });
       child.stderr.on("data", (data) => {
         const chunk = data.toString();
         stderr += chunk;
         console.log("[ClaudeCodeCLIClient] stderr chunk:", chunk.substring(0, 200));
+        if (eventBus && agentContext?.agentId) {
+          const lines = chunk.split("\n").filter((line) => line.trim());
+          for (const line of lines) {
+            void eventBus.emit("agent:output", {
+              agentId: agentContext.agentId,
+              taskId: agentContext.taskId,
+              line,
+              stream: "stderr",
+              timestamp: /* @__PURE__ */ new Date()
+            }, { source: "ClaudeCodeCLIClient" });
+          }
+        }
       });
       const timeout = setTimeout(() => {
         child.kill("SIGTERM");
@@ -4047,8 +4229,9 @@ ${results}`;
   }
   /**
    * Parse CLI output to LLMResponse.
+   * Phase 25 Feature Parity: Accumulates token usage for cost tracking.
    */
-  parseResponse(result, _options) {
+  parseResponse(result, options) {
     try {
       const json = JSON.parse(result);
       const content = json.result || json.response || json.content || result;
@@ -4058,6 +4241,16 @@ ${results}`;
         totalTokens: 0
       };
       usage.totalTokens = usage.inputTokens + usage.outputTokens;
+      const globalAccumulate = global.accumulateTokenUsage;
+      if (globalAccumulate && (usage.inputTokens > 0 || usage.outputTokens > 0)) {
+        globalAccumulate({
+          inputTokens: usage.inputTokens,
+          outputTokens: usage.outputTokens,
+          model: "claude-sonnet-4-5-20250929",
+          // Default model used by CLI
+          agentId: options?.agentId
+        });
+      }
       let finishReason = "stop";
       const stopReason = json.stopReason ?? json.stop_reason;
       if (stopReason === "tool_use") {

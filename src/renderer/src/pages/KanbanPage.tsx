@@ -66,28 +66,35 @@ function mapBackendFeature(backendFeature: Record<string, unknown>): Feature {
     complex: 'complex'
   }
 
-  const rawStatus = String(backendFeature.status || 'backlog')
-  const rawPriority = String(backendFeature.priority || 'medium')
-  const rawComplexity = String(backendFeature.complexity || 'moderate')
+  // Helper to safely convert unknown to string
+  const safeString = (value: unknown, fallback: string): string => {
+    if (typeof value === 'string') return value;
+    if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+    return fallback;
+  };
+
+  const rawStatus = safeString(backendFeature.status, 'backlog')
+  const rawPriority = safeString(backendFeature.priority, 'medium')
+  const rawComplexity = safeString(backendFeature.complexity, 'moderate')
 
   return {
-    id: String(backendFeature.id || `feature-${Date.now()}`),
-    title: String(backendFeature.title || backendFeature.name || 'Untitled Feature'),
-    description: String(backendFeature.description || ''),
+    id: safeString(backendFeature.id, `feature-${Date.now()}`),
+    title: safeString(backendFeature.title, '') || safeString(backendFeature.name, 'Untitled Feature'),
+    description: safeString(backendFeature.description, ''),
     status: statusMap[rawStatus] || 'backlog',
     priority: priorityMap[rawPriority] || 'medium',
     complexity: complexityMap[rawComplexity] || 'moderate',
     progress: typeof backendFeature.progress === 'number' ? backendFeature.progress : 0,
-    assignedAgent: backendFeature.assignedAgent ? String(backendFeature.assignedAgent) : undefined,
+    assignedAgent: typeof backendFeature.assignedAgent === 'string' ? backendFeature.assignedAgent : undefined,
     tasks: Array.isArray(backendFeature.tasks)
       ? (backendFeature.tasks as Array<Record<string, unknown>>).map(t => ({
-          id: String(t.id || ''),
-          title: String(t.title || t.name || ''),
-          status: String(t.status || 'pending') as 'pending' | 'in_progress' | 'completed' | 'failed'
+          id: safeString(t.id, ''),
+          title: safeString(t.title, '') || safeString(t.name, ''),
+          status: safeString(t.status, 'pending') as 'pending' | 'in_progress' | 'completed' | 'failed'
         }))
       : [],
-    createdAt: String(backendFeature.createdAt || new Date().toISOString()),
-    updatedAt: String(backendFeature.updatedAt || new Date().toISOString())
+    createdAt: safeString(backendFeature.createdAt, new Date().toISOString()),
+    updatedAt: safeString(backendFeature.updatedAt, new Date().toISOString())
   }
 }
 
@@ -191,11 +198,9 @@ export default function KanbanPage(): ReactElement {
     } catch (err) {
       console.error('Failed to load features:', err)
       setError('Failed to load features from backend.')
-      // Use functional update to avoid dependency on features.length
-      setFeatures(prev => {
-        setIsEmpty(prev.length === 0)
-        return prev
-      })
+      // Access store directly to avoid dependency on features.length
+      const currentFeatures = useFeatureStore.getState().features
+      setIsEmpty(currentFeatures.length === 0)
     } finally {
       setIsLoading(false)
     }
@@ -437,7 +442,7 @@ export default function KanbanPage(): ReactElement {
       )}
 
       {/* Board - fills remaining space, scrollable */}
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto" data-testid="kanban-page-content">
         {isLoading ? (
           <div className="flex h-full items-center justify-center">
             <div className="flex flex-col items-center gap-3">

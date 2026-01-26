@@ -63,12 +63,12 @@ export class DashboardPage {
     this.header = page.locator('h1:text("Dashboard")').locator('..');
     this.loadingOverlay = page.locator('text=Loading dashboard...');
 
-    // Overview metric cards by their titles
-    this.overviewCards = page.locator('[data-testid="overview-cards"]');
-    this.totalFeaturesCard = page.locator('text=Total Features').locator('..').locator('..');
-    this.completedTasksCard = page.locator('text=Completed Tasks').locator('..').locator('..');
-    this.activeAgentsCard = page.locator('text=Active Agents').locator('..').locator('..');
-    this.estCompletionCard = page.locator('text=Est. Completion').locator('..').locator('..');
+    // Overview metric cards by their data-testid
+    this.overviewCards = page.locator('[data-testid="stats-cards"]');
+    this.totalFeaturesCard = page.locator('[data-testid="stat-card-features"]');
+    this.completedTasksCard = page.locator('[data-testid="stat-card-progress"]');
+    this.activeAgentsCard = page.locator('[data-testid="stat-card-agents"]');
+    this.estCompletionCard = page.locator('[data-testid="stat-card-projects"]');
 
     // Progress chart section
     this.progressChart = page.locator('[data-testid="progress-chart"]');

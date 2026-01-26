@@ -52,6 +52,7 @@ export function KanbanColumn({
   return (
     <div
       ref={setNodeRef}
+      data-testid={`kanban-column-${column.id}`}
       className={cn(
         'flex min-w-[280px] flex-1 flex-col rounded-lg p-2',
         // Drop zone styling

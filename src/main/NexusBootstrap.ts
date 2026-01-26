@@ -34,6 +34,7 @@ import type { PlanningTask } from '../planning/types';
 import type { OrchestrationFeature } from '../orchestration/types';
 import { RepoMapGenerator } from '../infrastructure/analysis/RepoMapGenerator';
 import type { EvolutionContext } from '../interview/InterviewEngine';
+import type { RepoMap } from '../infrastructure/analysis/types';
 import { features, tasks, projects } from '../persistence/database/schema';
 
 // ============================================================================
@@ -369,7 +370,10 @@ export class NexusBootstrap {
 
       try {
         // Get requirements from DB
-        const requirements = this.requirementsDB!.getRequirements(projectId);
+        if (!this.requirementsDB) {
+          throw new Error('RequirementsDB not initialized');
+        }
+        const requirements = this.requirementsDB.getRequirements(projectId);
         console.log(`[NexusBootstrap] Retrieved ${requirements.length} requirements for decomposition`);
 
         // Emit planning:progress - analyzing
@@ -454,7 +458,10 @@ export class NexusBootstrap {
         console.log(`[NexusBootstrap] Calculated ${waves.length} execution waves`);
 
         // Estimate total time using the estimateTotal method
-        const totalMinutes = await this.nexus!.planning.estimator.estimateTotal(decomposedTasks);
+        if (!this.nexus) {
+          throw new Error('Nexus not initialized');
+        }
+        const totalMinutes = await this.nexus.planning.estimator.estimateTotal(decomposedTasks);
         console.log(`[NexusBootstrap] Estimated ${totalMinutes} minutes total`);
 
         // Emit planning:completed event (Phase 20 Task 4)
@@ -569,6 +576,13 @@ export class NexusBootstrap {
       const eventType = event.type;
       const eventData = event.data ?? {};
 
+      // Helper to safely extract string from unknown value
+      const safeStr = (val: unknown, fallback: string): string => {
+        if (typeof val === 'string') return val;
+        if (typeof val === 'number' || typeof val === 'boolean') return String(val);
+        return fallback;
+      };
+
       // Map coordinator events to typed event bus events
       // Note: Some coordinator events don't have direct mappings in the typed EventBus
       // We log them for debugging and can add typed events as needed
@@ -577,22 +591,23 @@ export class NexusBootstrap {
       // Forward task events that have typed mappings
       if (eventType === 'task:assigned' && 'taskId' in eventData && 'agentId' in eventData) {
         void this.eventBus.emit('task:assigned', {
-          taskId: String(eventData.taskId),
-          agentId: String(eventData.agentId),
+          taskId: safeStr(eventData.taskId, ''),
+          agentId: safeStr(eventData.agentId, ''),
           agentType: 'coder' as const,
-          worktreePath: String(eventData.worktreePath ?? ''),
+          worktreePath: safeStr(eventData.worktreePath, ''),
         });
       } else if (eventType === 'task:started' && 'taskId' in eventData) {
         void this.eventBus.emit('task:started', {
-          taskId: String(eventData.taskId),
-          agentId: String(eventData.agentId ?? ''),
+          taskId: safeStr(eventData.taskId, ''),
+          agentId: safeStr(eventData.agentId, ''),
           startedAt: new Date(),
         });
       } else if (eventType === 'task:completed' && 'taskId' in eventData) {
+        const taskIdStr = safeStr(eventData.taskId, '');
         void this.eventBus.emit('task:completed', {
-          taskId: String(eventData.taskId),
+          taskId: taskIdStr,
           result: {
-            taskId: String(eventData.taskId),
+            taskId: taskIdStr,
             success: true,
             files: [],
             metrics: {
@@ -604,17 +619,17 @@ export class NexusBootstrap {
         });
       } else if (eventType === 'task:failed' && 'taskId' in eventData) {
         void this.eventBus.emit('task:failed', {
-          taskId: String(eventData.taskId),
-          error: String(eventData.error ?? 'Unknown error'),
-          iterations: Number(eventData.iterations ?? 1),
+          taskId: safeStr(eventData.taskId, ''),
+          error: safeStr(eventData.error, 'Unknown error'),
+          iterations: typeof eventData.iterations === 'number' ? eventData.iterations : 1,
           escalated: Boolean(eventData.escalated ?? false),
         });
       } else if (eventType === 'task:escalated' && 'taskId' in eventData) {
         void this.eventBus.emit('task:escalated', {
-          taskId: String(eventData.taskId),
-          reason: String(eventData.reason ?? 'Max iterations exceeded'),
-          iterations: Number(eventData.iterations ?? 1),
-          lastError: String(eventData.lastError ?? ''),
+          taskId: safeStr(eventData.taskId, ''),
+          reason: safeStr(eventData.reason, 'Max iterations exceeded'),
+          iterations: typeof eventData.iterations === 'number' ? eventData.iterations : 1,
+          lastError: safeStr(eventData.lastError, ''),
         });
       } else if (eventType === 'project:completed' && 'projectId' in eventData) {
         // Phase 20 Task 10: Forward project:completed from coordinator to event bus
@@ -655,10 +670,11 @@ export class NexusBootstrap {
         });
       } else if (eventType === 'project:failed' && 'projectId' in eventData) {
         // Phase 20 Task 10: Forward project:failed from coordinator to event bus
-        console.log(`[NexusBootstrap] Project failed: ${String(eventData.projectId)}`);
+        const projectIdFailed = safeStr(eventData.projectId, '');
+        console.log(`[NexusBootstrap] Project failed: ${projectIdFailed}`);
         void this.eventBus.emit('project:failed', {
-          projectId: String(eventData.projectId),
-          error: String(eventData.error ?? 'Unknown error'),
+          projectId: projectIdFailed,
+          error: safeStr(eventData.error, 'Unknown error'),
           recoverable: Boolean(eventData.recoverable ?? false),
         });
       }
@@ -751,7 +767,7 @@ export class NexusBootstrap {
    * Store decomposed features and tasks in the database
    * Phase 20 Task 3: Wire TaskDecomposer Output to Database
    */
-  private async storeDecomposition(
+  private storeDecomposition(
     projectId: string,
     planningTasks: PlanningTask[]
   ): Promise<{ featureCount: number; taskCount: number }> {
@@ -811,19 +827,19 @@ export class NexusBootstrap {
 
       console.log('[NexusBootstrap] Stored', taskCount, 'tasks for feature', featureId);
 
-      return { featureCount, taskCount };
+      return Promise.resolve({ featureCount, taskCount });
     } catch (error) {
       console.error('[NexusBootstrap] Failed to store decomposition:', error);
-      throw error;
+      return Promise.reject(error instanceof Error ? error : new Error(String(error)));
     }
   }
 
   /**
    * Start Genesis mode (new project from scratch)
    */
-  private async startGenesisMode(projectName?: string): Promise<{ projectId: string; sessionId: string }> {
+  private startGenesisMode(projectName?: string): Promise<{ projectId: string; sessionId: string }> {
     if (!this.interviewEngine || !this.sessionManager) {
-      throw new Error('NexusBootstrap not initialized');
+      return Promise.reject(new Error('NexusBootstrap not initialized'));
     }
 
     const projectId = `genesis-${Date.now()}`;
@@ -836,10 +852,10 @@ export class NexusBootstrap {
     this.sessionManager.startAutoSave(session);
 
     // Interview completion will trigger the rest via EventBus wiring
-    return {
+    return Promise.resolve({
       projectId,
       sessionId: session.id,
-    };
+    });
   }
 
   /**
@@ -933,7 +949,7 @@ export class NexusBootstrap {
   /**
    * Build a human-readable summary of the project from the repo map
    */
-  private buildProjectSummary(repoMap: import('../infrastructure/analysis/types').RepoMap): string {
+  private buildProjectSummary(repoMap: RepoMap): string {
     const stats = repoMap.stats;
     const lines: string[] = [
       `Project: ${repoMap.projectPath}`,
@@ -947,7 +963,8 @@ export class NexusBootstrap {
     }
 
     if (stats.mostConnectedFiles.length > 0) {
-      lines.push(`Key files (most connected): ${stats.mostConnectedFiles.slice(0, 5).join(', ')}`);
+      const fileNames = stats.mostConnectedFiles.slice(0, 5).map(f => f.file);
+      lines.push(`Key files (most connected): ${fileNames.join(', ')}`);
     }
 
     return lines.join('\n');
@@ -985,7 +1002,10 @@ export class NexusBootstrap {
         this.ensureProjectState(projectId);
 
         // Create checkpoint for escalation (human review can restore if needed)
-        const checkpoint = await this.checkpointManager!.createAutoCheckpoint(
+        if (!this.checkpointManager) {
+          throw new Error('CheckpointManager not initialized');
+        }
+        const checkpoint = await this.checkpointManager.createAutoCheckpoint(
           projectId,
           'qa_exhausted'
         );
@@ -1037,10 +1057,12 @@ export class NexusBootstrap {
         this.ensureProjectState(projectId);
 
         // Create checkpoint for potential recovery
-        await this.checkpointManager!.createAutoCheckpoint(
-          projectId,
-          'task_failed'
-        );
+        if (this.checkpointManager) {
+          await this.checkpointManager.createAutoCheckpoint(
+            projectId,
+            'task_failed'
+          );
+        }
         console.log(`[NexusBootstrap] Created failure checkpoint for task ${taskId}`);
 
       } catch (checkpointError) {

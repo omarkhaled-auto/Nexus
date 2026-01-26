@@ -117,6 +117,17 @@ export interface ChatOptions {
    * Use this to run Claude CLI in the user's project directory during execution.
    */
   workingDirectory?: string;
+  /**
+   * Agent ID for output streaming (Phase 25 - Feature Parity).
+   * When provided, stdout/stderr from CLI execution will be emitted
+   * as agent:output events via the EventBus.
+   */
+  agentId?: string;
+  /**
+   * Task ID for output streaming (Phase 25 - Feature Parity).
+   * When provided along with agentId, associates output with a specific task.
+   */
+  taskId?: string;
 }
 
 /**

@@ -1,7 +1,7 @@
 import type { ReactElement } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@renderer/components/ui/card'
 import { cn } from '@renderer/lib/utils'
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts'
+import { Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts'
 import { TrendingUp, BarChart3 } from 'lucide-react'
 
 /**
@@ -89,7 +89,7 @@ export function ProgressChart({ data, className, height = 200 }: ProgressChartPr
                 }}
                 labelStyle={{ color: '#F0F6FC', fontWeight: 500, marginBottom: '4px' }}
                 itemStyle={{ color: '#8B949E' }}
-                formatter={(value) => value !== undefined ? [`${value}%`, 'Progress'] : ['', 'Progress']}
+                formatter={(value: number | string | undefined) => value !== undefined ? [`${String(value)}%`, 'Progress'] : ['', 'Progress']}
               />
               <Area
                 type="monotone"

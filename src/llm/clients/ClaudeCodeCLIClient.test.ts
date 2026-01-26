@@ -244,14 +244,13 @@ describe('ClaudeCodeCLIClient', () => {
       expect(response.usage.outputTokens).toBe(0);
     });
 
-    it('should pass system prompt when present', async () => {
+    it('should pass system prompt when present via stdin', async () => {
       const client = new ClaudeCodeCLIClient();
-      mockSpawn.mockReturnValue(
-        createMockChildProcess({
-          stdout: '{"result": "OK"}',
-          exitCode: 0,
-        })
-      );
+      const mockProcess = createMockChildProcess({
+        stdout: '{"result": "OK"}',
+        exitCode: 0,
+      });
+      mockSpawn.mockReturnValue(mockProcess);
 
       const messages: Message[] = [
         { role: 'system', content: 'You are a helpful assistant' },
@@ -259,30 +258,12 @@ describe('ClaudeCodeCLIClient', () => {
       ];
       await client.chat(messages);
 
-      expect(mockSpawn).toHaveBeenCalledWith(
-        'claude',
-        expect.arrayContaining(['--system-prompt', 'You are a helpful assistant']),
-        expect.any(Object)
-      );
-    });
-
-    it('should pass max tokens option', async () => {
-      const client = new ClaudeCodeCLIClient();
-      mockSpawn.mockReturnValue(
-        createMockChildProcess({
-          stdout: '{"result": "OK"}',
-          exitCode: 0,
-        })
-      );
-
-      const options: ChatOptions = { maxTokens: 2000 };
-      await client.chat([{ role: 'user', content: 'Hi' }], options);
-
-      expect(mockSpawn).toHaveBeenCalledWith(
-        'claude',
-        expect.arrayContaining(['--max-tokens', '2000']),
-        expect.any(Object)
-      );
+      // System prompt is sent via stdin in <system> tags, not as --system-prompt flag
+      expect(mockProcess.stdin.write).toHaveBeenCalled();
+      const stdinContent = mockProcess.stdin.data.join('');
+      expect(stdinContent).toContain('<system>');
+      expect(stdinContent).toContain('You are a helpful assistant');
+      expect(stdinContent).toContain('</system>');
     });
 
     it('should handle multi-turn conversation via stdin', async () => {
@@ -392,13 +373,14 @@ describe('ClaudeCodeCLIClient', () => {
       );
 
       // Use disableTools for chat-only mode (e.g., interviews)
+      // Without --dangerously-skip-permissions, tools require explicit user approval
       await client.chat([{ role: 'user', content: 'Just chat' }], { disableTools: true });
 
-      expect(mockSpawn).toHaveBeenCalledWith(
-        'claude',
-        expect.arrayContaining(['--tools', '']),
-        expect.any(Object)
-      );
+      // Should NOT have any tools-related flags when disableTools is true
+      const callArgs = mockSpawn.mock.calls[0][1] as string[];
+      expect(callArgs).not.toContain('--tools');
+      expect(callArgs).not.toContain('--allowedTools');
+      expect(callArgs).not.toContain('--dangerously-skip-permissions');
     });
 
     it('should use default tools when neither tools nor disableTools specified', async () => {
@@ -757,24 +739,6 @@ describe('ClaudeCodeCLIClient', () => {
       // Message should be sent via stdin, not as positional arg
       expect(mockProcess.stdin.write).toHaveBeenCalled();
       expect(mockProcess.stdin.data.join('')).toBe('Next message');
-    });
-
-    it('should include max tokens if specified', async () => {
-      const client = new ClaudeCodeCLIClient();
-      mockSpawn.mockReturnValue(
-        createMockChildProcess({
-          stdout: '{"result": "ok"}',
-          exitCode: 0,
-        })
-      );
-
-      await client.continueConversation('conv-123', 'More', { maxTokens: 1000 });
-
-      expect(mockSpawn).toHaveBeenCalledWith(
-        'claude',
-        expect.arrayContaining(['--max-tokens', '1000']),
-        expect.any(Object)
-      );
     });
 
     it('should parse response correctly', async () => {

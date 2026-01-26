@@ -131,9 +131,9 @@ export class MergerRunner {
       const mergeResult = await this.performMerge(branchName, targetBranch, options);
 
       if (mergeResult.success) {
-        console.log(`[MergerRunner] Merge successful: ${mergeResult.commitHash}`);
+        console.log(`[MergerRunner] Merge successful: ${mergeResult.commitHash ?? 'unknown'}`);
       } else {
-        console.log(`[MergerRunner] Merge failed: ${mergeResult.error}`);
+        console.log(`[MergerRunner] Merge failed: ${mergeResult.error ?? 'unknown'}`);
       }
 
       return mergeResult;
@@ -183,7 +183,7 @@ export class MergerRunner {
   /**
    * Get worktree info by path (if worktreeManager available)
    */
-  private async getWorktreeInfoByPath(path: string): Promise<WorktreeInfo | null> {
+  private getWorktreeInfoByPath(_path: string): WorktreeInfo | null {
     // This would need WorktreeManager to expose a method to find by path
     // For now, return null and fall back to git command
     return null;
@@ -398,7 +398,7 @@ export class MergerRunner {
    */
   async isMergeInProgress(): Promise<boolean> {
     try {
-      const { stdout } = await execaCommand('git merge HEAD', {
+      await execaCommand('git merge HEAD', {
         cwd: this.baseDir,
       });
       return false;

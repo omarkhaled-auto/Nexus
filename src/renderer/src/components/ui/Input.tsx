@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { cva, type VariantProps } from 'class-variance-authority'
+import { cva } from 'class-variance-authority'
 import { X, Eye, EyeOff, AlertCircle, Search } from 'lucide-react'
 
 import { cn } from '@renderer/lib/utils'

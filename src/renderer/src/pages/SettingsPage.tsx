@@ -1018,7 +1018,7 @@ function CheckpointSettings({ settings, updateSetting }: SettingsTabProps): Reac
                 label="Select Project"
                 description="Choose a project to view its checkpoints"
                 value={selectedProjectId}
-                onChange={(e) => setSelectedProjectId(e.target.value)}
+                onChange={(e) => { setSelectedProjectId(e.target.value); }}
                 options={projects.map(p => ({ value: p.id, label: p.name || p.id }))}
               />
 

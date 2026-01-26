@@ -213,7 +213,7 @@ export function RecentProjectsList({
         <Button
           variant="ghost"
           size="sm"
-          onClick={handleClearAll}
+          onClick={() => { void handleClearAll(); }}
           className="text-xs text-muted-foreground hover:text-destructive h-7 px-2"
           data-testid="clear-all-btn"
         >
@@ -260,7 +260,7 @@ export function RecentProjectsList({
                 variant="ghost"
                 size="icon"
                 className="h-7 w-7 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive"
-                onClick={(e) => handleRemove(e, project.path)}
+                onClick={(e) => { void handleRemove(e, project.path); }}
                 disabled={removingPath === project.path}
                 data-testid={`remove-${project.name}`}
               >

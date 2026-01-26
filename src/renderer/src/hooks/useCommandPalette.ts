@@ -29,9 +29,9 @@ export function useCommandPalette(
   const { initialOpen = false } = options
   const [isOpen, setIsOpen] = useState(initialOpen)
 
-  const open = useCallback(() => setIsOpen(true), [])
-  const close = useCallback(() => setIsOpen(false), [])
-  const toggle = useCallback(() => setIsOpen((prev) => !prev), [])
+  const open = useCallback(() => { setIsOpen(true); }, [])
+  const close = useCallback(() => { setIsOpen(false); }, [])
+  const toggle = useCallback(() => { setIsOpen((prev) => !prev); }, [])
 
   // Handle keyboard shortcuts
   useEffect(() => {
@@ -50,7 +50,7 @@ export function useCommandPalette(
     }
 
     document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
+    return () => { document.removeEventListener('keydown', handleKeyDown); }
   }, [isOpen, toggle, close])
 
   return {

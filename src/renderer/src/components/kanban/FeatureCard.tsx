@@ -106,6 +106,7 @@ export const FeatureCard = forwardRef<HTMLDivElement, FeatureCardProps>(
           }
         }}
         style={style}
+        data-testid={`feature-card-${feature.id}`}
         className={cn(
           // Base styles
           'relative cursor-pointer rounded-lg bg-card border border-border/50',
@@ -122,8 +123,8 @@ export const FeatureCard = forwardRef<HTMLDivElement, FeatureCardProps>(
         )}
         onClick={handleClick}
         onContextMenu={(e) => onContextMenu?.(e, feature)}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
+        onMouseEnter={() => { setIsHovered(true); }}
+        onMouseLeave={() => { setIsHovered(false); }}
         {...attributes}
         {...listeners}
         {...props}
@@ -226,7 +227,7 @@ export const FeatureCard = forwardRef<HTMLDivElement, FeatureCardProps>(
           {onEdit && (
             <button
               data-action-button
-              onClick={(e) => handleActionClick(e, () => onEdit(feature))}
+              onClick={(e) => { handleActionClick(e, () => { onEdit(feature); }); }}
               className="p-1.5 rounded-md bg-background/80 backdrop-blur-sm border border-border/50 text-muted-foreground hover:text-foreground hover:bg-background transition-colors"
               title="Edit"
             >
@@ -236,7 +237,7 @@ export const FeatureCard = forwardRef<HTMLDivElement, FeatureCardProps>(
           {onMove && (
             <button
               data-action-button
-              onClick={(e) => handleActionClick(e, () => onMove(feature))}
+              onClick={(e) => { handleActionClick(e, () => { onMove(feature); }); }}
               className="p-1.5 rounded-md bg-background/80 backdrop-blur-sm border border-border/50 text-muted-foreground hover:text-foreground hover:bg-background transition-colors"
               title="Move"
             >
@@ -246,7 +247,7 @@ export const FeatureCard = forwardRef<HTMLDivElement, FeatureCardProps>(
           {onDelete && (
             <button
               data-action-button
-              onClick={(e) => handleActionClick(e, () => onDelete(feature))}
+              onClick={(e) => { handleActionClick(e, () => { onDelete(feature); }); }}
               className="p-1.5 rounded-md bg-background/80 backdrop-blur-sm border border-border/50 text-muted-foreground hover:text-destructive hover:bg-background transition-colors"
               title="Delete"
             >

@@ -258,22 +258,24 @@ app.on('window-all-closed', () => {
 });
 
 // Clean shutdown
-app.on('before-quit', async () => {
-  console.log('[Main] Application shutting down...');
+app.on('before-quit', () => {
+  void (async () => {
+    console.log('[Main] Application shutting down...');
 
-  // Clear main window reference
-  clearMainWindow();
+    // Clear main window reference
+    clearMainWindow();
 
-  // Shutdown Nexus system
-  if (nexusInstance) {
-    try {
-      await nexusInstance.shutdown();
-      console.log('[Main] Nexus system shut down successfully');
-    } catch (error) {
-      console.error('[Main] Error during Nexus shutdown:', error);
+    // Shutdown Nexus system
+    if (nexusInstance) {
+      try {
+        await nexusInstance.shutdown();
+        console.log('[Main] Nexus system shut down successfully');
+      } catch (error) {
+        console.error('[Main] Error during Nexus shutdown:', error);
+      }
+      nexusInstance = null;
     }
-    nexusInstance = null;
-  }
+  })();
 });
 
 // Export for testing

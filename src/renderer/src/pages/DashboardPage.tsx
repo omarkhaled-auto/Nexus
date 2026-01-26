@@ -665,7 +665,7 @@ export default function DashboardPage(): ReactElement {
             </Button>
             <Button
               variant="primary"
-              onClick={handleCreateProject}
+              onClick={() => { void handleCreateProject(); }}
               disabled={isCreating || !createProjectName.trim()}
               data-testid="create-project-submit"
               className="gap-2"

@@ -18,11 +18,8 @@
 
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { cn } from '@renderer/lib/utils';
 import { usePrefersReducedMotion } from '@renderer/hooks';
 import {
-  listContainerVariants,
-  listItemVariants,
   DURATIONS,
   EASINGS,
 } from '@renderer/lib/animations';

@@ -530,7 +530,7 @@ export class GeminiCLIClient implements LLMClient {
 
       // Check exit code after stream ends
       if (exitCode !== 0) {
-        throw new GeminiCLIError(`Gemini CLI exited with code ${exitCode?.toString() ?? 'unknown'}: ${stderr}`, exitCode);
+        throw new GeminiCLIError(`Gemini CLI exited with code ${exitCode !== null ? String(exitCode) : 'unknown'}: ${stderr}`, exitCode);
       }
     } finally {
       clearTimeout(timeoutId);

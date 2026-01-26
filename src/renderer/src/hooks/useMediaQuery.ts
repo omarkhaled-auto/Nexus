@@ -61,21 +61,12 @@ export function useMediaQuery(query: string): boolean {
       setMatches(event.matches);
     };
 
-    // Add event listener (use modern API with fallback)
-    if (mediaQuery.addEventListener) {
-      mediaQuery.addEventListener('change', handleChange);
-    } else {
-      // Fallback for older browsers
-      mediaQuery.addListener(handleChange);
-    }
+    // Add event listener using modern API (supported in all modern browsers)
+    mediaQuery.addEventListener('change', handleChange);
 
     // Cleanup
     return () => {
-      if (mediaQuery.removeEventListener) {
-        mediaQuery.removeEventListener('change', handleChange);
-      } else {
-        mediaQuery.removeListener(handleChange);
-      }
+      mediaQuery.removeEventListener('change', handleChange);
     };
   }, [query]);
 

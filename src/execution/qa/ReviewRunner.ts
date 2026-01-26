@@ -91,6 +91,17 @@ Rules:
 - All arrays can be empty if not applicable
 - Keep feedback concise and actionable`;
 
+/**
+ * Raw parsed JSON from LLM review response
+ * Used for type-safe parsing before normalization
+ */
+interface ReviewResponseRawParsed {
+  approved?: boolean;
+  comments?: unknown[];
+  suggestions?: unknown[];
+  blockers?: unknown[];
+}
+
 // ============================================================================
 // ReviewRunner Class
 // ============================================================================
@@ -350,19 +361,19 @@ export class ReviewRunner {
         jsonStr = objectMatch[0];
       }
 
-      const parsed = JSON.parse(jsonStr);
+      const parsed = JSON.parse(jsonStr) as ReviewResponseRawParsed;
 
       // Validate and normalize the parsed response
       return {
         approved: Boolean(parsed.approved),
         comments: Array.isArray(parsed.comments)
-          ? parsed.comments.filter((c: unknown): c is string => typeof c === 'string')
+          ? parsed.comments.filter((c): c is string => typeof c === 'string')
           : [],
         suggestions: Array.isArray(parsed.suggestions)
-          ? parsed.suggestions.filter((s: unknown): s is string => typeof s === 'string')
+          ? parsed.suggestions.filter((s): s is string => typeof s === 'string')
           : [],
         blockers: Array.isArray(parsed.blockers)
-          ? parsed.blockers.filter((b: unknown): b is string => typeof b === 'string')
+          ? parsed.blockers.filter((b): b is string => typeof b === 'string')
           : [],
       };
     } catch {

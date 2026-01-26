@@ -15,6 +15,7 @@ import { ipcMain } from 'electron'
 import { EventBus } from '../../orchestration/events/EventBus'
 import type { CheckpointManager } from '../../persistence/checkpoints/CheckpointManager'
 import type { HumanReviewService } from '../../orchestration/review/HumanReviewService'
+import { MODEL_PRICING_INFO } from '../../llm/models'
 
 /**
  * Validate IPC sender is from allowed origin
@@ -42,6 +43,34 @@ interface UIFeature {
   tasks: { id: string; title: string; status: string }[]
   createdAt: string
   updatedAt: string
+}
+
+/**
+ * Database task row type for type-safe database queries
+ * Represents the structure returned from tasks table select
+ */
+interface DbTaskRow {
+  id: string
+  projectId: string
+  featureId: string | null
+  subFeatureId: string | null
+  name: string
+  description: string | null
+  type: 'auto' | 'checkpoint' | 'tdd'
+  status: string
+  size: 'atomic' | 'small'
+  priority: number
+  tags: string | null
+  notes: string | null
+  assignedAgent: string | null
+  worktreePath: string | null
+  branchName: string | null
+  estimatedMinutes: number | null
+  actualMinutes: number | null
+  startedAt: Date | null
+  completedAt: Date | null
+  createdAt: Date
+  updatedAt: Date
 }
 
 /**
@@ -74,6 +103,144 @@ let humanReviewServiceRef: HumanReviewService | null = null
 // Database client reference for feature/task queries
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- DatabaseClient type import would cause circular dependency
 let databaseClientRef: { db: any } | null = null
+
+// ========================================
+// Token/Cost Tracking (Phase 25 - Feature Parity)
+// ========================================
+// Pricing is now loaded from MODEL_PRICING_INFO for accurate per-model costs
+// Default fallback rates (Claude Sonnet 4.5) if model not found
+const DEFAULT_INPUT_COST_PER_MILLION = 3
+const DEFAULT_OUTPUT_COST_PER_MILLION = 15
+
+interface TokenUsageAccumulator {
+  totalInputTokens: number
+  totalOutputTokens: number
+  totalCalls: number
+  byModel: Record<string, { inputTokens: number; outputTokens: number; calls: number }>
+  byAgent: Record<string, { inputTokens: number; outputTokens: number; calls: number }>
+  updatedAt: Date
+}
+
+const tokenUsage: TokenUsageAccumulator = {
+  totalInputTokens: 0,
+  totalOutputTokens: 0,
+  totalCalls: 0,
+  byModel: {},
+  byAgent: {},
+  updatedAt: new Date(),
+}
+
+/**
+ * Accumulate token usage from an LLM response
+ * Called from ClaudeCodeCLIClient after each response
+ */
+export function accumulateTokenUsage(usage: {
+  inputTokens: number
+  outputTokens: number
+  model?: string
+  agentId?: string
+}): void {
+  tokenUsage.totalInputTokens += usage.inputTokens
+  tokenUsage.totalOutputTokens += usage.outputTokens
+  tokenUsage.totalCalls++
+  tokenUsage.updatedAt = new Date()
+
+  // Forward real-time cost update to renderer
+  forwardCostUpdate(getTokenUsageAndCosts())
+
+  // Track by model
+  if (usage.model) {
+    if (!tokenUsage.byModel[usage.model]) {
+      tokenUsage.byModel[usage.model] = { inputTokens: 0, outputTokens: 0, calls: 0 }
+    }
+    tokenUsage.byModel[usage.model].inputTokens += usage.inputTokens
+    tokenUsage.byModel[usage.model].outputTokens += usage.outputTokens
+    tokenUsage.byModel[usage.model].calls++
+  }
+
+  // Track by agent
+  if (usage.agentId) {
+    if (!tokenUsage.byAgent[usage.agentId]) {
+      tokenUsage.byAgent[usage.agentId] = { inputTokens: 0, outputTokens: 0, calls: 0 }
+    }
+    tokenUsage.byAgent[usage.agentId].inputTokens += usage.inputTokens
+    tokenUsage.byAgent[usage.agentId].outputTokens += usage.outputTokens
+    tokenUsage.byAgent[usage.agentId].calls++
+  }
+}
+
+/**
+ * Get current token usage and calculate costs
+ * Uses MODEL_PRICING_INFO for accurate per-model pricing
+ */
+export function getTokenUsageAndCosts(): {
+  totalCost: number
+  totalTokensUsed: number
+  inputTokens: number
+  outputTokens: number
+  estimatedCostUSD: number
+  breakdownByModel: Array<{ model: string; inputTokens: number; outputTokens: number; cost: number }>
+  breakdownByAgent: Array<{ agentId: string; inputTokens: number; outputTokens: number; cost: number }>
+  updatedAt: Date
+} {
+  /**
+   * Calculate cost for a specific model using MODEL_PRICING_INFO
+   * Falls back to default rates if model not found
+   */
+  const calculateCostForModel = (input: number, output: number, model?: string): number => {
+    const pricing = model ? MODEL_PRICING_INFO[model] : undefined
+    const inputRate = pricing?.inputPerMillion ?? DEFAULT_INPUT_COST_PER_MILLION
+    const outputRate = pricing?.outputPerMillion ?? DEFAULT_OUTPUT_COST_PER_MILLION
+    return (input * inputRate + output * outputRate) / 1_000_000
+  }
+
+  // Calculate total cost by summing per-model costs (more accurate than using default rate)
+  let totalCost = 0
+  for (const [model, data] of Object.entries(tokenUsage.byModel)) {
+    totalCost += calculateCostForModel(data.inputTokens, data.outputTokens, model)
+  }
+
+  // If no model breakdown exists, use default rate for total
+  if (Object.keys(tokenUsage.byModel).length === 0) {
+    totalCost = calculateCostForModel(tokenUsage.totalInputTokens, tokenUsage.totalOutputTokens)
+  }
+
+  return {
+    totalCost,
+    totalTokensUsed: tokenUsage.totalInputTokens + tokenUsage.totalOutputTokens,
+    inputTokens: tokenUsage.totalInputTokens,
+    outputTokens: tokenUsage.totalOutputTokens,
+    estimatedCostUSD: totalCost,
+    breakdownByModel: Object.entries(tokenUsage.byModel).map(([model, data]) => ({
+      model,
+      inputTokens: data.inputTokens,
+      outputTokens: data.outputTokens,
+      cost: calculateCostForModel(data.inputTokens, data.outputTokens, model),
+    })),
+    breakdownByAgent: Object.entries(tokenUsage.byAgent).map(([agentId, data]) => ({
+      agentId,
+      inputTokens: data.inputTokens,
+      outputTokens: data.outputTokens,
+      cost: calculateCostForModel(data.inputTokens, data.outputTokens),
+    })),
+    updatedAt: tokenUsage.updatedAt,
+  }
+}
+
+/**
+ * Reset token usage (e.g., when starting a new project)
+ */
+export function resetTokenUsage(): void {
+  tokenUsage.totalInputTokens = 0
+  tokenUsage.totalOutputTokens = 0
+  tokenUsage.totalCalls = 0
+  tokenUsage.byModel = {}
+  tokenUsage.byAgent = {}
+  tokenUsage.updatedAt = new Date()
+}
+
+// Expose accumulation function globally for CLI client to call
+;(global as unknown as { accumulateTokenUsage: typeof accumulateTokenUsage }).accumulateTokenUsage = accumulateTokenUsage
 
 /**
  * Register checkpoint and review IPC handlers
@@ -250,6 +417,7 @@ export function registerCheckpointReviewHandlers(
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- DatabaseClient type import would cause circular dependency
 export function registerDatabaseHandlers(databaseClient: any): void {
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
   databaseClientRef = databaseClient
   console.log('[IPC] Database handlers registered')
 }
@@ -274,6 +442,9 @@ export function registerIpcHandlers(): void {
       mode: 'genesis',
     })
 
+    // Reset cost tracking for new project
+    resetTokenUsage()
+
     return { success: true, projectId }
   })
 
@@ -292,6 +463,9 @@ export function registerIpcHandlers(): void {
 
     state.mode = 'evolution'
     state.projectId = projectId
+
+    // Reset cost tracking for new project session
+    resetTokenUsage()
 
     return { success: true }
   })
@@ -362,69 +536,111 @@ export function registerIpcHandlers(): void {
   /**
    * Get cost metrics
    * Returns token usage and cost breakdown
+   * Phase 25 Feature Parity: Now returns real accumulated token data
    */
   ipcMain.handle('dashboard:getCosts', (event) => {
     if (!validateSender(event)) {
       throw new Error('Unauthorized IPC sender')
     }
 
-    // Return placeholder cost data - in real implementation, this would come from LLM service tracking
-    return {
-      totalCost: 0,
-      totalTokensUsed: 0,
-      inputTokens: 0,
-      outputTokens: 0,
-      estimatedCostUSD: 0,
-      breakdownByModel: [],
-      breakdownByAgent: [],
-      updatedAt: new Date()
-    }
+    // Return real token usage and cost data accumulated from LLM calls
+    return getTokenUsageAndCosts()
   })
 
   /**
    * Get historical progress data for ProgressChart
    * Returns array of progress data points over time
    */
-  ipcMain.handle('dashboard:getHistoricalProgress', (event) => {
+  ipcMain.handle('dashboard:getHistoricalProgress', async (event) => {
     if (!validateSender(event)) {
       throw new Error('Unauthorized IPC sender')
     }
 
-    // Get current task state for calculating progress
-    const tasks = Array.from(state.tasks.values())
-    const totalTasks = tasks.length
-    const completedTasks = tasks.filter(t => t.status === 'completed').length
+    // Try to get real historical data from database
+    if (databaseClientRef) {
+      try {
+        const { tasks } = await import('../../persistence/database/schema')
+        const { isNotNull } = await import('drizzle-orm')
+
+        // Query all tasks with completedAt timestamps
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+        const allTasks = await databaseClientRef.db.select().from(tasks) as DbTaskRow[]
+        const totalTasks = allTasks.length
+
+        if (totalTasks === 0) {
+          return []
+        }
+
+        // Get tasks with completion times
+        /* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call */
+        const completedTasksData = await databaseClientRef.db
+          .select()
+          .from(tasks)
+          .where(isNotNull(tasks.completedAt)) as DbTaskRow[]
+        /* eslint-enable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call */
+
+        // Build historical progress from real completion times
+        if (completedTasksData.length === 0) {
+          // No completed tasks yet - return current state only
+          return [{ timestamp: new Date(), completed: 0, total: totalTasks }]
+        }
+
+        // Sort by completion time and create progress points
+        // Filter ensures completedAt is not null, so we can safely cast
+        const tasksWithCompletion = completedTasksData.filter(
+          (t): t is DbTaskRow & { completedAt: Date } => t.completedAt !== null
+        )
+        const sortedCompletions = tasksWithCompletion.sort(
+          (a, b) => new Date(a.completedAt).getTime() - new Date(b.completedAt).getTime()
+        )
+
+        const progressData: Array<{ timestamp: Date; completed: number; total: number }> = []
+
+        // Add starting point
+        const firstCompletion = sortedCompletions[0]?.completedAt
+        if (firstCompletion) {
+          progressData.push({
+            timestamp: new Date(new Date(firstCompletion).getTime() - 1000),
+            completed: 0,
+            total: totalTasks
+          })
+        }
+
+        // Add progress point for each completion
+        sortedCompletions.forEach((task, index) => {
+          progressData.push({
+            timestamp: new Date(task.completedAt),
+            completed: index + 1,
+            total: totalTasks
+          })
+        })
+
+        // Add current point
+        progressData.push({
+          timestamp: new Date(),
+          completed: completedTasksData.length,
+          total: totalTasks
+        })
+
+        return progressData
+      } catch (err) {
+        console.error('[IPC] Failed to get historical progress from database:', err)
+        // Fall through to fallback
+      }
+    }
+
+    // Fallback: Get current task state for calculating progress
+    const taskList = Array.from(state.tasks.values())
+    const totalTasks = taskList.length
+    const completedTasks = taskList.filter(t => t.status === 'completed').length
 
     // If no tasks exist, return empty progress history
     if (totalTasks === 0) {
       return []
     }
 
-    // Generate historical progress data based on completed tasks
-    // In a real implementation, this would be stored in the database
-    // For now, we'll generate some data points leading up to the current state
-    const now = new Date()
-    const progressData: Array<{ timestamp: Date; completed: number; total: number }> = []
-
-    // Create progress points for the past hour at 5-minute intervals
-    const intervalsBack = 12 // 12 intervals of 5 minutes = 1 hour
-    for (let i = intervalsBack; i >= 0; i--) {
-      const timestamp = new Date(now.getTime() - i * 5 * 60 * 1000)
-
-      // Calculate completed tasks at this point in time (simulated linear progress)
-      // In production, this would query historical completion times from the database
-      const progressAtTime = totalTasks > 0
-        ? Math.min(completedTasks, Math.floor(completedTasks * ((intervalsBack - i) / intervalsBack)))
-        : 0
-
-      progressData.push({
-        timestamp,
-        completed: i === 0 ? completedTasks : progressAtTime,
-        total: totalTasks
-      })
-    }
-
-    return progressData
+    // Return only the current state as a single data point
+    return [{ timestamp: new Date(), completed: completedTasks, total: totalTasks }]
   })
 
   ipcMain.handle('project:create', (event, input: { name: string; mode: 'genesis' | 'evolution' }) => {
@@ -686,8 +902,9 @@ export function registerIpcHandlers(): void {
       throw new Error('Invalid agent id')
     }
 
-    // For now, return empty array - in real implementation, this would fetch from agent logs
-    return []
+    // Return real output from the agent's buffer
+    const buffer = agentOutputBuffers.get(id)
+    return buffer ? [...buffer] : []
   })
 
   /**
@@ -699,16 +916,16 @@ export function registerIpcHandlers(): void {
       throw new Error('Unauthorized IPC sender')
     }
 
-    // Return placeholder QA status - in real implementation, this would come from QA runners
+    // Return real QA status from executionStatuses map
     return {
       steps: [
-        { type: 'build', status: 'pending' },
-        { type: 'lint', status: 'pending' },
-        { type: 'test', status: 'pending' },
-        { type: 'review', status: 'pending' }
+        { type: 'build', status: executionStatuses.get('build') ?? 'pending' },
+        { type: 'lint', status: executionStatuses.get('lint') ?? 'pending' },
+        { type: 'test', status: executionStatuses.get('test') ?? 'pending' },
+        { type: 'review', status: executionStatuses.get('review') ?? 'pending' }
       ],
-      iteration: 0,
-      maxIterations: 50
+      iteration: currentQAIteration,
+      maxIterations: maxQAIterations
     }
   })
 
@@ -748,6 +965,42 @@ export function registerIpcHandlers(): void {
     ['review', []]
   ])
 
+  // ========================================
+  // Agent Output Buffer (Phase 25 - Feature Parity)
+  // ========================================
+  // Stores the last 1000 lines of output per agent to prevent memory growth
+  const MAX_OUTPUT_LINES_PER_AGENT = 1000
+  const agentOutputBuffers: Map<string, string[]> = new Map()
+
+  /**
+   * Add a line of output to an agent's buffer
+   * Automatically trims to MAX_OUTPUT_LINES_PER_AGENT
+   */
+  function addAgentOutput(agentId: string, line: string): void {
+    let buffer = agentOutputBuffers.get(agentId)
+    if (!buffer) {
+      buffer = []
+      agentOutputBuffers.set(agentId, buffer)
+    }
+    buffer.push(line)
+    // Trim to max lines
+    if (buffer.length > MAX_OUTPUT_LINES_PER_AGENT) {
+      buffer.splice(0, buffer.length - MAX_OUTPUT_LINES_PER_AGENT)
+    }
+  }
+
+  /**
+   * Clear an agent's output buffer (e.g., when agent terminates)
+   */
+  function clearAgentOutput(agentId: string): void {
+    agentOutputBuffers.delete(agentId)
+  }
+
+  // Export for use in event forwarding setup
+  ;(global as unknown as { addAgentOutput: typeof addAgentOutput }).addAgentOutput = addAgentOutput
+  ;(global as unknown as { clearAgentOutput: typeof clearAgentOutput }).clearAgentOutput = clearAgentOutput
+  ;(global as unknown as { agentOutputBuffers: typeof agentOutputBuffers }).agentOutputBuffers = agentOutputBuffers
+
   // Execution step statuses
   const executionStatuses: Map<string, 'pending' | 'running' | 'success' | 'error'> = new Map([
     ['build', 'pending'],
@@ -765,6 +1018,10 @@ export function registerIpcHandlers(): void {
   // Current task being executed
   let currentExecutionTaskId: string | null = null
   let currentExecutionTaskName: string | null = null
+
+  // QA iteration tracking (for getQAStatus)
+  let currentQAIteration = 0
+  const maxQAIterations = 50
 
   /**
    * Get execution logs for a specific step (build/lint/test/review)
@@ -825,6 +1082,7 @@ export function registerIpcHandlers(): void {
     }
     currentExecutionTaskId = null
     currentExecutionTaskName = null
+    currentQAIteration = 0
 
     return { success: true }
   })
@@ -1526,7 +1784,7 @@ export function registerIpcHandlers(): void {
 
       // Trigger interview:completed event to start the planning chain
       // The NexusBootstrap will handle decomposition when it receives this event
-      const eventBus = EventBus.getInstance()
+      const _eventBus = EventBus.getInstance()
 
       // Get requirements count from database
       let requirementCount = 0
@@ -1838,6 +2096,9 @@ export function setupEventForwarding(mainWindow: BrowserWindow): void {
   })
 
   eventBus.on('task:qa-iteration', (event) => {
+    // Track current iteration for getQAStatus
+    currentQAIteration = event.payload.iteration as number
+
     forwardTimelineEvent({
       id: event.id,
       type: 'qa_iteration',
@@ -1848,6 +2109,20 @@ export function setupEventForwarding(mainWindow: BrowserWindow): void {
         iteration: event.payload.iteration
       }
     })
+
+    // Forward QA status update to renderer
+    if (eventForwardingWindow && !eventForwardingWindow.isDestroyed()) {
+      eventForwardingWindow.webContents.send('qa:status-update', {
+        steps: [
+          { type: 'build', status: executionStatuses.get('build') ?? 'pending' },
+          { type: 'lint', status: executionStatuses.get('lint') ?? 'pending' },
+          { type: 'test', status: executionStatuses.get('test') ?? 'pending' },
+          { type: 'review', status: executionStatuses.get('review') ?? 'pending' }
+        ],
+        iteration: currentQAIteration,
+        maxIterations: maxQAIterations
+      })
+    }
   })
 
   // ========================================
@@ -1895,6 +2170,25 @@ export function setupEventForwarding(mainWindow: BrowserWindow): void {
         agentId: event.payload.agentId
       }
     })
+  })
+
+  // Agent output streaming (Phase 25 - Feature Parity)
+  const globalAddAgentOutput = (global as unknown as {
+    addAgentOutput?: (agentId: string, line: string) => void
+  }).addAgentOutput
+
+  eventBus.on('agent:output', (event) => {
+    const { agentId, line } = event.payload
+    // Store in buffer
+    globalAddAgentOutput?.(agentId, line)
+    // Forward to renderer for real-time display
+    if (eventForwardingWindow && !eventForwardingWindow.isDestroyed()) {
+      eventForwardingWindow.webContents.send('agent:output', {
+        agentId,
+        line,
+        timestamp: event.timestamp
+      })
+    }
   })
 
   // ========================================
@@ -2079,7 +2373,7 @@ export function setupEventForwarding(mainWindow: BrowserWindow): void {
   // ========================================
 
   // Forward metrics updates when tasks complete or progress changes
-  eventBus.on('task:completed', (event) => {
+  eventBus.on('task:completed', (_event) => {
     // Calculate updated metrics after task completion
     const tasks = Array.from(state.tasks.values())
     const completedTasks = tasks.filter(t => t.status === 'completed').length

@@ -301,13 +301,13 @@ export function ProjectSelector({
                 readOnly
                 placeholder="Select a folder..."
                 className="flex-1 bg-muted/50 cursor-pointer"
-                onClick={handleSelectFolder}
+                onClick={() => { void handleSelectFolder(); }}
               />
               <Button
                 type="button"
                 variant="outline"
                 size="icon" data-testid="folder-select-btn"
-                onClick={handleSelectFolder}
+                onClick={() => { void handleSelectFolder(); }}
                 disabled={isLoading}
                 className="shrink-0"
               >
@@ -346,7 +346,7 @@ export function ProjectSelector({
           </Button>
           <Button
             type="button"
-            onClick={handleConfirm} data-testid="confirm-btn"
+            onClick={() => { void handleConfirm(); }} data-testid="confirm-btn"
             disabled={isLoading || !selectedPath || (mode === 'genesis' && !projectName.trim())}
             className={cn(
               mode === 'genesis'

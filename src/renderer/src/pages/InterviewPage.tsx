@@ -164,7 +164,7 @@ export default function InterviewPage(): ReactElement {
           {/* Left: Back button and title */}
           <div className="flex items-center gap-4">
             <button
-              onClick={() => navigate(-1)}
+              onClick={() => { void navigate(-1); }}
               className="p-2 -ml-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-bg-hover transition-colors"
               data-testid="back-button"
             >

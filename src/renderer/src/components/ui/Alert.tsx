@@ -182,7 +182,7 @@ Alert.displayName = 'Alert'
 /**
  * Alert Title Component
  */
-export interface AlertTitleProps extends React.HTMLAttributes<HTMLHeadingElement> {}
+export type AlertTitleProps = React.HTMLAttributes<HTMLHeadingElement>;
 
 const AlertTitle = React.forwardRef<HTMLHeadingElement, AlertTitleProps>(
   ({ className, children, ...props }, ref) => (
@@ -200,7 +200,7 @@ AlertTitle.displayName = 'AlertTitle'
 /**
  * Alert Description Component
  */
-export interface AlertDescriptionProps extends React.HTMLAttributes<HTMLParagraphElement> {}
+export type AlertDescriptionProps = React.HTMLAttributes<HTMLParagraphElement>;
 
 const AlertDescription = React.forwardRef<HTMLParagraphElement, AlertDescriptionProps>(
   ({ className, children, ...props }, ref) => (

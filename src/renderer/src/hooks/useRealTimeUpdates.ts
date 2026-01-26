@@ -25,7 +25,7 @@ import type { OverviewMetrics, TimelineEvent, AgentMetrics, CostMetrics } from '
 /**
  * Type guards and payload interfaces for real-time events
  */
-interface MetricsUpdatePayload extends OverviewMetrics {}
+type MetricsUpdatePayload = OverviewMetrics;
 
 interface TimelineEventPayload {
   id: string;

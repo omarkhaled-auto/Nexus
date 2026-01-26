@@ -48,8 +48,8 @@ export class InterviewPage {
     this.requirementsSidebar = page.locator('text=Requirements').locator('..');
 
     // Chat input is the textarea in the bottom section
-    this.chatInput = page.locator('textarea[placeholder*="project idea"]');
-    this.sendButton = page.locator('button:has(svg.lucide-send), button:has(.sr-only:text("Send message"))');
+    this.chatInput = page.locator('[data-testid="chat-input"]');
+    this.sendButton = page.locator('[data-testid="send-button"], button:has(svg.lucide-send)');
 
     // Messages - distinguished by class patterns
     this.userMessages = page.locator('[class*="chat-message"][class*="user"], [data-role="user"]');

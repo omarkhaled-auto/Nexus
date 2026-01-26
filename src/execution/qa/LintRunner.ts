@@ -145,11 +145,11 @@ export class LintRunner {
       let stdout = '';
       let _stderr = '';
 
-      proc.stdout?.on('data', (data) => {
+      proc.stdout?.on('data', (data: Buffer) => {
         stdout += data.toString();
       });
 
-      proc.stderr?.on('data', (data) => {
+      proc.stderr?.on('data', (data: Buffer) => {
         _stderr += data.toString();
       });
 
@@ -266,7 +266,7 @@ export class LintRunner {
     let fixedCount = 0;
 
     try {
-      const results: ESLintFileResult[] = JSON.parse(output || '[]');
+      const results = JSON.parse(output || '[]') as ESLintFileResult[];
 
       for (const file of results) {
         // Count files that were fixed

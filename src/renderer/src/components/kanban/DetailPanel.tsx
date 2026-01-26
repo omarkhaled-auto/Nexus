@@ -11,7 +11,7 @@
  * - Footer actions
  */
 
-import { useState, useEffect, useCallback, type ReactElement, type ReactNode } from 'react'
+import { useState, useEffect, type ReactElement, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { Button } from '@renderer/components/ui/button'
 import { ScrollArea } from '@renderer/components/ui/scroll-area'
@@ -47,8 +47,7 @@ import {
   Info,
   Bug,
   Circle,
-  Trash2,
-  ChevronUp
+  Trash2
 } from 'lucide-react'
 
 // ============================================================================
@@ -901,7 +900,7 @@ function LogsTab({ task }: { task: KanbanTask }): ReactElement {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => setAutoScroll(!autoScroll)}
+            onClick={() => { setAutoScroll(!autoScroll); }}
             className={cn(!autoScroll && 'opacity-50')}
           >
             Auto-scroll {autoScroll ? 'ON' : 'OFF'}
@@ -949,7 +948,7 @@ function LogsTab({ task }: { task: KanbanTask }): ReactElement {
                   <>
                     <button
                       type="button"
-                      onClick={() => toggleLogExpand(log.id)}
+                      onClick={() => { toggleLogExpand(log.id); }}
                       className="flex items-center gap-1 mt-1 text-muted-foreground hover:text-foreground"
                     >
                       {isExpanded ? (
@@ -1067,7 +1066,7 @@ export function DetailPanel({
   const [activeTab, setActiveTab] = useState<TabId>('overview')
   const [isDeleting, setIsDeleting] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [_showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   // Handle escape key
   useEffect(() => {
@@ -1078,7 +1077,7 @@ export function DetailPanel({
     }
 
     document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
+    return () => { document.removeEventListener('keydown', handleKeyDown); }
   }, [open, onClose])
 
   // Reset state when panel closes
@@ -1132,9 +1131,9 @@ export function DetailPanel({
     }
   }
 
-  // Get title and subtitle based on mode
+  // Get title based on mode
   const title = mode === 'feature' ? feature?.title : task?.title
-  const subtitle = mode === 'feature'
+  const _subtitle = mode === 'feature'
     ? feature && FEATURE_STATUS_LABELS[feature.status]
     : task && TASK_STATUS_STYLES[task.status]?.label
 
@@ -1157,6 +1156,7 @@ export function DetailPanel({
 
       {/* Panel */}
       <div
+        data-testid="detail-panel"
         className={cn(
           'fixed top-0 right-0 z-50 h-full bg-background border-l border-border shadow-2xl',
           'flex flex-col',
@@ -1248,7 +1248,7 @@ export function DetailPanel({
                 key={tab.id}
                 tab={tab}
                 isActive={activeTab === tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => { setActiveTab(tab.id); }}
                 count={tabCounts[tab.id]}
               />
             ))}
@@ -1261,7 +1261,7 @@ export function DetailPanel({
             {mode === 'feature' && feature && activeTab === 'overview' && (
               <FeatureOverviewTab
                 feature={feature}
-                onDelete={handleDeleteFeature}
+                onDelete={() => { void handleDeleteFeature(); }}
                 onUpdate={onUpdateFeature}
                 isDeleting={isDeleting}
               />

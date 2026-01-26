@@ -222,13 +222,13 @@ export const AgentCard = React.forwardRef<HTMLDivElement, AgentCardProps>(
             {/* Task name */}
             <div className="flex items-center gap-2 text-sm text-text-secondary">
               <FileCode2 size={14} className="flex-shrink-0 text-text-tertiary" />
-              <span className="truncate">{agent.currentTask!.name}</span>
+              <span className="truncate">{agent.currentTask?.name}</span>
             </div>
 
             {/* Progress bar */}
             {hasProgress && (
               <Progress
-                value={agent.currentTask!.progress}
+                value={agent.currentTask?.progress ?? 0}
                 variant="default"
                 size="sm"
                 showValue

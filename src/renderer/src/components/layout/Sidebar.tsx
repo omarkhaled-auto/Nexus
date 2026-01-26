@@ -11,7 +11,6 @@ import {
   Bot,
   Terminal,
   Settings,
-  FolderKanban,
   Sparkles,
   type LucideIcon,
 } from 'lucide-react'

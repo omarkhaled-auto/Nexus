@@ -200,7 +200,7 @@ export function KanbanBoard() {
   }, [handleFeatureClick])
 
   // Handle feature move (open move menu via context menu)
-  const handleFeatureMove = useCallback((feature: Feature, event?: React.MouseEvent) => {
+  const _handleFeatureMove = useCallback((feature: Feature, event?: React.MouseEvent) => {
     // If we have an event, use its position
     if (event) {
       setContextMenuFeature(feature)
@@ -335,7 +335,7 @@ export function KanbanBoard() {
         onDragEnd={handleDragEnd}
         onDragCancel={handleDragCancel}
       >
-        <div className="flex h-full gap-6 overflow-x-auto p-4">
+        <div className="flex h-full gap-6 overflow-x-auto p-4" data-testid="kanban-board">
           {COLUMNS.map((column) => (
             <KanbanColumn
               key={column.id}
@@ -375,10 +375,10 @@ export function KanbanBoard() {
         feature={contextMenuFeature}
         position={contextMenuPosition}
         columns={COLUMNS}
-        onClose={() => setContextMenuFeature(null)}
+        onClose={() => { setContextMenuFeature(null); }}
         onEdit={handleFeatureEdit}
         onMoveTo={handleMoveToColumn}
-        onChangePriority={handleChangePriority}
+        onChangePriority={(feature, priority) => { void handleChangePriority(feature, priority); }}
         onDelete={(feature) => void handleFeatureDelete(feature.id)}
       />
 

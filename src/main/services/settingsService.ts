@@ -243,6 +243,7 @@ class SettingsService {
         // Phase 16: Provider-specific public views
         claude: {
           backend: claude.backend ?? 'cli',
+          // eslint-disable-next-line @typescript-eslint/no-deprecated -- Legacy migration support
           hasApiKey: !!claude.apiKeyEncrypted || !!llm.claudeApiKeyEncrypted,
           cliPath: claude.cliPath,
           timeout: claude.timeout,
@@ -251,6 +252,7 @@ class SettingsService {
         },
         gemini: {
           backend: gemini.backend ?? 'cli',
+          // eslint-disable-next-line @typescript-eslint/no-deprecated -- Legacy migration support
           hasApiKey: !!gemini.apiKeyEncrypted || !!llm.geminiApiKeyEncrypted,
           cliPath: gemini.cliPath,
           timeout: gemini.timeout,
@@ -258,6 +260,7 @@ class SettingsService {
         },
         embeddings: {
           backend: embeddings.backend ?? 'local',
+          // eslint-disable-next-line @typescript-eslint/no-deprecated -- Legacy migration support
           hasApiKey: !!embeddings.apiKeyEncrypted || !!llm.openaiApiKeyEncrypted,
           localModel: embeddings.localModel,
           dimensions: embeddings.dimensions,
@@ -269,9 +272,12 @@ class SettingsService {
         defaultModel: llm.defaultModel ?? DEFAULT_CLAUDE_MODEL,
         fallbackEnabled: llm.fallbackEnabled ?? true,
         fallbackOrder: llm.fallbackOrder ?? ['claude', 'gemini'],
-        // Legacy compatibility
+        // Legacy compatibility - intentionally accessing deprecated fields
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
         hasClaudeKey: !!claude.apiKeyEncrypted || !!llm.claudeApiKeyEncrypted,
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
         hasGeminiKey: !!gemini.apiKeyEncrypted || !!llm.geminiApiKeyEncrypted,
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
         hasOpenaiKey: !!embeddings.apiKeyEncrypted || !!llm.openaiApiKeyEncrypted,
       },
       agents,

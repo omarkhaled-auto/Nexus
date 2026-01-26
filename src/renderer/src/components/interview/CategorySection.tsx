@@ -1,7 +1,6 @@
 import { useState, type ReactElement } from 'react';
 import {
   ChevronDown,
-  ChevronRight,
   Layers,
   Shield,
   Cpu,

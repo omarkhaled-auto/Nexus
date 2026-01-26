@@ -287,7 +287,7 @@ export function ChatPanel({ className }: ChatPanelProps): ReactElement {
   /**
    * Send a message to the backend interview engine
    */
-  const sendMessageToBackend = useCallback(async (message: string, userMessageId: string) => {
+  const sendMessageToBackend = useCallback(async (message: string, _userMessageId: string) => {
     if (!sessionId || !window.nexusAPI) {
       // No backend available - set error and return
       setError('Backend not available. Please run in Electron to use the interview feature.');
@@ -366,7 +366,7 @@ export function ChatPanel({ className }: ChatPanelProps): ReactElement {
     });
 
     // Send to backend and handle response
-    sendMessageToBackend(message, userMessageId)
+    void sendMessageToBackend(message, userMessageId)
       .finally(() => {
         setIsLoading(false);
       });

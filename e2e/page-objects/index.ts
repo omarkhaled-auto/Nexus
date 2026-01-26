@@ -17,6 +17,14 @@
  * ```
  */
 
+// Core page objects
 export { InterviewPage } from './InterviewPage';
 export { KanbanPage, COLUMN_STATUSES } from './KanbanPage';
 export { DashboardPage, type AgentStatus } from './DashboardPage';
+
+// New page objects
+export { ModeSelectorPage } from './ModeSelectorPage';
+export { PlanningPage, type PlanningStatus } from './PlanningPage';
+export { SettingsPage, type SettingsTab } from './SettingsPage';
+export { AgentsPage, type AgentPageStatus } from './AgentsPage';
+export { ExecutionPage, type ExecutionTab } from './ExecutionPage';

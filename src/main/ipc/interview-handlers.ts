@@ -70,8 +70,8 @@ function ensureProjectExists(
   if (!existing) {
     // Get stored rootPath from projectHandlers (set by project:initialize)
     const storedPath = projectName ? pendingProjectPaths.get(projectName) : undefined;
-    if (storedPath) {
-      pendingProjectPaths.delete(projectName!);
+    if (storedPath && projectName) {
+      pendingProjectPaths.delete(projectName);
       console.log(`[InterviewHandlers] Using stored rootPath for ${projectName}: ${storedPath}`);
     }
 

@@ -21,7 +21,7 @@
 import React, { useMemo } from 'react'
 import { Users, Zap, AlertCircle, Pause } from 'lucide-react'
 import { cn } from '@renderer/lib/utils'
-import { type AgentType, type AgentStatus, colors, getAgentLabel } from '@renderer/styles/tokens'
+import { type AgentType, type AgentStatus, getAgentLabel } from '@renderer/styles/tokens'
 import { AgentBadge } from './AgentBadge'
 
 // =============================================================================

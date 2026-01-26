@@ -30,9 +30,8 @@
  */
 
 import { settingsService } from './settingsService';
-import type { NexusFactoryConfig, LLMBackend, EmbeddingsBackend } from '../../NexusFactory';
+import type { NexusFactoryConfig, LLMBackend, EmbeddingsBackend, NexusInstance } from '../../NexusFactory';
 import type {
-  NexusSettings,
   LLMSettings,
   ClaudeProviderSettings,
   GeminiProviderSettings,
@@ -81,7 +80,7 @@ export class SettingsLoader {
       // Claude Configuration
       // ========================================================================
       claudeBackend: this.mapLLMBackend(llmSettings.claude.backend),
-      claudeApiKey: await this.getClaudeApiKey(llmSettings.claude),
+      claudeApiKey: this.getClaudeApiKey(llmSettings.claude),
       claudeCliConfig: {
         // Use claudePath (the actual config property name)
         claudePath: llmSettings.claude.cliPath,
@@ -98,7 +97,7 @@ export class SettingsLoader {
       // Gemini Configuration
       // ========================================================================
       geminiBackend: this.mapLLMBackend(llmSettings.gemini.backend),
-      geminiApiKey: await this.getGeminiApiKey(llmSettings.gemini),
+      geminiApiKey: this.getGeminiApiKey(llmSettings.gemini),
       geminiCliConfig: {
         cliPath: llmSettings.gemini.cliPath,
         timeout: llmSettings.gemini.timeout,
@@ -113,7 +112,7 @@ export class SettingsLoader {
       // Embeddings Configuration
       // ========================================================================
       embeddingsBackend: this.mapEmbeddingsBackend(llmSettings.embeddings.backend),
-      openaiApiKey: await this.getOpenAIApiKey(llmSettings.embeddings),
+      openaiApiKey: this.getOpenAIApiKey(llmSettings.embeddings),
       localEmbeddingsConfig: {
         model: llmSettings.embeddings.localModel,
         cacheEnabled: llmSettings.embeddings.cacheEnabled,
@@ -172,9 +171,12 @@ export class SettingsLoader {
       defaultModel: llm.defaultModel ?? 'claude-sonnet-4-20250514',
       fallbackEnabled: llm.fallbackEnabled ?? true,
       fallbackOrder: llm.fallbackOrder ?? ['claude', 'gemini'],
-      // Legacy fields
+      // Legacy fields - intentionally accessing deprecated fields for migration
+      // eslint-disable-next-line @typescript-eslint/no-deprecated
       claudeApiKeyEncrypted: llm.claudeApiKeyEncrypted,
+      // eslint-disable-next-line @typescript-eslint/no-deprecated
       geminiApiKeyEncrypted: llm.geminiApiKeyEncrypted,
+      // eslint-disable-next-line @typescript-eslint/no-deprecated
       openaiApiKeyEncrypted: llm.openaiApiKeyEncrypted,
     };
   }
@@ -186,9 +188,9 @@ export class SettingsLoader {
    * 1. Settings store (decrypted via safeStorage)
    * 2. ANTHROPIC_API_KEY environment variable
    */
-  private static async getClaudeApiKey(
-    settings: ClaudeProviderSettings
-  ): Promise<string | undefined> {
+  private static getClaudeApiKey(
+    _settings: ClaudeProviderSettings
+  ): string | undefined {
     // Try settings store first (uses safeStorage)
     const storedKey = settingsService.getApiKey('claude');
     if (storedKey) {
@@ -206,9 +208,9 @@ export class SettingsLoader {
    * 1. Settings store (decrypted via safeStorage)
    * 2. GOOGLE_AI_API_KEY or GOOGLE_API_KEY environment variable
    */
-  private static async getGeminiApiKey(
-    settings: GeminiProviderSettings
-  ): Promise<string | undefined> {
+  private static getGeminiApiKey(
+    _settings: GeminiProviderSettings
+  ): string | undefined {
     // Try settings store first (uses safeStorage)
     const storedKey = settingsService.getApiKey('gemini');
     if (storedKey) {
@@ -226,9 +228,9 @@ export class SettingsLoader {
    * 1. Settings store (decrypted via safeStorage)
    * 2. OPENAI_API_KEY environment variable
    */
-  private static async getOpenAIApiKey(
-    settings: EmbeddingsProviderSettings
-  ): Promise<string | undefined> {
+  private static getOpenAIApiKey(
+    _settings: EmbeddingsProviderSettings
+  ): string | undefined {
     // Try settings store first (uses safeStorage)
     const storedKey = settingsService.getApiKey('openai');
     if (storedKey) {
@@ -259,21 +261,19 @@ export class SettingsLoader {
    * This allows NexusFactory defaults to apply for unset values.
    */
   private static removeUndefined<T extends object>(obj: T): T {
-    const result = { ...obj } as Record<string, unknown>;
+    const entries = Object.entries(obj).filter(([, value]) => value !== undefined);
+    const result: Record<string, unknown> = {};
 
-    for (const key of Object.keys(result)) {
-      const value = result[key];
-      if (value === undefined) {
-        delete result[key];
-      } else if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+    for (const [key, value] of entries) {
+      if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
         // Recursively clean nested objects
         const cleaned = this.removeUndefined(value as Record<string, unknown>);
         // Only keep nested object if it has properties
         if (Object.keys(cleaned).length > 0) {
           result[key] = cleaned;
-        } else {
-          delete result[key];
         }
+      } else {
+        result[key] = value;
       }
     }
 
@@ -397,7 +397,7 @@ export class SettingsLoader {
  * await nexus.coordinator.start();
  * ```
  */
-export async function createNexusFromSettings(workingDir: string): Promise<import('../../NexusFactory').NexusInstance> {
+export async function createNexusFromSettings(workingDir: string): Promise<NexusInstance> {
   // Dynamic import to avoid circular dependency
   const { NexusFactory } = await import('../../NexusFactory');
   const config = await SettingsLoader.loadAsFactoryConfig(workingDir);
@@ -414,7 +414,7 @@ export async function createNexusFromSettings(workingDir: string): Promise<impor
 export async function createTestingNexusFromSettings(
   workingDir: string,
   options: { mockQA?: boolean; maxIterations?: number } = {}
-): Promise<import('../../NexusFactory').NexusInstance> {
+): Promise<NexusInstance> {
   // Dynamic import to avoid circular dependency
   const { NexusFactory } = await import('../../NexusFactory');
   const config = await SettingsLoader.loadAsFactoryConfig(workingDir);

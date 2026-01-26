@@ -48,7 +48,7 @@ interface LocationState {
  */
 function ProgressBar({ progress, className }: { progress: number; className?: string }): ReactElement {
   return (
-    <div className={cn('h-2 bg-bg-hover rounded-full overflow-hidden', className)}>
+    <div className={cn('h-2 bg-bg-hover rounded-full overflow-hidden', className)} data-testid="progress-bar">
       <div
         className="h-full bg-gradient-to-r from-accent-primary to-accent-secondary transition-all duration-500 ease-out"
         style={{ width: `${Math.min(progress, 100)}%` }}
@@ -71,7 +71,7 @@ function PlanningSteps({ currentStatus }: { currentStatus: string }): ReactEleme
   const currentIndex = steps.findIndex((s) => s.id === currentStatus);
 
   return (
-    <div className="flex items-center justify-center gap-2 sm:gap-4">
+    <div className="flex items-center justify-center gap-2 sm:gap-4" data-testid="planning-steps">
       {steps.map((step, index) => {
         const Icon = step.icon;
         const isActive = step.id === currentStatus;
@@ -146,6 +146,7 @@ function TaskPreviewCard({
         'animate-in slide-in-from-left duration-300'
       )}
       style={{ animationDelay: `${index * 50}ms` }}
+      data-testid={`task-preview-${task.id}`}
     >
       <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-accent-primary/20 flex items-center justify-center">
         <ListTodo className="w-4 h-4 text-accent-primary" />
@@ -183,7 +184,7 @@ function ErrorState({
   onRetry: () => void;
 }): ReactElement {
   return (
-    <div className="flex flex-col items-center justify-center gap-6 p-8">
+    <div className="flex flex-col items-center justify-center gap-6 p-8" data-testid="error-state">
       <div className="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center">
         <AlertCircle className="w-8 h-8 text-red-500" />
       </div>
@@ -193,6 +194,7 @@ function ErrorState({
       </div>
       <button
         onClick={onRetry}
+        data-testid="retry-button"
         className={cn(
           'flex items-center gap-2 px-6 py-3 rounded-lg',
           'bg-accent-primary text-white font-medium',
@@ -217,7 +219,7 @@ function CompleteState({
   onProceed: () => void;
 }): ReactElement {
   return (
-    <div className="flex flex-col items-center justify-center gap-6 p-8 animate-in fade-in duration-500">
+    <div className="flex flex-col items-center justify-center gap-6 p-8 animate-in fade-in duration-500" data-testid="complete-state">
       <div className="w-16 h-16 rounded-full bg-accent-success/20 flex items-center justify-center">
         <CheckCircle2 className="w-8 h-8 text-accent-success" />
       </div>
@@ -229,6 +231,7 @@ function CompleteState({
       </div>
       <button
         onClick={onProceed}
+        data-testid="proceed-button"
         className={cn(
           'flex items-center gap-2 px-6 py-3 rounded-lg',
           'bg-accent-primary text-white font-medium',
@@ -285,7 +288,7 @@ export default function PlanningPage(): ReactElement {
       // Start the real planning process via backend
       // The usePlanningProgress hook will receive events and update the UI
       console.log('[PlanningPage] Starting planning for project:', projectId, 'with', requirements.length, 'requirements');
-      void startPlanning(projectId);
+      startPlanning(projectId);
     }
   }, [locationState, status, startPlanning]);
 
@@ -322,7 +325,7 @@ export default function PlanningPage(): ReactElement {
   };
 
   return (
-    <AnimatedPage className="min-h-full bg-bg-dark">
+    <AnimatedPage className="min-h-full bg-bg-dark" data-testid="planning-page">
       <div className="max-w-4xl mx-auto px-6 py-12">
         {/* Header */}
         <header className="text-center mb-12">
@@ -359,11 +362,11 @@ export default function PlanningPage(): ReactElement {
             <PlanningSteps currentStatus={status} />
 
             {/* Main Progress Section */}
-            <div className="bg-bg-card rounded-xl border border-border-default p-6">
+            <div className="bg-bg-card rounded-xl border border-border-default p-6" data-testid="progress-stats">
               {/* Current Step */}
               <div className="flex items-center gap-3 mb-4">
                 <Loader2 className="w-5 h-5 text-accent-primary animate-spin" />
-                <span className="text-text-primary font-medium">{currentStep}</span>
+                <span className="text-text-primary font-medium" data-testid="current-step">{currentStep}</span>
               </div>
 
               {/* Progress Bar */}
@@ -371,7 +374,7 @@ export default function PlanningPage(): ReactElement {
 
               {/* Stats Row */}
               <div className="flex items-center justify-between text-sm">
-                <span className="text-text-secondary">{Math.round(progress)}% complete</span>
+                <span className="text-text-secondary" data-testid="progress-percent">{Math.round(progress)}% complete</span>
                 <div className="flex items-center gap-4">
                   <span className="text-text-tertiary">
                     {featureCount} feature{featureCount !== 1 ? 's' : ''}
@@ -391,7 +394,7 @@ export default function PlanningPage(): ReactElement {
 
             {/* Task List */}
             {tasksCreated.length > 0 && (
-              <div className="bg-bg-card rounded-xl border border-border-default p-6">
+              <div className="bg-bg-card rounded-xl border border-border-default p-6" data-testid="task-list">
                 <h3 className="text-lg font-semibold text-text-primary mb-4 flex items-center gap-2">
                   <ListTodo className="w-5 h-5 text-accent-primary" />
                   Tasks Created ({taskCount})
@@ -408,7 +411,7 @@ export default function PlanningPage(): ReactElement {
 
         {/* Idle State (no requirements) */}
         {status === 'idle' && (!locationState?.requirements || locationState.requirements.length === 0) && (
-          <div className="text-center py-12">
+          <div className="text-center py-12" data-testid="idle-state">
             <div className="w-16 h-16 rounded-full bg-bg-hover mx-auto mb-6 flex items-center justify-center">
               <AlertCircle className="w-8 h-8 text-text-tertiary" />
             </div>
@@ -418,6 +421,7 @@ export default function PlanningPage(): ReactElement {
             </p>
             <button
               onClick={() => { void navigate('/genesis'); }}
+              data-testid="start-interview-button"
               className={cn(
                 'px-6 py-3 rounded-lg font-medium',
                 'bg-accent-primary text-white',

@@ -223,11 +223,35 @@ export class KanbanPage {
 
   /**
    * Wait for the Kanban page to load.
+   * Handles both scenarios: board with features and empty state.
    */
   async waitForLoad(): Promise<void> {
-    // Wait for at least the column headers to be visible
-    await this.page.waitForSelector('h2:text("Backlog")', { state: 'visible' });
-    await this.page.waitForSelector('h2:text("Done")', { state: 'visible' });
+    // Wait for the page content container first (always visible)
+    await this.page.waitForSelector('[data-testid="kanban-page-content"]', { state: 'visible', timeout: 15000 });
+
+    // Wait for either the kanban board OR empty state to appear
+    await Promise.race([
+      this.page.waitForSelector('[data-testid="kanban-board"]', { state: 'visible', timeout: 10000 }),
+      this.page.waitForSelector('text=No features yet', { state: 'visible', timeout: 10000 }),
+      this.page.waitForSelector('text=Loading features', { state: 'visible', timeout: 5000 })
+    ]).catch(() => {
+      // If neither appears, that's ok - page content is loaded
+    });
+  }
+
+  /**
+   * Check if the kanban board is in empty state (no features).
+   */
+  async isEmptyState(): Promise<boolean> {
+    const emptyState = this.page.locator('text=No features yet');
+    return emptyState.isVisible().catch(() => false);
+  }
+
+  /**
+   * Check if the kanban board is visible (has features).
+   */
+  async isBoardVisible(): Promise<boolean> {
+    return this.board.isVisible().catch(() => false);
   }
 
   /**

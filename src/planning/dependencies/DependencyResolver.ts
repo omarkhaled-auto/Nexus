@@ -78,7 +78,8 @@ export class DependencyResolver implements IDependencyResolver {
       const waveTaskIds: string[] = [];
 
       for (const taskId of Array.from(remaining)) {
-        const task = taskMap.get(taskId)!;
+        const task = taskMap.get(taskId);
+        if (!task) continue;
         const deps = task.dependsOn || [];
 
         // Check if all dependencies are either completed or not in our task set
@@ -111,7 +112,7 @@ export class DependencyResolver implements IDependencyResolver {
       }
 
       // Create wave
-      const waveTasks = waveTaskIds.map((id) => taskMap.get(id)!);
+      const waveTasks = waveTaskIds.map((id) => taskMap.get(id)).filter((t): t is PlanningTask => t !== undefined);
       const estimatedMinutes = Math.max(
         ...waveTasks.map((t) => t.estimatedMinutes || 30)
       );
@@ -161,8 +162,8 @@ export class DependencyResolver implements IDependencyResolver {
       for (const dep of task.dependsOn || []) {
         // Only consider dependencies within our task set
         if (taskMap.has(dep)) {
-          graph.get(dep)!.push(task.id);
-          inDegree.set(task.id, (inDegree.get(task.id) || 0) + 1);
+          graph.get(dep)?.push(task.id);
+          inDegree.set(task.id, (inDegree.get(task.id) ?? 0) + 1);
         }
       }
     }
@@ -179,8 +180,10 @@ export class DependencyResolver implements IDependencyResolver {
     }
 
     while (queue.length > 0) {
-      const current = queue.shift()!;
-      result.push(taskMap.get(current)!);
+      const current = queue.shift();
+      if (!current) break;
+      const currentTask = taskMap.get(current);
+      if (currentTask) result.push(currentTask);
 
       // Reduce in-degree for all neighbors
       for (const neighbor of graph.get(current) || []) {
@@ -321,7 +324,8 @@ export class DependencyResolver implements IDependencyResolver {
     const getLongestPath = (
       taskId: string
     ): { path: PlanningTask[]; time: number } => {
-      if (memo.has(taskId)) return memo.get(taskId)!;
+      const cached = memo.get(taskId);
+      if (cached) return cached;
 
       const task = taskMap.get(taskId);
       if (!task) return { path: [], time: 0 };

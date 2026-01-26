@@ -304,24 +304,35 @@ export const useFeatureStore = create<FeatureState>()((set, get) => ({
                 }
                 // Backend returned full task object
                 const taskObj = t as Record<string, unknown>;
+                const taskId = typeof taskObj.id === 'string' ? taskObj.id : `task-${idx}`;
+                const taskTitle = (typeof taskObj.title === 'string' ? taskObj.title : null) ||
+                                  (typeof taskObj.name === 'string' ? taskObj.name : `Task ${idx + 1}`);
                 return {
-                  id: String(taskObj.id ?? `task-${idx}`),
-                  title: String(taskObj.title ?? taskObj.name ?? `Task ${idx + 1}`),
-                  status: (taskObj.status as FeatureTask['status']) ?? 'pending',
+                  id: taskId,
+                  title: taskTitle,
+                  status: (typeof taskObj.status === 'string' ? taskObj.status : 'pending') as FeatureTask['status'],
                   estimatedMinutes: taskObj.estimatedMinutes as number | undefined
                 };
               })
             : [];
+          const rawId = typeof raw.id === 'string' ? raw.id : '';
+          const rawName = typeof raw.name === 'string' ? raw.name : '';
+          const rawTitle = typeof raw.title === 'string' ? raw.title : '';
+          const rawDesc = typeof raw.description === 'string' ? raw.description : '';
+          const rawStatus = typeof raw.status === 'string' ? raw.status : 'backlog';
+          const rawPriority = typeof raw.priority === 'string' ? raw.priority : 'medium';
+          const rawCreatedAt = typeof raw.createdAt === 'string' ? raw.createdAt : new Date().toISOString();
+          const rawUpdatedAt = typeof raw.updatedAt === 'string' ? raw.updatedAt : new Date().toISOString();
           return {
-            id: String(raw.id ?? ''),
-            title: String(raw.name ?? raw.title ?? ''),
-            description: String(raw.description ?? ''),
-            status: mapBackendStatus(String(raw.status ?? 'backlog')),
-            priority: mapBackendPriority(String(raw.priority ?? 'medium')),
+            id: rawId,
+            title: rawName || rawTitle,
+            description: rawDesc,
+            status: mapBackendStatus(rawStatus),
+            priority: mapBackendPriority(rawPriority),
             complexity: (raw.complexity as 'simple' | 'moderate' | 'complex') ?? 'moderate',
             tasks,
-            createdAt: String(raw.createdAt ?? new Date().toISOString()),
-            updatedAt: String(raw.updatedAt ?? new Date().toISOString())
+            createdAt: rawCreatedAt,
+            updatedAt: rawUpdatedAt
           };
         });
         console.log('[featureStore] Loaded features from backend:', features.length, projectId ? `(filtered by ${projectId})` : '(all)');

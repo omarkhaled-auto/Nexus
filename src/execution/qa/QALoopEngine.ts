@@ -171,7 +171,7 @@ export class QALoopEngine {
       id: task.id,
       name: task.name,
       description: mode === 'fix'
-        ? `Fix the following errors:\n${errors?.join('\n')}\n\nOriginal task: ${task.description}`
+        ? `Fix the following errors:\n${errors?.join('\n') ?? 'Unknown errors'}\n\nOriginal task: ${task.description}`
         : task.description,
       type: 'auto',
       status: 'in_progress',
@@ -237,7 +237,7 @@ export class QALoopEngine {
     let lastReview: ReviewResult | undefined;
 
     // Determine effective working directory: prefer projectPath, then worktree, then default
-    const effectiveWorkingDir = task.projectPath || task.worktree || this.workingDir;
+    const effectiveWorkingDir = task.projectPath || task.worktree || this.workingDir || process.cwd();
 
     console.log(`[QALoopEngine] Starting QA loop for task ${task.id}: ${task.name}`);
     console.log(`[QALoopEngine] Project path: ${task.projectPath ?? 'NOT PROVIDED'}`);

@@ -20,7 +20,6 @@ import type { BaseAgentRunner, AgentContext } from '../../execution/agents/BaseA
 import { EventBus } from '../events/EventBus';
 import type {
   AgentType,
-  AgentStatus,
   AgentMetrics,
   AgentModelConfig,
 } from '../../types/agent';
@@ -236,7 +235,7 @@ export class AgentPool implements IAgentPool {
     this.agents.set(agent.id, agent);
 
     // Emit spawn event
-    this.eventBus.emit('agent:started', {
+    void this.eventBus.emit('agent:started', {
       agentId: agent.id,
       taskId: '',
     });
@@ -262,7 +261,7 @@ export class AgentPool implements IAgentPool {
     this.agents.delete(agentId);
 
     // Emit termination event
-    this.eventBus.emit('agent:terminated', {
+    void this.eventBus.emit('agent:terminated', {
       agentId,
       reason: 'manual',
       metrics: agent.metrics,
@@ -305,7 +304,7 @@ export class AgentPool implements IAgentPool {
     agent.lastActiveAt = new Date();
 
     // Emit release event (using idle event as there's no specific release event)
-    this.eventBus.emit('agent:idle', {
+    void this.eventBus.emit('agent:idle', {
       agentId,
       idleSince: new Date(),
     });
@@ -417,7 +416,7 @@ export class AgentPool implements IAgentPool {
       existingAgent.metrics.totalTimeActive += Date.now() - startTime;
 
       // Emit error event
-      this.eventBus.emit('agent:error', {
+      void this.eventBus.emit('agent:error', {
         agentId: agent.id,
         error: error instanceof Error ? error.message : 'Unknown error',
         recoverable: false,
@@ -469,11 +468,12 @@ export class AgentPool implements IAgentPool {
   /**
    * Terminate all agents in the pool
    */
-  async terminateAll(): Promise<void> {
+  terminateAll(): Promise<void> {
     const agentIds = Array.from(this.agents.keys());
     for (const agentId of agentIds) {
       this.terminate(agentId);
     }
+    return Promise.resolve();
   }
 
   /**

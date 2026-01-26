@@ -47,6 +47,17 @@ export interface ReviewOutput {
   summary: string;
 }
 
+/**
+ * Raw parsed JSON from LLM review response
+ * Used for type-safe parsing before normalization
+ */
+interface ReviewAnalysisRawParsed {
+  approved?: boolean;
+  issues?: Partial<ReviewIssue>[];
+  suggestions?: unknown[];
+  summary?: string;
+}
+
 // ============================================================================
 // System Prompt
 // ============================================================================
@@ -303,22 +314,24 @@ If you have completed the review, provide the JSON output and include [TASK_COMP
         return null;
       }
 
-      const parsed = JSON.parse(jsonMatch[1]);
+      const parsed = JSON.parse(jsonMatch[1]) as ReviewAnalysisRawParsed;
 
       return {
         approved: parsed.approved === true,
         issues: Array.isArray(parsed.issues)
-          ? parsed.issues.map((i: Partial<ReviewIssue>) => ({
-              severity: i.severity || 'minor',
-              category: i.category || 'maintainability',
-              file: i.file || 'unknown',
+          ? parsed.issues.map((i) => ({
+              severity: i.severity ?? 'minor',
+              category: i.category ?? 'maintainability',
+              file: i.file ?? 'unknown',
               line: i.line,
-              message: i.message || 'No message',
+              message: i.message ?? 'No message',
               suggestion: i.suggestion,
             }))
           : [],
-        suggestions: Array.isArray(parsed.suggestions) ? parsed.suggestions : [],
-        summary: parsed.summary || 'No summary provided',
+        suggestions: Array.isArray(parsed.suggestions)
+          ? parsed.suggestions.filter((s): s is string => typeof s === 'string')
+          : [],
+        summary: parsed.summary ?? 'No summary provided',
       };
     } catch {
       return null;

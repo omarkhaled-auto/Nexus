@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react'
 import { Virtuoso } from 'react-virtuoso'
-import { Activity, Pause, Play, Filter, AlertCircle } from 'lucide-react'
+import { Activity, Pause, Play } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@renderer/components/ui/card'
 import { useTimeline } from '@renderer/stores/metricsStore'
 import { EventRow } from './EventRow'

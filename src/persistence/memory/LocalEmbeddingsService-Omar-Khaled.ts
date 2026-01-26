@@ -26,18 +26,8 @@ import type {
 import {
   LocalEmbeddingsErrorCode,
   MODEL_DIMENSIONS,
-  DEFAULT_LOCAL_MODEL,
   DEFAULT_LOCAL_EMBEDDINGS_CONFIG,
 } from './LocalEmbeddingsService.types';
-
-// ============================================================================
-// Constants
-// ============================================================================
-
-/**
- * Polling interval for checking model download progress
- */
-const PROGRESS_POLL_INTERVAL = 500;
 
 // ============================================================================
 // Error Classes

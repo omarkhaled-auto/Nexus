@@ -15,8 +15,6 @@ import type {
   PlanningTaskPreview,
   PlanningFeaturePreview,
   PlanningProgressPayload,
-  PlanningTaskCreatedPayload,
-  PlanningCompletedPayload,
 } from '@/types/execution';
 
 // ============================================================================
@@ -293,7 +291,7 @@ export function usePlanningProgress(): UsePlanningProgressReturn {
   // Retry planning after error
   const retry = useCallback(() => {
     if (store.projectId) {
-      startPlanning(store.projectId);
+      void startPlanning(store.projectId);
     }
   }, [store.projectId, startPlanning]);
 
@@ -315,8 +313,8 @@ export function usePlanningProgress(): UsePlanningProgressReturn {
     featureCount: store.featuresIdentified.length,
     estimatedTimeRemaining: estimatedTimeRemaining(),
 
-    // Actions
-    startPlanning,
+    // Actions - wrap async to avoid no-misused-promises
+    startPlanning: (projectId: string) => { void startPlanning(projectId); },
     retry,
     reset: store.reset,
   };

@@ -154,19 +154,19 @@ export class QARunnerFactory {
    */
   static createMock(): QARunner {
     return {
-      build: async (_taskId: string): Promise<BuildResult> => ({
+      build: (_taskId: string): Promise<BuildResult> => Promise.resolve({
         success: true,
         errors: [],
         warnings: [],
         duration: 0,
       }),
-      lint: async (_taskId: string): Promise<LintResult> => ({
+      lint: (_taskId: string): Promise<LintResult> => Promise.resolve({
         success: true,
         errors: [],
         warnings: [],
         fixable: 0,
       }),
-      test: async (_taskId: string): Promise<TestResult> => ({
+      test: (_taskId: string): Promise<TestResult> => Promise.resolve({
         success: true,
         passed: 10,
         failed: 0,
@@ -174,7 +174,7 @@ export class QARunnerFactory {
         errors: [],
         duration: 0,
       }),
-      review: async (_taskId: string): Promise<ReviewResult> => ({
+      review: (_taskId: string): Promise<ReviewResult> => Promise.resolve({
         approved: true,
         comments: [],
         suggestions: [],
@@ -229,10 +229,10 @@ export class QARunnerFactory {
     };
 
     return {
-      build: async () => mockResults.build ?? defaultBuild,
-      lint: async () => mockResults.lint ?? defaultLint,
-      test: async () => mockResults.test ?? defaultTest,
-      review: async () => mockResults.review ?? defaultReview,
+      build: () => Promise.resolve(mockResults.build ?? defaultBuild),
+      lint: () => Promise.resolve(mockResults.lint ?? defaultLint),
+      test: () => Promise.resolve(mockResults.test ?? defaultTest),
+      review: () => Promise.resolve(mockResults.review ?? defaultReview),
     };
   }
 

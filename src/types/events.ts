@@ -44,11 +44,12 @@ export type EventType =
   | 'task:blocked'
   | 'task:escalated'
 
-  // Agent lifecycle (8 events)
+  // Agent lifecycle (9 events)
   | 'agent:spawned'
   | 'agent:assigned'
   | 'agent:started'
   | 'agent:progress'
+  | 'agent:output'
   | 'agent:idle'
   | 'agent:error'
   | 'agent:terminated'
@@ -264,6 +265,14 @@ export interface AgentProgressPayload {
   taskId: string;
   action: string;
   details?: string;
+}
+
+export interface AgentOutputPayload {
+  agentId: string;
+  taskId?: string;
+  line: string;
+  stream: 'stdout' | 'stderr';
+  timestamp: Date;
 }
 
 export interface AgentIdlePayload {
@@ -522,6 +531,7 @@ export interface EventPayloadMap {
   'agent:assigned': AgentAssignedPayload;
   'agent:started': AgentStartedPayload;
   'agent:progress': AgentProgressPayload;
+  'agent:output': AgentOutputPayload;
   'agent:idle': AgentIdlePayload;
   'agent:error': AgentErrorPayload;
   'agent:terminated': AgentTerminatedPayload;

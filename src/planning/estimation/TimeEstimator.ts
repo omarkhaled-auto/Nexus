@@ -109,9 +109,9 @@ export class TimeEstimator implements ITimeEstimator {
   /**
    * Estimate time for a single task
    */
-  async estimate(task: PlanningTask): Promise<number> {
+  estimate(task: PlanningTask): Promise<number> {
     const result = this.estimateDetailed(task);
-    return result.estimatedMinutes;
+    return Promise.resolve(result.estimatedMinutes);
   }
 
   /**

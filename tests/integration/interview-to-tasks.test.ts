@@ -24,24 +24,37 @@ import { EventBus } from '../../src/orchestration/events/EventBus';
  * Create mock requirements for testing
  */
 function createMockRequirements() {
+  const now = new Date();
   return [
     {
+      id: 'req-1',
+      projectId: 'test-project',
       content: 'User authentication with login/logout functionality',
-      category: 'functional',
-      priority: 'must',
-      source: 'interview',
+      category: 'functional' as const,
+      priority: 'critical' as const,
+      source: 'interview' as const,
+      createdAt: now,
+      updatedAt: now,
     },
     {
+      id: 'req-2',
+      projectId: 'test-project',
       content: 'TypeScript implementation with strict mode',
-      category: 'technical',
-      priority: 'should',
-      source: 'interview',
+      category: 'technical' as const,
+      priority: 'high' as const,
+      source: 'interview' as const,
+      createdAt: now,
+      updatedAt: now,
     },
     {
+      id: 'req-3',
+      projectId: 'test-project',
       content: 'RESTful API for CRUD operations',
-      category: 'functional',
-      priority: 'must',
-      source: 'interview',
+      category: 'functional' as const,
+      priority: 'critical' as const,
+      source: 'interview' as const,
+      createdAt: now,
+      updatedAt: now,
     },
   ];
 }
@@ -269,11 +282,16 @@ describe('Interview to Tasks Integration', () => {
       });
 
       // Emit same requirement twice
+      const now = new Date();
       const duplicateReq = {
+        id: 'dup-req-1',
+        projectId,
         content: 'Unique feature requirement',
-        category: 'functional',
-        priority: 'must',
-        source: 'interview',
+        category: 'functional' as const,
+        priority: 'critical' as const,
+        source: 'interview' as const,
+        createdAt: now,
+        updatedAt: now,
       };
 
       await eventBus.emit('interview:requirement-captured', {

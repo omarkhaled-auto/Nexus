@@ -214,8 +214,8 @@ export class ProjectLoader {
       throw new Error(`Not a Nexus project: ${projectPath}`);
     }
 
-    const currentConfig = await readJson(configPath);
-    const updatedConfig = {
+    const currentConfig = await readJson<ProjectConfig>(configPath);
+    const updatedConfig: ProjectConfig = {
       ...currentConfig,
       ...updates,
       // Don't allow overwriting certain fields

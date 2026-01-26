@@ -22,9 +22,8 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react'
 import { Trash2, Pause, Play, ChevronDown } from 'lucide-react'
 import { cn } from '@renderer/lib/utils'
-import { type AgentStatus, colors } from '@renderer/styles/tokens'
+import type { AgentStatus } from '@renderer/styles/tokens'
 import { Button } from '../ui/button'
-import { ScrollArea } from '../ui/scroll-area'
 
 // =============================================================================
 // TYPES
@@ -57,8 +56,8 @@ export interface AgentActivityProps {
 
 /** Parse ANSI escape codes and convert to styled spans */
 function parseAnsiLine(line: string): React.ReactNode {
-  // Simple ANSI color code patterns
-  const patterns: Array<{ regex: RegExp; className: string }> = [
+  // Simple ANSI color code patterns (reserved for future use)
+  const _patterns: Array<{ regex: RegExp; className: string }> = [
     { regex: /\[32m(.*?)\[0m|\[32m(.*?)$/g, className: 'text-accent-success' }, // Green
     { regex: /\[31m(.*?)\[0m|\[31m(.*?)$/g, className: 'text-accent-error' }, // Red
     { regex: /\[33m(.*?)\[0m|\[33m(.*?)$/g, className: 'text-accent-warning' }, // Yellow

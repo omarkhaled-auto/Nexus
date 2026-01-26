@@ -223,7 +223,7 @@ export function CommandPalette({
               ref={inputRef}
               type="text"
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(e) => { setQuery(e.target.value); }}
               onKeyDown={handleKeyDown}
               placeholder="Search features..."
               className="flex-1 bg-transparent text-foreground placeholder:text-muted-foreground focus:outline-none text-sm"
@@ -249,8 +249,8 @@ export function CommandPalette({
                 <button
                   key={result.id}
                   type="button"
-                  onClick={() => handleResultClick(result)}
-                  onMouseEnter={() => setSelectedIndex(index)}
+                  onClick={() => { handleResultClick(result); }}
+                  onMouseEnter={() => { setSelectedIndex(index); }}
                   className={cn(
                     'w-full flex items-start gap-3 px-3 py-2.5 rounded-lg text-left transition-colors',
                     index === selectedIndex ? 'bg-muted' : 'hover:bg-muted/50'

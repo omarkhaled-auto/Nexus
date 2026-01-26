@@ -231,7 +231,7 @@ export default function AgentsPage(): ReactElement {
             <Button
               variant={isPaused ? 'primary' : 'outline'}
               size="sm"
-              onClick={handlePauseAll}
+              onClick={() => { void handlePauseAll(); }}
               data-testid="pause-all-button"
             >
               {isPaused ? (

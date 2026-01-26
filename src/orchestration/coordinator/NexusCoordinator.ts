@@ -4,7 +4,7 @@
 // Note: This file uses `any` typed external services (QALoopEngine, WorktreeManager, etc.)
 // to avoid circular dependencies. The unsafe-* lint rules are disabled for lines that
 // interact with these services.
-/* eslint-disable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
 
 import type {
   INexusCoordinator,
@@ -1096,7 +1096,7 @@ export class NexusCoordinator implements INexusCoordinator {
 
                 if (this.humanReviewService) {
                   try {
-                    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call -- humanReviewService is any-typed
+                    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- humanReviewService is any-typed
                     const review = await this.humanReviewService.requestReview({
                       taskId: task.id,
                       projectId: this.projectConfig?.projectId ?? 'unknown',
@@ -1106,7 +1106,7 @@ export class NexusCoordinator implements INexusCoordinator {
                         error: mergeResult.error,
                       },
                     });
-                    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- review.id is any
+                     
                     const reviewId = review.id as string;
 
                     // Track this escalated task for review response handling
@@ -1152,12 +1152,12 @@ export class NexusCoordinator implements INexusCoordinator {
       } else if (result.escalated) {
         // Task escalated - needs human intervention
         // Phase 3 Fix: Properly integrate with HumanReviewService
-        console.log(`[NexusCoordinator] Task ${task.id} escalated: ${result.reason ?? 'Max QA iterations exceeded'}`);
+        console.log(`[NexusCoordinator] Task ${task.id} escalated: ${String(result.reason ?? 'Max QA iterations exceeded')}`);
 
         if (this.humanReviewService) {
           try {
             // Create a review request for human intervention
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call -- humanReviewService is any-typed
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- humanReviewService is any-typed
             const review = await this.humanReviewService.requestReview({
               taskId: task.id,
               projectId: this.projectConfig?.projectId ?? 'unknown',
@@ -1168,7 +1168,7 @@ export class NexusCoordinator implements INexusCoordinator {
                 lastErrors: result.errors ?? [],
               },
             });
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- review.id is any
+             
             const reviewId = review.id as string;
 
             console.log(`[NexusCoordinator] Created review request ${reviewId} for task ${task.id}`);

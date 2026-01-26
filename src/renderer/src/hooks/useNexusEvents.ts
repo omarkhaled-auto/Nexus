@@ -109,6 +109,7 @@ export function useNexusEvents(): void {
 
   const refreshMetrics = useMetricsStore((s) => s.loadMetrics);
 
+  // eslint-disable-next-line @typescript-eslint/no-deprecated -- TODO: Migrate to sonner toast
   const addToast = useUIStore((s) => s.addToast);
 
   useEffect(() => {
@@ -195,7 +196,7 @@ export function useNexusEvents(): void {
           case 'project:status-changed': {
             const p = payload as ProjectEventPayload;
             // Update project status in store if we have a current project
-            console.log(`[useNexusEvents] Project ${p.projectId} status: ${p.previousStatus} -> ${p.newStatus}`);
+            console.log(`[useNexusEvents] Project ${p.projectId ?? 'unknown'} status: ${p.previousStatus ?? 'unknown'} -> ${p.newStatus ?? 'unknown'}`);
             break;
           }
 
@@ -303,11 +304,7 @@ export function useNexusEvents(): void {
           // ========================================
           case 'system:checkpoint-created': {
             const p = payload as SystemEventPayload;
-            addToast({
-              id: `checkpoint-created-${p.checkpointId}`,
-              type: 'info',
-              message: `Checkpoint created: ${p.reason || 'Manual checkpoint'}`,
-            });
+            console.log(`[useNexusEvents] Checkpoint created: ${p.checkpointId ?? 'unknown'}, reason: ${p.reason ?? 'Manual checkpoint'}`);
             break;
           }
 

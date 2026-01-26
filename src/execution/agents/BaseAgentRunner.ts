@@ -284,23 +284,27 @@ export abstract class BaseAgentRunner {
   ): void {
     // Map internal event types to proper EventType values
     // Use agent:progress for iteration updates and agent:error for errors
-    const agentId = (payload.agentId as string) ?? (payload.taskId as string) ?? 'unknown';
-    const taskId = (payload.taskId as string) ?? 'unknown';
+    const payloadAgentId = payload.agentId;
+    const payloadTaskId = payload.taskId;
+    const agentId = typeof payloadAgentId === 'string' ? payloadAgentId :
+                    typeof payloadTaskId === 'string' ? payloadTaskId : 'unknown';
+    const taskId = typeof payloadTaskId === 'string' ? payloadTaskId : 'unknown';
 
     if (type === 'agent:started') {
-      this.eventBus.emit('agent:started', {
+      void this.eventBus.emit('agent:started', {
         agentId,
         taskId,
       });
     } else if (type === 'agent:iteration') {
-      this.eventBus.emit('agent:progress', {
+      const iteration = typeof payload.iteration === 'number' ? payload.iteration : 0;
+      void this.eventBus.emit('agent:progress', {
         agentId,
         taskId,
         action: 'iteration',
-        details: `Iteration ${String(payload.iteration ?? 0)}`,
+        details: `Iteration ${String(iteration)}`,
       });
     } else if (type === 'agent:completed') {
-      this.eventBus.emit('task:completed', {
+      void this.eventBus.emit('task:completed', {
         taskId,
         result: {
           taskId,
@@ -309,21 +313,25 @@ export abstract class BaseAgentRunner {
         },
       });
     } else if (type === 'agent:error') {
-      this.eventBus.emit('agent:error', {
+      const errorMsg = typeof payload.error === 'string' ? payload.error : 'Unknown error';
+      void this.eventBus.emit('agent:error', {
         agentId,
-        error: (payload.error as string) ?? 'Unknown error',
+        error: errorMsg,
         recoverable: true,
       });
     } else if (type === 'agent:escalated') {
-      this.eventBus.emit('task:escalated', {
+      const reason = typeof payload.reason === 'string' ? payload.reason : 'Unknown reason';
+      const iterations = typeof payload.iterations === 'number' ? payload.iterations : 0;
+      const lastError = typeof payload.error === 'string' ? payload.error : undefined;
+      void this.eventBus.emit('task:escalated', {
         taskId,
-        reason: (payload.reason as string) ?? 'Unknown reason',
-        iterations: (payload.iterations as number) ?? 0,
-        lastError: (payload.error as string) ?? undefined,
+        reason,
+        iterations,
+        lastError,
       });
     } else {
       // Default to agent:progress for unknown events
-      this.eventBus.emit('agent:progress', {
+      void this.eventBus.emit('agent:progress', {
         agentId,
         taskId,
         action: type,

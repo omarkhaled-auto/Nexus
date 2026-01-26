@@ -71,6 +71,19 @@ export interface MergeOutput {
   requiresHumanReview: boolean;
 }
 
+/**
+ * Raw parsed JSON from LLM merge analysis response
+ * Used for type-safe parsing before normalization
+ */
+interface MergeAnalysisRawParsed {
+  success?: boolean;
+  conflicts?: Partial<MergeConflict>[];
+  resolutions?: Partial<MergeResolution>[];
+  unresolvedCount?: number;
+  summary?: string;
+  requiresHumanReview?: boolean;
+}
+
 // ============================================================================
 // System Prompt
 // ============================================================================
@@ -338,32 +351,32 @@ If you have completed the analysis, provide the JSON output and include [TASK_CO
         return null;
       }
 
-      const parsed = JSON.parse(jsonMatch[1]);
+      const parsed = JSON.parse(jsonMatch[1]) as MergeAnalysisRawParsed;
 
       return {
         success: parsed.success === true,
         conflicts: Array.isArray(parsed.conflicts)
-          ? parsed.conflicts.map((c: Partial<MergeConflict>) => ({
-              file: c.file || 'unknown',
-              type: c.type || 'content',
-              severity: c.severity || 'moderate',
-              description: c.description || 'No description',
-              ourChanges: c.ourChanges || '',
-              theirChanges: c.theirChanges || '',
+          ? parsed.conflicts.map((c) => ({
+              file: c.file ?? 'unknown',
+              type: c.type ?? 'content',
+              severity: c.severity ?? 'moderate',
+              description: c.description ?? 'No description',
+              ourChanges: c.ourChanges ?? '',
+              theirChanges: c.theirChanges ?? '',
               suggestedResolution: c.suggestedResolution,
               needsManualReview: c.needsManualReview ?? false,
             }))
           : [],
         resolutions: Array.isArray(parsed.resolutions)
-          ? parsed.resolutions.map((r: Partial<MergeResolution>) => ({
-              file: r.file || 'unknown',
-              strategy: r.strategy || 'manual',
+          ? parsed.resolutions.map((r) => ({
+              file: r.file ?? 'unknown',
+              strategy: r.strategy ?? 'manual',
               resolvedContent: r.resolvedContent,
-              explanation: r.explanation || 'No explanation',
+              explanation: r.explanation ?? 'No explanation',
             }))
           : [],
         unresolvedCount: parsed.unresolvedCount ?? 0,
-        summary: parsed.summary || 'No summary provided',
+        summary: parsed.summary ?? 'No summary provided',
         requiresHumanReview: parsed.requiresHumanReview ?? false,
       };
     } catch {

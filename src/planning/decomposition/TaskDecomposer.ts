@@ -318,6 +318,7 @@ Return a JSON array of smaller tasks, each under 30 minutes.`;
   /**
    * Parse JSON response from LLM, handling various formats
    */
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters -- Type is used for caller inference
   private parseJsonResponse<T>(response: string): T {
     try {
       // Try to extract JSON array from response

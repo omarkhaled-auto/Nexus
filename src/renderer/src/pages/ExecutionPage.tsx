@@ -307,7 +307,7 @@ export default function ExecutionPage(): ReactElement {
     void loadPendingReviews();
     const reviewInterval = setInterval(() => void loadPendingReviews(), 5000);
 
-    return () => clearInterval(reviewInterval);
+    return () => { clearInterval(reviewInterval); };
   }, [loadPendingReviews]);
 
   // Human review: Subscribe to review:requested events
@@ -420,7 +420,7 @@ export default function ExecutionPage(): ReactElement {
           <Button
             size="sm"
             variant="outline"
-            onClick={() => selectReview(pendingReviews[0])}
+            onClick={() => { selectReview(pendingReviews[0]); }}
             className="border-amber-500/50 text-amber-200 hover:bg-amber-500/20"
           >
             Review Now
@@ -433,7 +433,7 @@ export default function ExecutionPage(): ReactElement {
         review={activeReview}
         onApprove={approveReview}
         onReject={rejectReview}
-        onClose={() => selectReview(null)}
+        onClose={() => { selectReview(null); }}
       />
 
       {/* Loading State */}

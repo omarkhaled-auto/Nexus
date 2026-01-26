@@ -83,6 +83,53 @@ export interface CoverageResult {
 }
 
 // ============================================================================
+// Vitest JSON Result Types
+// ============================================================================
+
+/**
+ * Individual assertion result from Vitest JSON output
+ */
+interface VitestAssertionResult {
+  status: 'passed' | 'failed' | 'skipped' | 'pending' | 'todo';
+  title?: string;
+  fullName?: string;
+  failureMessages?: string[];
+}
+
+/**
+ * Test file result from Vitest JSON output
+ */
+interface VitestTestFileResult {
+  name?: string;
+  assertionResults?: VitestAssertionResult[];
+}
+
+/**
+ * Coverage data structure from Vitest JSON output
+ */
+interface VitestCoverageData {
+  lines?: { pct?: number };
+  branches?: { pct?: number };
+  functions?: { pct?: number };
+  statements?: { pct?: number };
+  total?: {
+    lines?: { pct?: number };
+    branches?: { pct?: number };
+    functions?: { pct?: number };
+    statements?: { pct?: number };
+  };
+}
+
+/**
+ * Vitest JSON reporter output structure
+ */
+interface VitestJsonResult {
+  testResults?: VitestTestFileResult[];
+  coverageMap?: VitestCoverageData;
+  coverage?: VitestCoverageData;
+}
+
+// ============================================================================
 // TestRunner Class
 // ============================================================================
 
@@ -212,11 +259,11 @@ export class TestRunner {
       let stdout = '';
       let stderr = '';
 
-      proc.stdout?.on('data', (data) => {
+      proc.stdout?.on('data', (data: Buffer) => {
         stdout += data.toString();
       });
 
-      proc.stderr?.on('data', (data) => {
+      proc.stderr?.on('data', (data: Buffer) => {
         stderr += data.toString();
       });
 
@@ -226,9 +273,10 @@ export class TestRunner {
 
         // Determine success:
         // - Exit code 0 and no failures: success
-        // - No tests found (passed=0, failed=0): treat as success for new projects
+        // - No tests found (passed=0, failed=0) AND exit code 0: treat as success for new projects
         // - Tests ran but some failed: failure
-        const noTestsFound = parsed.passed === 0 && parsed.failed === 0;
+        // - Exit code non-zero with errors (even if no test results parsed): failure
+        const noTestsFound = parsed.passed === 0 && parsed.failed === 0 && code === 0;
         const allTestsPassed = code === 0 && parsed.failed === 0;
         const isSuccess = allTestsPassed || noTestsFound;
 
@@ -380,7 +428,7 @@ export class TestRunner {
     }
 
     try {
-      const json = JSON.parse(jsonMatch[0]);
+      const json = JSON.parse(jsonMatch[0]) as VitestJsonResult;
       let passed = 0;
       let failed = 0;
       let skipped = 0;
@@ -388,8 +436,8 @@ export class TestRunner {
       let coverage: CoverageResult | undefined;
 
       // Parse test results
-      for (const file of json.testResults || []) {
-        for (const test of file.assertionResults || []) {
+      for (const file of json.testResults ?? []) {
+        for (const test of file.assertionResults ?? []) {
           switch (test.status) {
             case 'passed':
               passed++;
@@ -398,11 +446,11 @@ export class TestRunner {
               failed++;
               errors.push(
                 this.createErrorEntry(
-                  test.failureMessages?.join('\n') ||
-                    `Test failed: ${String(test.fullName || test.title || 'Unknown test')}`,
+                  test.failureMessages?.join('\n') ??
+                    `Test failed: ${test.fullName ?? test.title ?? 'Unknown test'}`,
                   'error',
                   undefined,
-                  String(file.name || 'unknown'),
+                  file.name ?? 'unknown',
                   undefined,
                   undefined,
                   test.failureMessages?.join('\n')
@@ -419,19 +467,19 @@ export class TestRunner {
       }
 
       // Parse coverage if available
-      if (json.coverageMap || json.coverage) {
-        const coverageData = json.coverageMap || json.coverage;
+      const coverageData = json.coverageMap ?? json.coverage;
+      if (coverageData) {
         coverage = {
-          lines: coverageData.lines?.pct || coverageData.total?.lines?.pct || 0,
+          lines: coverageData.lines?.pct ?? coverageData.total?.lines?.pct ?? 0,
           branches:
-            coverageData.branches?.pct || coverageData.total?.branches?.pct || 0,
+            coverageData.branches?.pct ?? coverageData.total?.branches?.pct ?? 0,
           functions:
-            coverageData.functions?.pct ||
-            coverageData.total?.functions?.pct ||
+            coverageData.functions?.pct ??
+            coverageData.total?.functions?.pct ??
             0,
           statements:
-            coverageData.statements?.pct ||
-            coverageData.total?.statements?.pct ||
+            coverageData.statements?.pct ??
+            coverageData.total?.statements?.pct ??
             0,
         };
       }

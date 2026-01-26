@@ -11,6 +11,7 @@ import type {
   FinishReason,
 } from '../types';
 import { LLMError, TimeoutError } from './ClaudeClient';
+import { EventBus } from '../../orchestration/events/EventBus';
 
 /**
  * Configuration options for Claude Code CLI client
@@ -115,7 +116,8 @@ export class ClaudeCodeCLIClient implements LLMClient {
     const systemPrompt = this.extractSystemPrompt(messages);
 
     const [args, stdinPrompt] = this.buildArgs(prompt, systemPrompt, options);
-    const result = await this.executeWithRetry(args, stdinPrompt, options?.workingDirectory);
+    const agentContext = options?.agentId ? { agentId: options.agentId, taskId: options.taskId } : undefined;
+    const result = await this.executeWithRetry(args, stdinPrompt, options?.workingDirectory, agentContext);
 
     return this.parseResponse(result, options);
   }
@@ -183,7 +185,8 @@ export class ClaudeCodeCLIClient implements LLMClient {
       args.push('--allowedTools', cliToolNames.join(','));
     }
 
-    const result = await this.executeWithRetry(args, stdinPrompt, options?.workingDirectory);
+    const agentContext = options?.agentId ? { agentId: options.agentId, taskId: options.taskId } : undefined;
+    const result = await this.executeWithRetry(args, stdinPrompt, options?.workingDirectory, agentContext);
     return this.parseResponse(result, options);
   }
 
@@ -248,9 +251,9 @@ export class ClaudeCodeCLIClient implements LLMClient {
 
     // Handle tools configuration
     if (options?.disableTools) {
-      // Explicitly disable all tools for chat-only mode (e.g., interviews)
-      // Use combined arg format for Windows shell compatibility
-      args.push('--tools=""');
+      // Chat-only mode: don't add any tools flags
+      // Without --dangerously-skip-permissions, tools require explicit user approval
+      // This effectively disables automatic tool use for interviews/chat
     } else {
       // Tools are enabled - add skip permissions flag for automated execution
       if (this.config.skipPermissions) {
@@ -279,13 +282,19 @@ export class ClaudeCodeCLIClient implements LLMClient {
    * @param args CLI arguments
    * @param stdinPrompt Optional prompt to pass via stdin (avoids shell escaping issues)
    * @param workingDirectory Optional per-call working directory override
+   * @param agentContext Optional agent context for output streaming
    */
-  private async executeWithRetry(args: string[], stdinPrompt?: string, workingDirectory?: string): Promise<string> {
+  private async executeWithRetry(
+    args: string[],
+    stdinPrompt?: string,
+    workingDirectory?: string,
+    agentContext?: { agentId?: string; taskId?: string }
+  ): Promise<string> {
     let lastError: Error | null = null;
 
     for (let attempt = 0; attempt <= this.config.maxRetries; attempt++) {
       try {
-        return await this.execute(args, stdinPrompt, workingDirectory);
+        return await this.execute(args, stdinPrompt, workingDirectory, agentContext);
       } catch (error) {
         lastError = error as Error;
         this.config.logger?.warn(
@@ -308,8 +317,14 @@ export class ClaudeCodeCLIClient implements LLMClient {
    * @param args CLI arguments
    * @param stdinPrompt Optional prompt to pass via stdin (avoids shell escaping issues)
    * @param workingDirectory Optional per-call working directory override
+   * @param agentContext Optional agent context for output streaming
    */
-  private execute(args: string[], stdinPrompt?: string, workingDirectory?: string): Promise<string> {
+  private execute(
+    args: string[],
+    stdinPrompt?: string,
+    workingDirectory?: string,
+    agentContext?: { agentId?: string; taskId?: string }
+  ): Promise<string> {
     return new Promise((resolve, reject) => {
       // Use per-call override or fall back to config default
       const cwd = workingDirectory || this.config.workingDirectory;
@@ -326,7 +341,11 @@ export class ClaudeCodeCLIClient implements LLMClient {
       console.log('[ClaudeCodeCLIClient] Per-call override:', workingDirectory ?? 'NONE');
       console.log('[ClaudeCodeCLIClient] Resolved working dir:', cwd);
       console.log('[ClaudeCodeCLIClient] Shell mode:', process.platform === 'win32');
+      console.log('[ClaudeCodeCLIClient] Agent context:', agentContext?.agentId ?? 'NONE');
       console.log('[ClaudeCodeCLIClient] ========== DEBUG END ==========');
+
+      // Get EventBus for output streaming if agent context provided
+      const eventBus = agentContext?.agentId ? EventBus.getInstance() : null;
 
       const child = spawn(this.config.claudePath, args, {
         cwd: cwd,  // Use resolved cwd (per-call or config default)
@@ -351,12 +370,42 @@ export class ClaudeCodeCLIClient implements LLMClient {
         const chunk = data.toString();
         stdout += chunk;
         console.log('[ClaudeCodeCLIClient] stdout chunk:', chunk.substring(0, 200));
+
+        // Emit agent:output event if agent context provided (Phase 25 - Feature Parity)
+        if (eventBus && agentContext?.agentId) {
+          // Split by newlines and emit each line
+          const lines = chunk.split('\n').filter(line => line.trim());
+          for (const line of lines) {
+            void eventBus.emit('agent:output', {
+              agentId: agentContext.agentId,
+              taskId: agentContext.taskId,
+              line,
+              stream: 'stdout' as const,
+              timestamp: new Date(),
+            }, { source: 'ClaudeCodeCLIClient' });
+          }
+        }
       });
 
       child.stderr.on('data', (data: Buffer) => {
         const chunk = data.toString();
         stderr += chunk;
         console.log('[ClaudeCodeCLIClient] stderr chunk:', chunk.substring(0, 200));
+
+        // Emit agent:output event if agent context provided (Phase 25 - Feature Parity)
+        if (eventBus && agentContext?.agentId) {
+          // Split by newlines and emit each line
+          const lines = chunk.split('\n').filter(line => line.trim());
+          for (const line of lines) {
+            void eventBus.emit('agent:output', {
+              agentId: agentContext.agentId,
+              taskId: agentContext.taskId,
+              line,
+              stream: 'stderr' as const,
+              timestamp: new Date(),
+            }, { source: 'ClaudeCodeCLIClient' });
+          }
+        }
       });
 
       // Timeout handling
@@ -419,8 +468,9 @@ export class ClaudeCodeCLIClient implements LLMClient {
 
   /**
    * Parse CLI output to LLMResponse.
+   * Phase 25 Feature Parity: Accumulates token usage for cost tracking.
    */
-  private parseResponse(result: string, _options?: ChatOptions): LLMResponse {
+  private parseResponse(result: string, options?: ChatOptions): LLMResponse {
     try {
       // Try to parse as JSON first (if --output-format json was used)
       const json = JSON.parse(result) as Record<string, unknown>;
@@ -437,6 +487,26 @@ export class ClaudeCodeCLIClient implements LLMClient {
         totalTokens: 0,
       };
       usage.totalTokens = usage.inputTokens + usage.outputTokens;
+
+      // Phase 25 Feature Parity: Accumulate token usage for cost tracking
+      // Call global function if available (set up by handlers.ts)
+      const globalAccumulate = (global as unknown as {
+        accumulateTokenUsage?: (usage: {
+          inputTokens: number;
+          outputTokens: number;
+          model?: string;
+          agentId?: string;
+        }) => void;
+      }).accumulateTokenUsage;
+
+      if (globalAccumulate && (usage.inputTokens > 0 || usage.outputTokens > 0)) {
+        globalAccumulate({
+          inputTokens: usage.inputTokens,
+          outputTokens: usage.outputTokens,
+          model: 'claude-sonnet-4-5-20250929', // Default model used by CLI
+          agentId: options?.agentId,
+        });
+      }
 
       // Determine finish reason
       let finishReason: FinishReason = 'stop';
