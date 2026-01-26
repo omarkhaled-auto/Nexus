@@ -40,6 +40,14 @@ export function useCheckpoint(): UseCheckpointReturn {
   const [error, setError] = useState<string | null>(null);
 
   const loadCheckpoints = useCallback(async (projectId: string) => {
+    // Guard against missing API (non-Electron environments)
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    if (!window.nexusAPI) {
+      console.warn('[useCheckpoint] nexusAPI not available');
+      setError('Checkpoint API not available');
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
     try {
@@ -53,6 +61,14 @@ export function useCheckpoint(): UseCheckpointReturn {
   }, []);
 
   const createCheckpoint = useCallback(async (projectId: string, reason: string) => {
+    // Guard against missing API (non-Electron environments)
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    if (!window.nexusAPI) {
+      console.warn('[useCheckpoint] nexusAPI not available');
+      setError('Checkpoint API not available');
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
     try {
@@ -68,6 +84,14 @@ export function useCheckpoint(): UseCheckpointReturn {
   }, []);
 
   const restoreCheckpoint = useCallback(async (checkpointId: string, restoreGit?: boolean) => {
+    // Guard against missing API (non-Electron environments)
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    if (!window.nexusAPI) {
+      console.warn('[useCheckpoint] nexusAPI not available');
+      setError('Checkpoint API not available');
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
     try {
@@ -80,6 +104,14 @@ export function useCheckpoint(): UseCheckpointReturn {
   }, []);
 
   const deleteCheckpoint = useCallback(async (checkpointId: string) => {
+    // Guard against missing API (non-Electron environments)
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    if (!window.nexusAPI) {
+      console.warn('[useCheckpoint] nexusAPI not available');
+      setError('Checkpoint API not available');
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
     try {
@@ -93,6 +125,14 @@ export function useCheckpoint(): UseCheckpointReturn {
   }, []);
 
   const loadPendingReviews = useCallback(async () => {
+    // Guard against missing API (non-Electron environments)
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    if (!window.nexusAPI) {
+      console.warn('[useCheckpoint] nexusAPI not available');
+      setError('Review API not available');
+      return;
+    }
+
     setError(null);
     try {
       const reviews = await window.nexusAPI.reviewList();
@@ -112,6 +152,14 @@ export function useCheckpoint(): UseCheckpointReturn {
   }, []);
 
   const approveReview = useCallback(async (reviewId: string, resolution?: string) => {
+    // Guard against missing API (non-Electron environments)
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    if (!window.nexusAPI) {
+      console.warn('[useCheckpoint] nexusAPI not available');
+      setError('Review API not available');
+      return;
+    }
+
     setError(null);
     try {
       await window.nexusAPI.reviewApprove(reviewId, resolution);
@@ -125,6 +173,14 @@ export function useCheckpoint(): UseCheckpointReturn {
   }, [activeReview]);
 
   const rejectReview = useCallback(async (reviewId: string, feedback: string) => {
+    // Guard against missing API (non-Electron environments)
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    if (!window.nexusAPI) {
+      console.warn('[useCheckpoint] nexusAPI not available');
+      setError('Review API not available');
+      return;
+    }
+
     setError(null);
     try {
       await window.nexusAPI.reviewReject(reviewId, feedback);

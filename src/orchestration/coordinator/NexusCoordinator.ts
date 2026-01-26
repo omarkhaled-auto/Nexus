@@ -1,11 +1,6 @@
 // NexusCoordinator - Main Orchestration Loop
 // Phase 04-02: Full implementation
 //
-// Note: This file uses `any` typed external services (QALoopEngine, WorktreeManager, etc.)
-// to avoid circular dependencies. The unsafe-* lint rules are disabled for lines that
-// interact with these services.
-/* eslint-disable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
-
 import type {
   INexusCoordinator,
   ProjectConfig,
@@ -32,25 +27,28 @@ import type {
 import { GitService } from '@/infrastructure/git/GitService';
 import { WorktreeManager } from '@/infrastructure/git/WorktreeManager';
 import { RepoMapGenerator } from '@/infrastructure/analysis/RepoMapGenerator';
+import type { QALoopEngine } from '@/execution/qa/QALoopEngine';
+import type { CheckpointManager } from '@/persistence/checkpoints/CheckpointManager';
+import type { MergerRunner } from '@/infrastructure/git/MergerRunner';
+import type { AgentWorktreeBridge } from '@/bridges/AgentWorktreeBridge';
+import type { HumanReviewService } from '@/orchestration/review/HumanReviewService';
 
 /**
  * NexusCoordinator constructor options
  */
-/* eslint-disable @typescript-eslint/no-explicit-any -- These types come from other modules to avoid circular dependencies */
 export interface NexusCoordinatorOptions {
   taskQueue: ITaskQueue;
   agentPool: IAgentPool;
   decomposer: ITaskDecomposer;
   resolver: IDependencyResolver;
   estimator: ITimeEstimator;
-  qaEngine: any; // QALoopEngine type
-  worktreeManager: any; // WorktreeManager type
-  checkpointManager: any; // CheckpointManager type
-  mergerRunner?: any; // MergerRunner for merging task branches
-  agentWorktreeBridge?: any; // AgentWorktreeBridge for worktree management
-  humanReviewService?: any; // HumanReviewService for human escalation
+  qaEngine: QALoopEngine;
+  worktreeManager: WorktreeManager;
+  checkpointManager: CheckpointManager | null;
+  mergerRunner?: MergerRunner;
+  agentWorktreeBridge?: AgentWorktreeBridge;
+  humanReviewService?: HumanReviewService;
 }
-/* eslint-enable @typescript-eslint/no-explicit-any */
 
 /**
  * MergerRunner result interface
@@ -81,14 +79,12 @@ export class NexusCoordinator implements INexusCoordinator {
   private readonly decomposer: ITaskDecomposer;
   private readonly resolver: IDependencyResolver;
   private readonly estimator: ITimeEstimator;
-  /* eslint-disable @typescript-eslint/no-explicit-any -- External service types to avoid circular dependencies */
-  private readonly qaEngine: any;
-  private worktreeManager: any; // Mutable - can be replaced with project-specific instance
-  private checkpointManager: any; // Mutable - can be injected after creation
-  private mergerRunner?: any; // Mutable - can be injected after creation (Phase 3)
-  private readonly agentWorktreeBridge?: any;
-  private humanReviewService?: any; // Mutable - can be injected after creation (Phase 3: HITL)
-  /* eslint-enable @typescript-eslint/no-explicit-any */
+  private readonly qaEngine: QALoopEngine;
+  private worktreeManager: WorktreeManager; // Mutable - can be replaced with project-specific instance
+  private checkpointManager: CheckpointManager | null; // Mutable - can be injected after creation
+  private mergerRunner?: MergerRunner; // Mutable - can be injected after creation (Phase 3)
+  private readonly agentWorktreeBridge?: AgentWorktreeBridge;
+  private humanReviewService?: HumanReviewService; // Mutable - can be injected after creation (Phase 3: HITL)
 
   // Escalation tracking - maps reviewId to taskId for review responses
   private escalatedTasks: Map<string, { taskId: string; agentId: string; worktreePath?: string }> = new Map();
@@ -116,14 +112,12 @@ export class NexusCoordinator implements INexusCoordinator {
     this.decomposer = options.decomposer;
     this.resolver = options.resolver;
     this.estimator = options.estimator;
-    /* eslint-disable @typescript-eslint/no-unsafe-assignment -- any-typed services from options */
     this.qaEngine = options.qaEngine;
     this.worktreeManager = options.worktreeManager;
     this.checkpointManager = options.checkpointManager;
     this.mergerRunner = options.mergerRunner;
     this.agentWorktreeBridge = options.agentWorktreeBridge;
     this.humanReviewService = options.humanReviewService;
-    /* eslint-enable @typescript-eslint/no-unsafe-assignment */
   }
 
   // ========================================
@@ -135,18 +129,15 @@ export class NexusCoordinator implements INexusCoordinator {
    * This allows the service to be injected after coordinator creation
    * (since NexusFactory creates coordinator before HumanReviewService)
    */
-  /* eslint-disable @typescript-eslint/no-explicit-any -- HumanReviewService type from external module */
-  setHumanReviewService(service: any): void {
+  setHumanReviewService(service: HumanReviewService): void {
     this.humanReviewService = service;
     console.log('[NexusCoordinator] HumanReviewService injected');
   }
-  /* eslint-enable @typescript-eslint/no-explicit-any */
 
   /**
    * Set the merger runner for worktree->main merging
    */
-  /* eslint-disable @typescript-eslint/no-explicit-any -- MergerRunner type from external module */
-  setMergerRunner(runner: any): void {
+  setMergerRunner(runner: MergerRunner): void {
     this.mergerRunner = runner;
     console.log('[NexusCoordinator] MergerRunner injected');
   }
@@ -155,11 +146,10 @@ export class NexusCoordinator implements INexusCoordinator {
    * Set the checkpoint manager for wave checkpoints
    * Injected after construction since NexusFactory creates coordinator before CheckpointManager
    */
-  setCheckpointManager(manager: any): void {
+  setCheckpointManager(manager: CheckpointManager): void {
     this.checkpointManager = manager;
     console.log('[NexusCoordinator] CheckpointManager injected');
   }
-  /* eslint-enable @typescript-eslint/no-explicit-any */
 
   /**
    * Initialize coordinator with project configuration
@@ -328,23 +318,25 @@ export class NexusCoordinator implements INexusCoordinator {
 
           console.log(`[NexusCoordinator] Project completed: ${this.completedTasks}/${this.totalTasks} tasks completed, ${this.failedTasks} failed`);
 
-          this.emitEvent('project:completed', {
-            projectId: this.projectConfig?.projectId,
-            totalTasks: this.totalTasks,
-            completedTasks: this.completedTasks,
-            failedTasks: this.failedTasks,
-            totalWaves: this.waves.length,
-          });
+            this.emitEvent('project:completed', {
+              // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- projectConfig can be cleared during async operations
+              projectId: this.projectConfig?.projectId ?? 'unknown',
+              totalTasks: this.totalTasks,
+              completedTasks: this.completedTasks,
+              failedTasks: this.failedTasks,
+              totalWaves: this.waves.length,
+            });
         } else if (this.failedTasks > 0 && this.failedTasks === this.totalTasks) {
           console.log(`[NexusCoordinator] Project failed: all ${this.failedTasks} tasks failed`);
 
-          this.emitEvent('project:failed', {
-            projectId: this.projectConfig?.projectId,
-            error: 'All tasks failed',
-            totalTasks: this.totalTasks,
-            failedTasks: this.failedTasks,
-            recoverable: true,
-          });
+            this.emitEvent('project:failed', {
+              // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- projectConfig can be cleared during async operations
+              projectId: this.projectConfig?.projectId ?? 'unknown',
+              error: 'All tasks failed',
+              totalTasks: this.totalTasks,
+              failedTasks: this.failedTasks,
+              recoverable: true,
+            });
         }
       }
     } catch (error) {
@@ -506,7 +498,6 @@ export class NexusCoordinator implements INexusCoordinator {
 
     const reason = name ?? `Manual checkpoint at wave ${this.currentWaveIndex}`;
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- checkpointManager is any-typed
     const result = await this.checkpointManager.createCheckpoint(projectId, reason);
 
     // Map CheckpointManager result to Checkpoint interface
@@ -746,7 +737,8 @@ export class NexusCoordinator implements INexusCoordinator {
           console.log(`[NexusCoordinator] Project completed: ${this.completedTasks}/${this.totalTasks} tasks completed, ${this.failedTasks} failed`);
 
           this.emitEvent('project:completed', {
-            projectId: this.projectConfig?.projectId,
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- projectConfig can be cleared during async operations
+            projectId: this.projectConfig?.projectId ?? 'unknown',
             totalTasks: this.totalTasks,
             completedTasks: this.completedTasks,
             failedTasks: this.failedTasks,
@@ -757,7 +749,8 @@ export class NexusCoordinator implements INexusCoordinator {
           console.log(`[NexusCoordinator] Project failed: all ${this.failedTasks} tasks failed`);
 
           this.emitEvent('project:failed', {
-            projectId: this.projectConfig?.projectId,
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- projectConfig can be cleared during async operations
+            projectId: this.projectConfig?.projectId ?? 'unknown',
             error: 'All tasks failed',
             totalTasks: this.totalTasks,
             failedTasks: this.failedTasks,
@@ -991,9 +984,7 @@ export class NexusCoordinator implements INexusCoordinator {
         // Create worktree for isolation
         let worktreePath: string | undefined;
         try {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- worktreeManager is any-typed
           const worktree = await this.worktreeManager.createWorktree(dequeuedTask.id);
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- worktree.path is any
           worktreePath = worktree.path;
         } catch {
           // Continue without worktree
@@ -1039,7 +1030,6 @@ export class NexusCoordinator implements INexusCoordinator {
 
     try {
       // Run QA loop with projectPath for correct working directory
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- qaEngine is any-typed
       const result = await this.qaEngine.run(
         {
           id: task.id,
@@ -1061,7 +1051,6 @@ export class NexusCoordinator implements INexusCoordinator {
           console.log(`[NexusCoordinator] Target branch: main`);
 
           try {
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- mergerRunner is any-typed
             const mergeResult: MergeResult = await this.mergerRunner.merge(worktreePath, 'main');
 
             if (mergeResult.success) {
@@ -1076,7 +1065,6 @@ export class NexusCoordinator implements INexusCoordinator {
 
               // Push merged changes to remote (non-blocking)
               try {
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- mergerRunner is any-typed
                 const pushResult: { success: boolean; error?: string } = await this.mergerRunner.pushToRemote('main');
                 if (pushResult.success) {
                   console.log(`[NexusCoordinator] Pushed to remote successfully for task ${task.id}`);
@@ -1096,7 +1084,6 @@ export class NexusCoordinator implements INexusCoordinator {
 
                 if (this.humanReviewService) {
                   try {
-                    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- humanReviewService is any-typed
                     const review = await this.humanReviewService.requestReview({
                       taskId: task.id,
                       projectId: this.projectConfig?.projectId ?? 'unknown',
@@ -1107,7 +1094,7 @@ export class NexusCoordinator implements INexusCoordinator {
                       },
                     });
                      
-                    const reviewId = review.id as string;
+                    const reviewId = review.id;
 
                     // Track this escalated task for review response handling
                     this.escalatedTasks.set(reviewId, { taskId: task.id, agentId, worktreePath });
@@ -1116,7 +1103,7 @@ export class NexusCoordinator implements INexusCoordinator {
                     this.emitEvent('task:escalated', {
                       taskId: task.id,
                       agentId,
-                      reason: `Merge conflict: ${mergeResult.conflictFiles?.join(', ') ?? 'unknown files'}`,
+                      reason: `Merge conflict: ${mergeResult.conflictFiles.join(', ')}`,
                     });
                     return; // Don't mark complete - wait for human review
                   } catch (reviewError) {
@@ -1127,7 +1114,7 @@ export class NexusCoordinator implements INexusCoordinator {
                 // Fallback if HumanReviewService not available
                 this.emitEvent('task:merge-failed', {
                   taskId: task.id,
-                  error: `Merge conflict: ${mergeResult.conflictFiles?.join(', ') ?? 'unknown files'}`,
+                  error: `Merge conflict: ${mergeResult.conflictFiles.join(', ')}`,
                 });
               } else {
                 // Non-conflict merge failure
@@ -1152,24 +1139,22 @@ export class NexusCoordinator implements INexusCoordinator {
       } else if (result.escalated) {
         // Task escalated - needs human intervention
         // Phase 3 Fix: Properly integrate with HumanReviewService
-        console.log(`[NexusCoordinator] Task ${task.id} escalated: ${String(result.reason ?? 'Max QA iterations exceeded')}`);
+        console.log(`[NexusCoordinator] Task ${task.id} escalated: ${result.reason ?? 'Max QA iterations exceeded'}`);
 
         if (this.humanReviewService) {
           try {
             // Create a review request for human intervention
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- humanReviewService is any-typed
             const review = await this.humanReviewService.requestReview({
               taskId: task.id,
               projectId: this.projectConfig?.projectId ?? 'unknown',
               reason: 'qa_exhausted' as const,
               context: {
-                qaIterations: result.iterations ?? 50,
+                qaIterations: result.iterations,
                 escalationReason: result.reason ?? 'Max QA iterations exceeded',
-                lastErrors: result.errors ?? [],
               },
             });
              
-            const reviewId = review.id as string;
+            const reviewId = review.id;
 
             console.log(`[NexusCoordinator] Created review request ${reviewId} for task ${task.id}`);
 

@@ -20,7 +20,7 @@
 import { app, BrowserWindow, shell } from 'electron';
 import { join } from 'path';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
-import { registerIpcHandlers, registerCheckpointReviewHandlers, registerDatabaseHandlers, registerSettingsHandlers, registerInterviewHandlers, registerFallbackInterviewHandlers, removeInterviewHandlers, setupEventForwarding, registerDialogHandlers, registerProjectHandlers } from './ipc';
+import { registerIpcHandlers, registerCheckpointReviewHandlers, registerDatabaseHandlers, registerSettingsHandlers, registerInterviewHandlers, registerFallbackInterviewHandlers, registerFallbackReviewHandlers, removeInterviewHandlers, removeReviewHandlers, setupEventForwarding, registerDialogHandlers, registerProjectHandlers } from './ipc';
 import {
   initializeNexus,
   setMainWindow,
@@ -124,8 +124,8 @@ function getNexusConfigFromSettings(): {
   // - If user wants CLI -> use CLI
   // - If user wants API but no key -> fall back to CLI
   // - If user wants API and has key -> use API
-  const useClaudeCli = claudeWantsCli || (!claudeWantsCli && !anthropicKey);
-  const useGeminiCli = geminiWantsCli || (!geminiWantsCli && !googleKey);
+  const useClaudeCli = claudeWantsCli || !anthropicKey;
+  const useGeminiCli = geminiWantsCli || !googleKey;
 
   return {
     workingDir: getWorkingDir(),
@@ -200,6 +200,8 @@ async function initializeNexusSystem(): Promise<void> {
     const errorMessage = error instanceof Error ? error.message : String(error);
     removeInterviewHandlers();
     registerFallbackInterviewHandlers(errorMessage);
+    removeReviewHandlers();
+    registerFallbackReviewHandlers(errorMessage);
   }
 }
 
@@ -219,6 +221,7 @@ void app.whenReady().then(async () => {
   // call interview APIs before Nexus finishes initializing.
   // These will be replaced with real handlers when Nexus initializes successfully.
   registerFallbackInterviewHandlers('Nexus is still initializing...');
+  registerFallbackReviewHandlers('Nexus is still initializing...');
 
   // Default open or close DevTools by F12 in development
   // and ignore CommandOrControl + R in production.
@@ -245,7 +248,7 @@ void app.whenReady().then(async () => {
       createWindow();
     }
   });
-}).catch((error) => {
+}).catch((error: unknown) => {
   console.error('[Main] Failed to initialize app:', error);
   app.quit();
 });

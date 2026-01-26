@@ -6,7 +6,9 @@ import { Alert, AlertDescription } from '@renderer/components/ui/Alert';
 import { Spinner } from '@renderer/components/ui/Spinner';
 import {
   AgentPoolStatus,
+  AgentPoolWidget,
   AgentCard,
+  AgentDetailModal,
   AgentActivity,
   QAStatusPanel,
   type AgentData,
@@ -23,7 +25,7 @@ import { useState, useEffect, useCallback } from 'react';
  * Check if we are running in Electron environment with nexusAPI available
  */
 function isElectronEnvironment(): boolean {
-  return typeof window !== 'undefined' && 'nexusAPI' in window && window.nexusAPI !== undefined;
+  return typeof window !== 'undefined' && Boolean((window as Window & { nexusAPI?: typeof window.nexusAPI }).nexusAPI);
 }
 
 /**
@@ -31,10 +33,12 @@ function isElectronEnvironment(): boolean {
  */
 function mapBackendAgent(agent: unknown): AgentData {
   const a = agent as Record<string, unknown>;
+  const type = a.type as AgentData['type'] | undefined;
+  const status = a.status as AgentData['status'] | undefined;
   return {
     id: (a.id as string) || 'unknown',
-    type: (a.type as AgentData['type']) || 'coder',
-    status: (a.status as AgentData['status']) || 'idle',
+    type: type ?? 'coder',
+    status: status ?? 'idle',
     model: a.model as string | undefined,
     currentTask: a.currentTask as AgentData['currentTask'] | undefined,
     iteration: a.iteration as AgentData['iteration'] | undefined,
@@ -58,9 +62,11 @@ function mapQAStatus(qaStatus: unknown): QAStep[] {
   if (qa.steps && Array.isArray(qa.steps)) {
     return qa.steps.map((step: unknown) => {
       const s = step as Record<string, unknown>;
+      const type = s.type as QAStep['type'] | undefined;
+      const status = s.status as QAStep['status'] | undefined;
       return {
-        type: (s.type as QAStep['type']) || 'build',
-        status: (s.status as QAStep['status']) || 'pending',
+        type: type ?? 'build',
+        status: status ?? 'pending',
         duration: s.duration as number | undefined,
         error: s.error as string | undefined,
         testCounts: s.testCounts as QAStep['testCounts'] | undefined,
@@ -98,6 +104,7 @@ export default function AgentsPage(): ReactElement {
   const [iteration, setIteration] = useState<{ current: number; max: number }>({ current: 0, max: 50 });
   const [agentOutput, setAgentOutput] = useState<string[]>([]);
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
+  const [detailAgentId, setDetailAgentId] = useState<string | null>(null);
   const [isPaused, setIsPaused] = useState(false);
   const [isLoading, setIsLoading] = useState(true); // Start loading
   const [error, setError] = useState<string | null>(null);
@@ -116,12 +123,14 @@ export default function AgentsPage(): ReactElement {
     setError(null);
     try {
       const api = window.nexusAPI;
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- api can be undefined in non-Electron context
+      if (!api) return;
       const [agentsData, qaStatusData] = await Promise.all([
         api.getAgents(),
         api.getQAStatus(),
       ]);
       // Set agents (empty array if none)
-      if (agentsData && Array.isArray(agentsData)) {
+      if (Array.isArray(agentsData)) {
         setAgents(agentsData.map(mapBackendAgent));
         // Auto-select first agent if none selected
         if (agentsData.length > 0 && !selectedAgentId) {
@@ -140,7 +149,7 @@ export default function AgentsPage(): ReactElement {
       if (selectedAgentId) {
         try {
           const output = await api.getAgentOutput(selectedAgentId);
-          if (output && Array.isArray(output)) setAgentOutput(output);
+          if (Array.isArray(output)) setAgentOutput(output);
         } catch { /* Ignore output fetch errors */ }
       }
     } catch (err) {
@@ -155,12 +164,15 @@ export default function AgentsPage(): ReactElement {
   const subscribeToEvents = useCallback(() => {
     if (!isElectronEnvironment()) return () => {};
     const api = window.nexusAPI;
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- api can be undefined in non-Electron context
+    if (!api) return () => {};
     const unsubscribers: (() => void)[] = [];
     unsubscribers.push(api.onAgentStatus((status) => {
       const s = status as { id?: string; agentId?: string } & Record<string, unknown>;
       const agentId = s.id || s.agentId;
       if (agentId) {
-        setAgents((prev) => prev.map((a) => a.id === agentId ? { ...a, status: (s.status as AgentData['status']) || a.status } : a));
+        const statusValue = s.status as AgentData['status'] | undefined
+        setAgents((prev) => prev.map((a) => a.id === agentId ? { ...a, status: statusValue ?? a.status } : a));
       }
     }));
     unsubscribers.push(api.onAgentOutput((data) => {
@@ -171,6 +183,24 @@ export default function AgentsPage(): ReactElement {
       const qa = status as { iteration?: number; maxIterations?: number };
       if (qa.iteration !== undefined && qa.maxIterations !== undefined) setIteration({ current: qa.iteration, max: qa.maxIterations });
     }));
+
+    // FIX #5: Subscribe to agent created events for dynamic discovery
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- onAgentCreated may be undefined in non-Electron context
+    if (api.onAgentCreated) {
+      unsubscribers.push(api.onAgentCreated((agent: unknown) => {
+        const newAgent = mapBackendAgent(agent);
+        setAgents((prev) => {
+          // Avoid duplicates
+          if (prev.some((a) => a.id === newAgent.id)) {
+            return prev;
+          }
+          return [...prev, newAgent];
+        });
+        // Auto-select the new agent if none is selected
+        setSelectedAgentId((current) => current ?? newAgent.id);
+      }));
+    }
+
     return () => { unsubscribers.forEach((unsub) => { unsub(); }); };
   }, [selectedAgentId]);
 
@@ -185,7 +215,8 @@ export default function AgentsPage(): ReactElement {
   const handlePauseAll = async () => {
     setIsPaused((prev) => !prev);
     if (isElectronEnvironment()) {
-      try { await window.nexusAPI.pauseExecution(isPaused ? 'user_resume' : 'user_pause'); }
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- nexusAPI can be undefined in edge cases
+      try { await window.nexusAPI?.pauseExecution(isPaused ? 'user_resume' : 'user_pause'); }
       catch (err) { console.error('Failed to pause/resume:', err); }
     }
   };
@@ -196,12 +227,18 @@ export default function AgentsPage(): ReactElement {
     setSelectedAgentId(agentId);
     setAgentOutput([]); // Clear previous output
     if (isElectronEnvironment()) {
-      void window.nexusAPI.getAgentOutput(agentId).then((output) => {
-        if (output && Array.isArray(output)) setAgentOutput(output);
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- nexusAPI can be undefined in edge cases
+      void window.nexusAPI?.getAgentOutput(agentId).then((output) => {
+        if (Array.isArray(output)) setAgentOutput(output);
       }).catch(() => {
         // Keep empty output on error
       });
     }
+  };
+
+  const handleAgentDetailOpen = (agentId: string) => {
+    handleAgentSelect(agentId);
+    setDetailAgentId(agentId);
   };
 
   // Prepare pool agents for display
@@ -272,6 +309,7 @@ export default function AgentsPage(): ReactElement {
       <div className="flex-1 overflow-hidden p-6">
         <div className="h-full flex flex-col gap-6">
           {/* Agent Pool Status */}
+          <AgentPoolWidget className="shrink-0" />
           <AgentPoolStatus
             agents={poolAgents}
             maxAgents={10}
@@ -305,7 +343,7 @@ export default function AgentsPage(): ReactElement {
                       key={agent.id}
                       agent={agent}
                       selected={agent.id === selectedAgentId}
-                      onClick={() => { handleAgentSelect(agent.id); }}
+                      onClick={() => { handleAgentDetailOpen(agent.id); }}
                       data-testid={`agent-card-${agent.id}`}
                     />
                   ))}
@@ -351,6 +389,12 @@ export default function AgentsPage(): ReactElement {
           </div>
         </div>
       </div>
+
+      <AgentDetailModal
+        agentId={detailAgentId}
+        isOpen={detailAgentId !== null}
+        onClose={() => { setDetailAgentId(null); }}
+      />
     </div>
   );
 }

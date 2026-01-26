@@ -126,7 +126,7 @@ export const AgentBadge = React.forwardRef<HTMLDivElement, AgentBadgeProps>(
             ? (e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault()
-                  onClick?.()
+                  onClick()
                 }
               }
             : undefined

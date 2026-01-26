@@ -145,7 +145,8 @@ export function useRealTimeUpdates(): void {
     // ========================================
 
     // Subscribe to overview metrics updates
-    if (typeof window.nexusAPI.onMetricsUpdate === 'function') {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- nexusAPI properties may not exist
+    if (typeof window.nexusAPI?.onMetricsUpdate === 'function') {
       const unsubMetrics = window.nexusAPI.onMetricsUpdate((metrics) => {
         console.log('[useRealTimeUpdates] Metrics update received', metrics);
         try {
@@ -161,7 +162,8 @@ export function useRealTimeUpdates(): void {
     }
 
     // Subscribe to timeline events
-    if (typeof window.nexusAPI.onTimelineEvent === 'function') {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- nexusAPI properties may not exist
+    if (typeof window.nexusAPI?.onTimelineEvent === 'function') {
       const unsubTimeline = window.nexusAPI.onTimelineEvent((event) => {
         console.log('[useRealTimeUpdates] Timeline event received', event);
         try {
@@ -171,7 +173,7 @@ export function useRealTimeUpdates(): void {
             type: payload.type as TimelineEvent['type'],
             title: payload.title,
             description: payload.description,
-            severity: (payload.severity as TimelineEvent['severity']) || 'info',
+            severity: payload.severity as TimelineEvent['severity'],
             timestamp: new Date(payload.timestamp),
             metadata: payload.metadata,
           };
@@ -186,7 +188,8 @@ export function useRealTimeUpdates(): void {
     }
 
     // Subscribe to cost updates
-    if (typeof window.nexusAPI.onCostUpdate === 'function') {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- nexusAPI properties may not exist
+    if (typeof window.nexusAPI?.onCostUpdate === 'function') {
       const unsubCosts = window.nexusAPI.onCostUpdate((costs) => {
         console.log('[useRealTimeUpdates] Cost update received', costs);
         try {
@@ -227,7 +230,8 @@ export function useRealTimeUpdates(): void {
     // ========================================
 
     // Subscribe to agent metrics updates (detailed metrics from metricsStore)
-    if (typeof window.nexusAPI.onAgentStatusUpdate === 'function') {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- nexusAPI properties may not exist
+    if (typeof window.nexusAPI?.onAgentStatusUpdate === 'function') {
       const unsubAgentMetrics = window.nexusAPI.onAgentStatusUpdate((status) => {
         console.log('[useRealTimeUpdates] Agent metrics received', status);
         try {
@@ -235,8 +239,8 @@ export function useRealTimeUpdates(): void {
           // Update the metrics store with agent activity
           updateAgentMetrics(payload.id, {
             id: payload.id,
-            type: (payload.type as AgentMetrics['type']) || 'coder',
-            status: (payload.status as AgentMetrics['status']) || 'idle',
+            type: payload.type as AgentMetrics['type'],
+            status: payload.status as AgentMetrics['status'],
             currentTaskId: payload.currentTaskId,
             currentTaskName: payload.currentTaskName,
             tasksCompleted: payload.tasksCompleted || 0,
@@ -255,15 +259,16 @@ export function useRealTimeUpdates(): void {
     }
 
     // Subscribe to agent status changes (for agentStore)
-    if (typeof window.nexusAPI.onAgentStatus === 'function') {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- nexusAPI properties may not exist
+    if (typeof window.nexusAPI?.onAgentStatus === 'function') {
       const unsubAgentStatus = window.nexusAPI.onAgentStatus((status) => {
         console.log('[useRealTimeUpdates] Agent status received', status);
         try {
           const payload = status as AgentStatusPayload;
           const agentStatus: AgentStatus = {
             id: payload.id,
-            type: (payload.type as AgentStatus['type']) || 'coder',
-            status: (payload.status as AgentStatus['status']) || 'idle',
+            type: payload.type as AgentStatus['type'],
+            status: payload.status as AgentStatus['status'],
             currentTaskId: payload.currentTaskId,
           };
           setAgentStatus(agentStatus);
@@ -281,7 +286,8 @@ export function useRealTimeUpdates(): void {
     // ========================================
 
     // Subscribe to execution progress
-    if (typeof window.nexusAPI.onExecutionProgress === 'function') {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- nexusAPI properties may not exist
+    if (typeof window.nexusAPI?.onExecutionProgress === 'function') {
       const unsubProgress = window.nexusAPI.onExecutionProgress((progress) => {
         console.log('[useRealTimeUpdates] Execution progress received', progress);
         try {
@@ -307,7 +313,8 @@ export function useRealTimeUpdates(): void {
     }
 
     // Subscribe to execution log updates
-    if (typeof window.nexusAPI.onExecutionLogUpdate === 'function') {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- nexusAPI properties may not exist
+    if (typeof window.nexusAPI?.onExecutionLogUpdate === 'function') {
       const unsubLogs = window.nexusAPI.onExecutionLogUpdate((data) => {
         console.log('[useRealTimeUpdates] Execution log received', data);
         try {
@@ -336,7 +343,8 @@ export function useRealTimeUpdates(): void {
     // ========================================
 
     // Subscribe to feature updates (for Kanban)
-    if (typeof window.nexusAPI.onFeatureUpdate === 'function') {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- nexusAPI properties may not exist
+    if (typeof window.nexusAPI?.onFeatureUpdate === 'function') {
       const unsubFeature = window.nexusAPI.onFeatureUpdate((feature) => {
         console.log('[useRealTimeUpdates] Feature update received', feature);
         try {

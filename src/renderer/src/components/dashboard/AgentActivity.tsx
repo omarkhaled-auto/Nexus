@@ -95,8 +95,8 @@ export function AgentActivity({ className }: AgentActivityProps): ReactElement {
         ) : (
           <div className="space-y-2">
             {agents.map((agent: AgentMetrics) => {
-              const Icon = agentIcons[agent.type] || Bot
-              const agentColor = agentColors[agent.type] || 'text-text-secondary'
+              const Icon = agentIcons[agent.type]
+              const agentColor = agentColors[agent.type]
 
               return (
                 <div

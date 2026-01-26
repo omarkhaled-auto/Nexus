@@ -246,9 +246,15 @@ export function getLocalEmbeddingModel(modelId: string): EmbeddingModelInfo | un
  */
 export function getEmbeddingDimensions(modelId: string, backend: 'local' | 'api'): number {
   if (backend === 'local') {
-    return LOCAL_EMBEDDING_MODELS[modelId]?.dimensions ?? 384;
+    if (!Object.prototype.hasOwnProperty.call(LOCAL_EMBEDDING_MODELS, modelId)) {
+      return 384;
+    }
+    return LOCAL_EMBEDDING_MODELS[modelId].dimensions;
   }
-  return OPENAI_EMBEDDING_MODELS[modelId]?.dimensions ?? 1536;
+  if (!Object.prototype.hasOwnProperty.call(OPENAI_EMBEDDING_MODELS, modelId)) {
+    return 1536;
+  }
+  return OPENAI_EMBEDDING_MODELS[modelId].dimensions;
 }
 
 /**

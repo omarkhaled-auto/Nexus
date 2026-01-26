@@ -133,7 +133,7 @@ export function Breadcrumbs({
   showHome = false,
   homeHref = '/',
 }: BreadcrumbsProps): React.ReactElement | null {
-  if (!items || items.length === 0) {
+  if (items.length === 0) {
     return null
   }
 

@@ -242,7 +242,7 @@ export class QALoopEngine {
     console.log(`[QALoopEngine] Starting QA loop for task ${task.id}: ${task.name}`);
     console.log(`[QALoopEngine] Project path: ${task.projectPath ?? 'NOT PROVIDED'}`);
     console.log(`[QALoopEngine] Worktree: ${task.worktree ?? 'NONE'}`);
-    console.log(`[QALoopEngine] Effective working directory: ${effectiveWorkingDir ?? 'NONE'}`);
+    console.log(`[QALoopEngine] Effective working directory: ${effectiveWorkingDir}`);
 
     // Generate initial code before first iteration (if agentPool available)
     if (this.agentPool) {

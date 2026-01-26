@@ -523,7 +523,8 @@ export function useTaskOrchestration(): UseTaskOrchestrationReturn {
     const unsubscribers: Array<() => void> = [];
 
     // Subscribe to execution progress events
-    if (typeof window.nexusAPI.onExecutionProgress === 'function') {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- nexusAPI properties may not exist
+    if (typeof window.nexusAPI?.onExecutionProgress === 'function') {
       const unsub = window.nexusAPI.onExecutionProgress((progress) => {
         store.updateProgress(progress as ExecutionProgressPayload);
       });
@@ -664,11 +665,13 @@ export function useTaskOrchestration(): UseTaskOrchestrationReturn {
       // Initialize local execution state
       store.start(projectId, tasks);
 
+      const nexusAPI = (window as unknown as { nexusAPI?: typeof window.nexusAPI }).nexusAPI
+
       // Call the backend to start actual execution
       // The backend coordinator will handle running Claude on each task
-      if (window.nexusAPI?.startExecution) {
+      if (nexusAPI?.startExecution) {
         try {
-          const result = await window.nexusAPI.startExecution(projectId);
+          const result = await nexusAPI.startExecution(projectId);
           if (!result.success) {
             console.error('[useTaskOrchestration] Backend execution failed:', result.error);
             store.addError({

@@ -239,7 +239,7 @@ export abstract class BaseAgentRunner {
             duration: Date.now() - startTime,
             metrics: {
               iterations: iteration,
-              tokensUsed: response.usage?.totalTokens ?? 0,
+              tokensUsed: response.usage.totalTokens,
               timeMs: Date.now() - startTime,
             },
           };

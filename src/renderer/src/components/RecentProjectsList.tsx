@@ -130,7 +130,7 @@ export function RecentProjectsList({
    * Load projects on mount
    */
   useEffect(() => {
-    fetchProjects();
+    void fetchProjects();
   }, [fetchProjects]);
 
   /**

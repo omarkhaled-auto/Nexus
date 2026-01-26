@@ -16,8 +16,6 @@
  * @module persistence/memory/LocalEmbeddingsService
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 import type {
   LocalEmbeddingsConfig,
   LocalEmbeddingResult,
@@ -28,6 +26,30 @@ import {
   MODEL_DIMENSIONS,
   DEFAULT_LOCAL_EMBEDDINGS_CONFIG,
 } from './LocalEmbeddingsService.types';
+
+// ============================================================================
+// Types
+// ============================================================================
+
+interface PipelineOutput {
+  embeddings?: number[][];
+  data?: Float32Array | number[];
+}
+
+interface PipelineProgress {
+  progress?: number;
+  current?: number;
+  total?: number;
+}
+
+type PipelineRunner = (
+  input: string,
+  options: {
+    pooling?: string;
+    normalize?: boolean;
+    progress_callback?: (progress: PipelineProgress) => void;
+  }
+) => Promise<PipelineOutput>;
 
 // ============================================================================
 // Error Classes
@@ -141,7 +163,7 @@ export class LocalEmbeddingsService implements ILocalEmbeddingsService {
 
   // State
   private initialized: boolean = false;
-  private pipeline: any = null;
+  private pipeline: PipelineRunner | null = null;
   private cache: Map<string, number[]> = new Map();
 
   // Statistics
@@ -162,8 +184,8 @@ export class LocalEmbeddingsService implements ILocalEmbeddingsService {
     this.logger = config.logger ?? {};
 
     // Resolve dimensions from model if not explicitly set
-    this.dimensions =
-      config.dimensions ?? MODEL_DIMENSIONS[this.model] ?? merged.dimensions;
+    const modelDimensions = MODEL_DIMENSIONS[this.model] as number | undefined;
+    this.dimensions = config.dimensions ?? modelDimensions ?? merged.dimensions;
 
     this.logger.debug?.('LocalEmbeddingsService created', {
       model: this.model,
@@ -199,12 +221,19 @@ export class LocalEmbeddingsService implements ILocalEmbeddingsService {
       this.logger.info?.(`Loading model: ${this.model}`, { model: this.model });
 
       // Dynamic import to avoid loading Transformers.js until needed
-      const { pipeline } = await import('@huggingface/transformers');
+      const { pipeline } = await import('@huggingface/transformers') as {
+        pipeline: (
+          task: string,
+          model: string,
+          options?: { progress_callback?: (progress: PipelineProgress) => void }
+        ) => Promise<PipelineRunner>;
+      };
 
       // Track progress if callback provided
       let lastProgress = 0;
-      const progressHandler = (progress: any) => {
-        if (progress?.progress !== undefined) {
+      const progressHandler = (progress: PipelineProgress): void => {
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- progress can be undefined at runtime
+        if (progress && typeof progress.progress === 'number') {
           const pct = Math.round(progress.progress);
           if (pct !== lastProgress) {
             lastProgress = pct;
@@ -301,8 +330,25 @@ export class LocalEmbeddingsService implements ILocalEmbeddingsService {
           normalize: true,
         });
 
-        // Extract embedding from tensor
-        embedding = Array.from(output.data as Float32Array);
+        let embeddingData: number[] | undefined;
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- output shape varies at runtime
+        if (Array.isArray(output?.embeddings) && output.embeddings.length > 0) {
+          const first = output.embeddings[0];
+          if (Array.isArray(first)) {
+            embeddingData = first;
+          }
+        }
+
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- output.data can be undefined at runtime
+        if (!embeddingData && output?.data) {
+          embeddingData = Array.from(output.data);
+        }
+
+        if (!embeddingData || embeddingData.length === 0) {
+          throw new LocalEmbeddingsInferenceError('Empty embedding output');
+        }
+
+        embedding = embeddingData;
       } catch (error) {
         throw new LocalEmbeddingsInferenceError(
           String(error),
@@ -341,7 +387,7 @@ export class LocalEmbeddingsService implements ILocalEmbeddingsService {
    * @returns Array of embedding results
    */
   async embedBatch(texts: string[]): Promise<LocalEmbeddingResult[]> {
-    const results: LocalEmbeddingResult[] = new Array(texts.length);
+    const results = new Array<LocalEmbeddingResult>(texts.length);
     const uncached: { index: number; text: string }[] = [];
 
     // Check cache for each text
@@ -509,7 +555,7 @@ export class LocalEmbeddingsService implements ILocalEmbeddingsService {
    * Uses a hash-based approach to ensure same input = same output
    */
   private generateMockEmbedding(text: string): number[] {
-    const embedding: number[] = new Array(this.dimensions);
+    const embedding = new Array<number>(this.dimensions);
     let hash = 0;
 
     // Simple hash function

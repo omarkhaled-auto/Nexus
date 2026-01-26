@@ -53,6 +53,7 @@ import { DEFAULT_CLAUDE_MODEL } from '../../llm/models';
  * encrypted API keys and user preferences) and the NexusFactory (which
  * needs decrypted keys and concrete configuration).
  */
+// eslint-disable-next-line @typescript-eslint/no-extraneous-class -- Static loader groups settings helpers.
 export class SettingsLoader {
   /**
    * Load settings from store, environment, and config file, convert to NexusFactoryConfig.
@@ -147,7 +148,7 @@ export class SettingsLoader {
    * Handles legacy settings format for backwards compatibility.
    */
   private static getLLMSettings(): LLMSettings {
-    const llm = settingsService.get('llm') as LLMSettings | undefined;
+    const llm = settingsService.get('llm') as Partial<LLMSettings> | undefined;
 
     if (!llm) {
       // Return defaults if llm section doesn't exist

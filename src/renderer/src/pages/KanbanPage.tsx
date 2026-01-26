@@ -35,7 +35,7 @@ function isElectronEnvironment(): boolean {
  */
 function mapBackendFeature(backendFeature: Record<string, unknown>): Feature {
   // Map status (convert any backend format to renderer format)
-  const statusMap: Record<string, FeatureStatus> = {
+  const statusMap: Partial<Record<string, FeatureStatus>> = {
     backlog: 'backlog',
     planning: 'planning',
     in_progress: 'in_progress',
@@ -48,7 +48,7 @@ function mapBackendFeature(backendFeature: Record<string, unknown>): Feature {
   }
 
   // Map priority
-  const priorityMap: Record<string, FeaturePriority> = {
+  const priorityMap: Partial<Record<string, FeaturePriority>> = {
     critical: 'critical',
     must: 'critical',
     high: 'high',
@@ -60,7 +60,7 @@ function mapBackendFeature(backendFeature: Record<string, unknown>): Feature {
   }
 
   // Map complexity
-  const complexityMap: Record<string, FeatureComplexity> = {
+  const complexityMap: Partial<Record<string, FeatureComplexity>> = {
     simple: 'simple',
     moderate: 'moderate',
     complex: 'complex'
@@ -81,9 +81,9 @@ function mapBackendFeature(backendFeature: Record<string, unknown>): Feature {
     id: safeString(backendFeature.id, `feature-${Date.now()}`),
     title: safeString(backendFeature.title, '') || safeString(backendFeature.name, 'Untitled Feature'),
     description: safeString(backendFeature.description, ''),
-    status: statusMap[rawStatus] || 'backlog',
-    priority: priorityMap[rawPriority] || 'medium',
-    complexity: complexityMap[rawComplexity] || 'moderate',
+    status: statusMap[rawStatus] ?? 'backlog',
+    priority: priorityMap[rawPriority] ?? 'medium',
+    complexity: complexityMap[rawComplexity] ?? 'moderate',
     progress: typeof backendFeature.progress === 'number' ? backendFeature.progress : 0,
     assignedAgent: typeof backendFeature.assignedAgent === 'string' ? backendFeature.assignedAgent : undefined,
     tasks: Array.isArray(backendFeature.tasks)
@@ -214,6 +214,9 @@ export default function KanbanPage(): ReactElement {
       return () => {} // No-op unsubscribe for non-Electron
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- nexusAPI can be undefined in edge cases
+    if (!window.nexusAPI) return () => {}
+
     // Subscribe to feature updates
     const unsubscribeFeatureUpdate = window.nexusAPI.onFeatureUpdate((featureData) => {
       const feature = mapBackendFeature(featureData as Record<string, unknown>)
@@ -261,12 +264,18 @@ export default function KanbanPage(): ReactElement {
 
     try {
       // Call backend to create feature
-      const createdFeature = await window.nexusAPI.createFeature({
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- nexusAPI can be undefined in edge cases
+      const createdFeature = await window.nexusAPI?.createFeature({
         title: newFeatureTitle.trim(),
         description: newFeatureDescription.trim() || undefined,
         priority: newFeaturePriority,
         complexity: newFeatureComplexity
       })
+
+      if (!createdFeature) {
+        setCreateError('Failed to create feature - no response from backend')
+        return
+      }
 
       // Map the created feature and add to local store
       const mappedFeature = mapBackendFeature(createdFeature as Record<string, unknown>)

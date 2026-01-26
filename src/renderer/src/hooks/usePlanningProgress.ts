@@ -181,14 +181,11 @@ export function usePlanningProgress(): UsePlanningProgressReturn {
 
   // Subscribe to IPC events for planning progress
   useEffect(() => {
-    // Check if nexusAPI is available (Electron context)
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    if (!window.nexusAPI) {
-      return;
-    }
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- nexusAPI may not exist outside Electron
+    if (!window.nexusAPI) return;
 
     // Subscribe to planning progress events
-    const unsubProgress = window.nexusAPI.onPlanningProgress?.((data) => {
+    const unsubProgress = window.nexusAPI.onPlanningProgress((data) => {
       console.log('[usePlanningProgress] Received progress event:', data);
       store.updateProgress({
         projectId: data.projectId,
@@ -201,41 +198,78 @@ export function usePlanningProgress(): UsePlanningProgressReturn {
     });
 
     // Subscribe to planning completed events
-    const unsubCompleted = window.nexusAPI.onPlanningCompleted?.((data) => {
+    const unsubCompleted = window.nexusAPI.onPlanningCompleted((data) => {
       console.log('[usePlanningProgress] Received completed event:', data);
-      // Add a synthetic task list based on the count (actual tasks come from features:list)
+      // Update progress to complete state
+      // Note: Tasks are populated via task:created events, not here
       store.updateProgress({
         projectId: data.projectId,
         status: 'complete',
         progress: 100,
         currentStep: 'Planning complete!',
-        tasksCreated: data.taskCount,
+        tasksCreated: data.taskCount, // This is a count for progress display
         totalExpected: data.taskCount,
       });
       store.complete();
     });
 
     // Subscribe to planning error events
-    const unsubError = window.nexusAPI.onPlanningError?.((data) => {
+    const unsubError = window.nexusAPI.onPlanningError((data) => {
       console.log('[usePlanningProgress] Received error event:', data);
       store.setError(data.error);
     });
 
     // Also subscribe to nexus-event for any planning events not covered above
-    const unsubNexus = window.nexusAPI.onNexusEvent?.((event) => {
+    const unsubNexus = window.nexusAPI.onNexusEvent((event) => {
       if (event.type === 'planning:started') {
         const payload = event.payload as { projectId: string; requirementCount: number };
         console.log('[usePlanningProgress] Planning started:', payload);
         store.startPlanning(payload.projectId);
       }
+
+      // Subscribe to task:created events to populate the tasks array
+      // This fixes the bug where tasks were never displayed during planning
+      if (event.type === 'task:created') {
+        const payload = event.payload as {
+          task: { id: string; name: string; status: string };
+          projectId: string;
+          featureId?: string;
+        };
+        console.log('[usePlanningProgress] Task created:', payload);
+        store.addTask({
+          id: payload.task.id,
+          title: payload.task.name,
+          status: (payload.task.status as 'pending' | 'created') || 'pending',
+          featureId: payload.featureId ?? '',
+          priority: 'medium',
+          complexity: 'simple',
+          estimatedMinutes: 30,
+          dependsOn: [],
+        });
+      }
+
+      // Subscribe to feature:created events to populate features array
+      if (event.type === 'feature:created') {
+        const payload = event.payload as {
+          feature: { id: string; name: string; status: string; priority: string };
+          projectId: string;
+        };
+        console.log('[usePlanningProgress] Feature created:', payload);
+        store.addFeature({
+          id: payload.feature.id,
+          name: payload.feature.name,
+          taskCount: 0,
+          status: (payload.feature.status as 'identified' | 'decomposing' | 'ready') || 'identified',
+        });
+      }
     });
 
     return () => {
       // Cleanup subscriptions
-      unsubProgress?.();
-      unsubCompleted?.();
-      unsubError?.();
-      unsubNexus?.();
+      unsubProgress();
+      unsubCompleted();
+      unsubError();
+      unsubNexus();
     };
   }, [store]);
 

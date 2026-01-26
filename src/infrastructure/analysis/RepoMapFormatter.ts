@@ -604,11 +604,25 @@ export class RepoMapFormatter implements IRepoMapFormatter {
    * @returns Truncated formatted string
    */
   truncateToFit(repoMap: RepoMap, maxTokens: number): string {
-    return this.format(repoMap, {
+    let budget = maxTokens;
+    let output = this.format(repoMap, {
       ...DEFAULT_FORMAT_OPTIONS,
-      maxTokens,
+      maxTokens: budget,
       style: 'compact',
     });
+
+    const tokens = this.estimateTokens(output);
+    if (tokens > maxTokens) {
+      const overshoot = tokens - maxTokens;
+      budget = Math.max(0, maxTokens - overshoot - 1);
+      output = this.format(repoMap, {
+        ...DEFAULT_FORMAT_OPTIONS,
+        maxTokens: budget,
+        style: 'compact',
+      });
+    }
+
+    return output;
   }
 
   /**

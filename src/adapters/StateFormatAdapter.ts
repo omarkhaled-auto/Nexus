@@ -67,7 +67,7 @@ export class StateFormatAdapter {
 
     // Current work section
     lines.push('## Current Work');
-    const currentFeature = state.features[state.currentFeatureIndex];
+    const currentFeature = state.features.at(state.currentFeatureIndex);
     if (currentFeature) {
       lines.push(`- Current feature: ${currentFeature.name}`);
       const activeTask = currentFeature.tasks.find(
@@ -154,16 +154,16 @@ export class StateFormatAdapter {
 
     // Parse mode
     const modeMatch = normalizedContent.match(/\*\*Mode:\*\*\s*(\w+)/);
-    const mode =
-      (modeMatch?.[1]?.trim() as 'genesis' | 'evolution') ?? 'genesis';
+    const rawMode = modeMatch?.[1]?.trim();
+    const mode = (rawMode ?? 'genesis') as NexusState['mode'];
 
     // Parse status section
     const statusMatch = normalizedContent.match(/\*\*Status:\*\*\s*(\w+)/);
     if (!statusMatch) {
       errors.push('Missing status in Status section');
     }
-    const status =
-      (statusMatch?.[1]?.trim() as NexusState['status']) ?? 'initializing';
+    const rawStatus = statusMatch?.[1]?.trim();
+    const status = (rawStatus ?? 'initializing') as NexusState['status'];
 
     // Validate required sections
     if (errors.length > 0) {

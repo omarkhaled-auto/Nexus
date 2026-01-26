@@ -81,7 +81,7 @@ export const AgentPoolStatus = React.forwardRef<HTMLDivElement, AgentPoolStatusP
           else if (agent.status === 'idle') acc.idle++
           else if (agent.status === 'error') acc.error++
           else if (agent.status === 'pending') acc.pending++
-          else if (agent.status === 'success') acc.complete++
+          else acc.complete++
           return acc
         },
         { working: 0, idle: 0, error: 0, pending: 0, complete: 0 }

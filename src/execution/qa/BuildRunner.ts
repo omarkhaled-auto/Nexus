@@ -107,11 +107,11 @@ export class BuildRunner {
       let stdout = '';
       let stderr = '';
 
-      proc.stdout?.on('data', (data: Buffer) => {
+      proc.stdout.on('data', (data: Buffer) => {
         stdout += data.toString();
       });
 
-      proc.stderr?.on('data', (data: Buffer) => {
+      proc.stderr.on('data', (data: Buffer) => {
         stderr += data.toString();
       });
 

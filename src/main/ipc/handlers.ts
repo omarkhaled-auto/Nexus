@@ -15,6 +15,7 @@ import { ipcMain } from 'electron'
 import { EventBus } from '../../orchestration/events/EventBus'
 import type { CheckpointManager } from '../../persistence/checkpoints/CheckpointManager'
 import type { HumanReviewService } from '../../orchestration/review/HumanReviewService'
+import type { DatabaseClient } from '../../persistence/database/DatabaseClient'
 import { MODEL_PRICING_INFO } from '../../llm/models'
 
 /**
@@ -26,6 +27,24 @@ function validateSender(event: IpcMainInvokeEvent): boolean {
   const url = event.sender.getURL()
   return url.startsWith('http://localhost:') || url.startsWith('file://')
 }
+
+class ReviewNotInitializedError extends Error {
+  constructor(initError?: string) {
+    const baseMessage = 'Review system is not available. '
+    const hint = initError
+      ? `Initialization failed: ${initError}.`
+      : 'Please wait for Nexus to finish initializing.'
+    super(baseMessage + hint)
+    this.name = 'ReviewNotInitializedError'
+  }
+}
+
+const REVIEW_CHANNELS = [
+  'review:list',
+  'review:get',
+  'review:approve',
+  'review:reject',
+] as const
 
 /**
  * Feature interface for Kanban data
@@ -101,8 +120,11 @@ let checkpointManagerRef: CheckpointManager | null = null
 let humanReviewServiceRef: HumanReviewService | null = null
 
 // Database client reference for feature/task queries
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- DatabaseClient type import would cause circular dependency
-let databaseClientRef: { db: any } | null = null
+let databaseClientRef: DatabaseClient | null = null
+
+// QA iteration tracking (file-level for cross-function access)
+let currentQAIteration = 0
+const maxQAIterations = 50
 
 // ========================================
 // Token/Cost Tracking (Phase 25 - Feature Parity)
@@ -116,8 +138,8 @@ interface TokenUsageAccumulator {
   totalInputTokens: number
   totalOutputTokens: number
   totalCalls: number
-  byModel: Record<string, { inputTokens: number; outputTokens: number; calls: number }>
-  byAgent: Record<string, { inputTokens: number; outputTokens: number; calls: number }>
+  byModel: Record<string, { inputTokens: number; outputTokens: number; calls: number } | undefined>
+  byAgent: Record<string, { inputTokens: number; outputTokens: number; calls: number } | undefined>
   updatedAt: Date
 }
 
@@ -150,22 +172,22 @@ export function accumulateTokenUsage(usage: {
 
   // Track by model
   if (usage.model) {
-    if (!tokenUsage.byModel[usage.model]) {
-      tokenUsage.byModel[usage.model] = { inputTokens: 0, outputTokens: 0, calls: 0 }
-    }
-    tokenUsage.byModel[usage.model].inputTokens += usage.inputTokens
-    tokenUsage.byModel[usage.model].outputTokens += usage.outputTokens
-    tokenUsage.byModel[usage.model].calls++
+    const modelKey = usage.model
+    const modelUsage = tokenUsage.byModel[modelKey] ?? { inputTokens: 0, outputTokens: 0, calls: 0 }
+    modelUsage.inputTokens += usage.inputTokens
+    modelUsage.outputTokens += usage.outputTokens
+    modelUsage.calls++
+    tokenUsage.byModel[modelKey] = modelUsage
   }
 
   // Track by agent
   if (usage.agentId) {
-    if (!tokenUsage.byAgent[usage.agentId]) {
-      tokenUsage.byAgent[usage.agentId] = { inputTokens: 0, outputTokens: 0, calls: 0 }
-    }
-    tokenUsage.byAgent[usage.agentId].inputTokens += usage.inputTokens
-    tokenUsage.byAgent[usage.agentId].outputTokens += usage.outputTokens
-    tokenUsage.byAgent[usage.agentId].calls++
+    const agentKey = usage.agentId
+    const agentUsage = tokenUsage.byAgent[agentKey] ?? { inputTokens: 0, outputTokens: 0, calls: 0 }
+    agentUsage.inputTokens += usage.inputTokens
+    agentUsage.outputTokens += usage.outputTokens
+    agentUsage.calls++
+    tokenUsage.byAgent[agentKey] = agentUsage
   }
 }
 
@@ -197,6 +219,7 @@ export function getTokenUsageAndCosts(): {
   // Calculate total cost by summing per-model costs (more accurate than using default rate)
   let totalCost = 0
   for (const [model, data] of Object.entries(tokenUsage.byModel)) {
+    if (!data) continue
     totalCost += calculateCostForModel(data.inputTokens, data.outputTokens, model)
   }
 
@@ -211,18 +234,22 @@ export function getTokenUsageAndCosts(): {
     inputTokens: tokenUsage.totalInputTokens,
     outputTokens: tokenUsage.totalOutputTokens,
     estimatedCostUSD: totalCost,
-    breakdownByModel: Object.entries(tokenUsage.byModel).map(([model, data]) => ({
-      model,
-      inputTokens: data.inputTokens,
-      outputTokens: data.outputTokens,
-      cost: calculateCostForModel(data.inputTokens, data.outputTokens, model),
-    })),
-    breakdownByAgent: Object.entries(tokenUsage.byAgent).map(([agentId, data]) => ({
-      agentId,
-      inputTokens: data.inputTokens,
-      outputTokens: data.outputTokens,
-      cost: calculateCostForModel(data.inputTokens, data.outputTokens),
-    })),
+    breakdownByModel: Object.entries(tokenUsage.byModel)
+      .filter((entry): entry is [string, { inputTokens: number; outputTokens: number; calls: number }] => entry[1] !== undefined)
+      .map(([model, data]) => ({
+        model,
+        inputTokens: data.inputTokens,
+        outputTokens: data.outputTokens,
+        cost: calculateCostForModel(data.inputTokens, data.outputTokens, model),
+      })),
+    breakdownByAgent: Object.entries(tokenUsage.byAgent)
+      .filter((entry): entry is [string, { inputTokens: number; outputTokens: number; calls: number }] => entry[1] !== undefined)
+      .map(([agentId, data]) => ({
+        agentId,
+        inputTokens: data.inputTokens,
+        outputTokens: data.outputTokens,
+        cost: calculateCostForModel(data.inputTokens, data.outputTokens),
+      })),
     updatedAt: tokenUsage.updatedAt,
   }
 }
@@ -242,6 +269,44 @@ export function resetTokenUsage(): void {
 // Expose accumulation function globally for CLI client to call
 ;(global as unknown as { accumulateTokenUsage: typeof accumulateTokenUsage }).accumulateTokenUsage = accumulateTokenUsage
 
+export function removeReviewHandlers(): void {
+  for (const channel of REVIEW_CHANNELS) {
+    ipcMain.removeHandler(channel)
+  }
+}
+
+export function registerFallbackReviewHandlers(initError?: string): void {
+  const error = new ReviewNotInitializedError(initError)
+
+  ipcMain.handle('review:list', (event) => {
+    if (!validateSender(event)) {
+      throw new Error('Unauthorized IPC sender')
+    }
+    return []
+  })
+
+  ipcMain.handle('review:get', (event) => {
+    if (!validateSender(event)) {
+      throw new Error('Unauthorized IPC sender')
+    }
+    throw error
+  })
+
+  ipcMain.handle('review:approve', (event) => {
+    if (!validateSender(event)) {
+      throw new Error('Unauthorized IPC sender')
+    }
+    throw error
+  })
+
+  ipcMain.handle('review:reject', (event) => {
+    if (!validateSender(event)) {
+      throw new Error('Unauthorized IPC sender')
+    }
+    throw error
+  })
+}
+
 /**
  * Register checkpoint and review IPC handlers
  * Called after services are initialized
@@ -250,6 +315,7 @@ export function registerCheckpointReviewHandlers(
   checkpointManager: CheckpointManager,
   humanReviewService: HumanReviewService
 ): void {
+  removeReviewHandlers()
   checkpointManagerRef = checkpointManager
   humanReviewServiceRef = humanReviewService
 
@@ -415,9 +481,7 @@ export function registerCheckpointReviewHandlers(
  * Register database client for feature/task queries
  * Called after DatabaseClient is initialized
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- DatabaseClient type import would cause circular dependency
-export function registerDatabaseHandlers(databaseClient: any): void {
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+export function registerDatabaseHandlers(databaseClient: DatabaseClient): void {
   databaseClientRef = databaseClient
   console.log('[IPC] Database handlers registered')
 }
@@ -563,7 +627,6 @@ export function registerIpcHandlers(): void {
         const { isNotNull } = await import('drizzle-orm')
 
         // Query all tasks with completedAt timestamps
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
         const allTasks = await databaseClientRef.db.select().from(tasks) as DbTaskRow[]
         const totalTasks = allTasks.length
 
@@ -572,12 +635,10 @@ export function registerIpcHandlers(): void {
         }
 
         // Get tasks with completion times
-        /* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call */
         const completedTasksData = await databaseClientRef.db
           .select()
           .from(tasks)
           .where(isNotNull(tasks.completedAt)) as DbTaskRow[]
-        /* eslint-enable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call */
 
         // Build historical progress from real completion times
         if (completedTasksData.length === 0) {
@@ -597,14 +658,12 @@ export function registerIpcHandlers(): void {
         const progressData: Array<{ timestamp: Date; completed: number; total: number }> = []
 
         // Add starting point
-        const firstCompletion = sortedCompletions[0]?.completedAt
-        if (firstCompletion) {
-          progressData.push({
-            timestamp: new Date(new Date(firstCompletion).getTime() - 1000),
-            completed: 0,
-            total: totalTasks
-          })
-        }
+        const firstCompletion = sortedCompletions[0].completedAt
+        progressData.push({
+          timestamp: new Date(new Date(firstCompletion).getTime() - 1000),
+          completed: 0,
+          total: totalTasks
+        })
 
         // Add progress point for each completion
         sortedCompletions.forEach((task, index) => {
@@ -857,7 +916,7 @@ export function registerIpcHandlers(): void {
     const complete = agents.filter(a => a.status === 'complete').length
 
     // Count by type
-    const byType: Record<string, { total: number; active: number; idle: number; max: number }> = {
+    const byType: Record<string, { total: number; active: number; idle: number; max: number } | undefined> = {
       planner: { total: 0, active: 0, idle: 0, max: 1 },
       coder: { total: 0, active: 0, idle: 0, max: 4 },
       tester: { total: 0, active: 0, idle: 0, max: 2 },
@@ -867,13 +926,15 @@ export function registerIpcHandlers(): void {
 
     for (const agent of agents) {
       const agentType = agent.type || 'coder'
-      if (byType[agentType]) {
-        byType[agentType].total++
-        if (agent.status === 'working') {
-          byType[agentType].active++
-        } else {
-          byType[agentType].idle++
-        }
+      const bucket = byType[agentType]
+      if (!bucket) {
+        continue
+      }
+      bucket.total++
+      if (agent.status === 'working') {
+        bucket.active++
+      } else {
+        bucket.idle++
       }
     }
 
@@ -1019,9 +1080,8 @@ export function registerIpcHandlers(): void {
   let currentExecutionTaskId: string | null = null
   let currentExecutionTaskName: string | null = null
 
-  // QA iteration tracking (for getQAStatus)
-  let currentQAIteration = 0
-  const maxQAIterations = 50
+  // NOTE: QA iteration tracking (currentQAIteration, maxQAIterations)
+  // is now at file-level scope for cross-function access
 
   /**
    * Get execution logs for a specific step (build/lint/test/review)
@@ -1283,7 +1343,7 @@ export function registerIpcHandlers(): void {
    * @param input - Feature data
    * @returns Created feature with ID
    */
-  ipcMain.handle('feature:create', (event, input: { title: string; description?: string; priority?: string; complexity?: string }) => {
+  ipcMain.handle('feature:create', async (event, input: { title: string; description?: string; priority?: string; complexity?: string }) => {
     if (!validateSender(event)) {
       throw new Error('Unauthorized IPC sender')
     }
@@ -1292,19 +1352,115 @@ export function registerIpcHandlers(): void {
     }
 
     const id = `feature-${Date.now()}`
-    const now = new Date().toISOString()
+    const now = new Date()
+    const nowISO = now.toISOString()
+
+    // Map UI priority to database priority
+    const uiPriority = input.priority || 'medium'
+    const dbPriority: 'must' | 'should' | 'could' | 'wont' =
+      uiPriority === 'critical' ? 'must' :
+      uiPriority === 'high' ? 'should' :
+      uiPriority === 'medium' ? 'could' : 'wont'
+
+    // Map UI complexity to database complexity
+    const uiComplexity = input.complexity || 'moderate'
+    const dbComplexity: 'simple' | 'complex' = uiComplexity === 'simple' ? 'simple' : 'complex'
+
     const feature: UIFeature = {
       id,
       title: input.title,
       description: input.description || '',
       status: 'backlog',
-      priority: input.priority || 'medium',
-      complexity: input.complexity || 'moderate',
+      priority: uiPriority,
+      complexity: uiComplexity,
       progress: 0,
       tasks: [],
-      createdAt: now,
-      updatedAt: now
+      createdAt: nowISO,
+      updatedAt: nowISO
     }
+
+    // Persist feature to database if available (fixes manual feature execution bug)
+    if (databaseClientRef && state.projectId) {
+      try {
+        const { features, tasks } = await import('../../persistence/database/schema')
+
+        // Insert feature into database
+        databaseClientRef.db.insert(features).values({
+          id,
+          projectId: state.projectId,
+          name: input.title,
+          description: input.description || '',
+          priority: dbPriority,
+          status: 'backlog',
+          complexity: dbComplexity,
+          estimatedTasks: 1,
+          completedTasks: 0,
+          createdAt: now,
+          updatedAt: now,
+        }).run()
+
+        console.log('[IPC] feature:create - persisted feature to database:', id)
+
+        // Create a default "Implementation" task for the feature
+        const taskId = `task-${id}-impl-${Date.now()}`
+        databaseClientRef.db.insert(tasks).values({
+          id: taskId,
+          projectId: state.projectId,
+          featureId: id,
+          name: `Implement: ${input.title}`,
+          description: input.description || `Implementation task for ${input.title}`,
+          type: 'auto',
+          status: 'pending',
+          size: 'small',
+          priority: 5,
+          tags: JSON.stringify([]),
+          notes: JSON.stringify([]),
+          dependsOn: JSON.stringify([]),
+          estimatedMinutes: 30,
+          createdAt: now,
+          updatedAt: now,
+        }).run()
+
+        console.log('[IPC] feature:create - created default task:', taskId)
+
+        // Update feature with the task reference
+        feature.tasks = [{ id: taskId, title: `Implement: ${input.title}`, status: 'pending' }]
+
+        // Also update in-memory task state
+        state.tasks.set(taskId, {
+          id: taskId,
+          name: `Implement: ${input.title}`,
+          status: 'pending',
+          featureId: id
+        })
+
+        // Emit task created event for UI updates
+        const eventBus = EventBus.getInstance()
+        void eventBus.emit('task:created', {
+          task: {
+            id: taskId,
+            projectId: state.projectId,
+            featureId: id,
+            name: `Implement: ${input.title}`,
+            description: input.description || `Implementation task for ${input.title}`,
+            type: 'auto' as const,
+            status: 'pending' as const,
+            priority: 'normal' as const,
+            dependencies: [],
+            createdAt: now,
+            updatedAt: now,
+          },
+          projectId: state.projectId,
+          featureId: id,
+        }, { source: 'IPC' })
+
+      } catch (error) {
+        console.error('[IPC] feature:create - database persistence failed:', error)
+        // Fall through to in-memory only
+      }
+    }
+
+    // Always update in-memory state
     state.features.set(id, feature)
 
     // Emit feature created event
@@ -1422,14 +1578,30 @@ export function registerIpcHandlers(): void {
         const { features } = await import('../../persistence/database/schema')
         const { eq } = await import('drizzle-orm')
 
+        // Map UI priority to DB priority (UI uses critical/high/medium/low, DB uses must/should/could/wont)
+        const mapPriorityToDb = (uiPriority: string): 'must' | 'should' | 'could' | 'wont' => {
+          const mapping: Record<string, 'must' | 'should' | 'could' | 'wont'> = {
+            critical: 'must',
+            high: 'should',
+            medium: 'could',
+            low: 'wont',
+          }
+          return mapping[uiPriority] ?? 'should'
+        }
+
+        // Map UI complexity to DB complexity (DB only supports 'simple' | 'complex')
+        const mapComplexityToDb = (uiComplexity: string): 'simple' | 'complex' => {
+          return uiComplexity === 'complex' ? 'complex' : 'simple'
+        }
+
         databaseClientRef.db
           .update(features)
           .set({
             name: feature.title,
             description: feature.description,
             status: feature.status,
-            priority: feature.priority,
-            complexity: feature.complexity,
+            priority: mapPriorityToDb(feature.priority),
+            complexity: mapComplexityToDb(feature.complexity),
             updatedAt: new Date(),
           })
           .where(eq(features.id, id))
@@ -1535,9 +1707,6 @@ export function registerIpcHandlers(): void {
 
       // Start execution via the coordinator
       const coordinator = bootstrappedNexus.nexus.coordinator
-      if (!coordinator) {
-        throw new Error('Coordinator not available')
-      }
 
       // Check coordinator state
       const status = coordinator.getStatus()
@@ -1561,9 +1730,6 @@ export function registerIpcHandlers(): void {
       const { eq } = await import('drizzle-orm')
 
       const dbClient = bootstrappedNexus.databaseClient
-      if (!dbClient) {
-        throw new Error('Database client not available')
-      }
 
       // Query project to get rootPath
       const project = dbClient.db
@@ -1667,9 +1833,6 @@ export function registerIpcHandlers(): void {
       }
 
       const coordinator = bootstrappedNexus.nexus.coordinator
-      if (!coordinator) {
-        throw new Error('Coordinator not available')
-      }
 
       coordinator.resume()
       console.log('[ExecutionHandlers] Execution resumed successfully')
@@ -1709,11 +1872,8 @@ export function registerIpcHandlers(): void {
       }
 
       const coordinator = bootstrappedNexus.nexus.coordinator
-      if (!coordinator) {
-        throw new Error('Coordinator not available')
-      }
 
-      coordinator.stop()
+      await coordinator.stop()
       console.log('[ExecutionHandlers] Execution stopped successfully')
 
       if (eventForwardingWindow && !eventForwardingWindow.isDestroyed()) {
@@ -2052,6 +2212,11 @@ export function setupEventForwarding(mainWindow: BrowserWindow): void {
   eventForwardingWindow = mainWindow
 
   const eventBus = EventBus.getInstance()
+  const globalExecutionStatuses = (global as unknown as {
+    executionStatuses?: Map<string, 'pending' | 'running' | 'success' | 'error'>
+  }).executionStatuses
+  const getExecutionStatus = (type: 'build' | 'lint' | 'test' | 'review'): 'pending' | 'running' | 'success' | 'error' =>
+    globalExecutionStatuses?.get(type) ?? 'pending'
 
   // ========================================
   // Task Events → Timeline + Metrics
@@ -2097,7 +2262,7 @@ export function setupEventForwarding(mainWindow: BrowserWindow): void {
 
   eventBus.on('task:qa-iteration', (event) => {
     // Track current iteration for getQAStatus
-    currentQAIteration = event.payload.iteration as number
+    currentQAIteration = event.payload.iteration
 
     forwardTimelineEvent({
       id: event.id,
@@ -2114,10 +2279,10 @@ export function setupEventForwarding(mainWindow: BrowserWindow): void {
     if (eventForwardingWindow && !eventForwardingWindow.isDestroyed()) {
       eventForwardingWindow.webContents.send('qa:status-update', {
         steps: [
-          { type: 'build', status: executionStatuses.get('build') ?? 'pending' },
-          { type: 'lint', status: executionStatuses.get('lint') ?? 'pending' },
-          { type: 'test', status: executionStatuses.get('test') ?? 'pending' },
-          { type: 'review', status: executionStatuses.get('review') ?? 'pending' }
+          { type: 'build', status: getExecutionStatus('build') },
+          { type: 'lint', status: getExecutionStatus('lint') },
+          { type: 'test', status: getExecutionStatus('test') },
+          { type: 'review', status: getExecutionStatus('review') }
         ],
         iteration: currentQAIteration,
         maxIterations: maxQAIterations
@@ -2128,6 +2293,31 @@ export function setupEventForwarding(mainWindow: BrowserWindow): void {
   // ========================================
   // Agent Events → Agent Metrics + Timeline
   // ========================================
+
+  // FIX #5: Forward agent:spawned events for dynamic agent discovery in UI
+  // AgentSpawnedPayload contains { agent: Agent }, access nested properties
+  eventBus.on('agent:spawned', (event) => {
+    const agent = event.payload.agent;
+    const agentId = agent.id;
+    const agentType = agent.type;
+    forwardAgentCreated({
+      id: agentId,
+      type: agentType || 'coder',
+      status: 'idle',
+      model: agent.modelConfig?.model,
+      spawnedAt: event.timestamp
+    })
+    forwardTimelineEvent({
+      id: event.id,
+      type: 'agent_spawned',
+      title: `Agent ${agentId} spawned`,
+      timestamp: event.timestamp,
+      metadata: {
+        agentId,
+        agentType
+      }
+    })
+  })
 
   eventBus.on('agent:assigned', (event) => {
     forwardAgentMetrics({
@@ -2199,10 +2389,6 @@ export function setupEventForwarding(mainWindow: BrowserWindow): void {
   const globalAddExecutionLog = (global as unknown as {
     addExecutionLog?: (type: 'build' | 'lint' | 'test' | 'review', message: string, details?: string, logType?: 'info' | 'error' | 'warning') => void
   }).addExecutionLog
-  const globalExecutionStatuses = (global as unknown as {
-    executionStatuses?: Map<string, 'pending' | 'running' | 'success' | 'error'>
-  }).executionStatuses
-
   eventBus.on('qa:build-started', (event) => {
     forwardTimelineEvent({
       id: event.id,
@@ -2473,6 +2659,15 @@ export function forwardAgentStatus(status: Record<string, unknown>): void {
 }
 
 /**
+ * FIX #5: Forward an agent created event to the renderer for dynamic discovery
+ */
+export function forwardAgentCreated(agent: Record<string, unknown>): void {
+  if (eventForwardingWindow && !eventForwardingWindow.isDestroyed()) {
+    eventForwardingWindow.webContents.send('agent:created', agent)
+  }
+}
+
+/**
  * Forward execution progress event to the renderer
  */
 export function forwardExecutionProgress(
@@ -2554,7 +2749,7 @@ export function forwardFeatureUpdate(
 function mapUIStatusToCoreStatus(
   status: string
 ): 'pending' | 'decomposing' | 'ready' | 'in_progress' | 'completed' | 'failed' {
-  const map: Record<string, 'pending' | 'decomposing' | 'ready' | 'in_progress' | 'completed' | 'failed'> = {
+  const map: Partial<Record<string, 'pending' | 'decomposing' | 'ready' | 'in_progress' | 'completed' | 'failed'>> = {
     backlog: 'pending',
     planning: 'decomposing',
     in_progress: 'in_progress',
@@ -2562,5 +2757,5 @@ function mapUIStatusToCoreStatus(
     human_review: 'ready',     // Ready for final review
     done: 'completed'
   }
-  return map[status] || 'pending'
+  return map[status] ?? 'pending'
 }

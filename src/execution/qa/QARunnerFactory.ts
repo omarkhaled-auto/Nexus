@@ -81,6 +81,7 @@ export interface QuickQARunnerConfig {
  * const iterator = new RalphStyleIterator({ qaRunner });
  * ```
  */
+// eslint-disable-next-line @typescript-eslint/no-extraneous-class -- Static factory groups QA runner creation.
 export class QARunnerFactory {
   /**
    * Create a complete QARunner with all real implementations

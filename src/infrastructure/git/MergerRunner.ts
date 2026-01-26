@@ -156,7 +156,7 @@ export class MergerRunner {
       try {
         // Try to find by path in worktree info
         // Note: This is a simplified lookup - may need enhancement
-        const info = await this.getWorktreeInfoByPath(worktreePath);
+        const info = this.getWorktreeInfoByPath(worktreePath);
         if (info?.branch) {
           return info.branch;
         }

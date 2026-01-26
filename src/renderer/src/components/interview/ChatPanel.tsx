@@ -132,27 +132,31 @@ function WelcomeMessage(): ReactElement {
  * Map backend category to renderer category type
  */
 function mapCategory(backendCategory: string): RequirementCategory {
-  const mapping: Record<string, RequirementCategory> = {
+  const mapping: Partial<Record<string, RequirementCategory>> = {
     'functional': 'functional',
     'non-functional': 'non_functional',
     'technical': 'technical',
     'constraint': 'constraint',
     'assumption': 'functional', // Map assumptions to functional
   };
-  return mapping[backendCategory] || 'functional';
+  return mapping[backendCategory] ?? 'functional';
 }
 
 /**
  * Map backend priority to renderer priority type
  */
 function mapPriority(backendPriority: string): RequirementPriority {
-  const mapping: Record<string, RequirementPriority> = {
+  const mapping: Partial<Record<string, RequirementPriority>> = {
     'must': 'must',
     'should': 'should',
     'could': 'could',
     'wont': 'wont',
   };
-  return mapping[backendPriority] || 'should';
+  return mapping[backendPriority] ?? 'should';
+}
+
+function getNexusAPI(): typeof window.nexusAPI | undefined {
+  return (window as Window & { nexusAPI?: typeof window.nexusAPI }).nexusAPI;
 }
 
 /**
@@ -188,7 +192,8 @@ export function ChatPanel({ className }: ChatPanelProps): ReactElement {
     }
 
     // Check for backend availability
-    if (!window.nexusAPI) {
+    const nexusAPI = getNexusAPI();
+    if (!nexusAPI) {
       setError('Backend not available. Please run in Electron to use the interview feature.');
       return;
     }
@@ -201,50 +206,48 @@ export function ChatPanel({ className }: ChatPanelProps): ReactElement {
       const projectId = currentProject?.id || `temp-${nanoid(8)}`;
 
       // Try to resume existing session first
-      let session = await window.nexusAPI.interview.resumeByProject(projectId);
+      let session = await nexusAPI.interview.resumeByProject(projectId);
 
       if (!session) {
         // Start a new session, passing project name to retrieve stored rootPath
-        session = await window.nexusAPI.interview.start(projectId, currentProject?.name);
+        session = await nexusAPI.interview.start(projectId, currentProject?.name);
       }
 
-      if (session) {
-        setSessionId(session.id);
+      setSessionId(session.id);
 
-        // If this is a new session, add the initial greeting
-        if (session.messages.length === 0) {
-          const greeting = await window.nexusAPI.interview.getGreeting();
-          addMessage({
-            id: nanoid(),
-            role: 'assistant',
-            content: greeting,
-            timestamp: Date.now(),
-          });
-        } else {
-          // Restore existing session data (messages and requirements)
-          // Convert backend message format to frontend format
-          const restoredMessages: InterviewMessage[] = session.messages.map((msg: { id: string; role: 'user' | 'assistant'; content: string; timestamp: Date | string }) => ({
-            id: msg.id,
-            role: msg.role,
-            content: msg.content,
-            timestamp: typeof msg.timestamp === 'string' ? new Date(msg.timestamp).getTime() : msg.timestamp.getTime(),
-          }));
+      // If this is a new session, add the initial greeting
+      if (session.messages.length === 0) {
+        const greeting = await nexusAPI.interview.getGreeting();
+        addMessage({
+          id: nanoid(),
+          role: 'assistant',
+          content: greeting,
+          timestamp: Date.now(),
+        });
+      } else {
+        // Restore existing session data (messages and requirements)
+        // Convert backend message format to frontend format
+        const restoredMessages: InterviewMessage[] = session.messages.map((msg: { id: string; role: 'user' | 'assistant'; content: string; timestamp: Date | string }) => ({
+          id: msg.id,
+          role: msg.role,
+          content: msg.content,
+          timestamp: typeof msg.timestamp === 'string' ? new Date(msg.timestamp).getTime() : msg.timestamp.getTime(),
+        }));
 
-          // Convert backend requirement format to frontend format
-          const restoredRequirements = (session.extractedRequirements || []).map((req: { id: string; category: string; text: string; priority: string }) => ({
-            id: req.id,
-            category: mapCategory(req.category),
-            text: req.text,
-            priority: mapPriority(req.priority),
-            source: 'interview' as const,
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-          }));
+        // Convert backend requirement format to frontend format
+        const restoredRequirements = session.extractedRequirements.map((req: { id: string; category: string; text: string; priority: string }) => ({
+          id: req.id,
+          category: mapCategory(req.category),
+          text: req.text,
+          priority: mapPriority(req.priority),
+          source: 'interview' as const,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        }));
 
-          // Restore session to the store
-          restoreSession(restoredMessages, restoredRequirements);
-          console.log(`[ChatPanel] Restored session with ${restoredMessages.length} messages and ${restoredRequirements.length} requirements`);
-        }
+        // Restore session to the store
+        restoreSession(restoredMessages, restoredRequirements);
+        console.log(`[ChatPanel] Restored session with ${restoredMessages.length} messages and ${restoredRequirements.length} requirements`);
       }
     } catch (err) {
       console.error('Failed to initialize interview session:', err);
@@ -288,7 +291,8 @@ export function ChatPanel({ className }: ChatPanelProps): ReactElement {
    * Send a message to the backend interview engine
    */
   const sendMessageToBackend = useCallback(async (message: string, _userMessageId: string) => {
-    if (!sessionId || !window.nexusAPI) {
+    const nexusAPI = getNexusAPI();
+    if (!sessionId || !nexusAPI) {
       // No backend available - set error and return
       setError('Backend not available. Please run in Electron to use the interview feature.');
       return;
@@ -306,7 +310,7 @@ export function ChatPanel({ className }: ChatPanelProps): ReactElement {
       });
 
       // Call the backend to process the message
-      const result = await window.nexusAPI.interview.sendMessage(sessionId, message);
+      const result = await nexusAPI.interview.sendMessage(sessionId, message);
 
       // Update the assistant message with the actual response
       useInterviewStore.getState().updateMessage(assistantMessageId, {
@@ -315,7 +319,7 @@ export function ChatPanel({ className }: ChatPanelProps): ReactElement {
       });
 
       // Add extracted requirements to the store
-      if (result.extractedRequirements && result.extractedRequirements.length > 0) {
+      if (result.extractedRequirements.length > 0) {
         const now = Date.now();
         for (const req of result.extractedRequirements) {
           addRequirement({

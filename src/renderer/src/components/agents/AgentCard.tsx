@@ -139,7 +139,7 @@ export const AgentCard = React.forwardRef<HTMLDivElement, AgentCardProps>(
             ? (e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault()
-                  onClick?.()
+                  onClick()
                 }
               }
             : undefined

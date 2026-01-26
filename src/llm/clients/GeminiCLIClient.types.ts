@@ -114,7 +114,7 @@ export interface GeminiCLIStats {
 export interface GeminiCLIRawResponse {
   session_id: string;
   response: string;
-  stats: GeminiCLIStats;
+  stats?: GeminiCLIStats;
 }
 
 /**

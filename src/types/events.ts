@@ -436,6 +436,10 @@ export interface ReviewContext {
   qaIterations?: number;
   escalationReason?: string;
   suggestedAction?: string;
+  /** Conflict files for merge_conflict reviews */
+  conflictFiles?: string[];
+  /** Error message for conflict reviews */
+  error?: string;
 }
 
 export interface ReviewRequestedPayload {

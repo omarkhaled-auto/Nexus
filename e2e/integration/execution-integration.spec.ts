@@ -31,8 +31,8 @@ test.describe('Execution Integration Tests', () => {
     await page.waitForTimeout(1000);
 
     // Wait for execution page to load
-    const executionHeader = page.locator('h1:has-text("Execution"), text=Execution Monitor, text=Live Execution');
-    await expect(executionHeader.first()).toBeVisible({ timeout: 15000 });
+    const executionPage = page.locator('[data-testid="execution-page"]');
+    await expect(executionPage.first()).toBeVisible({ timeout: 15000 });
 
     // Inject test agents to simulate active execution
     await injectTestData(page, 'agents', sampleAgents.filter((a) => a.status === 'working'));
@@ -101,8 +101,8 @@ test.describe('Execution Integration Tests', () => {
     await page.waitForTimeout(1000);
 
     // Wait for execution page
-    const executionHeader = page.locator('h1:has-text("Execution"), text=Execution Monitor');
-    await expect(executionHeader.first()).toBeVisible({ timeout: 15000 });
+    const executionPage = page.locator('[data-testid="execution-page"]');
+    await expect(executionPage.first()).toBeVisible({ timeout: 15000 });
 
     // Inject working agents to simulate active execution
     await injectTestData(page, 'agents', [

@@ -19,6 +19,7 @@ import { MergerAgent } from '../../execution/agents/MergerAgent';
 import type { BaseAgentRunner, AgentContext } from '../../execution/agents/BaseAgentRunner';
 import { EventBus } from '../events/EventBus';
 import type {
+  Agent,
   AgentType,
   AgentMetrics,
   AgentModelConfig,
@@ -234,10 +235,10 @@ export class AgentPool implements IAgentPool {
 
     this.agents.set(agent.id, agent);
 
-    // Emit spawn event
-    void this.eventBus.emit('agent:started', {
-      agentId: agent.id,
-      taskId: '',
+    // Emit spawn event with correct payload for dynamic agent discovery
+    // Cast to Agent since modelConfig is always defined in this context
+    void this.eventBus.emit('agent:spawned', {
+      agent: agent as Agent,
     });
 
     return agent;

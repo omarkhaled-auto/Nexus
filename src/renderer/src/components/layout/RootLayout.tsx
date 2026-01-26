@@ -1,11 +1,13 @@
 import type { ReactElement } from 'react';
 import { Outlet, useLocation } from 'react-router';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { Menu, X } from 'lucide-react';
 import { uiBackendBridge } from '@renderer/bridges/UIBackendBridge';
 import { useGlobalShortcuts } from '@renderer/hooks/useKeyboardShortcuts';
 import { useIsMobile } from '@renderer/hooks/useMediaQuery';
 import { cn } from '@renderer/lib/utils';
+import { useReviewNotifications } from '@renderer/hooks/useReviewNotifications';
+import { ReviewDetailModal } from '@renderer/components/review/ReviewDetailModal';
 import {
   Sidebar,
   SidebarNav,
@@ -44,6 +46,12 @@ const FULL_SCREEN_PAGES = ['/'];
 export function RootLayout(): ReactElement {
   const location = useLocation();
   const isMobile = useIsMobile();
+  const {
+    pendingCount,
+    activeReviewId,
+    closeReview,
+    refreshPending,
+  } = useReviewNotifications();
 
   // Initialize global keyboard shortcuts (requires router context)
   useGlobalShortcuts();
@@ -113,6 +121,33 @@ export function RootLayout(): ReactElement {
   const handleMobileMenuClose = useCallback(() => {
     setMobileMenuOpen(false);
   }, []);
+
+  const navigationItems = useMemo(() => {
+    return defaultNavigationItems.map((item) => {
+      if (item.id !== 'execution') return item;
+      return {
+        ...item,
+        badge: pendingCount > 0 ? pendingCount : undefined,
+        badgeVariant: pendingCount > 0 ? 'warning' : item.badgeVariant,
+      };
+    });
+  }, [pendingCount]);
+
+  const handleReviewApprove = useCallback(async (reviewId: string, resolution?: string) => {
+    if (typeof window === 'undefined' || typeof window.nexusAPI === 'undefined') {
+      throw new Error('Review actions require the desktop app.');
+    }
+    await window.nexusAPI.reviewApprove(reviewId, resolution);
+    await refreshPending();
+  }, [refreshPending]);
+
+  const handleReviewReject = useCallback(async (reviewId: string, feedback: string) => {
+    if (typeof window === 'undefined' || typeof window.nexusAPI === 'undefined') {
+      throw new Error('Review actions require the desktop app.');
+    }
+    await window.nexusAPI.reviewReject(reviewId, feedback);
+    await refreshPending();
+  }, [refreshPending]);
 
   // Initialize UIBackendBridge
   useEffect(() => {
@@ -200,7 +235,7 @@ export function RootLayout(): ReactElement {
             {/* Main navigation */}
             <SidebarSection>
               <SidebarNav
-                items={defaultNavigationItems}
+                items={navigationItems}
                 collapsed={isMobile ? false : sidebarCollapsed}
               />
             </SidebarSection>
@@ -232,6 +267,13 @@ export function RootLayout(): ReactElement {
         data-testid="main-content-area"
       >
         <Outlet />
+        <ReviewDetailModal
+          reviewId={activeReviewId}
+          isOpen={activeReviewId !== null}
+          onClose={closeReview}
+          onApprove={handleReviewApprove}
+          onReject={handleReviewReject}
+        />
       </div>
     </div>
   );

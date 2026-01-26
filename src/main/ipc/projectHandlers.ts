@@ -74,11 +74,11 @@ export function registerProjectHandlers(): void {
       }
 
       // Validate required options
-      if (!options?.name || typeof options.name !== 'string') {
+      if (!options.name || typeof options.name !== 'string') {
         return { success: false, error: 'Project name is required' };
       }
 
-      if (!options?.path || typeof options.path !== 'string') {
+      if (!options.path || typeof options.path !== 'string') {
         return { success: false, error: 'Project path is required' };
       }
 
@@ -280,7 +280,7 @@ export function registerProjectHandlers(): void {
         return { success: false, error: 'Unauthorized IPC sender' };
       }
 
-      if (!project?.path || !project?.name) {
+      if (!project.path || !project.name) {
         return { success: false, error: 'Project path and name are required' };
       }
 

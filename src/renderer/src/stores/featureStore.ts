@@ -209,49 +209,67 @@ export const useFeatureStore = create<FeatureState>()((set, get) => ({
     return true
   },
 
-  reorderFeatures: (columnId, oldIndex, newIndex) =>
-    { set((state) => {
-      // Get features in the target column
-      const columnFeatures = state.features.filter((f) => f.status === columnId)
-      const _otherFeatures = state.features.filter((f) => f.status !== columnId)
+  reorderFeatures: (columnId, oldIndex, newIndex) => {
+    // FIX #2: Persist reorder to backend
+    const state = get()
 
-      // Validate indices
-      if (
-        oldIndex < 0 ||
-        newIndex < 0 ||
-        oldIndex >= columnFeatures.length ||
-        newIndex >= columnFeatures.length
-      ) {
-        return state
+    // Get features in the target column
+    const columnFeatures = state.features.filter((f) => f.status === columnId)
+
+    // Validate indices
+    if (
+      oldIndex < 0 ||
+      newIndex < 0 ||
+      oldIndex >= columnFeatures.length ||
+      newIndex >= columnFeatures.length
+    ) {
+      return
+    }
+
+    // Same index, no change needed
+    if (oldIndex === newIndex) {
+      return
+    }
+
+    // Perform array move
+    const reordered = [...columnFeatures]
+    const [removed] = reordered.splice(oldIndex, 1)
+    reordered.splice(newIndex, 0, removed)
+
+    // Reconstruct the features array preserving order
+    const result: Feature[] = []
+    let columnIdx = 0
+
+    for (const feature of state.features) {
+      if (feature.status === columnId) {
+        result.push(reordered[columnIdx])
+        columnIdx++
+      } else {
+        result.push(feature)
       }
+    }
 
-      // Same index, no change needed
-      if (oldIndex === newIndex) {
-        return state
-      }
+    // Update local state optimistically
+    set({ features: result })
 
-      // Perform array move
-      const reordered = [...columnFeatures]
-      const [removed] = reordered.splice(oldIndex, 1)
-      reordered.splice(newIndex, 0, removed)
+    // Persist order to backend - update each feature with its new orderIndex
+    const persistOrder = async (): Promise<void> => {
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- defensive check for non-Electron environments
+      if (!window.nexusAPI?.updateFeature) return
 
-      // Reconstruct the features array preserving order
-      // We need to maintain the relative order of features from different columns
-      const result: Feature[] = []
-      let columnIdx = 0
-
-      for (const feature of state.features) {
-        if (feature.status === columnId) {
-          // We know columnIdx is valid because we're iterating over the same number of items
-          result.push(reordered[columnIdx])
-          columnIdx++
-        } else {
-          result.push(feature)
+      // Update each reordered feature with its new orderIndex
+      for (let i = 0; i < reordered.length; i++) {
+        const feature = reordered[i]
+        try {
+          await window.nexusAPI.updateFeature(feature.id, { orderIndex: i })
+        } catch (err) {
+          console.error('[FeatureStore] Failed to persist order for feature:', feature.id, err)
         }
       }
+    }
 
-      return { features: result }
-    }); },
+    void persistOrder()
+  },
 
   selectFeature: (id) => { set({ selectedFeatureId: id }); },
 
@@ -323,17 +341,18 @@ export const useFeatureStore = create<FeatureState>()((set, get) => ({
           const rawPriority = typeof raw.priority === 'string' ? raw.priority : 'medium';
           const rawCreatedAt = typeof raw.createdAt === 'string' ? raw.createdAt : new Date().toISOString();
           const rawUpdatedAt = typeof raw.updatedAt === 'string' ? raw.updatedAt : new Date().toISOString();
-          return {
-            id: rawId,
-            title: rawName || rawTitle,
-            description: rawDesc,
-            status: mapBackendStatus(rawStatus),
-            priority: mapBackendPriority(rawPriority),
-            complexity: (raw.complexity as 'simple' | 'moderate' | 'complex') ?? 'moderate',
-            tasks,
-            createdAt: rawCreatedAt,
-            updatedAt: rawUpdatedAt
-          };
+            const complexity = raw.complexity as 'simple' | 'moderate' | 'complex' | undefined;
+            return {
+              id: rawId,
+              title: rawName || rawTitle,
+              description: rawDesc,
+              status: mapBackendStatus(rawStatus),
+              priority: mapBackendPriority(rawPriority),
+              complexity: complexity ?? 'moderate',
+              tasks,
+              createdAt: rawCreatedAt,
+              updatedAt: rawUpdatedAt
+            };
         });
         console.log('[featureStore] Loaded features from backend:', features.length, projectId ? `(filtered by ${projectId})` : '(all)');
         set({ features, isLoading: false });

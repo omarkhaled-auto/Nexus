@@ -159,8 +159,9 @@ class UIBackendBridge {
 
   /**
    * Start Genesis mode - create new project from scratch
+   * @param projectPath - Optional path to the project directory
    */
-  async startGenesis(): Promise<void> {
+  async startGenesis(projectPath?: string): Promise<void> {
     // Guard against missing nexusAPI
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Defensive runtime check
     if (!window.nexusAPI?.startGenesis) {
@@ -172,6 +173,8 @@ class UIBackendBridge {
     useUIStore.getState().setLoading(true)
     try {
       useProjectStore.getState().setMode('genesis')
+      // Note: projectPath can be passed for logging/context if needed
+      console.log('[UIBackendBridge] Starting genesis mode', projectPath ? `for ${projectPath}` : '')
       const result = await window.nexusAPI.startGenesis()
       if (!result.success) {
         throw new Error('Failed to start Genesis mode')

@@ -256,13 +256,14 @@ export async function mockIPCHandler<T, R>(
 
       // Override ipcRenderer.invoke for this channel
       if (domWindow.electron?.ipcRenderer) {
-        const originalInvoke = domWindow.electron.ipcRenderer.invoke;
-        domWindow.electron.ipcRenderer.invoke = async (channel: string, ...args: unknown[]) => {
+        const electronRef = domWindow.electron;
+        const originalInvoke = electronRef.ipcRenderer.invoke;
+        electronRef.ipcRenderer.invoke = async (channel: string, ...args: unknown[]) => {
           const mockHandler = domWindow.__mockIPC?.get(channel);
           if (mockHandler) {
             return mockHandler(args);
           }
-          return originalInvoke.call(domWindow.electron.ipcRenderer, channel, ...args);
+          return originalInvoke.call(electronRef.ipcRenderer, channel, ...args);
         };
       }
     },

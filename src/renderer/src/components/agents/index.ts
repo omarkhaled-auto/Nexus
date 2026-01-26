@@ -26,6 +26,8 @@ export { AgentBadge, type AgentBadgeProps } from './AgentBadge'
 export { AgentCard, type AgentCardProps, type AgentData } from './AgentCard'
 export { AgentActivity, type AgentActivityProps } from './AgentActivity'
 export { AgentPoolStatus, type AgentPoolStatusProps, type PoolAgent } from './AgentPoolStatus'
+export { AgentPoolWidget, type AgentPoolWidgetProps } from './AgentPoolWidget'
+export { AgentDetailModal, type AgentDetailModalProps } from './AgentDetailModal'
 export {
   QAStatusPanel,
   type QAStatusPanelProps,

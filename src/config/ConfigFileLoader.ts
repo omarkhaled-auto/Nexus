@@ -113,6 +113,7 @@ export class ConfigFileLoadError extends Error {
  * Searches for config files in the project root and loads them,
  * validating the content and converting to NexusFactoryConfig format.
  */
+// eslint-disable-next-line @typescript-eslint/no-extraneous-class -- Static loader groups config helpers.
 export class ConfigFileLoader {
   /**
    * Load config file from project root.
@@ -186,7 +187,7 @@ export class ConfigFileLoader {
 
       // Try dynamic import
       // Note: This requires ts-node, tsx, or ESM support for TypeScript files
-      const module = await import(fileUrl);
+      const module = (await import(fileUrl)) as { default?: unknown };
 
       // Handle both default export and named export
       return module.default ?? module;

@@ -1,11 +1,12 @@
 import type { ReactElement } from 'react';
 import { Header } from '@renderer/components/layout/Header';
-import { Terminal, Trash2, Download, CheckCircle, XCircle, Loader2, AlertTriangle, AlertCircle } from 'lucide-react';
+import { Terminal, Trash2, Download, CheckCircle, XCircle, Loader2, AlertTriangle, AlertCircle, Search } from 'lucide-react';
 import { Button } from '@renderer/components/ui/button';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { cn } from '@renderer/lib/utils';
 import { useCheckpoint } from '@renderer/hooks/useCheckpoint';
 import { ReviewModal } from '@renderer/components/checkpoints/ReviewModal';
+import { ExecutionLogViewer } from '@renderer/components/execution/ExecutionLogViewer';
 
 // ============================================================================
 // Helper Functions
@@ -34,7 +35,7 @@ interface LogEntry {
  * Convert backend log entries to display strings
  */
 function convertLogsToStrings(logs: LogEntry[]): string[] {
-  if (!logs || logs.length === 0) {
+  if (logs.length === 0) {
     return [];
   }
   return logs.map(log => {
@@ -132,11 +133,22 @@ function TabButton({ tab, isActive, onClick }: TabButtonProps): ReactElement {
 interface LogViewerProps {
   logs: string[];
   status: TabStatus;
+  autoScroll?: boolean;
 }
 
-function LogViewer({ logs, status }: LogViewerProps): ReactElement {
+function LogViewer({ logs, status, autoScroll = true }: LogViewerProps): ReactElement {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom when new logs arrive
+  useEffect(() => {
+    if (autoScroll && containerRef.current) {
+      containerRef.current.scrollTop = containerRef.current.scrollHeight;
+    }
+  }, [logs, autoScroll]);
+
   return (
     <div
+      ref={containerRef}
       className={cn(
         'flex-1 bg-bg-dark rounded-lg border border-border-default overflow-auto',
         'font-mono text-sm'
@@ -204,6 +216,11 @@ export default function ExecutionPage(): ReactElement {
   const [currentTaskName, setCurrentTaskName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [logViewerStep, setLogViewerStep] = useState<TabId | null>(null);
+
+  // FIX #8: Search and filter state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showErrorsOnly, setShowErrorsOnly] = useState(false);
 
   // Human review state
   const {
@@ -229,22 +246,17 @@ export default function ExecutionPage(): ReactElement {
 
       const status = await window.nexusAPI.getExecutionStatus();
 
-      if (status && status.steps) {
-        const newTabs: LogTab[] = status.steps.map(step => ({
-          id: step.type,
-          label: step.type.charAt(0).toUpperCase() + step.type.slice(1),
-          status: step.status,
-          count: step.count,
-          duration: step.duration,
-          logs: convertLogsToStrings(step.logs as LogEntry[])
-        }));
+      const newTabs: LogTab[] = status.steps.map(step => ({
+        id: step.type,
+        label: step.type.charAt(0).toUpperCase() + step.type.slice(1),
+        status: step.status,
+        count: step.count,
+        duration: step.duration,
+        logs: convertLogsToStrings(step.logs as LogEntry[])
+      }));
 
-        setTabs(newTabs);
-        setCurrentTaskName(status.currentTaskName);
-      } else {
-        // No status from backend - show empty default tabs
-        setTabs(defaultTabs);
-      }
+      setTabs(newTabs);
+      setCurrentTaskName(status.currentTaskName);
     } catch (err) {
       console.error('Failed to load execution status:', err);
       setError(err instanceof Error ? err.message : 'Failed to load execution status');
@@ -257,6 +269,9 @@ export default function ExecutionPage(): ReactElement {
   // Subscribe to real-time updates
   const subscribeToEvents = useCallback(() => {
     if (!isElectronEnvironment()) return () => {};
+
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- nexusAPI can be undefined in edge cases
+    if (!window.nexusAPI) return () => {};
 
     const unsubscribeLog = window.nexusAPI.onExecutionLogUpdate((data: { stepType: string; log: unknown }) => {
       setTabs(prevTabs => prevTabs.map(tab => {
@@ -314,23 +329,48 @@ export default function ExecutionPage(): ReactElement {
   useEffect(() => {
     if (!isElectronEnvironment()) return;
 
-    const unsubscribe = window.nexusAPI.onNexusEvent?.((event: { type: string }) => {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- nexusAPI can be undefined in edge cases
+    if (!window.nexusAPI) return;
+
+    const unsubscribe = window.nexusAPI.onNexusEvent((event: { type: string }) => {
       if (event.type === 'review:requested' || event.type === 'task:escalated') {
         void loadPendingReviews();
       }
     });
 
     return () => {
-      if (unsubscribe) unsubscribe();
+      unsubscribe();
     };
   }, [loadPendingReviews]);
 
   const activeTabData = tabs.find((t) => t.id === activeTab) || tabs[0];
 
+  // FIX #8: Filter logs based on search query and error filter
+  const filteredLogs = useMemo(() => {
+    let logs = activeTabData.logs;
+
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      logs = logs.filter(line => line.toLowerCase().includes(query));
+    }
+
+    if (showErrorsOnly) {
+      logs = logs.filter(line =>
+        line.toLowerCase().includes('error') ||
+        line.includes('✗') ||
+        line.toLowerCase().includes('failed') ||
+        line.toLowerCase().includes('failure')
+      );
+    }
+
+    return logs;
+  }, [activeTabData.logs, searchQuery, showErrorsOnly]);
+
   const handleClearLogs = async () => {
     if (isElectronEnvironment()) {
       try {
-        await window.nexusAPI.clearExecutionLogs();
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- nexusAPI can be undefined in edge cases
+        await window.nexusAPI?.clearExecutionLogs();
       } catch (err) {
         console.error('Failed to clear logs:', err);
       }
@@ -342,7 +382,8 @@ export default function ExecutionPage(): ReactElement {
     let content = '';
     if (isElectronEnvironment()) {
       try {
-        content = await window.nexusAPI.exportExecutionLogs();
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- nexusAPI can be undefined in edge cases
+        content = await window.nexusAPI?.exportExecutionLogs() ?? '';
       } catch (err) {
         console.error('Failed to export logs:', err);
         return;
@@ -378,6 +419,16 @@ export default function ExecutionPage(): ReactElement {
         showBack
         actions={
           <div className="flex items-center gap-2">
+            {pendingReviews.length > 0 && (
+              <button
+                type="button"
+                onClick={() => { selectReview(pendingReviews[0]); }}
+                className="flex items-center gap-2 rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-xs text-amber-200"
+              >
+                <span className="h-2 w-2 rounded-full bg-amber-400" />
+                {pendingReviews.length} Review{pendingReviews.length === 1 ? '' : 's'}
+              </button>
+            )}
             <Button
               variant="ghost"
               size="sm"
@@ -462,9 +513,43 @@ export default function ExecutionPage(): ReactElement {
             ))}
           </div>
 
+          {/* FIX #8: Search and Filter Controls */}
+          <div className="flex items-center gap-3 mt-4 shrink-0">
+            <div className="relative flex-1 max-w-sm">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" />
+              <input
+                type="text"
+                placeholder="Search logs..."
+                value={searchQuery}
+                onChange={(e) => { setSearchQuery(e.target.value); }}
+                className={cn(
+                  'w-full pl-10 pr-3 py-2 rounded-md border border-border-default bg-bg-card',
+                  'text-sm text-text-primary placeholder:text-text-tertiary',
+                  'focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-accent-primary'
+                )}
+                data-testid="log-search-input"
+              />
+            </div>
+            <label className="flex items-center gap-2 text-sm text-text-secondary cursor-pointer">
+              <input
+                type="checkbox"
+                checked={showErrorsOnly}
+                onChange={(e) => { setShowErrorsOnly(e.target.checked); }}
+                className="w-4 h-4 rounded border-border-default bg-bg-card text-accent-primary focus:ring-accent-primary"
+                data-testid="errors-only-checkbox"
+              />
+              Errors only
+            </label>
+            {(searchQuery || showErrorsOnly) && (
+              <span className="text-xs text-text-tertiary">
+                Showing {filteredLogs.length} of {activeTabData.logs.length} lines
+              </span>
+            )}
+          </div>
+
           {/* Log Output */}
           <div className="flex-1 mt-4 min-h-0 flex flex-col">
-            <LogViewer logs={activeTabData.logs} status={activeTabData.status} />
+            <LogViewer logs={filteredLogs} status={activeTabData.status} autoScroll={!searchQuery && !showErrorsOnly} />
           </div>
 
           {/* Summary Bar */}
@@ -472,7 +557,7 @@ export default function ExecutionPage(): ReactElement {
             className="flex items-center justify-between mt-4 px-4 py-3 bg-bg-card rounded-lg border border-border-default shrink-0"
             data-testid="execution-summary"
           >
-            <div className="flex items-center gap-4">
+            <div className="flex flex-wrap items-center gap-4">
               {tabs.map((tab) => (
                 <div key={tab.id} className="flex items-center gap-2 text-sm">
                   <span
@@ -485,9 +570,17 @@ export default function ExecutionPage(): ReactElement {
                     )}
                   />
                   <span className="text-text-secondary">{tab.label}</span>
-              </div>
-            ))}
-          </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-xs"
+                    onClick={() => { setLogViewerStep(tab.id); }}
+                  >
+                    View Logs
+                  </Button>
+                </div>
+              ))}
+            </div>
           <div className="text-sm text-text-tertiary">
             Total Duration:{' '}
             {(tabs.reduce((acc, t) => acc + (t.duration || 0), 0) / 1000).toFixed(1)}s
@@ -495,6 +588,12 @@ export default function ExecutionPage(): ReactElement {
         </div>
         </div>
       )}
+
+      <ExecutionLogViewer
+        stepType={logViewerStep ?? 'build'}
+        isOpen={logViewerStep !== null}
+        onClose={() => { setLogViewerStep(null); }}
+      />
     </div>
   );
 }

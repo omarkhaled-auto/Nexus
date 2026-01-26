@@ -240,6 +240,7 @@ export interface NexusInstance {
  * await nexus.shutdown();
  * ```
  */
+// eslint-disable-next-line @typescript-eslint/no-extraneous-class -- Static factory groups construction helpers.
 export class NexusFactory {
   /**
    * Create a complete Nexus instance with all dependencies wired.
@@ -381,17 +382,13 @@ export class NexusFactory {
       }
 
       try {
-        if (worktreeManager && typeof worktreeManager.cleanup === 'function') {
-          await worktreeManager.cleanup();
-        }
+        await worktreeManager.cleanup();
       } catch {
         // Worktree cleanup is best-effort
       }
 
       try {
-        if (eventBus && typeof eventBus.removeAllListeners === 'function') {
-          eventBus.removeAllListeners();
-        }
+        eventBus.removeAllListeners();
       } catch {
         // EventBus cleanup is best-effort
       }
@@ -545,16 +542,12 @@ export class NexusFactory {
         // Pool may be empty or already cleaned up
       }
       try {
-        if (worktreeManager && typeof worktreeManager.cleanup === 'function') {
-          await worktreeManager.cleanup();
-        }
+        await worktreeManager.cleanup();
       } catch {
         // Worktree cleanup is best-effort
       }
       try {
-        if (eventBus && typeof eventBus.removeAllListeners === 'function') {
-          eventBus.removeAllListeners();
-        }
+        eventBus.removeAllListeners();
       } catch {
         // EventBus cleanup is best-effort
       }

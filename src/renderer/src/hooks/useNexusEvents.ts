@@ -196,7 +196,7 @@ export function useNexusEvents(): void {
           case 'project:status-changed': {
             const p = payload as ProjectEventPayload;
             // Update project status in store if we have a current project
-            console.log(`[useNexusEvents] Project ${p.projectId ?? 'unknown'} status: ${p.previousStatus ?? 'unknown'} -> ${p.newStatus ?? 'unknown'}`);
+            console.log(`[useNexusEvents] Project ${p.projectId} status: ${p.previousStatus ?? 'unknown'} -> ${p.newStatus ?? 'unknown'}`);
             break;
           }
 

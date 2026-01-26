@@ -283,13 +283,14 @@ export default function DashboardPage(): ReactElement {
       const projectsData = await window.nexusAPI.getProjects()
       if (Array.isArray(projectsData)) {
         // Transform backend project data to ProjectData format
-        const transformedProjects: ProjectData[] = projectsData.map((p: unknown) => {
-          const proj = p as { id: string; name: string; mode: 'genesis' | 'evolution'; status?: string; progress?: number }
-          return {
-            id: proj.id,
-            name: proj.name,
-            mode: proj.mode,
-            status: (proj.status as ProjectData['status']) || 'in_progress',
+          const transformedProjects: ProjectData[] = projectsData.map((p: unknown) => {
+            const proj = p as { id: string; name: string; mode: 'genesis' | 'evolution'; status?: string; progress?: number }
+            const status = proj.status as ProjectData['status'] | undefined
+            return {
+              id: proj.id,
+              name: proj.name,
+              mode: proj.mode,
+              status: status ?? 'in_progress',
             progress: proj.progress || 0,
             activeAgents: 0,
             updatedAt: new Date()
@@ -399,7 +400,7 @@ export default function DashboardPage(): ReactElement {
 
       // Navigate based on mode: genesis for interview, evolution for kanban
       const projectPath = createProjectMode === 'genesis' ? '/genesis' : '/evolution'
-      navigate(projectPath)
+      void navigate(projectPath)
     } catch (err) {
       console.error('Failed to create project:', err)
       setCreateError(err instanceof Error ? err.message : 'Failed to create project')

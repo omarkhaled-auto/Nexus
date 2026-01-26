@@ -144,8 +144,9 @@ export function ModeSelectorPage(): ReactElement {
   /**
    * Handle project selected from ProjectSelector
    * This is called when user completes folder selection and project init/load
+   * FIX #3: Await backend operations before navigation to avoid race conditions
    */
-  const handleProjectSelected = (project: ProjectData): void => {
+  const handleProjectSelected = async (project: ProjectData): Promise<void> => {
     console.log('[ModeSelectorPage] Project selected:', project);
 
     // Store project info in project store
@@ -157,19 +158,31 @@ export function ModeSelectorPage(): ReactElement {
     });
 
     // Navigate to appropriate page based on mode
+    // FIX #3: Await backend operations before navigation
     if (projectSelectorMode === 'genesis') {
-      void navigate('/genesis');
-      // Notify backend that genesis mode started
-      void uiBackendBridge.startGenesis().catch((error: unknown) => {
+      try {
+        await uiBackendBridge.startGenesis(project.path);
+        void navigate('/genesis');
+      } catch (error: unknown) {
         console.error('Failed to start Genesis:', error);
-      });
+        setProjectsError('Failed to initialize project. Please try again.');
+      }
     } else {
-      void navigate('/evolution');
-      // Notify backend that evolution mode started with project
-      void uiBackendBridge.startEvolution(project.id).catch((error: unknown) => {
+      try {
+        await uiBackendBridge.startEvolution(project.id);
+        void navigate('/evolution');
+      } catch (error: unknown) {
         console.error('Failed to start Evolution:', error);
-      });
+        setProjectsError('Failed to load project. Please try again.');
+      }
     }
+  };
+
+  /**
+   * Wrapper to handle async callback for ProjectSelector
+   */
+  const handleProjectSelectedWrapper = (project: ProjectData): void => {
+    void handleProjectSelected(project);
   };
 
   /**
@@ -283,7 +296,7 @@ export function ModeSelectorPage(): ReactElement {
         mode={projectSelectorMode}
         open={showProjectSelector}
         onOpenChange={setShowProjectSelector}
-        onProjectSelected={handleProjectSelected}
+        onProjectSelected={handleProjectSelectedWrapper}
         onCancel={() => { setShowProjectSelector(false); }}
       />
 

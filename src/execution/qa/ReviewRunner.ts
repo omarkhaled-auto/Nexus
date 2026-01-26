@@ -398,12 +398,7 @@ export class ReviewRunner {
     const truncated = diff.substring(0, this.config.maxDiffSize);
     const lastNewline = truncated.lastIndexOf('\n');
 
-    return (
-      truncated.substring(0, lastNewline) +
-      '\n\n... [DIFF TRUNCATED - showing first ' +
-      this.config.maxDiffSize +
-      ' characters] ...'
-    );
+    return `${truncated.substring(0, lastNewline)}\n\n... [DIFF TRUNCATED - showing first ${this.config.maxDiffSize} characters] ...`;
   }
 
   /**

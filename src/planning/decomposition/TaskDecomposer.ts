@@ -197,7 +197,7 @@ export class TaskDecomposer implements ITaskDecomposer {
     }
 
     // Check for test criteria
-    if (!task.testCriteria || task.testCriteria.length === 0) {
+    if (task.testCriteria.length === 0) {
       warnings.push('Task has no test criteria defined');
     }
 

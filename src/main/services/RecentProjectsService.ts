@@ -99,7 +99,7 @@ export class RecentProjectsService {
         const data = await readJson(this.configPath);
         // Validate data structure
         if (Array.isArray(data)) {
-          this.cache = data.filter(this.isValidRecentProject);
+          this.cache = data.filter((item) => this.isValidRecentProject(item));
           return this.cache;
         }
       }

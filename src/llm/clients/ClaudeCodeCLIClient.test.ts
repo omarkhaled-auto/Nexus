@@ -479,10 +479,12 @@ describe('ClaudeCodeCLIClient', () => {
       const mockProcess = new EventEmitter() as EventEmitter & {
         stdout: EventEmitter;
         stderr: EventEmitter;
+        stdin: { write: ReturnType<typeof vi.fn>; end: ReturnType<typeof vi.fn> };
         kill: ReturnType<typeof vi.fn>;
       };
       mockProcess.stdout = new EventEmitter();
       mockProcess.stderr = new EventEmitter();
+      mockProcess.stdin = { write: vi.fn(), end: vi.fn() };
       mockProcess.kill = vi.fn();
       mockSpawn.mockReturnValue(mockProcess);
 

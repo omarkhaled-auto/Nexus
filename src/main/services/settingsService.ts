@@ -227,7 +227,7 @@ class SettingsService {
    * Phase 16: Updated to include provider-specific settings
    */
   getAll(): NexusSettingsPublic {
-    const llm = this.store.get('llm')
+    const llm = this.store.get('llm') as Partial<NexusSettings['llm']>
     const agents = this.store.get('agents')
     const checkpoints = this.store.get('checkpoints')
     const ui = this.store.get('ui')
@@ -242,7 +242,7 @@ class SettingsService {
       llm: {
         // Phase 16: Provider-specific public views
         claude: {
-          backend: claude.backend ?? 'cli',
+          backend: claude.backend,
           // eslint-disable-next-line @typescript-eslint/no-deprecated -- Legacy migration support
           hasApiKey: !!claude.apiKeyEncrypted || !!llm.claudeApiKeyEncrypted,
           cliPath: claude.cliPath,
@@ -251,7 +251,7 @@ class SettingsService {
           model: claude.model,
         },
         gemini: {
-          backend: gemini.backend ?? 'cli',
+          backend: gemini.backend,
           // eslint-disable-next-line @typescript-eslint/no-deprecated -- Legacy migration support
           hasApiKey: !!gemini.apiKeyEncrypted || !!llm.geminiApiKeyEncrypted,
           cliPath: gemini.cliPath,
@@ -259,7 +259,7 @@ class SettingsService {
           model: gemini.model,
         },
         embeddings: {
-          backend: embeddings.backend ?? 'local',
+          backend: embeddings.backend,
           // eslint-disable-next-line @typescript-eslint/no-deprecated -- Legacy migration support
           hasApiKey: !!embeddings.apiKeyEncrypted || !!llm.openaiApiKeyEncrypted,
           localModel: embeddings.localModel,

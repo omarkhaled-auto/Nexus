@@ -145,11 +145,11 @@ export class LintRunner {
       let stdout = '';
       let _stderr = '';
 
-      proc.stdout?.on('data', (data: Buffer) => {
+      proc.stdout.on('data', (data: Buffer) => {
         stdout += data.toString();
       });
 
-      proc.stderr?.on('data', (data: Buffer) => {
+      proc.stderr.on('data', (data: Buffer) => {
         _stderr += data.toString();
       });
 
@@ -279,7 +279,7 @@ export class LintRunner {
         fixableWarnings += file.fixableWarningCount || 0;
 
         // Process messages
-        for (const msg of file.messages || []) {
+        for (const msg of file.messages) {
           const entry = this.createErrorEntry(
             msg.message,
             msg.severity === 2 ? 'error' : 'warning',

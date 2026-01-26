@@ -29,6 +29,8 @@ import { LLMError } from './ClaudeClient';
 import type {
   GeminiCLIConfig,
   GeminiCLIRawResponse,
+  GeminiModelStats,
+  GeminiTokenStats,
   GeminiStreamChunk,
   GeminiCLIErrorCode,
 } from './GeminiCLIClient.types';
@@ -333,8 +335,10 @@ export class GeminiCLIClient implements LLMClient {
       const content = json.response || '';
 
       // Extract token usage from nested stats structure
-      const modelStats = Object.values(json.stats?.models || {})[0];
-      const tokens = modelStats?.tokens;
+      const modelStats = json.stats?.models
+        ? (Object.values(json.stats.models)[0] as GeminiModelStats | undefined)
+        : undefined;
+      const tokens = modelStats?.tokens as Partial<GeminiTokenStats> | undefined;
 
       const usage: TokenUsage = {
         inputTokens: tokens?.input ?? tokens?.prompt ?? 0,
@@ -471,28 +475,23 @@ export class GeminiCLIClient implements LLMClient {
 
     let buffer = '';
     let stderr = '';
-    let processEnded = false;
-    let exitCode: number | null = null;
-
     // Collect stderr for error reporting
     child.stderr?.on('data', (data: Buffer) => {
       stderr += data.toString();
     });
 
     // Create a promise that resolves when process ends
-    const processEndPromise = new Promise<void>((resolve) => {
+    const processEndPromise = new Promise<number | null>((resolve, reject) => {
       child.on('close', (code) => {
-        processEnded = true;
-        exitCode = code;
-        resolve();
+        resolve(code);
       });
 
       child.on('error', (error) => {
-        processEnded = true;
         if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-          throw new GeminiCLINotFoundError();
+          reject(new GeminiCLINotFoundError());
+          return;
         }
-        throw new GeminiCLIError(`Failed to spawn Gemini CLI: ${error.message}`);
+        reject(new GeminiCLIError(`Failed to spawn Gemini CLI: ${error.message}`));
       });
     });
 
@@ -526,7 +525,7 @@ export class GeminiCLIClient implements LLMClient {
       }
 
       // Wait for process to fully end
-      await processEndPromise;
+      const exitCode = await processEndPromise;
 
       // Check exit code after stream ends
       if (exitCode !== 0) {
@@ -536,7 +535,7 @@ export class GeminiCLIClient implements LLMClient {
       clearTimeout(timeoutId);
 
       // FIX: Always ensure process is killed on early termination
-      if (!processEnded && child.exitCode === null) {
+      if (child.exitCode === null) {
         child.kill('SIGTERM');
 
         // Give it a moment, then force kill if needed

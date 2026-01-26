@@ -235,12 +235,8 @@ export class NexusBootstrap {
     console.log('[NexusBootstrap] HumanReviewService created');
 
     // 5a-1. Inject HumanReviewService into the coordinator (Phase 3: Human Escalation)
-    if (this.nexus.coordinator && typeof this.nexus.coordinator.setHumanReviewService === 'function') {
-      this.nexus.coordinator.setHumanReviewService(this.humanReviewService);
-      console.log('[NexusBootstrap] HumanReviewService injected into coordinator');
-    } else {
-      console.warn('[NexusBootstrap] Coordinator does not support setHumanReviewService');
-    }
+    this.nexus.coordinator.setHumanReviewService(this.humanReviewService);
+    console.log('[NexusBootstrap] HumanReviewService injected into coordinator');
 
     // 5a-2. Create and inject MergerRunner for worktree->main merging (Phase 3: Merge Verification)
     this.mergerRunner = new MergerRunner({
@@ -249,12 +245,8 @@ export class NexusBootstrap {
     });
     console.log('[NexusBootstrap] MergerRunner created');
 
-    if (this.nexus.coordinator && typeof this.nexus.coordinator.setMergerRunner === 'function') {
-      this.nexus.coordinator.setMergerRunner(this.mergerRunner);
-      console.log('[NexusBootstrap] MergerRunner injected into coordinator');
-    } else {
-      console.warn('[NexusBootstrap] Coordinator does not support setMergerRunner');
-    }
+    this.nexus.coordinator.setMergerRunner(this.mergerRunner);
+    console.log('[NexusBootstrap] MergerRunner injected into coordinator');
 
     // 5b. Initialize RepoMapGenerator for Evolution mode
     this.repoMapGenerator = new RepoMapGenerator();
@@ -461,7 +453,10 @@ export class NexusBootstrap {
         if (!this.nexus) {
           throw new Error('Nexus not initialized');
         }
-        const totalMinutes = await this.nexus.planning.estimator.estimateTotal(decomposedTasks);
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- planning.estimator may not be fully initialized
+        const totalMinutes = this.nexus.planning?.estimator
+          ? await this.nexus.planning.estimator.estimateTotal(decomposedTasks)
+          : 0;
         console.log(`[NexusBootstrap] Estimated ${totalMinutes} minutes total`);
 
         // Emit planning:completed event (Phase 20 Task 4)
@@ -811,14 +806,14 @@ export class NexusBootstrap {
           featureId: featureId,
           name: task.name,
           description: task.description,
-          type: task.type || 'auto',
+          type: task.type,
           status: 'pending',
           size: task.size === 'large' || task.size === 'medium' ? 'small' : task.size,
           priority: 5,
-          tags: JSON.stringify(task.files || []),
-          notes: JSON.stringify(task.testCriteria || []),
-          dependsOn: JSON.stringify(task.dependsOn || []),
-          estimatedMinutes: task.estimatedMinutes || 15,
+          tags: JSON.stringify(task.files),
+          notes: JSON.stringify(task.testCriteria),
+          dependsOn: JSON.stringify(task.dependsOn),
+          estimatedMinutes: task.estimatedMinutes,
           createdAt: now,
           updatedAt: now,
         }).run();

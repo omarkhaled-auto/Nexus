@@ -11,9 +11,12 @@ export {
   registerIpcHandlers,
   registerCheckpointReviewHandlers,
   registerDatabaseHandlers,
+  registerFallbackReviewHandlers,
+  removeReviewHandlers,
   setupEventForwarding,
   forwardTaskUpdate,
   forwardAgentStatus,
+  forwardAgentCreated,
   forwardExecutionProgress,
 } from './handlers'
 

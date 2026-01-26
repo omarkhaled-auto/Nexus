@@ -70,6 +70,23 @@ const isElectronEnvironment = (): boolean => {
 }
 
 // ============================================
+// FIX #7: Input Validation Helpers
+// ============================================
+
+/**
+ * Clamp a numeric value to a valid range
+ * @param value - String value from input
+ * @param min - Minimum allowed value
+ * @param max - Maximum allowed value
+ * @param defaultVal - Default value if parsing fails
+ */
+const clampValue = (value: string, min: number, max: number, defaultVal: number): number => {
+  const parsed = parseInt(value, 10);
+  if (isNaN(parsed)) return defaultVal;
+  return Math.max(min, Math.min(max, parsed));
+}
+
+// ============================================
 // Tab Configuration
 // ============================================
 
@@ -459,6 +476,8 @@ interface SettingsTabProps {
 }
 
 type SettingsState = ReturnType<typeof useSettingsStore.getState>
+type LLMSettingsConfig = NexusSettingsPublic['llm']
+type AgentSettingsConfig = NexusSettingsPublic['agents']
 
 /**
  * LLM Providers Tab - Enhanced with backend toggles and model dropdowns
@@ -468,6 +487,9 @@ function LLMProvidersSettings({ settings, updateSetting }: SettingsTabProps): Re
   const claudeModels = getClaudeModelList()
   const geminiModels = getGeminiModelList()
   const localEmbeddingModels = getLocalEmbeddingModelList()
+  const updateLLMSetting = <K extends keyof LLMSettingsConfig>(key: K, value: LLMSettingsConfig[K]): void => {
+    updateSetting('llm', key, value)
+  }
 
   // CLI availability state (Phase 17B)
   const [claudeCliStatus, setClaudeCliStatus] = useState<{ detected: boolean; message: string }>({ detected: false, message: 'Checking...' })
@@ -475,24 +497,25 @@ function LLMProvidersSettings({ settings, updateSetting }: SettingsTabProps): Re
 
   // Check CLI availability on mount
   useEffect(() => {
-    if (!window.nexusAPI?.settings?.checkCliAvailability) {
+    const nexusAPI = isElectronEnvironment() ? window.nexusAPI : null
+    if (!nexusAPI) {
       setClaudeCliStatus({ detected: false, message: 'Backend not available' })
       setGeminiCliStatus({ detected: false, message: 'Backend not available' })
       return
     }
 
     // Check Claude CLI availability
-    window.nexusAPI.settings.checkCliAvailability('claude')
+    nexusAPI.settings.checkCliAvailability('claude')
       .then(setClaudeCliStatus)
-      .catch((err) => {
+      .catch((err: unknown) => {
         console.error('Failed to check Claude CLI:', err)
         setClaudeCliStatus({ detected: false, message: 'Check failed' })
       })
 
     // Check Gemini CLI availability
-    window.nexusAPI.settings.checkCliAvailability('gemini')
+    nexusAPI.settings.checkCliAvailability('gemini')
       .then(setGeminiCliStatus)
-      .catch((err) => {
+      .catch((err: unknown) => {
         console.error('Failed to check Gemini CLI:', err)
         setGeminiCliStatus({ detected: false, message: 'Check failed' })
       })
@@ -513,7 +536,7 @@ function LLMProvidersSettings({ settings, updateSetting }: SettingsTabProps): Re
               { value: 'cli', label: 'CLI', icon: <Terminal className="w-4 h-4" /> },
               { value: 'api', label: 'API', icon: <Cloud className="w-4 h-4" /> }
             ]}
-            onChange={(value) => { updateSetting('llm', 'claude' as any, { ...settings.llm.claude, backend: value as LLMBackendType }); }}
+            onChange={(value) => { updateLLMSetting('claude', { ...settings.llm.claude, backend: value as LLMBackendType }); }}
             status={claudeCliStatus}
           />
 
@@ -521,7 +544,7 @@ function LLMProvidersSettings({ settings, updateSetting }: SettingsTabProps): Re
             label="Model"
             value={settings.llm.claude.model || DEFAULT_CLAUDE_MODEL}
             models={claudeModels}
-            onChange={(value) => { updateSetting('llm', 'claude' as any, { ...settings.llm.claude, model: value }); }}
+            onChange={(value) => { updateLLMSetting('claude', { ...settings.llm.claude, model: value }); }}
           />
 
           <ApiKeyInput
@@ -542,9 +565,11 @@ function LLMProvidersSettings({ settings, updateSetting }: SettingsTabProps): Re
                 description="Request timeout in milliseconds"
                 value={settings.llm.claude.timeout || 300000}
                 onChange={(e): void => {
-                  updateSetting('llm', 'claude' as any, {
+                  // FIX #7: Clamp timeout to valid range
+                  const clamped = clampValue(e.target.value, 30000, 600000, 300000);
+                  updateLLMSetting('claude', {
                     ...settings.llm.claude,
-                    timeout: parseInt(e.target.value) || 300000
+                    timeout: clamped
                   })
                 }}
               />
@@ -557,9 +582,11 @@ function LLMProvidersSettings({ settings, updateSetting }: SettingsTabProps): Re
                 description="Maximum number of retry attempts"
                 value={settings.llm.claude.maxRetries || 2}
                 onChange={(e): void => {
-                  updateSetting('llm', 'claude' as any, {
+                  // FIX #7: Clamp retries to valid range
+                  const clamped = clampValue(e.target.value, 0, 5, 2);
+                  updateLLMSetting('claude', {
                     ...settings.llm.claude,
-                    maxRetries: parseInt(e.target.value) || 2
+                    maxRetries: clamped
                   })
                 }}
               />
@@ -581,7 +608,7 @@ function LLMProvidersSettings({ settings, updateSetting }: SettingsTabProps): Re
               { value: 'cli', label: 'CLI', icon: <Terminal className="w-4 h-4" /> },
               { value: 'api', label: 'API', icon: <Cloud className="w-4 h-4" /> }
             ]}
-            onChange={(value) => { updateSetting('llm', 'gemini' as any, { ...settings.llm.gemini, backend: value as LLMBackendType }); }}
+            onChange={(value) => { updateLLMSetting('gemini', { ...settings.llm.gemini, backend: value as LLMBackendType }); }}
             status={geminiCliStatus}
           />
 
@@ -589,7 +616,7 @@ function LLMProvidersSettings({ settings, updateSetting }: SettingsTabProps): Re
             label="Model"
             value={settings.llm.gemini.model || DEFAULT_GEMINI_MODEL}
             models={geminiModels}
-            onChange={(value) => { updateSetting('llm', 'gemini' as any, { ...settings.llm.gemini, model: value }); }}
+            onChange={(value) => { updateLLMSetting('gemini', { ...settings.llm.gemini, model: value }); }}
           />
 
           <ApiKeyInput
@@ -613,7 +640,7 @@ function LLMProvidersSettings({ settings, updateSetting }: SettingsTabProps): Re
               { value: 'local', label: 'Local', icon: <Cpu className="w-4 h-4" /> },
               { value: 'api', label: 'OpenAI API', icon: <Cloud className="w-4 h-4" /> }
             ]}
-            onChange={(value) => { updateSetting('llm', 'embeddings' as any, { ...settings.llm.embeddings, backend: value as EmbeddingsBackendType }); }}
+            onChange={(value) => { updateLLMSetting('embeddings', { ...settings.llm.embeddings, backend: value as EmbeddingsBackendType }); }}
             status={settings.llm.embeddings.backend === 'local' ? { detected: true, message: 'No API key needed' } : undefined}
           />
 
@@ -622,7 +649,7 @@ function LLMProvidersSettings({ settings, updateSetting }: SettingsTabProps): Re
               label="Local Model"
               value={settings.llm.embeddings.localModel || DEFAULT_LOCAL_EMBEDDING_MODEL}
               models={localEmbeddingModels}
-              onChange={(value) => { updateSetting('llm', 'embeddings' as any, { ...settings.llm.embeddings, localModel: value }); }}
+              onChange={(value) => { updateLLMSetting('embeddings', { ...settings.llm.embeddings, localModel: value }); }}
             />
           )}
 
@@ -647,7 +674,7 @@ function LLMProvidersSettings({ settings, updateSetting }: SettingsTabProps): Re
             label="Default Provider"
             description="Primary LLM provider to use"
             value={settings.llm.defaultProvider}
-            onChange={(e): void => { updateSetting('llm', 'defaultProvider', e.target.value as 'claude' | 'gemini') }}
+            onChange={(e): void => { updateLLMSetting('defaultProvider', e.target.value as 'claude' | 'gemini') }}
             options={[
               { value: 'claude', label: 'Claude (Anthropic)' },
               { value: 'gemini', label: 'Gemini (Google)' }
@@ -659,7 +686,7 @@ function LLMProvidersSettings({ settings, updateSetting }: SettingsTabProps): Re
             label="Enable Fallback"
             description="Automatically try other providers if the primary fails"
             checked={settings.llm.fallbackEnabled}
-            onChange={(e): void => { updateSetting('llm', 'fallbackEnabled', e.target.checked) }}
+            onChange={(e): void => { updateLLMSetting('fallbackEnabled', e.target.checked) }}
           />
         </CardContent>
       </Card>
@@ -758,7 +785,10 @@ function AgentModelRow({ agentType, config, onChange, claudeModels, geminiModels
 
 function AgentSettings({ settings, updateSetting }: SettingsTabProps): ReactElement {
   // Get agent models from backend settings, fallback to defaults
-  const agentModels: AgentModelAssignments = settings.agents.agentModels || DEFAULT_AGENT_MODEL_ASSIGNMENTS
+  const agentModels = settings.agents.agentModels
+  const updateAgentSetting = <K extends keyof AgentSettingsConfig>(key: K, value: AgentSettingsConfig[K]): void => {
+    updateSetting('agents', key, value)
+  }
 
   const claudeModels = getClaudeModelList()
   const geminiModels = getGeminiModelList()
@@ -769,11 +799,11 @@ function AgentSettings({ settings, updateSetting }: SettingsTabProps): ReactElem
       ...agentModels,
       [agentType]: config
     }
-    updateSetting('agents', 'agentModels' as any, newAgentModels)
+    updateAgentSetting('agentModels', newAgentModels)
   }
 
   const handleResetToDefaults = (): void => {
-    updateSetting('agents', 'agentModels' as any, DEFAULT_AGENT_MODEL_ASSIGNMENTS)
+    updateAgentSetting('agentModels', DEFAULT_AGENT_MODEL_ASSIGNMENTS)
   }
 
   const agentTypes: AgentType[] = ['planner', 'coder', 'tester', 'reviewer', 'merger', 'architect', 'debugger', 'documenter']
@@ -846,7 +876,10 @@ function AgentSettings({ settings, updateSetting }: SettingsTabProps): ReactElem
             label="Max Concurrent Agents"
             description="Maximum number of agents running simultaneously (1-10)"
             value={settings.agents.maxParallelAgents}
-            onChange={(e): void => { updateSetting('agents', 'maxParallelAgents', parseInt(e.target.value) || 1) }}
+            onChange={(e): void => {
+              // FIX #7: Clamp to valid range
+              updateSetting('agents', 'maxParallelAgents', clampValue(e.target.value, 1, 10, 3))
+            }}
           />
 
           <Input
@@ -857,7 +890,10 @@ function AgentSettings({ settings, updateSetting }: SettingsTabProps): ReactElem
             label="QA Iteration Limit"
             description="Escalate to human after this many QA iterations (10-100)"
             value={settings.agents.qaIterationLimit || 50}
-            onChange={(e): void => { updateSetting('agents', 'qaIterationLimit' as any, parseInt(e.target.value) || 50) }}
+            onChange={(e): void => {
+              // FIX #7: Clamp to valid range
+              updateAgentSetting('qaIterationLimit', clampValue(e.target.value, 10, 100, 50))
+            }}
           />
 
           <Input
@@ -868,7 +904,10 @@ function AgentSettings({ settings, updateSetting }: SettingsTabProps): ReactElem
             label="Task Time Limit (minutes)"
             description="Split task if it exceeds this duration (1-120)"
             value={settings.agents.taskTimeoutMinutes}
-            onChange={(e): void => { updateSetting('agents', 'taskTimeoutMinutes', parseInt(e.target.value) || 30) }}
+            onChange={(e): void => {
+              // FIX #7: Clamp to valid range
+              updateSetting('agents', 'taskTimeoutMinutes', clampValue(e.target.value, 1, 120, 30))
+            }}
           />
         </CardContent>
       </Card>
@@ -898,7 +937,10 @@ function AgentSettings({ settings, updateSetting }: SettingsTabProps): ReactElem
             label="Max Retries"
             description="Number of times to retry a failed task (0-10)"
             value={settings.agents.maxRetries}
-            onChange={(e): void => { updateSetting('agents', 'maxRetries', parseInt(e.target.value) || 0) }}
+            onChange={(e): void => {
+              // FIX #7: Clamp to valid range
+              updateSetting('agents', 'maxRetries', clampValue(e.target.value, 0, 10, 3))
+            }}
             disabled={!settings.agents.autoRetryEnabled}
           />
         </CardContent>

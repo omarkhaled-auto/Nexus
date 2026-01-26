@@ -1135,7 +1135,7 @@ export function DetailPanel({
   const title = mode === 'feature' ? feature?.title : task?.title
   const _subtitle = mode === 'feature'
     ? feature && FEATURE_STATUS_LABELS[feature.status]
-    : task && TASK_STATUS_STYLES[task.status]?.label
+    : task && TASK_STATUS_STYLES[task.status].label
 
   // Don't render if no data
   if ((mode === 'feature' && !feature) || (mode === 'task' && !task)) {

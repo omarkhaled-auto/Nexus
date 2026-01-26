@@ -137,16 +137,19 @@ export function ProjectSelector({
             setError(validation.error || 'Selected directory is not a valid project');
           }
         } else {
-          // For genesis mode, check if path is empty or suitable
+          // FIX #4: For genesis mode, reject non-empty directories to avoid overwriting
           const pathCheck = await window.nexusAPI.projectInit.isPathEmpty(result.path);
           if (!pathCheck.exists) {
             // Path doesn't exist - that's fine, we'll create it
             setValidationStatus('valid');
+            setError(null);
           } else if (pathCheck.empty) {
             setValidationStatus('valid');
+            setError(null);
           } else {
-            // Path exists and is not empty - warn user
-            setValidationStatus('valid'); // Still valid, just informational
+            // FIX #4: Path exists and is not empty - reject for Genesis mode
+            setValidationStatus('invalid');
+            setError('Genesis mode requires an empty directory to avoid overwriting existing files. Please select an empty folder or create a new one.');
           }
         }
       }
@@ -167,6 +170,12 @@ export function ProjectSelector({
 
     if (mode === 'genesis' && !projectName.trim()) {
       setError('Please enter a project name');
+      return;
+    }
+
+    // FIX #4: Reject if validation status is invalid (e.g., non-empty directory for Genesis)
+    if (validationStatus === 'invalid') {
+      // Error should already be set from validation
       return;
     }
 

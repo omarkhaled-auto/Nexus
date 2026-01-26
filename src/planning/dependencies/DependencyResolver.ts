@@ -80,7 +80,7 @@ export class DependencyResolver implements IDependencyResolver {
       for (const taskId of Array.from(remaining)) {
         const task = taskMap.get(taskId);
         if (!task) continue;
-        const deps = task.dependsOn || [];
+        const deps = task.dependsOn;
 
         // Check if all dependencies are either completed or not in our task set
         // (external dependencies)
@@ -159,7 +159,7 @@ export class DependencyResolver implements IDependencyResolver {
     // Build graph
     // For each task, add edges from its dependencies to itself
     for (const task of tasks) {
-      for (const dep of task.dependsOn || []) {
+      for (const dep of task.dependsOn) {
         // Only consider dependencies within our task set
         if (taskMap.has(dep)) {
           graph.get(dep)?.push(task.id);
@@ -292,7 +292,7 @@ export class DependencyResolver implements IDependencyResolver {
       const task = taskMap.get(id);
       if (!task) return;
 
-      for (const dep of task.dependsOn || []) {
+      for (const dep of task.dependsOn) {
         if (taskMap.has(dep)) {
           allDeps.add(dep);
           collectDeps(dep);
@@ -310,7 +310,7 @@ export class DependencyResolver implements IDependencyResolver {
    * Returns tasks that directly depend on the given task
    */
   getDependents(taskId: string, tasks: PlanningTask[]): PlanningTask[] {
-    return tasks.filter((task) => task.dependsOn?.includes(taskId));
+    return tasks.filter((task) => task.dependsOn.includes(taskId));
   }
 
   /**
@@ -330,7 +330,7 @@ export class DependencyResolver implements IDependencyResolver {
       const task = taskMap.get(taskId);
       if (!task) return { path: [], time: 0 };
 
-      const deps = task.dependsOn || [];
+      const deps = task.dependsOn;
       if (deps.length === 0) {
         const result = { path: [task], time: task.estimatedMinutes || 0 };
         memo.set(taskId, result);
@@ -386,7 +386,7 @@ export class DependencyResolver implements IDependencyResolver {
 
     // Filter to those with all dependencies satisfied
     return pending.filter((task) => {
-      const deps = task.dependsOn || [];
+      const deps = task.dependsOn;
       return deps.every((d) => completed.has(d) || !taskMap.has(d));
     });
   }
@@ -404,14 +404,14 @@ export class DependencyResolver implements IDependencyResolver {
 
     // Check for self-dependencies
     for (const task of tasks) {
-      if (task.dependsOn?.includes(task.id)) {
+      if (task.dependsOn.includes(task.id)) {
         issues.push(`Task "${task.name}" depends on itself`);
       }
     }
 
     // Check for missing dependencies (optional - they might be external)
     for (const task of tasks) {
-      for (const dep of task.dependsOn || []) {
+      for (const dep of task.dependsOn) {
         if (!taskIds.has(dep)) {
           // This is a warning, not an error - could be external dependency
           if (this.config.verbose) {

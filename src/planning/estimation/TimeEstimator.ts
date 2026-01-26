@@ -173,7 +173,7 @@ export class TimeEstimator implements ITimeEstimator {
     };
 
     // Add time based on file count
-    const fileCount = task.files?.length || 1;
+    const fileCount = task.files.length || 1;
     const fileTime = fileCount * this.factors.fileWeight;
     estimate += fileTime;
     breakdown.files = fileTime;
@@ -353,8 +353,8 @@ export class TimeEstimator implements ITimeEstimator {
     const lowCount = lowIndicators.filter((i) => text.includes(i)).length;
 
     // Also consider file count and test criteria
-    const fileCount = task.files?.length || 0;
-    const criteriaCount = task.testCriteria?.length || 0;
+    const fileCount = task.files.length;
+    const criteriaCount = task.testCriteria.length;
 
     if (highCount >= 2 || fileCount >= 5 || criteriaCount >= 5) {
       return 'high';
@@ -370,7 +370,7 @@ export class TimeEstimator implements ITimeEstimator {
    */
   private requiresTests(task: PlanningTask): boolean {
     const description = (task.description || '').toLowerCase();
-    const criteria = (task.testCriteria || []).join(' ').toLowerCase();
+    const criteria = task.testCriteria.join(' ').toLowerCase();
     const text = description + ' ' + criteria;
 
     return (
@@ -378,7 +378,7 @@ export class TimeEstimator implements ITimeEstimator {
       text.includes('verify') ||
       text.includes('coverage') ||
       text.includes('spec') ||
-      task.files?.some(
+      task.files.some(
         (f) =>
           f.includes('.test.') ||
           f.includes('.spec.') ||
@@ -392,7 +392,7 @@ export class TimeEstimator implements ITimeEstimator {
    * Categorize task for historical tracking
    */
   private categorizeTask(task: PlanningTask): TaskCategory {
-    const files = task.files || [];
+    const files = task.files;
     const description = (task.description || '').toLowerCase();
 
     if (
@@ -467,12 +467,7 @@ export class TimeEstimator implements ITimeEstimator {
     }
 
     // Medium confidence if task has good metadata
-    if (
-      task.files &&
-      task.files.length > 0 &&
-      task.description &&
-      task.description.length > 50
-    ) {
+    if (task.files.length > 0 && task.description.length > 50) {
       return 'medium';
     }
 

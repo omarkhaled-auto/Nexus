@@ -53,7 +53,7 @@ export function useReducedMotion(): UseReducedMotionReturn {
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(() => {
     // Check if we're in a browser environment
     if (typeof window === 'undefined') return false;
-    return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   });
 
   useEffect(() => {
@@ -67,11 +67,11 @@ export function useReducedMotion(): UseReducedMotionReturn {
     };
 
     // Modern browsers
-    mediaQuery.addEventListener?.('change', handleChange);
+    mediaQuery.addEventListener('change', handleChange);
 
     // Cleanup
     return () => {
-      mediaQuery.removeEventListener?.('change', handleChange);
+      mediaQuery.removeEventListener('change', handleChange);
     };
   }, []);
 

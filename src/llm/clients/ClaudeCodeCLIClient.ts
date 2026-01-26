@@ -357,7 +357,7 @@ export class ClaudeCodeCLIClient implements LLMClient {
       console.log('[ClaudeCodeCLIClient] Process spawned, PID:', child.pid);
 
       // Write prompt to stdin if provided (avoids shell escaping issues with newlines)
-      if (stdinPrompt && child.stdin) {
+      if (stdinPrompt) {
         child.stdin.write(stdinPrompt);
         child.stdin.end();
         console.log('[ClaudeCodeCLIClient] Prompt written to stdin and closed');
