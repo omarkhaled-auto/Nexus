@@ -9,6 +9,8 @@
   },
   "packageManager": "pnpm@9.0.0",
   "scripts": {
+    "postinstall": "cd node_modules/.pnpm/better-sqlite3@12.6.2/node_modules/better-sqlite3 && npx prebuild-install --runtime=electron --target=39.2.7 || echo 'Prebuild install failed, may need manual rebuild'",
+    "rebuild:sqlite": "cd node_modules/.pnpm/better-sqlite3@12.6.2/node_modules/better-sqlite3 && npx prebuild-install --runtime=electron --target=39.2.7",
     "dev": "tsx watch src/main.ts",
     "dev:electron": "electron-vite dev",
     "build": "tsup src/main.ts",
@@ -101,6 +103,7 @@
     "eslint": "^9.18.0",
     "jsdom": "^27.4.0",
     "msw": "^2.12.7",
+    "node-gyp": "^12.1.0",
     "playwright": "^1.49.1",
     "postcss": "^8.5.6",
     "prettier": "^3.4.2",

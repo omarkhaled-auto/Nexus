@@ -618,6 +618,20 @@ const nexusAPI = {
     };
   },
   /**
+   * FIX #5: Subscribe to agent created events for dynamic discovery
+   * @param callback - Called when a new agent is created
+   * @returns Unsubscribe function
+   */
+  onAgentCreated: (callback) => {
+    const handler = (_event, agent) => {
+      callback(agent);
+    };
+    electron.ipcRenderer.on("agent:created", handler);
+    return () => {
+      electron.ipcRenderer.removeListener("agent:created", handler);
+    };
+  },
+  /**
    * Subscribe to execution progress events
    * @param callback - Called with progress updates
    * @returns Unsubscribe function

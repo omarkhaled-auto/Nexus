@@ -1,4 +1,4 @@
-import { p as create, r as reactExports } from "./index-B8DMw4WO.js";
+import { p as create, r as reactExports } from "./index-D6zknste.js";
 const initialPlanningState = {
   status: "idle",
   projectId: null,
@@ -94,10 +94,8 @@ function getStepMessageForStatus(status) {
 function usePlanningProgress() {
   const store = usePlanningStore();
   reactExports.useEffect(() => {
-    if (!window.nexusAPI) {
-      return;
-    }
-    const unsubProgress = window.nexusAPI.onPlanningProgress?.((data) => {
+    if (!window.nexusAPI) return;
+    const unsubProgress = window.nexusAPI.onPlanningProgress((data) => {
       console.log("[usePlanningProgress] Received progress event:", data);
       store.updateProgress({
         projectId: data.projectId,
@@ -108,7 +106,7 @@ function usePlanningProgress() {
         totalExpected: data.totalExpected
       });
     });
-    const unsubCompleted = window.nexusAPI.onPlanningCompleted?.((data) => {
+    const unsubCompleted = window.nexusAPI.onPlanningCompleted((data) => {
       console.log("[usePlanningProgress] Received completed event:", data);
       store.updateProgress({
         projectId: data.projectId,
@@ -116,26 +114,51 @@ function usePlanningProgress() {
         progress: 100,
         currentStep: "Planning complete!",
         tasksCreated: data.taskCount,
+        // This is a count for progress display
         totalExpected: data.taskCount
       });
       store.complete();
     });
-    const unsubError = window.nexusAPI.onPlanningError?.((data) => {
+    const unsubError = window.nexusAPI.onPlanningError((data) => {
       console.log("[usePlanningProgress] Received error event:", data);
       store.setError(data.error);
     });
-    const unsubNexus = window.nexusAPI.onNexusEvent?.((event) => {
+    const unsubNexus = window.nexusAPI.onNexusEvent((event) => {
       if (event.type === "planning:started") {
         const payload = event.payload;
         console.log("[usePlanningProgress] Planning started:", payload);
         store.startPlanning(payload.projectId);
       }
+      if (event.type === "task:created") {
+        const payload = event.payload;
+        console.log("[usePlanningProgress] Task created:", payload);
+        store.addTask({
+          id: payload.task.id,
+          title: payload.task.name,
+          status: payload.task.status || "pending",
+          featureId: payload.featureId ?? "",
+          priority: "medium",
+          complexity: "simple",
+          estimatedMinutes: 30,
+          dependsOn: []
+        });
+      }
+      if (event.type === "feature:created") {
+        const payload = event.payload;
+        console.log("[usePlanningProgress] Feature created:", payload);
+        store.addFeature({
+          id: payload.feature.id,
+          name: payload.feature.name,
+          taskCount: 0,
+          status: payload.feature.status || "identified"
+        });
+      }
     });
     return () => {
-      unsubProgress?.();
-      unsubCompleted?.();
-      unsubError?.();
-      unsubNexus?.();
+      unsubProgress();
+      unsubCompleted();
+      unsubError();
+      unsubNexus();
     };
   }, [store]);
   const estimatedTimeRemaining = reactExports.useCallback(() => {
@@ -175,7 +198,7 @@ function usePlanningProgress() {
   );
   const retry = reactExports.useCallback(() => {
     if (store.projectId) {
-      startPlanning(store.projectId);
+      void startPlanning(store.projectId);
     }
   }, [store.projectId, startPlanning]);
   return {
@@ -194,8 +217,10 @@ function usePlanningProgress() {
     taskCount: store.tasksCreated.length,
     featureCount: store.featuresIdentified.length,
     estimatedTimeRemaining: estimatedTimeRemaining(),
-    // Actions
-    startPlanning,
+    // Actions - wrap async to avoid no-misused-promises
+    startPlanning: (projectId) => {
+      void startPlanning(projectId);
+    },
     retry,
     reset: store.reset
   };

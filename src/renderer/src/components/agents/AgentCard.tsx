@@ -4,6 +4,12 @@
  * Displays detailed information about an AI agent including its type,
  * current status, assigned task, progress, and metrics.
  *
+ * Features:
+ * - Type-specific gradient borders and glows
+ * - Status animations (pulse for working, shake for error)
+ * - Glassmorphism design with backdrop blur
+ * - Mini progress bars with gradient fill
+ *
  * @example
  * // Basic usage
  * <AgentCard agent={agentData} />
@@ -18,9 +24,9 @@
  */
 
 import React from 'react'
-import { Clock, FileCode2, Zap, Hash } from 'lucide-react'
+import { Clock, FileCode2, Zap, Hash, Loader2 } from 'lucide-react'
 import { cn } from '@renderer/lib/utils'
-import { type AgentType, type AgentStatus, getAgentLabel, colors } from '@renderer/styles/tokens'
+import { type AgentType, type AgentStatus, getAgentLabel } from '@renderer/styles/tokens'
 import { AgentBadge } from './AgentBadge'
 import { Progress } from '../ui/Progress'
 
@@ -75,6 +81,44 @@ export interface AgentCardProps {
 }
 
 // =============================================================================
+// CONSTANTS
+// =============================================================================
+
+/** Agent type colors for gradient borders and glows */
+const agentTypeStyles: Record<AgentType, { border: string; glow: string; gradient: string }> = {
+  planner: {
+    border: '#A78BFA',
+    glow: 'rgba(167, 139, 250, 0.3)',
+    gradient: 'from-[#A78BFA] to-[#8B5CF6]'
+  },
+  coder: {
+    border: '#60A5FA',
+    glow: 'rgba(96, 165, 250, 0.3)',
+    gradient: 'from-[#60A5FA] to-[#3B82F6]'
+  },
+  tester: {
+    border: '#34D399',
+    glow: 'rgba(52, 211, 153, 0.3)',
+    gradient: 'from-[#34D399] to-[#10B981]'
+  },
+  reviewer: {
+    border: '#FBBF24',
+    glow: 'rgba(251, 191, 36, 0.3)',
+    gradient: 'from-[#FBBF24] to-[#F59E0B]'
+  },
+  architect: {
+    border: '#F472B6',
+    glow: 'rgba(244, 114, 182, 0.3)',
+    gradient: 'from-[#F472B6] to-[#EC4899]'
+  },
+  debugger: {
+    border: '#F87171',
+    glow: 'rgba(248, 113, 113, 0.3)',
+    gradient: 'from-[#F87171] to-[#EF4444]'
+  },
+}
+
+// =============================================================================
 // HELPERS
 // =============================================================================
 
@@ -123,7 +167,7 @@ export const AgentCard = React.forwardRef<HTMLDivElement, AgentCardProps>(
     },
     ref
   ) => {
-    const agentColor = colors.agent[agent.type]
+    const typeStyle = agentTypeStyles[agent.type] || agentTypeStyles.coder
     const isInteractive = !!onClick
     const hasTask = !!agent.currentTask
     const hasProgress = hasTask && typeof agent.currentTask?.progress === 'number'
@@ -150,8 +194,9 @@ export const AgentCard = React.forwardRef<HTMLDivElement, AgentCardProps>(
         data-agent-status={agent.status}
         className={cn(
           // Base styles
-          'relative rounded-lg border transition-all duration-normal',
-          'bg-bg-card border-border-default',
+          'relative rounded-xl border transition-all duration-300',
+          'bg-[#161B22]/80 backdrop-blur-sm',
+          'border-[#30363D]',
 
           // Padding based on mode
           compact ? 'p-3' : 'p-4',
@@ -159,44 +204,57 @@ export const AgentCard = React.forwardRef<HTMLDivElement, AgentCardProps>(
           // Interactive states
           isInteractive && [
             'cursor-pointer',
-            'hover:bg-bg-hover hover:border-border-subtle',
-            'focus:outline-none focus:ring-2 focus:ring-accent-primary focus:ring-offset-2 focus:ring-offset-bg-dark',
+            'hover:bg-[#161B22] hover:border-[#484F58]',
+            'focus:outline-none focus:ring-2 focus:ring-[#7C3AED] focus:ring-offset-2 focus:ring-offset-[#0D1117]',
             'active:scale-[0.99]',
           ],
 
           // Selected state
           selected && [
-            'border-accent-primary bg-bg-hover',
-            'ring-1 ring-accent-primary/50',
-            // Glow effect
-            'shadow-glow-primary',
+            'bg-[#161B22]',
+            'ring-1',
           ],
 
           // Working state animation
           agent.status === 'working' && 'animate-pulse-subtle',
 
+          // Error state animation
+          agent.status === 'error' && 'animate-shake',
+
           className
         )}
-        style={
-          selected
-            ? {
-                borderColor: agentColor,
-                boxShadow: `0 0 20px ${agentColor}30`,
-              }
-            : undefined
-        }
+        style={{
+          borderColor: selected ? typeStyle.border : undefined,
+          boxShadow: selected
+            ? `0 0 20px ${typeStyle.glow}, 0 4px 20px rgba(0, 0, 0, 0.3)`
+            : agent.status === 'working'
+              ? `0 0 15px ${typeStyle.glow}`
+              : undefined,
+          '--ring-color': typeStyle.border,
+        } as React.CSSProperties}
       >
+        {/* Gradient top border for selected/working */}
+        {(selected || agent.status === 'working') && (
+          <div
+            className={cn(
+              'absolute inset-x-0 top-0 h-px',
+              `bg-gradient-to-r ${typeStyle.gradient}`
+            )}
+            style={{ opacity: selected ? 1 : 0.5 }}
+          />
+        )}
+
         {/* Header Row */}
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             <AgentBadge type={agent.type} status={agent.status} size={compact ? 'sm' : 'md'} />
 
             <div className="min-w-0">
-              <h4 className="font-medium text-text-primary truncate">
+              <h4 className="font-medium text-[#F0F6FC] truncate">
                 {getAgentLabel(agent.type)} Agent
               </h4>
               {!compact && agent.model && (
-                <p className="text-xs text-text-secondary truncate">{agent.model}</p>
+                <p className="text-xs text-[#8B949E] truncate">{agent.model}</p>
               )}
             </div>
           </div>
@@ -204,14 +262,18 @@ export const AgentCard = React.forwardRef<HTMLDivElement, AgentCardProps>(
           {/* Status indicator */}
           <div
             className={cn(
-              'text-xs font-medium px-2 py-1 rounded-full',
-              agent.status === 'idle' && 'bg-text-tertiary/20 text-text-tertiary',
-              agent.status === 'working' && 'bg-accent-info/20 text-accent-info',
-              agent.status === 'success' && 'bg-accent-success/20 text-accent-success',
-              agent.status === 'error' && 'bg-accent-error/20 text-accent-error',
-              agent.status === 'pending' && 'bg-text-muted/20 text-text-muted'
+              'text-xs font-medium px-2.5 py-1 rounded-full',
+              'flex items-center gap-1.5',
+              agent.status === 'idle' && 'bg-[#21262D] text-[#8B949E]',
+              agent.status === 'working' && 'bg-[#60A5FA]/10 text-[#60A5FA]',
+              agent.status === 'success' && 'bg-[#3FB950]/10 text-[#3FB950]',
+              agent.status === 'error' && 'bg-[#F85149]/10 text-[#F85149]',
+              agent.status === 'pending' && 'bg-[#6E7681]/10 text-[#6E7681]'
             )}
           >
+            {agent.status === 'working' && (
+              <Loader2 className="w-3 h-3 animate-spin" />
+            )}
             {getStatusText(agent.status)}
           </div>
         </div>
@@ -220,25 +282,35 @@ export const AgentCard = React.forwardRef<HTMLDivElement, AgentCardProps>(
         {!compact && hasTask && (
           <div className="mt-3 space-y-2">
             {/* Task name */}
-            <div className="flex items-center gap-2 text-sm text-text-secondary">
-              <FileCode2 size={14} className="flex-shrink-0 text-text-tertiary" />
+            <div className="flex items-center gap-2 text-sm text-[#8B949E]">
+              <FileCode2 size={14} className="flex-shrink-0 text-[#6E7681]" />
               <span className="truncate">{agent.currentTask?.name}</span>
             </div>
 
-            {/* Progress bar */}
+            {/* Progress bar with gradient */}
             {hasProgress && (
-              <Progress
-                value={agent.currentTask?.progress ?? 0}
-                variant="default"
-                size="sm"
-                showValue
-                className="mt-2"
-              />
+              <div className="mt-2">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs text-[#6E7681]">Progress</span>
+                  <span className="text-xs text-[#8B949E] tabular-nums">
+                    {agent.currentTask?.progress ?? 0}%
+                  </span>
+                </div>
+                <div className="h-1.5 bg-[#21262D] rounded-full overflow-hidden">
+                  <div
+                    className={cn(
+                      'h-full rounded-full transition-all duration-500',
+                      `bg-gradient-to-r ${typeStyle.gradient}`
+                    )}
+                    style={{ width: `${agent.currentTask?.progress ?? 0}%` }}
+                  />
+                </div>
+              </div>
             )}
 
             {/* Current file */}
             {agent.currentFile && (
-              <div className="flex items-center gap-2 text-xs text-text-tertiary font-mono">
+              <div className="flex items-center gap-2 text-xs text-[#6E7681] font-mono">
                 <Hash size={12} className="flex-shrink-0" />
                 <span className="truncate">{agent.currentFile}</span>
               </div>
@@ -248,26 +320,26 @@ export const AgentCard = React.forwardRef<HTMLDivElement, AgentCardProps>(
 
         {/* Detailed metrics (when showDetails is true) */}
         {showDetails && !compact && (
-          <div className="mt-4 pt-4 border-t border-border-subtle">
+          <div className="mt-4 pt-4 border-t border-[#30363D]">
             <div className="grid grid-cols-2 gap-4">
               {/* Iteration counter */}
               {agent.iteration && (
                 <div className="flex items-center gap-2">
                   <div
                     className={cn(
-                      'p-1.5 rounded-md',
+                      'p-1.5 rounded-lg',
                       agent.iteration.current >= agent.iteration.max * 0.8
-                        ? 'bg-accent-warning/20 text-accent-warning'
-                        : 'bg-bg-hover text-text-secondary'
+                        ? 'bg-[#F0883E]/10 text-[#F0883E]'
+                        : 'bg-[#21262D] text-[#8B949E]'
                     )}
                   >
                     <Zap size={14} />
                   </div>
                   <div>
-                    <p className="text-xs text-text-tertiary">Iteration</p>
-                    <p className="text-sm font-medium text-text-primary">
+                    <p className="text-xs text-[#6E7681]">Iteration</p>
+                    <p className="text-sm font-medium text-[#F0F6FC] tabular-nums">
                       {agent.iteration.current}
-                      <span className="text-text-tertiary">/{agent.iteration.max}</span>
+                      <span className="text-[#6E7681]">/{agent.iteration.max}</span>
                     </p>
                   </div>
                 </div>
@@ -276,12 +348,12 @@ export const AgentCard = React.forwardRef<HTMLDivElement, AgentCardProps>(
               {/* Duration */}
               {agent.metrics?.duration !== undefined && (
                 <div className="flex items-center gap-2">
-                  <div className="p-1.5 rounded-md bg-bg-hover text-text-secondary">
+                  <div className="p-1.5 rounded-lg bg-[#21262D] text-[#8B949E]">
                     <Clock size={14} />
                   </div>
                   <div>
-                    <p className="text-xs text-text-tertiary">Duration</p>
-                    <p className="text-sm font-medium text-text-primary">
+                    <p className="text-xs text-[#6E7681]">Duration</p>
+                    <p className="text-sm font-medium text-[#F0F6FC]">
                       {formatDuration(agent.metrics.duration)}
                     </p>
                   </div>
@@ -291,12 +363,12 @@ export const AgentCard = React.forwardRef<HTMLDivElement, AgentCardProps>(
               {/* Tokens used */}
               {agent.metrics?.tokensUsed !== undefined && (
                 <div className="flex items-center gap-2">
-                  <div className="p-1.5 rounded-md bg-bg-hover text-text-secondary">
+                  <div className="p-1.5 rounded-lg bg-[#21262D] text-[#8B949E]">
                     <Hash size={14} />
                   </div>
                   <div>
-                    <p className="text-xs text-text-tertiary">Tokens</p>
-                    <p className="text-sm font-medium text-text-primary">
+                    <p className="text-xs text-[#6E7681]">Tokens</p>
+                    <p className="text-sm font-medium text-[#F0F6FC]">
                       {formatTokens(agent.metrics.tokensUsed)}
                     </p>
                   </div>
@@ -309,12 +381,14 @@ export const AgentCard = React.forwardRef<HTMLDivElement, AgentCardProps>(
         {/* Working indicator line at bottom */}
         {agent.status === 'working' && (
           <div
-            className="absolute bottom-0 left-0 right-0 h-0.5 rounded-b-lg overflow-hidden"
-            style={{ backgroundColor: `${agentColor}30` }}
+            className="absolute bottom-0 left-0 right-0 h-0.5 rounded-b-xl overflow-hidden"
+            style={{ backgroundColor: `${typeStyle.border}30` }}
           >
             <div
               className="h-full animate-progress-indeterminate"
-              style={{ backgroundColor: agentColor }}
+              style={{
+                background: `linear-gradient(to right, ${typeStyle.border}, ${typeStyle.border}cc)`
+              }}
             />
           </div>
         )}

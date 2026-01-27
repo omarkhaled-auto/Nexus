@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react';
 import { Header } from '@renderer/components/layout/Header';
-import { Bot, Play, Pause, RefreshCw, AlertCircle } from 'lucide-react';
+import { Bot, Play, Pause, RefreshCw, AlertCircle, Cpu } from 'lucide-react';
 import { Button } from '@renderer/components/ui/button';
 import { Alert, AlertDescription } from '@renderer/components/ui/Alert';
 import { Spinner } from '@renderer/components/ui/Spinner';
@@ -16,6 +16,7 @@ import {
   type QAStep,
 } from '@renderer/components/agents';
 import { useState, useEffect, useCallback } from 'react';
+import { cn } from '@renderer/lib/utils';
 
 // ============================================================================
 // Helper Functions
@@ -84,6 +85,16 @@ const defaultQASteps: QAStep[] = [
   { type: 'review', status: 'pending' },
 ];
 
+// Agent type colors for gradient borders and glows
+const agentTypeColors: Record<string, { border: string; glow: string; bg: string }> = {
+  planner: { border: '#A78BFA', glow: 'rgba(167, 139, 250, 0.3)', bg: 'rgba(167, 139, 250, 0.1)' },
+  coder: { border: '#60A5FA', glow: 'rgba(96, 165, 250, 0.3)', bg: 'rgba(96, 165, 250, 0.1)' },
+  tester: { border: '#34D399', glow: 'rgba(52, 211, 153, 0.3)', bg: 'rgba(52, 211, 153, 0.1)' },
+  reviewer: { border: '#FBBF24', glow: 'rgba(251, 191, 36, 0.3)', bg: 'rgba(251, 191, 36, 0.1)' },
+  architect: { border: '#F472B6', glow: 'rgba(244, 114, 182, 0.3)', bg: 'rgba(244, 114, 182, 0.1)' },
+  debugger: { border: '#F87171', glow: 'rgba(248, 113, 113, 0.3)', bg: 'rgba(248, 113, 113, 0.1)' },
+};
+
 // ============================================================================
 // AgentsPage Component
 // ============================================================================
@@ -91,11 +102,11 @@ const defaultQASteps: QAStep[] = [
 /**
  * Agents Page - Real-time monitoring of AI agent activity.
  *
- * Displays:
- * - Agent pool status overview
- * - List of active agents with details
- * - Selected agent's live output stream
- * - QA pipeline status
+ * Features:
+ * - Agent pool visualization with type-specific colors
+ * - Status animations (working spinner, error shake)
+ * - Glassmorphism card design
+ * - Real-time QA pipeline status
  */
 export default function AgentsPage(): ReactElement {
   // State for agents and UI - initialized empty, loaded from backend
@@ -243,10 +254,19 @@ export default function AgentsPage(): ReactElement {
 
   // Prepare pool agents for display
   const poolAgents: PoolAgent[] = agents.map((a) => ({ id: a.id, type: a.type, status: a.status, taskName: a.currentTask?.name }));
-  const refreshIconClass = isLoading ? 'w-4 h-4 mr-2 animate-spin' : 'w-4 h-4 mr-2';
+
+  // Calculate agent stats
+  const workingCount = agents.filter((a) => a.status === 'working').length;
+  const idleCount = agents.filter((a) => a.status === 'idle').length;
+  const errorCount = agents.filter((a) => a.status === 'error').length;
 
   return (
-    <div className="flex flex-col h-screen" data-testid="agents-page">
+    <div className="flex flex-col h-screen bg-[#0D1117]" data-testid="agents-page">
+      {/* Background effects */}
+      <div className="fixed inset-0 bg-gradient-mesh opacity-20 pointer-events-none" />
+      <div className="fixed top-1/4 right-0 w-[500px] h-[500px] bg-[#60A5FA]/5 rounded-full blur-3xl pointer-events-none" />
+      <div className="fixed bottom-0 left-1/4 w-[400px] h-[400px] bg-[#A78BFA]/5 rounded-full blur-3xl pointer-events-none" />
+
       {/* Header */}
       <Header
         title="Agent Activity"
@@ -261,8 +281,16 @@ export default function AgentsPage(): ReactElement {
               onClick={handleRefresh}
               disabled={isLoading}
               data-testid="refresh-agents-button"
+              className={cn(
+                "border-[#30363D] text-[#8B949E]",
+                "hover:bg-[#21262D] hover:border-[#484F58]",
+                "transition-all duration-200"
+              )}
             >
-              <RefreshCw className={refreshIconClass} />
+              <RefreshCw className={cn(
+                "w-4 h-4 mr-2",
+                isLoading && "animate-spin"
+              )} />
               Refresh
             </Button>
             <Button
@@ -270,6 +298,11 @@ export default function AgentsPage(): ReactElement {
               size="sm"
               onClick={() => { void handlePauseAll(); }}
               data-testid="pause-all-button"
+              className={cn(
+                isPaused
+                  ? "bg-gradient-to-r from-[#7C3AED] to-[#A855F7] text-white"
+                  : "border-[#30363D] text-[#8B949E] hover:bg-[#21262D]"
+              )}
             >
               {isPaused ? (
                 <>
@@ -289,7 +322,7 @@ export default function AgentsPage(): ReactElement {
 
       {/* Error Banner */}
       {error && (
-        <div className="px-6 pt-4">
+        <div className="px-6 pt-4 relative z-10">
           <Alert variant="warning" dismissible onDismiss={() => { setError(null); }}>
             <AlertCircle className="w-4 h-4" />
             <AlertDescription>{error}</AlertDescription>
@@ -299,17 +332,118 @@ export default function AgentsPage(): ReactElement {
 
       {/* Loading State */}
       {isLoading && (
-        <div className="flex items-center justify-center p-4">
+        <div className="flex items-center justify-center p-4 relative z-10">
           <Spinner size="sm" className="mr-2" />
-          <span className="text-text-secondary">Loading agent data...</span>
+          <span className="text-[#8B949E]">Loading agent data...</span>
         </div>
       )}
 
       {/* Main Content */}
-      <div className="flex-1 overflow-hidden p-6">
+      <div className="flex-1 overflow-hidden p-6 relative z-10">
         <div className="h-full flex flex-col gap-6">
-          {/* Agent Pool Status */}
-          <AgentPoolWidget className="shrink-0" />
+          {/* Agent Pool Overview Card */}
+          <div className={cn(
+            "shrink-0 rounded-xl p-6",
+            "bg-[#161B22]/60 backdrop-blur-sm",
+            "border border-[#30363D]"
+          )}>
+            {/* Gradient top border */}
+            <div className="absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-[#60A5FA]/50 to-transparent" />
+
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-gradient-to-br from-[#60A5FA]/20 to-[#60A5FA]/5">
+                  <Cpu className="h-5 w-5 text-[#60A5FA]" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-[#F0F6FC]">Agent Pool</h2>
+                  <p className="text-sm text-[#8B949E]">{agents.length} agents registered</p>
+                </div>
+              </div>
+
+              {/* Quick Stats */}
+              <div className="flex items-center gap-4">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-[#60A5FA] tabular-nums">{workingCount}</div>
+                  <div className="text-xs text-[#8B949E]">Working</div>
+                </div>
+                <div className="w-px h-8 bg-[#30363D]" />
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-[#8B949E] tabular-nums">{idleCount}</div>
+                  <div className="text-xs text-[#8B949E]">Idle</div>
+                </div>
+                <div className="w-px h-8 bg-[#30363D]" />
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-[#F85149] tabular-nums">{errorCount}</div>
+                  <div className="text-xs text-[#8B949E]">Errors</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Agent Pool Visualization */}
+            <div className="flex flex-wrap gap-2">
+              {agents.map((agent) => {
+                const colors = agentTypeColors[agent.type] || agentTypeColors.coder;
+                return (
+                  <button
+                    key={agent.id}
+                    onClick={() => handleAgentSelect(agent.id)}
+                    className={cn(
+                      "relative px-3 py-2 rounded-lg",
+                      "border transition-all duration-300",
+                      "flex items-center gap-2",
+                      selectedAgentId === agent.id
+                        ? "border-[#7C3AED] bg-[#7C3AED]/10"
+                        : "border-[#30363D] hover:border-[#484F58] bg-[#21262D]/50",
+                      agent.status === 'working' && "animate-pulse",
+                      agent.status === 'error' && "animate-shake"
+                    )}
+                    style={{
+                      borderColor: selectedAgentId === agent.id ? colors.border : undefined,
+                      boxShadow: agent.status === 'working' ? `0 0 15px ${colors.glow}` : undefined
+                    }}
+                  >
+                    {/* Status indicator */}
+                    <div className={cn(
+                      "w-2 h-2 rounded-full",
+                      agent.status === 'working' && "bg-[#60A5FA] animate-pulse",
+                      agent.status === 'idle' && "bg-[#484F58]",
+                      agent.status === 'error' && "bg-[#F85149]",
+                      agent.status === 'success' && "bg-[#3FB950]",
+                      agent.status === 'pending' && "bg-[#6E7681]"
+                    )} />
+
+                    <span className="text-sm text-[#F0F6FC] capitalize">{agent.type}</span>
+
+                    {/* Mini progress for working agents */}
+                    {agent.status === 'working' && agent.currentTask?.progress !== undefined && (
+                      <div className="w-12 h-1 bg-[#21262D] rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all duration-300"
+                          style={{
+                            width: `${agent.currentTask.progress}%`,
+                            background: `linear-gradient(to right, ${colors.border}, ${colors.border}cc)`
+                          }}
+                        />
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+
+              {agents.length === 0 && (
+                <div className="w-full py-4 text-center text-[#6E7681]">
+                  No agents active yet
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Pool Widget and Status */}
+          <AgentPoolWidget className={cn(
+            "shrink-0",
+            "bg-[#161B22]/60 backdrop-blur-sm border-[#30363D]"
+          )} />
           <AgentPoolStatus
             agents={poolAgents}
             maxAgents={10}
@@ -323,16 +457,22 @@ export default function AgentsPage(): ReactElement {
           <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-6 min-h-0">
             {/* Active Agents List */}
             <div className="flex flex-col gap-4 overflow-auto" data-testid="agents-list">
-              <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider">
+              <h2 className="text-sm font-semibold text-[#8B949E] uppercase tracking-wider">
                 Active Agents
               </h2>
               {agents.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <div className="h-12 w-12 rounded-full bg-bg-tertiary flex items-center justify-center mb-3">
-                    <Bot className="h-6 w-6 text-text-tertiary" />
+                <div className={cn(
+                  "flex flex-col items-center justify-center py-12 text-center",
+                  "rounded-xl bg-[#161B22]/40 border border-[#30363D]"
+                )}>
+                  <div className={cn(
+                    "h-16 w-16 rounded-2xl flex items-center justify-center mb-4",
+                    "bg-[#21262D] border border-[#30363D]"
+                  )}>
+                    <Bot className="h-8 w-8 text-[#484F58]" />
                   </div>
-                  <p className="text-text-secondary text-sm">No agents active</p>
-                  <p className="text-text-tertiary text-xs mt-1">
+                  <p className="text-[#8B949E] text-sm">No agents active</p>
+                  <p className="text-[#6E7681] text-xs mt-1">
                     Agents will appear here when a task is being processed
                   </p>
                 </div>
@@ -355,20 +495,23 @@ export default function AgentsPage(): ReactElement {
             <div className="flex flex-col gap-4 min-h-0" data-testid="agent-details">
               {selectedAgent ? (
                 <>
-                  <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider shrink-0">
+                  <h2 className="text-sm font-semibold text-[#8B949E] uppercase tracking-wider shrink-0">
                     Agent Output
                   </h2>
                   <AgentActivity
                     agentId={selectedAgent.id}
                     output={agentOutput}
                     status={selectedAgent.status}
-                    className="flex-1 min-h-0"
+                    className={cn(
+                      "flex-1 min-h-0",
+                      "bg-[#161B22]/60 backdrop-blur-sm border-[#30363D]"
+                    )}
                     data-testid="agent-activity"
                   />
 
                   {/* QA Status */}
                   <div className="shrink-0">
-                    <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-3">
+                    <h3 className="text-sm font-semibold text-[#8B949E] uppercase tracking-wider mb-3">
                       QA Status
                     </h3>
                     <QAStatusPanel
@@ -381,7 +524,11 @@ export default function AgentsPage(): ReactElement {
                   </div>
                 </>
               ) : (
-                <div className="flex items-center justify-center h-full text-text-tertiary">
+                <div className={cn(
+                  "flex items-center justify-center h-full",
+                  "rounded-xl bg-[#161B22]/40 border border-[#30363D]",
+                  "text-[#6E7681]"
+                )}>
                   Select an agent to view details
                 </div>
               )}

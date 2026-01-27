@@ -277,6 +277,28 @@ export class QALoopEngine {
             ));
             console.log(`[QALoopEngine] Build failed: ${lastBuild.errors.length} errors`);
 
+            // CRITICAL FIX: Handle "build failed with 0 parseable errors" case
+            // This prevents infinite loops when build fails but no errors can be extracted
+            if (lastBuild.errors.length === 0) {
+              console.warn(`[QALoopEngine] Build failed with no parseable errors - checking iteration count`);
+              // After 3 attempts with no errors to fix, escalate
+              if (iteration >= 3) {
+                console.log(`[QALoopEngine] Escalating after ${iteration} iterations with unparseable build errors`);
+                return {
+                  success: false,
+                  escalated: true,
+                  reason: 'Build failing with unparseable errors after multiple attempts',
+                  iterations: iteration,
+                  lastBuild,
+                  lastLint,
+                  lastTest,
+                  lastReview,
+                };
+              }
+              // Add a generic error message for CoderAgent to work with
+              errorDetails.push('Build failed but no specific errors could be parsed. Please review the build output and fix any issues.');
+            }
+
             // Call CoderAgent to fix build errors before next iteration
             if (this.agentPool && this.stopOnFirstFailure) {
               console.log(`[QALoopEngine] Calling CoderAgent to fix build errors...`);

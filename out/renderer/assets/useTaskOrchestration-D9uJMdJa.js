@@ -1,4 +1,4 @@
-import { c as createLucideIcon, p as create, r as reactExports } from "./index-B8DMw4WO.js";
+import { c as createLucideIcon, p as create, r as reactExports } from "./index-D6zknste.js";
 /**
  * @license lucide-react v0.562.0 - ISC
  *
@@ -362,7 +362,7 @@ function useTaskOrchestration() {
       return;
     }
     const unsubscribers = [];
-    if (typeof window.nexusAPI.onExecutionProgress === "function") {
+    if (typeof window.nexusAPI?.onExecutionProgress === "function") {
       const unsub = window.nexusAPI.onExecutionProgress((progress) => {
         store.updateProgress(progress);
       });
@@ -466,9 +466,10 @@ function useTaskOrchestration() {
         return;
       }
       store.start(projectId, tasks);
-      if (window.nexusAPI?.startExecution) {
+      const nexusAPI = window.nexusAPI;
+      if (nexusAPI?.startExecution) {
         try {
-          const result = await window.nexusAPI.startExecution(projectId);
+          const result = await nexusAPI.startExecution(projectId);
           if (!result.success) {
             console.error("[useTaskOrchestration] Backend execution failed:", result.error);
             store.addError({

@@ -202,7 +202,7 @@ describe('TestRunner', () => {
       expect(result.skipped).toBe(3);
     });
 
-    it('should handle spawn errors', async () => {
+    it('should treat ENOENT spawn errors as vitest not installed (success with warning)', async () => {
       mockSpawn.mockReturnValue(
         createMockProcess({
           error: new Error('spawn ENOENT'),
@@ -212,9 +212,30 @@ describe('TestRunner', () => {
       const runner = new TestRunner();
       const result = await runner.run('/test/project');
 
+      // ENOENT means vitest/npx not found - treat as success with warning
+      // This prevents infinite QA loops for projects without vitest
+      expect(result.success).toBe(true);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0].message).toContain('not installed');
+      expect(result.errors[0].code).toBe('VITEST_NOT_INSTALLED');
+      expect(result.errors[0].severity).toBe('warning');
+      expect(result.errors[0].type).toBe('test');
+    });
+
+    it('should fail on non-ENOENT spawn errors', async () => {
+      mockSpawn.mockReturnValue(
+        createMockProcess({
+          error: new Error('Permission denied'),
+        })
+      );
+
+      const runner = new TestRunner();
+      const result = await runner.run('/test/project');
+
+      // Permission errors should still fail
       expect(result.success).toBe(false);
       expect(result.errors).toHaveLength(1);
-      expect(result.errors[0].message).toContain('spawn ENOENT');
+      expect(result.errors[0].message).toContain('Permission denied');
       expect(result.errors[0].code).toBe('SPAWN_ERROR');
       expect(result.errors[0].type).toBe('test');
     });

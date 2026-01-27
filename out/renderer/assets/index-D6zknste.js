@@ -1,4 +1,4 @@
-const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["./InterviewPage-BatL6a8z.js","./useTaskOrchestration-BvRUoVg0.js","./zap-C3nsoLzM.js","./save-CFEc4A7P.js","./layers-DU86WCvq.js","./circle-check-DWu7kQd6.js","./circle-TdijTwss.js","./trash-2-5qD4E5Wc.js","./file-text-Coe14bpf.js","./download-BE9_Kuzw.js","./usePlanningProgress-CrOmKCb6.js","./AnimatedPage-jLeN60U5.js","./arrow-left-BumfNhxk.js","./rotate-ccw-CWan0s-v.js","./PlanningPage-CfV1WT35.js","./clock-SQZueF73.js","./arrow-right-cVg_yzHs.js","./KanbanPage-OOlq9pRg.js","./play-CGwX_rdf.js","./info-DDDU4WnD.js","./DashboardPage-aHWaouMy.js","./test-tube-diagonal-BkG2X49i.js","./en-US-DF_tYdWf.js","./circle-x-hpKi6T_C.js","./SettingsPage-fwP1D-YG.js","./useCheckpoint-CiUD0HMW.js","./Header-D8V4ab2j.js","./AgentsPage-BotW1vE8.js","./ExecutionPage-B7f3o5RB.js"])))=>i.map(i=>d[i]);
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["./InterviewPage-BR4kxzL3.js","./useTaskOrchestration-D9uJMdJa.js","./zap-B2YFclPS.js","./save-X5s8BNNF.js","./layers-CdrB5-Ro.js","./circle-check-DEe4HTnv.js","./circle-Dx1iLOgB.js","./trash-2-DsUKbn2O.js","./file-text-1NWYs8hM.js","./download-Dtg0Wiov.js","./usePlanningProgress-Xs7R4GDp.js","./AnimatedPage-C7aKxnzt.js","./arrow-left-OjicJZKL.js","./rotate-ccw-BS3Q6Hrb.js","./PlanningPage-p6n0uYc4.js","./clock-D5BUsL0A.js","./arrow-right-Tu11VD0Q.js","./KanbanPage-ZC_4UVmJ.js","./play-B5ZFdA5d.js","./info-BSo99lQQ.js","./DashboardPage-CHeJiDea.js","./test-tube-diagonal-Dx9FQnCe.js","./en-US-DF_tYdWf.js","./circle-x-C5fFko4H.js","./SettingsPage-CBKOPCo7.js","./useCheckpoint-DVitJsuZ.js","./Header-CUxpwrTf.js","./AgentsPage-DhzgIj-S.js","./ExecutionPage-B21gt736.js"])))=>i.map(i=>d[i]);
 function _mergeNamespaces(n, m) {
   for (var i = 0; i < m.length; i++) {
     const e = m[i];
@@ -19548,30 +19548,40 @@ const useFeatureStore = create()((set, get) => ({
     return true;
   },
   reorderFeatures: (columnId, oldIndex, newIndex) => {
-    set((state) => {
-      const columnFeatures = state.features.filter((f) => f.status === columnId);
-      state.features.filter((f) => f.status !== columnId);
-      if (oldIndex < 0 || newIndex < 0 || oldIndex >= columnFeatures.length || newIndex >= columnFeatures.length) {
-        return state;
+    const state = get();
+    const columnFeatures = state.features.filter((f) => f.status === columnId);
+    if (oldIndex < 0 || newIndex < 0 || oldIndex >= columnFeatures.length || newIndex >= columnFeatures.length) {
+      return;
+    }
+    if (oldIndex === newIndex) {
+      return;
+    }
+    const reordered = [...columnFeatures];
+    const [removed] = reordered.splice(oldIndex, 1);
+    reordered.splice(newIndex, 0, removed);
+    const result = [];
+    let columnIdx = 0;
+    for (const feature of state.features) {
+      if (feature.status === columnId) {
+        result.push(reordered[columnIdx]);
+        columnIdx++;
+      } else {
+        result.push(feature);
       }
-      if (oldIndex === newIndex) {
-        return state;
-      }
-      const reordered = [...columnFeatures];
-      const [removed] = reordered.splice(oldIndex, 1);
-      reordered.splice(newIndex, 0, removed);
-      const result = [];
-      let columnIdx = 0;
-      for (const feature of state.features) {
-        if (feature.status === columnId) {
-          result.push(reordered[columnIdx]);
-          columnIdx++;
-        } else {
-          result.push(feature);
+    }
+    set({ features: result });
+    const persistOrder = async () => {
+      if (!window.nexusAPI?.updateFeature) return;
+      for (let i = 0; i < reordered.length; i++) {
+        const feature = reordered[i];
+        try {
+          await window.nexusAPI.updateFeature(feature.id, { orderIndex: i });
+        } catch (err) {
+          console.error("[FeatureStore] Failed to persist order for feature:", feature.id, err);
         }
       }
-      return { features: result };
-    });
+    };
+    void persistOrder();
   },
   selectFeature: (id) => {
     set({ selectedFeatureId: id });
@@ -19617,23 +19627,34 @@ const useFeatureStore = create()((set, get) => ({
               };
             }
             const taskObj = t;
+            const taskId = typeof taskObj.id === "string" ? taskObj.id : `task-${idx}`;
+            const taskTitle = (typeof taskObj.title === "string" ? taskObj.title : null) || (typeof taskObj.name === "string" ? taskObj.name : `Task ${idx + 1}`);
             return {
-              id: String(taskObj.id ?? `task-${idx}`),
-              title: String(taskObj.title ?? taskObj.name ?? `Task ${idx + 1}`),
-              status: taskObj.status ?? "pending",
+              id: taskId,
+              title: taskTitle,
+              status: typeof taskObj.status === "string" ? taskObj.status : "pending",
               estimatedMinutes: taskObj.estimatedMinutes
             };
           }) : [];
+          const rawId = typeof raw.id === "string" ? raw.id : "";
+          const rawName = typeof raw.name === "string" ? raw.name : "";
+          const rawTitle = typeof raw.title === "string" ? raw.title : "";
+          const rawDesc = typeof raw.description === "string" ? raw.description : "";
+          const rawStatus = typeof raw.status === "string" ? raw.status : "backlog";
+          const rawPriority = typeof raw.priority === "string" ? raw.priority : "medium";
+          const rawCreatedAt = typeof raw.createdAt === "string" ? raw.createdAt : (/* @__PURE__ */ new Date()).toISOString();
+          const rawUpdatedAt = typeof raw.updatedAt === "string" ? raw.updatedAt : (/* @__PURE__ */ new Date()).toISOString();
+          const complexity = raw.complexity;
           return {
-            id: String(raw.id ?? ""),
-            title: String(raw.name ?? raw.title ?? ""),
-            description: String(raw.description ?? ""),
-            status: mapBackendStatus(String(raw.status ?? "backlog")),
-            priority: mapBackendPriority(String(raw.priority ?? "medium")),
-            complexity: raw.complexity ?? "moderate",
+            id: rawId,
+            title: rawName || rawTitle,
+            description: rawDesc,
+            status: mapBackendStatus(rawStatus),
+            priority: mapBackendPriority(rawPriority),
+            complexity: complexity ?? "moderate",
             tasks,
-            createdAt: String(raw.createdAt ?? (/* @__PURE__ */ new Date()).toISOString()),
-            updatedAt: String(raw.updatedAt ?? (/* @__PURE__ */ new Date()).toISOString())
+            createdAt: rawCreatedAt,
+            updatedAt: rawUpdatedAt
           };
         });
         console.log("[featureStore] Loaded features from backend:", features.length, projectId ? `(filtered by ${projectId})` : "(all)");
@@ -20012,8 +20033,9 @@ class UIBackendBridge {
   }
   /**
    * Start Genesis mode - create new project from scratch
+   * @param projectPath - Optional path to the project directory
    */
-  async startGenesis() {
+  async startGenesis(projectPath) {
     if (!window.nexusAPI?.startGenesis) {
       console.warn("UIBackendBridge: startGenesis not available");
       useProjectStore.getState().setMode("genesis");
@@ -20022,6 +20044,7 @@ class UIBackendBridge {
     useUIStore.getState().setLoading(true);
     try {
       useProjectStore.getState().setMode("genesis");
+      console.log("[UIBackendBridge] Starting genesis mode", projectPath ? `for ${projectPath}` : "");
       const result = await window.nexusAPI.startGenesis();
       if (!result.success) {
         throw new Error("Failed to start Genesis mode");
@@ -21456,7 +21479,7 @@ const Toaster = /* @__PURE__ */ React$2.forwardRef(function Toaster2(props, ref)
     }))
   );
 });
-function isElectronEnvironment$1() {
+function isElectronEnvironment$3() {
   return typeof window !== "undefined" && typeof window.nexusAPI !== "undefined";
 }
 function useGlobalShortcuts() {
@@ -21475,7 +21498,7 @@ function useGlobalShortcuts() {
     (e) => {
       e.preventDefault();
       const projectId = useProjectStore.getState().currentProject?.id;
-      if (!isElectronEnvironment$1()) {
+      if (!isElectronEnvironment$3()) {
         toast.info("Checkpoint creation requires Electron environment");
         return;
       }
@@ -21560,17 +21583,9 @@ function useMediaQuery(query) {
     const handleChange = (event) => {
       setMatches(event.matches);
     };
-    if (mediaQuery.addEventListener) {
-      mediaQuery.addEventListener("change", handleChange);
-    } else {
-      mediaQuery.addListener(handleChange);
-    }
+    mediaQuery.addEventListener("change", handleChange);
     return () => {
-      if (mediaQuery.removeEventListener) {
-        mediaQuery.removeEventListener("change", handleChange);
-      } else {
-        mediaQuery.removeListener(handleChange);
-      }
+      mediaQuery.removeEventListener("change", handleChange);
     };
   }, [query]);
   return matches;
@@ -24601,482 +24616,73 @@ const twMerge = /* @__PURE__ */ createTailwindMerge(getDefaultConfig);
 function cn(...inputs) {
   return twMerge(clsx(inputs));
 }
-const SIDEBAR_WIDTH_EXPANDED = 240;
-const SIDEBAR_WIDTH_COLLAPSED = 64;
-const badgeVariantClasses = {
-  default: "bg-bg-hover text-text-primary",
-  success: "bg-accent-success/20 text-accent-success",
-  warning: "bg-accent-warning/20 text-accent-warning",
-  error: "bg-accent-error/20 text-accent-error",
-  info: "bg-accent-info/20 text-accent-info",
-  purple: "bg-accent-primary/20 text-accent-primary"
-};
-function SidebarItemComponent({
-  item,
-  collapsed = false,
-  level = 0,
-  onItemClick
-}) {
-  const location = useLocation();
-  const [isExpanded, setIsExpanded] = reactExports.useState(false);
-  const isActive = item.href ? location.pathname === item.href || location.pathname.startsWith(item.href + "/") : item.active;
-  const hasChildren = item.children && item.children.length > 0;
-  const handleClick = reactExports.useCallback(
-    (e) => {
-      if (item.disabled) {
-        e.preventDefault();
-        return;
-      }
-      if (hasChildren && !collapsed) {
-        e.preventDefault();
-        setIsExpanded((prev) => !prev);
-      }
-      if (item.onClick) {
-        item.onClick();
-      }
-      if (onItemClick) {
-        onItemClick(item.id);
-      }
-    },
-    [item, hasChildren, collapsed, onItemClick]
-  );
-  const Icon2 = item.icon;
-  const content = /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsx(
-      "span",
-      {
-        className: cn(
-          "flex items-center justify-center shrink-0",
-          collapsed ? "w-10 h-10" : "w-8 h-8"
-        ),
-        children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-          Icon2,
-          {
-            className: cn(
-              "transition-colors",
-              collapsed ? "w-5 h-5" : "w-4 h-4",
-              isActive ? "text-accent-primary" : "text-text-secondary group-hover:text-text-primary"
-            ),
-            strokeWidth: 1.5
-          }
-        )
-      }
-    ),
-    !collapsed && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx(
-        "span",
-        {
-          className: cn(
-            "flex-1 text-sm font-medium truncate transition-colors",
-            isActive ? "text-text-primary" : "text-text-secondary group-hover:text-text-primary"
-          ),
-          children: item.label
-        }
-      ),
-      item.badge !== void 0 && /* @__PURE__ */ jsxRuntimeExports.jsx(
-        "span",
-        {
-          className: cn(
-            "px-1.5 py-0.5 text-xs font-medium rounded-md",
-            badgeVariantClasses[item.badgeVariant || "default"]
-          ),
-          children: item.badge
-        }
-      ),
-      hasChildren && /* @__PURE__ */ jsxRuntimeExports.jsx(
-        ChevronDown,
-        {
-          className: cn(
-            "w-4 h-4 text-text-tertiary transition-transform",
-            isExpanded && "rotate-180"
-          ),
-          strokeWidth: 1.5
-        }
-      )
-    ] })
-  ] });
-  const baseClassName = cn(
-    "group flex items-center gap-2 rounded-md transition-all duration-normal",
-    collapsed ? "justify-center p-2" : "px-3 py-2",
-    level > 0 && !collapsed && "ml-6",
-    isActive && "bg-accent-primary/10",
-    !isActive && "hover:bg-bg-hover",
-    item.disabled && "opacity-50 cursor-not-allowed",
-    !item.disabled && "cursor-pointer"
-  );
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-    item.href && !hasChildren ? /* @__PURE__ */ jsxRuntimeExports.jsx(
-      Link,
-      {
-        to: item.href,
-        className: baseClassName,
-        onClick: handleClick,
-        title: collapsed ? item.label : void 0,
-        "data-testid": `sidebar-item-${item.id}`,
-        children: content
-      }
-    ) : /* @__PURE__ */ jsxRuntimeExports.jsx(
-      "button",
-      {
-        type: "button",
-        className: cn(baseClassName, "w-full text-left"),
-        onClick: handleClick,
-        disabled: item.disabled,
-        title: collapsed ? item.label : void 0,
-        "data-testid": `sidebar-item-${item.id}`,
-        children: content
-      }
-    ),
-    hasChildren && !collapsed && isExpanded && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "mt-1 space-y-1", children: item.children?.map((child) => /* @__PURE__ */ jsxRuntimeExports.jsx(
-      SidebarItemComponent,
-      {
-        item: child,
-        collapsed,
-        level: level + 1,
-        onItemClick
-      },
-      child.id
-    )) })
-  ] });
+function isElectronEnvironment$2() {
+  return typeof window !== "undefined" && typeof window.nexusAPI !== "undefined";
 }
-function SidebarNav({
-  items,
-  activeId,
-  onItemClick,
-  collapsed = false
-}) {
-  return /* @__PURE__ */ jsxRuntimeExports.jsx("nav", { className: "flex flex-col gap-1 px-2", "data-testid": "sidebar-nav", children: items.map((item) => /* @__PURE__ */ jsxRuntimeExports.jsx(
-    SidebarItemComponent,
-    {
-      item: { ...item, active: item.id === activeId || item.active },
-      collapsed,
-      onItemClick
-    },
-    item.id
-  )) });
-}
-function SidebarLogo({ collapsed = false }) {
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
-    Link,
-    {
-      to: "/",
-      className: "flex items-center gap-3 px-4 py-3 transition-colors hover:bg-bg-hover rounded-lg mx-2",
-      "data-testid": "sidebar-logo",
-      children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-8 h-8 rounded-lg bg-gradient-to-br from-accent-primary to-accent-secondary flex items-center justify-center", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Sparkles, { className: "w-5 h-5 text-white", strokeWidth: 1.5 }) }),
-        !collapsed && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-lg font-semibold text-text-primary tracking-tight", children: "Nexus" })
-      ]
+function useReviewNotifications() {
+  const [pendingCount, setPendingCount] = reactExports.useState(0);
+  const [activeReviewId, setActiveReviewId] = reactExports.useState(null);
+  const refreshPending = reactExports.useCallback(async () => {
+    if (!isElectronEnvironment$2()) {
+      setPendingCount(0);
+      return;
     }
-  );
-}
-function SidebarToggle({ collapsed, onToggle }) {
-  return /* @__PURE__ */ jsxRuntimeExports.jsx(
-    "button",
-    {
-      type: "button",
-      onClick: onToggle,
-      className: cn(
-        "flex items-center justify-center w-8 h-8 rounded-md",
-        "text-text-secondary hover:text-text-primary",
-        "hover:bg-bg-hover transition-colors",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary"
-      ),
-      "aria-label": collapsed ? "Expand sidebar" : "Collapse sidebar",
-      "data-testid": "sidebar-toggle",
-      children: collapsed ? /* @__PURE__ */ jsxRuntimeExports.jsx(ChevronRight, { className: "w-4 h-4", strokeWidth: 1.5 }) : /* @__PURE__ */ jsxRuntimeExports.jsx(ChevronLeft, { className: "w-4 h-4", strokeWidth: 1.5 })
-    }
-  );
-}
-function SidebarSection({
-  title,
-  children,
-  collapsed = false,
-  className
-}) {
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: cn("space-y-1", className), children: [
-    title && !collapsed && /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "px-4 py-2 text-xs font-semibold text-text-tertiary uppercase tracking-wider", children: title }),
-    children
-  ] });
-}
-function Sidebar({
-  collapsed = false,
-  onToggle,
-  children,
-  className,
-  header,
-  footer
-}) {
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
-    "aside",
-    {
-      className: cn(
-        "flex flex-col bg-bg-card border-r border-border-default",
-        "transition-all duration-normal ease-out",
-        "h-screen sticky top-0",
-        collapsed ? "w-16" : "w-60",
-        className
-      ),
-      style: {
-        width: collapsed ? SIDEBAR_WIDTH_COLLAPSED : SIDEBAR_WIDTH_EXPANDED
-      },
-      "data-testid": "sidebar",
-      "data-collapsed": collapsed,
-      children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between py-2 border-b border-border-default", children: [
-          header || /* @__PURE__ */ jsxRuntimeExports.jsx(SidebarLogo, { collapsed }),
-          onToggle && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: cn("pr-2", collapsed && "absolute right-0 top-3"), children: /* @__PURE__ */ jsxRuntimeExports.jsx(SidebarToggle, { collapsed, onToggle }) })
-        ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex-1 overflow-y-auto py-4", children }),
-        footer && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "border-t border-border-default py-2", children: footer })
-      ]
-    }
-  );
-}
-const defaultNavigationItems = [
-  {
-    id: "dashboard",
-    label: "Dashboard",
-    icon: LayoutDashboard,
-    href: "/dashboard"
-  },
-  {
-    id: "interview",
-    label: "Interview",
-    icon: MessageSquare,
-    href: "/genesis"
-  },
-  {
-    id: "tasks",
-    label: "Tasks",
-    icon: ListTodo,
-    href: "/evolution"
-  },
-  {
-    id: "agents",
-    label: "Agents",
-    icon: Bot,
-    href: "/agents"
-  },
-  {
-    id: "execution",
-    label: "Execution",
-    icon: Terminal,
-    href: "/execution"
-  }
-];
-const settingsNavigationItems = [
-  {
-    id: "settings",
-    label: "Settings",
-    icon: Settings,
-    href: "/settings"
-  }
-];
-const SIDEBAR_STATE_KEY = "nexus-sidebar-collapsed";
-const PAGES_WITH_SIDEBAR = [
-  "/dashboard",
-  "/genesis",
-  "/evolution",
-  "/agents",
-  "/execution",
-  "/settings"
-];
-const FULL_SCREEN_PAGES = ["/"];
-function RootLayout() {
-  const location = useLocation();
-  const isMobile = useIsMobile();
-  useGlobalShortcuts();
-  const [mobileMenuOpen, setMobileMenuOpen] = reactExports.useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = reactExports.useState(() => {
     try {
-      const saved = localStorage.getItem(SIDEBAR_STATE_KEY);
-      return saved === "true";
-    } catch {
-      return false;
+      const reviews = await window.nexusAPI.reviewList();
+      setPendingCount(Array.isArray(reviews) ? reviews.length : 0);
+    } catch (err) {
+      console.error("Failed to load pending reviews:", err);
     }
-  });
+  }, []);
+  const openReview = reactExports.useCallback((reviewId) => {
+    setActiveReviewId(reviewId);
+  }, []);
+  const closeReview = reactExports.useCallback(() => {
+    setActiveReviewId(null);
+  }, []);
   reactExports.useEffect(() => {
-    try {
-      localStorage.setItem(SIDEBAR_STATE_KEY, String(sidebarCollapsed));
-    } catch {
-    }
-  }, [sidebarCollapsed]);
+    void refreshPending();
+  }, [refreshPending]);
   reactExports.useEffect(() => {
-    setMobileMenuOpen(false);
-  }, [location.pathname]);
-  reactExports.useEffect(() => {
-    if (!isMobile) {
-      setMobileMenuOpen(false);
-    }
-  }, [isMobile]);
-  reactExports.useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.key === "Escape" && mobileMenuOpen) {
-        setMobileMenuOpen(false);
-      }
-    };
-    if (mobileMenuOpen) {
-      document.addEventListener("keydown", handleKeyDown);
-      document.body.style.overflow = "hidden";
-    }
+    if (!isElectronEnvironment$2()) return;
+    const unsubscribeRequested = window.nexusAPI.onReviewRequested((payload) => {
+      void refreshPending();
+      toast.warning("Human review requested", {
+        description: `Task ${payload.taskId} requires attention.`,
+        action: {
+          label: "Open",
+          onClick: () => {
+            openReview(payload.reviewId);
+          }
+        }
+      });
+    });
+    const unsubscribeApproved = window.nexusAPI.onReviewApproved((payload) => {
+      void refreshPending();
+      toast.success("Review approved", {
+        description: payload.resolution ? payload.resolution : "Execution can continue."
+      });
+    });
+    const unsubscribeRejected = window.nexusAPI.onReviewRejected((payload) => {
+      void refreshPending();
+      toast.error("Review rejected", {
+        description: payload.feedback || "Please check the review details."
+      });
+    });
     return () => {
-      document.removeEventListener("keydown", handleKeyDown);
-      document.body.style.overflow = "";
+      unsubscribeRequested();
+      unsubscribeApproved();
+      unsubscribeRejected();
     };
-  }, [mobileMenuOpen]);
-  const handleSidebarToggle = reactExports.useCallback(() => {
-    setSidebarCollapsed((prev) => !prev);
-  }, []);
-  const handleMobileMenuToggle = reactExports.useCallback(() => {
-    setMobileMenuOpen((prev) => !prev);
-  }, []);
-  const handleMobileMenuClose = reactExports.useCallback(() => {
-    setMobileMenuOpen(false);
-  }, []);
-  reactExports.useEffect(() => {
-    uiBackendBridge.initialize();
-    return () => {
-      uiBackendBridge.cleanup();
-    };
-  }, []);
-  const showSidebar = PAGES_WITH_SIDEBAR.some((path) => location.pathname.startsWith(path)) && !FULL_SCREEN_PAGES.includes(location.pathname);
-  if (!showSidebar) {
-    return /* @__PURE__ */ jsxRuntimeExports.jsx(
-      "div",
-      {
-        className: "min-h-screen bg-bg-dark text-text-primary",
-        "data-testid": "root-layout",
-        children: /* @__PURE__ */ jsxRuntimeExports.jsx(Outlet, {})
-      }
-    );
-  }
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
-    "div",
-    {
-      className: "flex min-h-screen bg-bg-dark text-text-primary",
-      "data-testid": "root-layout",
-      children: [
-        isMobile && /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "button",
-          {
-            type: "button",
-            onClick: handleMobileMenuToggle,
-            className: cn(
-              "fixed top-3 left-3 z-50 flex items-center justify-center",
-              "w-10 h-10 rounded-lg bg-bg-card border border-border-default",
-              "text-text-secondary hover:text-text-primary hover:bg-bg-hover",
-              "transition-colors duration-normal",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary",
-              mobileMenuOpen && "bg-bg-hover"
-            ),
-            "aria-label": mobileMenuOpen ? "Close menu" : "Open menu",
-            "aria-expanded": mobileMenuOpen,
-            "data-testid": "mobile-menu-button",
-            children: mobileMenuOpen ? /* @__PURE__ */ jsxRuntimeExports.jsx(X$1, { className: "w-5 h-5", strokeWidth: 1.5 }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Menu, { className: "w-5 h-5", strokeWidth: 1.5 })
-          }
-        ),
-        isMobile && mobileMenuOpen && /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "div",
-          {
-            className: "fixed inset-0 z-40 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200",
-            onClick: handleMobileMenuClose,
-            "aria-hidden": "true",
-            "data-testid": "mobile-menu-overlay"
-          }
-        ),
-        (!isMobile || mobileMenuOpen) && /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "div",
-          {
-            className: cn(
-              isMobile && [
-                "fixed left-0 top-0 z-40 h-full",
-                "animate-in slide-in-from-left duration-300"
-              ]
-            ),
-            children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
-              Sidebar,
-              {
-                collapsed: isMobile ? false : sidebarCollapsed,
-                onToggle: isMobile ? void 0 : handleSidebarToggle,
-                "data-testid": "app-sidebar",
-                children: [
-                  /* @__PURE__ */ jsxRuntimeExports.jsx(SidebarSection, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-                    SidebarNav,
-                    {
-                      items: defaultNavigationItems,
-                      collapsed: isMobile ? false : sidebarCollapsed
-                    }
-                  ) }),
-                  /* @__PURE__ */ jsxRuntimeExports.jsx(SidebarSection, { className: "mt-auto pt-4 border-t border-border-default", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-                    SidebarNav,
-                    {
-                      items: settingsNavigationItems,
-                      collapsed: isMobile ? false : sidebarCollapsed
-                    }
-                  ) })
-                ]
-              }
-            )
-          }
-        ),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "div",
-          {
-            className: cn(
-              "flex flex-col flex-1 min-w-0",
-              isMobile && "pt-14"
-              // Add top padding for mobile menu button
-            ),
-            style: isMobile ? void 0 : {
-              width: `calc(100% - ${sidebarCollapsed ? SIDEBAR_WIDTH_COLLAPSED : SIDEBAR_WIDTH_EXPANDED}px)`
-            },
-            "data-testid": "main-content-area",
-            children: /* @__PURE__ */ jsxRuntimeExports.jsx(Outlet, {})
-          }
-        )
-      ]
-    }
-  );
+  }, [openReview, refreshPending]);
+  return {
+    pendingCount,
+    activeReviewId,
+    openReview,
+    closeReview,
+    refreshPending
+  };
 }
-const Card = reactExports.forwardRef(
-  ({ className, ...props }, ref) => /* @__PURE__ */ jsxRuntimeExports.jsx(
-    "div",
-    {
-      ref,
-      className: cn(
-        "rounded-lg border bg-card text-card-foreground shadow-sm",
-        className
-      ),
-      ...props
-    }
-  )
-);
-Card.displayName = "Card";
-const CardHeader = reactExports.forwardRef(
-  ({ className, ...props }, ref) => /* @__PURE__ */ jsxRuntimeExports.jsx("div", { ref, className: cn("flex flex-col space-y-1.5 p-6", className), ...props })
-);
-CardHeader.displayName = "CardHeader";
-const CardTitle = reactExports.forwardRef(
-  ({ className, ...props }, ref) => /* @__PURE__ */ jsxRuntimeExports.jsx(
-    "h3",
-    {
-      ref,
-      className: cn("text-2xl font-semibold leading-none tracking-tight", className),
-      ...props
-    }
-  )
-);
-CardTitle.displayName = "CardTitle";
-const CardDescription = reactExports.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsxRuntimeExports.jsx("p", { ref, className: cn("text-sm text-muted-foreground", className), ...props }));
-CardDescription.displayName = "CardDescription";
-const CardContent = reactExports.forwardRef(
-  ({ className, ...props }, ref) => /* @__PURE__ */ jsxRuntimeExports.jsx("div", { ref, className: cn("p-6 pt-0", className), ...props })
-);
-CardContent.displayName = "CardContent";
-const CardFooter = reactExports.forwardRef(
-  ({ className, ...props }, ref) => /* @__PURE__ */ jsxRuntimeExports.jsx("div", { ref, className: cn("flex items-center p-6 pt-0", className), ...props })
-);
-CardFooter.displayName = "CardFooter";
 function composeEventHandlers(originalEventHandler, ourEventHandler, { checkForDefaultPrevented = true } = {}) {
   return function handleEvent(event) {
     originalEventHandler?.(event);
@@ -27384,6 +26990,711 @@ const Button = reactExports.forwardRef(
   }
 );
 Button.displayName = "Button";
+function isElectronEnvironment$1() {
+  return typeof window !== "undefined" && typeof window.nexusAPI !== "undefined";
+}
+const reasonLabels = {
+  qa_exhausted: "QA iterations exhausted",
+  merge_conflict: "Merge conflict detected",
+  manual_request: "Manual review requested"
+};
+function ReviewDetailModal({
+  reviewId,
+  isOpen,
+  onClose,
+  onApprove,
+  onReject
+}) {
+  const [review, setReview] = reactExports.useState(null);
+  const [isLoading, setIsLoading] = reactExports.useState(false);
+  const [isSubmitting, setIsSubmitting] = reactExports.useState(false);
+  const [error, setError] = reactExports.useState(null);
+  const [resolution, setResolution] = reactExports.useState("");
+  const [feedback, setFeedback] = reactExports.useState("");
+  const loadReview = reactExports.useCallback(async () => {
+    if (!reviewId) return;
+    if (!isElectronEnvironment$1()) {
+      setError("Review details are only available in the desktop app.");
+      return;
+    }
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await window.nexusAPI.reviewGet(reviewId);
+      setReview(response);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to load review details.";
+      setError(message);
+      setReview(null);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [reviewId]);
+  reactExports.useEffect(() => {
+    if (!isOpen) {
+      setReview(null);
+      setError(null);
+      setResolution("");
+      setFeedback("");
+      return;
+    }
+    void loadReview();
+  }, [isOpen, loadReview]);
+  const handleResolutionChange = (event) => {
+    setResolution(event.target.value);
+  };
+  const handleFeedbackChange = (event) => {
+    setFeedback(event.target.value);
+  };
+  const handleApprove = async () => {
+    if (!reviewId) return;
+    setIsSubmitting(true);
+    setError(null);
+    try {
+      await onApprove(reviewId, resolution.trim() || void 0);
+      onClose();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to approve review.";
+      setError(message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+  const handleReject = async () => {
+    if (!reviewId) return;
+    if (!feedback.trim()) {
+      setError("Feedback is required to reject this review.");
+      return;
+    }
+    setIsSubmitting(true);
+    setError(null);
+    try {
+      await onReject(reviewId, feedback.trim());
+      onClose();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to reject review.";
+      setError(message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+  const context = review?.context;
+  const conflictFiles = context && Array.isArray(context.conflictFiles) ? context.conflictFiles.filter((item) => typeof item === "string") : [];
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(Dialog, { open: isOpen, onOpenChange: (open) => {
+    if (!open) onClose();
+  }, children: /* @__PURE__ */ jsxRuntimeExports.jsxs(DialogContent, { className: "sm:max-w-[640px]", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs(DialogHeader, { children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx(DialogTitle, { children: "Review Details" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(DialogDescription, { children: review?.reason ? reasonLabels[review.reason] ?? review.reason : "Pending review" })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-4", children: [
+      error && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "rounded-md border border-accent-error/40 bg-accent-error/10 px-3 py-2 text-sm text-accent-error", children: error }),
+      isLoading && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2 text-text-secondary", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "h-4 w-4 animate-spin" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Loading review details..." })
+      ] }),
+      !isLoading && review && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-4", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid gap-2 text-sm", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-wrap items-center gap-2", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-text-tertiary", children: "Task ID:" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "font-mono text-text-secondary", children: review.taskId })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-wrap items-center gap-2", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-text-tertiary", children: "Project ID:" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "font-mono text-text-secondary", children: review.projectId })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-wrap items-center gap-2", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-text-tertiary", children: "Status:" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-text-secondary capitalize", children: review.status })
+          ] }),
+          typeof context?.qaIterations === "number" && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-wrap items-center gap-2", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-text-tertiary", children: "QA Iterations:" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-text-secondary", children: context.qaIterations })
+          ] }),
+          context?.escalationReason && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-wrap items-center gap-2", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-text-tertiary", children: "Escalation:" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-text-secondary", children: context.escalationReason })
+          ] }),
+          context?.suggestedAction && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-wrap items-center gap-2", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-text-tertiary", children: "Suggested Action:" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-text-secondary", children: context.suggestedAction })
+          ] })
+        ] }),
+        conflictFiles.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "rounded-md border border-border-default bg-bg-muted/50 p-3", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm font-medium text-text-primary", children: "Conflict Files" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("ul", { className: "mt-2 space-y-1 text-xs text-text-secondary", children: conflictFiles.map((file) => /* @__PURE__ */ jsxRuntimeExports.jsx("li", { className: "font-mono", children: file }, file)) })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-3", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-sm font-medium", htmlFor: "review-resolution", children: "Resolution Notes (optional)" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "textarea",
+              {
+                id: "review-resolution",
+                value: resolution,
+                onChange: handleResolutionChange,
+                placeholder: "Add optional notes for approval...",
+                className: "mt-2 w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+                rows: 3
+              }
+            )
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-sm font-medium", htmlFor: "review-feedback", children: "Rejection Feedback (required to reject)" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "textarea",
+              {
+                id: "review-feedback",
+                value: feedback,
+                onChange: handleFeedbackChange,
+                placeholder: "Explain why the review is rejected...",
+                className: "mt-2 w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+                rows: 3
+              }
+            )
+          ] })
+        ] })
+      ] })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs(DialogFooter, { className: "gap-2", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        Button,
+        {
+          variant: "outline",
+          onClick: () => void handleReject(),
+          disabled: isSubmitting || !review,
+          children: "Reject"
+        }
+      ),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        Button,
+        {
+          onClick: () => void handleApprove(),
+          disabled: isSubmitting || !review,
+          children: "Approve"
+        }
+      )
+    ] })
+  ] }) });
+}
+const SIDEBAR_WIDTH_EXPANDED = 240;
+const SIDEBAR_WIDTH_COLLAPSED = 64;
+const badgeVariantClasses = {
+  default: "bg-bg-hover text-text-primary",
+  success: "bg-accent-success/20 text-accent-success",
+  warning: "bg-accent-warning/20 text-accent-warning",
+  error: "bg-accent-error/20 text-accent-error",
+  info: "bg-accent-info/20 text-accent-info",
+  purple: "bg-accent-primary/20 text-accent-primary"
+};
+function SidebarItemComponent({
+  item,
+  collapsed = false,
+  level = 0,
+  onItemClick
+}) {
+  const location = useLocation();
+  const [isExpanded, setIsExpanded] = reactExports.useState(false);
+  const isActive = item.href ? location.pathname === item.href || location.pathname.startsWith(item.href + "/") : item.active;
+  const hasChildren = item.children && item.children.length > 0;
+  const handleClick = reactExports.useCallback(
+    (e) => {
+      if (item.disabled) {
+        e.preventDefault();
+        return;
+      }
+      if (hasChildren && !collapsed) {
+        e.preventDefault();
+        setIsExpanded((prev) => !prev);
+      }
+      if (item.onClick) {
+        item.onClick();
+      }
+      if (onItemClick) {
+        onItemClick(item.id);
+      }
+    },
+    [item, hasChildren, collapsed, onItemClick]
+  );
+  const Icon2 = item.icon;
+  const content = /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "span",
+      {
+        className: cn(
+          "flex items-center justify-center shrink-0",
+          collapsed ? "w-10 h-10" : "w-8 h-8"
+        ),
+        children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+          Icon2,
+          {
+            className: cn(
+              "transition-colors",
+              collapsed ? "w-5 h-5" : "w-4 h-4",
+              isActive ? "text-accent-primary" : "text-text-secondary group-hover:text-text-primary"
+            ),
+            strokeWidth: 1.5
+          }
+        )
+      }
+    ),
+    !collapsed && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "span",
+        {
+          className: cn(
+            "flex-1 text-sm font-medium truncate transition-colors",
+            isActive ? "text-text-primary" : "text-text-secondary group-hover:text-text-primary"
+          ),
+          children: item.label
+        }
+      ),
+      item.badge !== void 0 && /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "span",
+        {
+          className: cn(
+            "px-1.5 py-0.5 text-xs font-medium rounded-md",
+            badgeVariantClasses[item.badgeVariant || "default"]
+          ),
+          children: item.badge
+        }
+      ),
+      hasChildren && /* @__PURE__ */ jsxRuntimeExports.jsx(
+        ChevronDown,
+        {
+          className: cn(
+            "w-4 h-4 text-text-tertiary transition-transform",
+            isExpanded && "rotate-180"
+          ),
+          strokeWidth: 1.5
+        }
+      )
+    ] })
+  ] });
+  const baseClassName = cn(
+    "group flex items-center gap-2 rounded-md transition-all duration-normal",
+    collapsed ? "justify-center p-2" : "px-3 py-2",
+    level > 0 && !collapsed && "ml-6",
+    isActive && "bg-accent-primary/10",
+    !isActive && "hover:bg-bg-hover",
+    item.disabled && "opacity-50 cursor-not-allowed",
+    !item.disabled && "cursor-pointer"
+  );
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+    item.href && !hasChildren ? /* @__PURE__ */ jsxRuntimeExports.jsx(
+      Link,
+      {
+        to: item.href,
+        className: baseClassName,
+        onClick: handleClick,
+        title: collapsed ? item.label : void 0,
+        "data-testid": `sidebar-item-${item.id}`,
+        children: content
+      }
+    ) : /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "button",
+      {
+        type: "button",
+        className: cn(baseClassName, "w-full text-left"),
+        onClick: handleClick,
+        disabled: item.disabled,
+        title: collapsed ? item.label : void 0,
+        "data-testid": `sidebar-item-${item.id}`,
+        children: content
+      }
+    ),
+    hasChildren && !collapsed && isExpanded && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "mt-1 space-y-1", children: item.children?.map((child) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+      SidebarItemComponent,
+      {
+        item: child,
+        collapsed,
+        level: level + 1,
+        onItemClick
+      },
+      child.id
+    )) })
+  ] });
+}
+function SidebarNav({
+  items,
+  activeId,
+  onItemClick,
+  collapsed = false
+}) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("nav", { className: "flex flex-col gap-1 px-2", "data-testid": "sidebar-nav", children: items.map((item) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+    SidebarItemComponent,
+    {
+      item: { ...item, active: item.id === activeId || item.active },
+      collapsed,
+      onItemClick
+    },
+    item.id
+  )) });
+}
+function SidebarLogo({ collapsed = false }) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    Link,
+    {
+      to: "/",
+      className: "flex items-center gap-3 px-4 py-3 transition-colors hover:bg-bg-hover rounded-lg mx-2",
+      "data-testid": "sidebar-logo",
+      children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-8 h-8 rounded-lg bg-gradient-to-br from-accent-primary to-accent-secondary flex items-center justify-center", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Sparkles, { className: "w-5 h-5 text-white", strokeWidth: 1.5 }) }),
+        !collapsed && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-lg font-semibold text-text-primary tracking-tight", children: "Nexus" })
+      ]
+    }
+  );
+}
+function SidebarToggle({ collapsed, onToggle }) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(
+    "button",
+    {
+      type: "button",
+      onClick: onToggle,
+      className: cn(
+        "flex items-center justify-center w-8 h-8 rounded-md",
+        "text-text-secondary hover:text-text-primary",
+        "hover:bg-bg-hover transition-colors",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary"
+      ),
+      "aria-label": collapsed ? "Expand sidebar" : "Collapse sidebar",
+      "data-testid": "sidebar-toggle",
+      children: collapsed ? /* @__PURE__ */ jsxRuntimeExports.jsx(ChevronRight, { className: "w-4 h-4", strokeWidth: 1.5 }) : /* @__PURE__ */ jsxRuntimeExports.jsx(ChevronLeft, { className: "w-4 h-4", strokeWidth: 1.5 })
+    }
+  );
+}
+function SidebarSection({
+  title,
+  children,
+  collapsed = false,
+  className
+}) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: cn("space-y-1", className), children: [
+    title && !collapsed && /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "px-4 py-2 text-xs font-semibold text-text-tertiary uppercase tracking-wider", children: title }),
+    children
+  ] });
+}
+function Sidebar({
+  collapsed = false,
+  onToggle,
+  children,
+  className,
+  header,
+  footer
+}) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    "aside",
+    {
+      className: cn(
+        "flex flex-col bg-bg-card border-r border-border-default",
+        "transition-all duration-normal ease-out",
+        "h-screen sticky top-0",
+        collapsed ? "w-16" : "w-60",
+        className
+      ),
+      style: {
+        width: collapsed ? SIDEBAR_WIDTH_COLLAPSED : SIDEBAR_WIDTH_EXPANDED
+      },
+      "data-testid": "sidebar",
+      "data-collapsed": collapsed,
+      children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between py-2 border-b border-border-default", children: [
+          header || /* @__PURE__ */ jsxRuntimeExports.jsx(SidebarLogo, { collapsed }),
+          onToggle && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: cn("pr-2", collapsed && "absolute right-0 top-3"), children: /* @__PURE__ */ jsxRuntimeExports.jsx(SidebarToggle, { collapsed, onToggle }) })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex-1 overflow-y-auto py-4", children }),
+        footer && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "border-t border-border-default py-2", children: footer })
+      ]
+    }
+  );
+}
+const defaultNavigationItems = [
+  {
+    id: "dashboard",
+    label: "Dashboard",
+    icon: LayoutDashboard,
+    href: "/dashboard"
+  },
+  {
+    id: "interview",
+    label: "Interview",
+    icon: MessageSquare,
+    href: "/genesis"
+  },
+  {
+    id: "tasks",
+    label: "Tasks",
+    icon: ListTodo,
+    href: "/evolution"
+  },
+  {
+    id: "agents",
+    label: "Agents",
+    icon: Bot,
+    href: "/agents"
+  },
+  {
+    id: "execution",
+    label: "Execution",
+    icon: Terminal,
+    href: "/execution"
+  }
+];
+const settingsNavigationItems = [
+  {
+    id: "settings",
+    label: "Settings",
+    icon: Settings,
+    href: "/settings"
+  }
+];
+const SIDEBAR_STATE_KEY = "nexus-sidebar-collapsed";
+const PAGES_WITH_SIDEBAR = [
+  "/dashboard",
+  "/genesis",
+  "/evolution",
+  "/agents",
+  "/execution",
+  "/settings"
+];
+const FULL_SCREEN_PAGES = ["/"];
+function RootLayout() {
+  const location = useLocation();
+  const isMobile = useIsMobile();
+  const {
+    pendingCount,
+    activeReviewId,
+    closeReview,
+    refreshPending
+  } = useReviewNotifications();
+  useGlobalShortcuts();
+  const [mobileMenuOpen, setMobileMenuOpen] = reactExports.useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = reactExports.useState(() => {
+    try {
+      const saved = localStorage.getItem(SIDEBAR_STATE_KEY);
+      return saved === "true";
+    } catch {
+      return false;
+    }
+  });
+  reactExports.useEffect(() => {
+    try {
+      localStorage.setItem(SIDEBAR_STATE_KEY, String(sidebarCollapsed));
+    } catch {
+    }
+  }, [sidebarCollapsed]);
+  reactExports.useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location.pathname]);
+  reactExports.useEffect(() => {
+    if (!isMobile) {
+      setMobileMenuOpen(false);
+    }
+  }, [isMobile]);
+  reactExports.useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape" && mobileMenuOpen) {
+        setMobileMenuOpen(false);
+      }
+    };
+    if (mobileMenuOpen) {
+      document.addEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = "hidden";
+    }
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = "";
+    };
+  }, [mobileMenuOpen]);
+  const handleSidebarToggle = reactExports.useCallback(() => {
+    setSidebarCollapsed((prev) => !prev);
+  }, []);
+  const handleMobileMenuToggle = reactExports.useCallback(() => {
+    setMobileMenuOpen((prev) => !prev);
+  }, []);
+  const handleMobileMenuClose = reactExports.useCallback(() => {
+    setMobileMenuOpen(false);
+  }, []);
+  const navigationItems = reactExports.useMemo(() => {
+    return defaultNavigationItems.map((item) => {
+      if (item.id !== "execution") return item;
+      return {
+        ...item,
+        badge: pendingCount > 0 ? pendingCount : void 0,
+        badgeVariant: pendingCount > 0 ? "warning" : item.badgeVariant
+      };
+    });
+  }, [pendingCount]);
+  const handleReviewApprove = reactExports.useCallback(async (reviewId, resolution) => {
+    if (typeof window === "undefined" || typeof window.nexusAPI === "undefined") {
+      throw new Error("Review actions require the desktop app.");
+    }
+    await window.nexusAPI.reviewApprove(reviewId, resolution);
+    await refreshPending();
+  }, [refreshPending]);
+  const handleReviewReject = reactExports.useCallback(async (reviewId, feedback) => {
+    if (typeof window === "undefined" || typeof window.nexusAPI === "undefined") {
+      throw new Error("Review actions require the desktop app.");
+    }
+    await window.nexusAPI.reviewReject(reviewId, feedback);
+    await refreshPending();
+  }, [refreshPending]);
+  reactExports.useEffect(() => {
+    uiBackendBridge.initialize();
+    return () => {
+      uiBackendBridge.cleanup();
+    };
+  }, []);
+  const showSidebar = PAGES_WITH_SIDEBAR.some((path) => location.pathname.startsWith(path)) && !FULL_SCREEN_PAGES.includes(location.pathname);
+  if (!showSidebar) {
+    return /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "div",
+      {
+        className: "min-h-screen bg-bg-dark text-text-primary",
+        "data-testid": "root-layout",
+        children: /* @__PURE__ */ jsxRuntimeExports.jsx(Outlet, {})
+      }
+    );
+  }
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    "div",
+    {
+      className: "flex min-h-screen bg-bg-dark text-text-primary",
+      "data-testid": "root-layout",
+      children: [
+        isMobile && /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "button",
+          {
+            type: "button",
+            onClick: handleMobileMenuToggle,
+            className: cn(
+              "fixed top-3 left-3 z-50 flex items-center justify-center",
+              "w-10 h-10 rounded-lg bg-bg-card border border-border-default",
+              "text-text-secondary hover:text-text-primary hover:bg-bg-hover",
+              "transition-colors duration-normal",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary",
+              mobileMenuOpen && "bg-bg-hover"
+            ),
+            "aria-label": mobileMenuOpen ? "Close menu" : "Open menu",
+            "aria-expanded": mobileMenuOpen,
+            "data-testid": "mobile-menu-button",
+            children: mobileMenuOpen ? /* @__PURE__ */ jsxRuntimeExports.jsx(X$1, { className: "w-5 h-5", strokeWidth: 1.5 }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Menu, { className: "w-5 h-5", strokeWidth: 1.5 })
+          }
+        ),
+        isMobile && mobileMenuOpen && /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "div",
+          {
+            className: "fixed inset-0 z-40 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200",
+            onClick: handleMobileMenuClose,
+            "aria-hidden": "true",
+            "data-testid": "mobile-menu-overlay"
+          }
+        ),
+        (!isMobile || mobileMenuOpen) && /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "div",
+          {
+            className: cn(
+              isMobile && [
+                "fixed left-0 top-0 z-40 h-full",
+                "animate-in slide-in-from-left duration-300"
+              ]
+            ),
+            children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
+              Sidebar,
+              {
+                collapsed: isMobile ? false : sidebarCollapsed,
+                onToggle: isMobile ? void 0 : handleSidebarToggle,
+                "data-testid": "app-sidebar",
+                children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(SidebarSection, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+                    SidebarNav,
+                    {
+                      items: navigationItems,
+                      collapsed: isMobile ? false : sidebarCollapsed
+                    }
+                  ) }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(SidebarSection, { className: "mt-auto pt-4 border-t border-border-default", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+                    SidebarNav,
+                    {
+                      items: settingsNavigationItems,
+                      collapsed: isMobile ? false : sidebarCollapsed
+                    }
+                  ) })
+                ]
+              }
+            )
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "div",
+          {
+            className: cn(
+              "flex flex-col flex-1 min-w-0",
+              isMobile && "pt-14"
+              // Add top padding for mobile menu button
+            ),
+            style: isMobile ? void 0 : {
+              width: `calc(100% - ${sidebarCollapsed ? SIDEBAR_WIDTH_COLLAPSED : SIDEBAR_WIDTH_EXPANDED}px)`
+            },
+            "data-testid": "main-content-area",
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(Outlet, {}),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                ReviewDetailModal,
+                {
+                  reviewId: activeReviewId,
+                  isOpen: activeReviewId !== null,
+                  onClose: closeReview,
+                  onApprove: handleReviewApprove,
+                  onReject: handleReviewReject
+                }
+              )
+            ]
+          }
+        )
+      ]
+    }
+  );
+}
+const Card = reactExports.forwardRef(
+  ({ className, ...props }, ref) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+    "div",
+    {
+      ref,
+      className: cn(
+        "rounded-lg border bg-card text-card-foreground shadow-sm",
+        className
+      ),
+      ...props
+    }
+  )
+);
+Card.displayName = "Card";
+const CardHeader = reactExports.forwardRef(
+  ({ className, ...props }, ref) => /* @__PURE__ */ jsxRuntimeExports.jsx("div", { ref, className: cn("flex flex-col space-y-1.5 p-6", className), ...props })
+);
+CardHeader.displayName = "CardHeader";
+const CardTitle = reactExports.forwardRef(
+  ({ className, ...props }, ref) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+    "h3",
+    {
+      ref,
+      className: cn("text-2xl font-semibold leading-none tracking-tight", className),
+      ...props
+    }
+  )
+);
+CardTitle.displayName = "CardTitle";
+const CardDescription = reactExports.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsxRuntimeExports.jsx("p", { ref, className: cn("text-sm text-muted-foreground", className), ...props }));
+CardDescription.displayName = "CardDescription";
+const CardContent = reactExports.forwardRef(
+  ({ className, ...props }, ref) => /* @__PURE__ */ jsxRuntimeExports.jsx("div", { ref, className: cn("p-6 pt-0", className), ...props })
+);
+CardContent.displayName = "CardContent";
+const CardFooter = reactExports.forwardRef(
+  ({ className, ...props }, ref) => /* @__PURE__ */ jsxRuntimeExports.jsx("div", { ref, className: cn("flex items-center p-6 pt-0", className), ...props })
+);
+CardFooter.displayName = "CardFooter";
 const inputVariants = cva(
   // Base styles
   [
@@ -27652,10 +27963,13 @@ function ProjectSelector({
           const pathCheck = await window.nexusAPI.projectInit.isPathEmpty(result.path);
           if (!pathCheck.exists) {
             setValidationStatus("valid");
+            setError(null);
           } else if (pathCheck.empty) {
             setValidationStatus("valid");
+            setError(null);
           } else {
-            setValidationStatus("valid");
+            setValidationStatus("invalid");
+            setError("Genesis mode requires an empty directory to avoid overwriting existing files. Please select an empty folder or create a new one.");
           }
         }
       }
@@ -27671,6 +27985,9 @@ function ProjectSelector({
     }
     if (mode === "genesis" && !projectName.trim()) {
       setError("Please enter a project name");
+      return;
+    }
+    if (validationStatus === "invalid") {
       return;
     }
     if (mode === "genesis") {
@@ -27770,7 +28087,9 @@ function ProjectSelector({
               readOnly: true,
               placeholder: "Select a folder...",
               className: "flex-1 bg-muted/50 cursor-pointer",
-              onClick: handleSelectFolder
+              onClick: () => {
+                void handleSelectFolder();
+              }
             }
           ),
           /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -27780,7 +28099,9 @@ function ProjectSelector({
               variant: "outline",
               size: "icon",
               "data-testid": "folder-select-btn",
-              onClick: handleSelectFolder,
+              onClick: () => {
+                void handleSelectFolder();
+              },
               disabled: isLoading,
               className: "shrink-0",
               children: /* @__PURE__ */ jsxRuntimeExports.jsx(FolderOpen, { className: "h-4 w-4" })
@@ -27816,7 +28137,9 @@ function ProjectSelector({
         Button,
         {
           type: "button",
-          onClick: handleConfirm,
+          onClick: () => {
+            void handleConfirm();
+          },
           "data-testid": "confirm-btn",
           disabled: isLoading || !selectedPath || mode === "genesis" && !projectName.trim(),
           className: cn(
@@ -27901,7 +28224,7 @@ function ModeSelectorPage() {
       void loadLegacyProjects();
     }
   };
-  const handleProjectSelected = (project) => {
+  const handleProjectSelected = async (project) => {
     console.log("[ModeSelectorPage] Project selected:", project);
     setCurrentProject({
       id: project.id,
@@ -27910,16 +28233,25 @@ function ModeSelectorPage() {
       mode: projectSelectorMode
     });
     if (projectSelectorMode === "genesis") {
-      void navigate("/genesis");
-      void uiBackendBridge.startGenesis().catch((error) => {
+      try {
+        await uiBackendBridge.startGenesis(project.path);
+        void navigate("/genesis");
+      } catch (error) {
         console.error("Failed to start Genesis:", error);
-      });
+        setProjectsError("Failed to initialize project. Please try again.");
+      }
     } else {
-      void navigate("/evolution");
-      void uiBackendBridge.startEvolution(project.id).catch((error) => {
+      try {
+        await uiBackendBridge.startEvolution(project.id);
+        void navigate("/evolution");
+      } catch (error) {
         console.error("Failed to start Evolution:", error);
-      });
+        setProjectsError("Failed to load project. Please try again.");
+      }
     }
+  };
+  const handleProjectSelectedWrapper = (project) => {
+    void handleProjectSelected(project);
   };
   const handleLegacySelectProject = (projectId) => {
     setShowLegacyModal(false);
@@ -27997,7 +28329,7 @@ function ModeSelectorPage() {
         mode: projectSelectorMode,
         open: showProjectSelector,
         onOpenChange: setShowProjectSelector,
-        onProjectSelected: handleProjectSelected,
+        onProjectSelected: handleProjectSelectedWrapper,
         onCancel: () => {
           setShowProjectSelector(false);
         }
@@ -28382,7 +28714,6 @@ function useNexusEvents() {
   const setStage = useInterviewStore((s) => s.setStage);
   const addRequirement = useInterviewStore((s) => s.addRequirement);
   const refreshMetrics = useMetricsStore((s) => s.loadMetrics);
-  const addToast = useUIStore((s) => s.addToast);
   reactExports.useEffect(() => {
     if (isSubscribed.current) return;
     if (typeof window.nexusAPI === "undefined") {
@@ -28425,45 +28756,27 @@ function useNexusEvents() {
           case "task:failed": {
             const p = payload;
             updateTask(p.taskId, { status: "failed" });
-            addToast({
-              id: `task-failed-${p.taskId}`,
-              type: "error",
-              message: `Task failed: ${p.error || "Unknown error"}`
-            });
+            toast.error(`Task failed: ${p.error || "Unknown error"}`);
             break;
           }
           case "task:escalated": {
             const p = payload;
             updateTask(p.taskId, { status: "failed" });
-            addToast({
-              id: `task-escalated-${p.taskId}`,
-              type: "info",
-              // Use 'info' as warning is not supported
-              message: `Task escalated for human review: ${p.reason || "Max iterations exceeded"}`
-            });
+            toast.warning(`Task escalated for human review: ${p.reason || "Max iterations exceeded"}`);
             break;
           }
           case "project:status-changed": {
             const p = payload;
-            console.log(`[useNexusEvents] Project ${p.projectId} status: ${p.previousStatus} -> ${p.newStatus}`);
+            console.log(`[useNexusEvents] Project ${p.projectId} status: ${p.previousStatus ?? "unknown"} -> ${p.newStatus ?? "unknown"}`);
             break;
           }
           case "project:completed": {
-            const p = payload;
-            addToast({
-              id: `project-completed-${p.projectId}`,
-              type: "success",
-              message: "Project completed successfully!"
-            });
+            toast.success("Project completed successfully!");
             break;
           }
           case "project:failed": {
             const p = payload;
-            addToast({
-              id: `project-failed-${p.projectId}`,
-              type: "error",
-              message: `Project failed: ${p.error || "Unknown error"}`
-            });
+            toast.error(`Project failed: ${p.error || "Unknown error"}`);
             break;
           }
           case "interview:started": {
@@ -28473,11 +28786,7 @@ function useNexusEvents() {
           case "interview:completed": {
             const p = payload;
             setStage("complete");
-            addToast({
-              id: `interview-completed-${p.projectId}`,
-              type: "success",
-              message: `Interview completed with ${p.totalRequirements || 0} requirements captured`
-            });
+            toast.success(`Interview completed with ${p.totalRequirements || 0} requirements captured`);
             break;
           }
           case "interview:requirement-captured": {
@@ -28503,11 +28812,7 @@ function useNexusEvents() {
             void loadFeatures(p.projectId);
             void loadTasks(p.projectId);
             void refreshMetrics();
-            addToast({
-              id: `planning-completed-${p.projectId}`,
-              type: "success",
-              message: `Planning complete! ${p.taskCount ?? 0} tasks created across ${p.featureCount ?? 0} features.`
-            });
+            toast.success(`Planning complete! ${p.taskCount ?? 0} tasks created across ${p.featureCount ?? 0} features.`);
             break;
           }
           case "qa:build-completed":
@@ -28517,31 +28822,18 @@ function useNexusEvents() {
             const p = payload;
             const stepType = type.split(":")[1]?.replace("-completed", "") || "unknown";
             if (!p.success) {
-              addToast({
-                id: `qa-${stepType}-failed-${p.taskId}`,
-                type: "error",
-                // Use 'error' for QA failures
-                message: `QA ${stepType} failed for task`
-              });
+              toast.error(`QA ${stepType} failed for task`);
             }
             break;
           }
           case "system:checkpoint-created": {
             const p = payload;
-            addToast({
-              id: `checkpoint-created-${p.checkpointId}`,
-              type: "info",
-              message: `Checkpoint created: ${p.reason || "Manual checkpoint"}`
-            });
+            console.log(`[useNexusEvents] Checkpoint created: ${p.checkpointId ?? "unknown"}, reason: ${p.reason ?? "Manual checkpoint"}`);
             break;
           }
           case "system:error": {
             const p = payload;
-            addToast({
-              id: `system-error-${Date.now()}`,
-              type: "error",
-              message: `System error: ${p.error || "Unknown error"}`
-            });
+            toast.error(`System error: ${p.error || "Unknown error"}`);
             break;
           }
           default:
@@ -28566,8 +28858,7 @@ function useNexusEvents() {
     updateAgent,
     setStage,
     addRequirement,
-    refreshMetrics,
-    addToast
+    refreshMetrics
   ]);
 }
 function useRealTimeUpdates() {
@@ -28589,7 +28880,7 @@ function useRealTimeUpdates() {
     console.log("[useRealTimeUpdates] Setting up real-time event subscriptions");
     isSubscribed.current = true;
     const unsubscribers = [];
-    if (typeof window.nexusAPI.onMetricsUpdate === "function") {
+    if (typeof window.nexusAPI?.onMetricsUpdate === "function") {
       const unsubMetrics = window.nexusAPI.onMetricsUpdate((metrics) => {
         console.log("[useRealTimeUpdates] Metrics update received", metrics);
         try {
@@ -28603,7 +28894,7 @@ function useRealTimeUpdates() {
     } else {
       console.warn("[useRealTimeUpdates] onMetricsUpdate not available - real-time metrics updates disabled");
     }
-    if (typeof window.nexusAPI.onTimelineEvent === "function") {
+    if (typeof window.nexusAPI?.onTimelineEvent === "function") {
       const unsubTimeline = window.nexusAPI.onTimelineEvent((event) => {
         console.log("[useRealTimeUpdates] Timeline event received", event);
         try {
@@ -28613,7 +28904,7 @@ function useRealTimeUpdates() {
             type: payload.type,
             title: payload.title,
             description: payload.description,
-            severity: payload.severity || "info",
+            severity: payload.severity,
             timestamp: new Date(payload.timestamp),
             metadata: payload.metadata
           };
@@ -28626,7 +28917,7 @@ function useRealTimeUpdates() {
     } else {
       console.warn("[useRealTimeUpdates] onTimelineEvent not available - timeline updates disabled");
     }
-    if (typeof window.nexusAPI.onCostUpdate === "function") {
+    if (typeof window.nexusAPI?.onCostUpdate === "function") {
       const unsubCosts = window.nexusAPI.onCostUpdate((costs) => {
         console.log("[useRealTimeUpdates] Cost update received", costs);
         try {
@@ -28661,15 +28952,15 @@ function useRealTimeUpdates() {
     } else {
       console.warn("[useRealTimeUpdates] onCostUpdate not available - cost tracking updates disabled");
     }
-    if (typeof window.nexusAPI.onAgentStatusUpdate === "function") {
+    if (typeof window.nexusAPI?.onAgentStatusUpdate === "function") {
       const unsubAgentMetrics = window.nexusAPI.onAgentStatusUpdate((status) => {
         console.log("[useRealTimeUpdates] Agent metrics received", status);
         try {
           const payload = status;
           updateAgentMetrics(payload.id, {
             id: payload.id,
-            type: payload.type || "coder",
-            status: payload.status || "idle",
+            type: payload.type,
+            status: payload.status,
             currentTaskId: payload.currentTaskId,
             currentTaskName: payload.currentTaskName,
             tasksCompleted: payload.tasksCompleted || 0,
@@ -28686,15 +28977,15 @@ function useRealTimeUpdates() {
     } else {
       console.warn("[useRealTimeUpdates] onAgentStatusUpdate not available - agent metrics updates disabled");
     }
-    if (typeof window.nexusAPI.onAgentStatus === "function") {
+    if (typeof window.nexusAPI?.onAgentStatus === "function") {
       const unsubAgentStatus = window.nexusAPI.onAgentStatus((status) => {
         console.log("[useRealTimeUpdates] Agent status received", status);
         try {
           const payload = status;
           const agentStatus = {
             id: payload.id,
-            type: payload.type || "coder",
-            status: payload.status || "idle",
+            type: payload.type,
+            status: payload.status,
             currentTaskId: payload.currentTaskId
           };
           setAgentStatus(agentStatus);
@@ -28706,7 +28997,7 @@ function useRealTimeUpdates() {
     } else {
       console.warn("[useRealTimeUpdates] onAgentStatus not available - agent status updates disabled");
     }
-    if (typeof window.nexusAPI.onExecutionProgress === "function") {
+    if (typeof window.nexusAPI?.onExecutionProgress === "function") {
       const unsubProgress = window.nexusAPI.onExecutionProgress((progress) => {
         console.log("[useRealTimeUpdates] Execution progress received", progress);
         try {
@@ -28729,7 +29020,7 @@ function useRealTimeUpdates() {
     } else {
       console.warn("[useRealTimeUpdates] onExecutionProgress not available - execution progress updates disabled");
     }
-    if (typeof window.nexusAPI.onExecutionLogUpdate === "function") {
+    if (typeof window.nexusAPI?.onExecutionLogUpdate === "function") {
       const unsubLogs = window.nexusAPI.onExecutionLogUpdate((data) => {
         console.log("[useRealTimeUpdates] Execution log received", data);
         try {
@@ -28752,7 +29043,7 @@ function useRealTimeUpdates() {
     } else {
       console.warn("[useRealTimeUpdates] onExecutionLogUpdate not available - execution log updates disabled");
     }
-    if (typeof window.nexusAPI.onFeatureUpdate === "function") {
+    if (typeof window.nexusAPI?.onFeatureUpdate === "function") {
       const unsubFeature = window.nexusAPI.onFeatureUpdate((feature) => {
         console.log("[useRealTimeUpdates] Feature update received", feature);
         try {
@@ -28818,13 +29109,13 @@ function KeyboardShortcutsModal() {
     )) })
   ] }) });
 }
-const InterviewPage = reactExports.lazy(() => __vitePreload(() => import("./InterviewPage-BatL6a8z.js"), true ? __vite__mapDeps([0,1,2,3,4,5,6,7,8,9,10,11,12,13]) : void 0, import.meta.url));
-const PlanningPage = reactExports.lazy(() => __vitePreload(() => import("./PlanningPage-CfV1WT35.js"), true ? __vite__mapDeps([14,11,10,15,5,16,4]) : void 0, import.meta.url));
-const KanbanPage = reactExports.lazy(() => __vitePreload(() => import("./KanbanPage-OOlq9pRg.js"), true ? __vite__mapDeps([17,1,5,16,7,8,18,15,13,6,19,4,11]) : void 0, import.meta.url));
-const DashboardPage = reactExports.lazy(() => __vitePreload(() => import("./DashboardPage-aHWaouMy.js"), true ? __vite__mapDeps([20,8,18,21,6,22,5,23,2,11,15]) : void 0, import.meta.url));
-const SettingsPage = reactExports.lazy(() => __vitePreload(() => import("./SettingsPage-fwP1D-YG.js"), true ? __vite__mapDeps([24,25,22,26,12,13,3,19]) : void 0, import.meta.url));
-const AgentsPage = reactExports.lazy(() => __vitePreload(() => import("./AgentsPage-BotW1vE8.js"), true ? __vite__mapDeps([27,26,12,19,5,8,18,21,2,15,7,23]) : void 0, import.meta.url));
-const ExecutionPage = reactExports.lazy(() => __vitePreload(() => import("./ExecutionPage-B7f3o5RB.js"), true ? __vite__mapDeps([28,26,12,25,9,7,23]) : void 0, import.meta.url));
+const InterviewPage = reactExports.lazy(() => __vitePreload(() => import("./InterviewPage-BR4kxzL3.js"), true ? __vite__mapDeps([0,1,2,3,4,5,6,7,8,9,10,11,12,13]) : void 0, import.meta.url));
+const PlanningPage = reactExports.lazy(() => __vitePreload(() => import("./PlanningPage-p6n0uYc4.js"), true ? __vite__mapDeps([14,11,10,15,5,16,4]) : void 0, import.meta.url));
+const KanbanPage = reactExports.lazy(() => __vitePreload(() => import("./KanbanPage-ZC_4UVmJ.js"), true ? __vite__mapDeps([17,1,5,16,7,8,18,15,13,6,19,4,11]) : void 0, import.meta.url));
+const DashboardPage = reactExports.lazy(() => __vitePreload(() => import("./DashboardPage-CHeJiDea.js"), true ? __vite__mapDeps([20,8,18,21,6,22,5,23,2,11,15]) : void 0, import.meta.url));
+const SettingsPage = reactExports.lazy(() => __vitePreload(() => import("./SettingsPage-CBKOPCo7.js"), true ? __vite__mapDeps([24,25,22,26,12,13,3,19]) : void 0, import.meta.url));
+const AgentsPage = reactExports.lazy(() => __vitePreload(() => import("./AgentsPage-DhzgIj-S.js"), true ? __vite__mapDeps([27,26,12,19,5,8,18,21,2,15,7,23]) : void 0, import.meta.url));
+const ExecutionPage = reactExports.lazy(() => __vitePreload(() => import("./ExecutionPage-B21gt736.js"), true ? __vite__mapDeps([28,26,12,25,7,9,23]) : void 0, import.meta.url));
 function PageLoader() {
   return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex items-center justify-center min-h-screen bg-bg-dark", "data-testid": "page-loader", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col items-center gap-3", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-8 h-8 rounded-full border-2 border-accent-primary border-t-transparent animate-spin" }),

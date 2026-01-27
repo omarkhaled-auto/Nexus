@@ -1,4 +1,20 @@
-import { c as createLucideIcon } from "./index-B8DMw4WO.js";
+import { c as createLucideIcon } from "./index-D6zknste.js";
+/**
+ * @license lucide-react v0.562.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$2 = [
+  [
+    "path",
+    {
+      d: "M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2",
+      key: "169zse"
+    }
+  ]
+];
+const Activity = createLucideIcon("activity", __iconNode$2);
 /**
  * @license lucide-react v0.562.0 - ISC
  *
@@ -27,6 +43,7 @@ const __iconNode = [
 ];
 const TestTubeDiagonal = createLucideIcon("test-tube-diagonal", __iconNode);
 export {
+  Activity as A,
   CodeXml as C,
   TestTubeDiagonal as T
 };

@@ -248,6 +248,10 @@ export class NexusBootstrap {
     this.nexus.coordinator.setMergerRunner(this.mergerRunner);
     console.log('[NexusBootstrap] MergerRunner injected into coordinator');
 
+    // 5a-3. Inject CheckpointManager into coordinator for wave checkpoints
+    this.nexus.coordinator.setCheckpointManager(this.checkpointManager);
+    console.log('[NexusBootstrap] CheckpointManager injected into coordinator');
+
     // 5b. Initialize RepoMapGenerator for Evolution mode
     this.repoMapGenerator = new RepoMapGenerator();
     console.log('[NexusBootstrap] RepoMapGenerator created');
@@ -426,7 +430,13 @@ export class NexusBootstrap {
         }
 
         // Store decomposition to database (Phase 20 Task 3)
-        const { featureCount, taskCount } = await this.storeDecomposition(projectId, decomposedTasks);
+        // Phase 2 Fix: Pass requirements so each becomes a feature
+        const requirementsForFeatures = requirements.map(r => ({
+          id: r.id,
+          description: r.description,
+          priority: r.priority,
+        }));
+        const { featureCount, taskCount } = await this.storeDecomposition(projectId, decomposedTasks, requirementsForFeatures);
         console.log(`[NexusBootstrap] Stored ${featureCount} features and ${taskCount} tasks to database`);
 
         // Emit planning:progress - validating
@@ -584,23 +594,27 @@ export class NexusBootstrap {
       console.log(`[NexusBootstrap] Coordinator event: ${eventType}`, eventData);
 
       // Forward task events that have typed mappings
+      // CRITICAL FIX: Include featureId in all task events for UI feature status updates
       if (eventType === 'task:assigned' && 'taskId' in eventData && 'agentId' in eventData) {
         void this.eventBus.emit('task:assigned', {
           taskId: safeStr(eventData.taskId, ''),
           agentId: safeStr(eventData.agentId, ''),
           agentType: 'coder' as const,
           worktreePath: safeStr(eventData.worktreePath, ''),
+          featureId: safeStr(eventData.featureId, ''),  // CRITICAL FIX: Forward featureId
         });
       } else if (eventType === 'task:started' && 'taskId' in eventData) {
         void this.eventBus.emit('task:started', {
           taskId: safeStr(eventData.taskId, ''),
           agentId: safeStr(eventData.agentId, ''),
           startedAt: new Date(),
+          featureId: safeStr(eventData.featureId, ''),  // CRITICAL FIX: Forward featureId
         });
       } else if (eventType === 'task:completed' && 'taskId' in eventData) {
         const taskIdStr = safeStr(eventData.taskId, '');
         void this.eventBus.emit('task:completed', {
           taskId: taskIdStr,
+          featureId: safeStr(eventData.featureId, ''),  // CRITICAL FIX: Forward featureId
           result: {
             taskId: taskIdStr,
             success: true,
@@ -678,9 +692,11 @@ export class NexusBootstrap {
 
   /**
    * Wire event forwarding to the renderer process via IPC
+   * Phase 2 Workflow Fix: Forward ALL NexusEventType events to renderer
    */
   private wireUIEventForwarding(): void {
-    // Events to forward to UI (using existing EventType values)
+    // Forward ALL events to UI for complete visibility
+    // Phase 2 fix: Previously only 20 of 51 events were forwarded
     const eventsToForward = [
       // Interview events
       'interview:started',
@@ -696,12 +712,35 @@ export class NexusBootstrap {
       'project:status-changed',
       'project:failed',
       'project:completed',
-      // Task events
+      // Coordinator events (Phase 2 addition)
+      'coordinator:started',
+      'coordinator:paused',
+      'coordinator:resumed',
+      'coordinator:stopped',
+      // Wave events (Phase 2 addition)
+      'wave:started',
+      'wave:completed',
+      // Task events (expanded)
       'task:assigned',
       'task:started',
       'task:completed',
       'task:failed',
       'task:escalated',
+      'task:merged',
+      'task:merge-failed',
+      'task:pushed',
+      'task:status-changed', // Phase 2 addition
+      // Agent events (Phase 2 addition)
+      'agent:released',
+      // Checkpoint events (Phase 2 addition)
+      'checkpoint:created',
+      'checkpoint:failed',
+      // Orchestration events (Phase 2 addition)
+      'orchestration:mode',
+      // Evolution events (Phase 2 addition)
+      'evolution:analyzing',
+      'evolution:analyzed',
+      'evolution:analysis-failed',
       // QA events
       'qa:build-completed',
       'qa:lint-completed',
@@ -713,6 +752,10 @@ export class NexusBootstrap {
       'system:error',
       // Human review events
       'review:requested',
+      // Feature events (Phase 2 addition)
+      'feature:created',
+      'feature:status-changed',
+      'feature:completed',
     ];
 
     // Subscribe to all events and forward to renderer
@@ -723,6 +766,8 @@ export class NexusBootstrap {
           payload: event.payload,
           timestamp: event.timestamp,
         });
+        // Debug logging for event forwarding
+        console.log(`[NexusBootstrap] Forwarded event to UI: ${event.type}`);
       }
     });
 
@@ -761,10 +806,12 @@ export class NexusBootstrap {
   /**
    * Store decomposed features and tasks in the database
    * Phase 20 Task 3: Wire TaskDecomposer Output to Database
+   * Phase 2 Workflow Fix: Create N features from N requirements (not 1 generic feature)
    */
   private storeDecomposition(
     projectId: string,
-    planningTasks: PlanningTask[]
+    planningTasks: PlanningTask[],
+    requirements?: Array<{ id: string; description: string; priority: string }>
   ): Promise<{ featureCount: number; taskCount: number }> {
     if (!this.databaseClient) {
       throw new Error('DatabaseClient not initialized');
@@ -775,52 +822,111 @@ export class NexusBootstrap {
     let featureCount = 0;
     let taskCount = 0;
 
-    // Create a single feature to represent the project requirements
-    const featureId = `feature-${projectId}-${Date.now()}`;
-
     try {
-      // Insert the feature
-      this.databaseClient.db.insert(features).values({
-        id: featureId,
-        projectId: projectId,
-        name: 'Project Requirements',
-        description: 'Auto-generated feature from interview requirements',
-        priority: 'must',
-        status: 'backlog',
-        complexity: 'complex',
-        estimatedTasks: planningTasks.length,
-        completedTasks: 0,
-        createdAt: now,
-        updatedAt: now,
-      }).run();
-      featureCount = 1;
-      console.log('[NexusBootstrap] Stored feature:', featureId);
+      // Phase 2 Fix: Create separate features for each requirement
+      if (requirements && requirements.length > 0) {
+        // Distribute tasks among requirements using round-robin or heuristic
+        // Each requirement becomes a feature
+        const tasksPerRequirement = Math.ceil(planningTasks.length / requirements.length);
 
-      // Insert all tasks
-      for (const task of planningTasks) {
-        const taskId = task.id || `task-${projectId}-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+        for (let reqIndex = 0; reqIndex < requirements.length; reqIndex++) {
+          const req = requirements[reqIndex];
+          const featureId = `feature-${projectId}-${req.id}`;
 
-        this.databaseClient.db.insert(tasks).values({
-          id: taskId,
+          // Get slice of tasks for this requirement
+          const startIdx = reqIndex * tasksPerRequirement;
+          const endIdx = Math.min(startIdx + tasksPerRequirement, planningTasks.length);
+          const featureTasks = planningTasks.slice(startIdx, endIdx);
+
+          // Insert feature for this requirement
+          this.databaseClient.db.insert(features).values({
+            id: featureId,
+            projectId: projectId,
+            name: req.description.substring(0, 100), // Truncate for name
+            description: req.description,
+            priority: (req.priority as 'must' | 'should' | 'could' | 'wont') || 'should',
+            status: 'backlog',
+            complexity: featureTasks.length > 3 ? 'complex' : 'simple',
+            estimatedTasks: featureTasks.length,
+            completedTasks: 0,
+            createdAt: now,
+            updatedAt: now,
+          }).run();
+          featureCount++;
+          console.log(`[NexusBootstrap] Created feature ${featureId} for requirement: ${req.description.substring(0, 50)}...`);
+
+          // Insert tasks for this feature
+          for (const task of featureTasks) {
+            const taskId = task.id || `task-${projectId}-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+
+            this.databaseClient.db.insert(tasks).values({
+              id: taskId,
+              projectId: projectId,
+              featureId: featureId,
+              name: task.name,
+              description: task.description,
+              type: task.type,
+              status: 'pending',
+              size: task.size === 'large' || task.size === 'medium' ? 'small' : task.size,
+              priority: 5,
+              tags: JSON.stringify(task.files),
+              notes: JSON.stringify(task.testCriteria),
+              dependsOn: JSON.stringify(task.dependsOn),
+              estimatedMinutes: task.estimatedMinutes,
+              createdAt: now,
+              updatedAt: now,
+            }).run();
+            taskCount++;
+          }
+        }
+
+        console.log(`[NexusBootstrap] Stored ${featureCount} features and ${taskCount} tasks`);
+      } else {
+        // Fallback: No requirements provided, create single feature
+        const featureId = `feature-${projectId}-${Date.now()}`;
+
+        this.databaseClient.db.insert(features).values({
+          id: featureId,
           projectId: projectId,
-          featureId: featureId,
-          name: task.name,
-          description: task.description,
-          type: task.type,
-          status: 'pending',
-          size: task.size === 'large' || task.size === 'medium' ? 'small' : task.size,
-          priority: 5,
-          tags: JSON.stringify(task.files),
-          notes: JSON.stringify(task.testCriteria),
-          dependsOn: JSON.stringify(task.dependsOn),
-          estimatedMinutes: task.estimatedMinutes,
+          name: 'Project Requirements',
+          description: 'Auto-generated feature from interview requirements',
+          priority: 'must',
+          status: 'backlog',
+          complexity: 'complex',
+          estimatedTasks: planningTasks.length,
+          completedTasks: 0,
           createdAt: now,
           updatedAt: now,
         }).run();
-        taskCount++;
-      }
+        featureCount = 1;
+        console.log('[NexusBootstrap] Stored fallback feature:', featureId);
 
-      console.log('[NexusBootstrap] Stored', taskCount, 'tasks for feature', featureId);
+        // Insert all tasks
+        for (const task of planningTasks) {
+          const taskId = task.id || `task-${projectId}-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+
+          this.databaseClient.db.insert(tasks).values({
+            id: taskId,
+            projectId: projectId,
+            featureId: featureId,
+            name: task.name,
+            description: task.description,
+            type: task.type,
+            status: 'pending',
+            size: task.size === 'large' || task.size === 'medium' ? 'small' : task.size,
+            priority: 5,
+            tags: JSON.stringify(task.files),
+            notes: JSON.stringify(task.testCriteria),
+            dependsOn: JSON.stringify(task.dependsOn),
+            estimatedMinutes: task.estimatedMinutes,
+            createdAt: now,
+            updatedAt: now,
+          }).run();
+          taskCount++;
+        }
+
+        console.log('[NexusBootstrap] Stored', taskCount, 'tasks for feature', featureId);
+      }
 
       return Promise.resolve({ featureCount, taskCount });
     } catch (error) {
@@ -992,6 +1098,25 @@ export class NexusBootstrap {
 
       console.log(`[NexusBootstrap] Task ${taskId} escalated after ${iterations} iterations: ${reason}`);
 
+      // Skip checkpoint creation if we couldn't extract a valid projectId
+      if (!projectId) {
+        console.warn(`[NexusBootstrap] Skipping checkpoint for escalated task ${taskId} - no valid projectId`);
+        // Still request human review even without checkpoint
+        await this.eventBus.emit('review:requested', {
+          reviewId: `review-${Date.now()}`,
+          taskId,
+          reason: 'qa_exhausted' as const,
+          context: {
+            qaIterations: iterations,
+            escalationReason: reason,
+            suggestedAction: lastError
+              ? `Last error: ${lastError}. Consider reviewing the task requirements.`
+              : 'QA loop exhausted. Manual intervention required.',
+          },
+        });
+        return;
+      }
+
       try {
         // Ensure project state exists for checkpoint
         this.ensureProjectState(projectId);
@@ -1047,6 +1172,12 @@ export class NexusBootstrap {
       const projectId = this.extractProjectIdFromTask(taskId);
       console.log(`[NexusBootstrap] Task ${taskId} failed: ${error}`);
 
+      // Skip checkpoint creation if we couldn't extract a valid projectId
+      if (!projectId) {
+        console.warn(`[NexusBootstrap] Skipping checkpoint for failed task ${taskId} - no valid projectId`);
+        return;
+      }
+
       try {
         // Ensure project state exists
         this.ensureProjectState(projectId);
@@ -1071,9 +1202,19 @@ export class NexusBootstrap {
   /**
    * Extract project ID from task ID
    * Task IDs typically follow patterns like: "genesis-123456-task-1" or "task-uuid"
+   *
+   * Returns null if no valid projectId can be extracted (instead of generating invalid IDs)
    */
-  private extractProjectIdFromTask(taskId: string): string {
-    // Try to extract genesis/evolution prefix
+  private extractProjectIdFromTask(taskId: string): string | null {
+    // Try to get task from coordinator and extract project ID directly
+    if (this.nexus?.coordinator) {
+      const task = this.nexus.coordinator.getTask(taskId);
+      if (task?.projectId) {
+        return task.projectId;
+      }
+    }
+
+    // Try to extract genesis/evolution prefix from taskId
     const genesisMatch = taskId.match(/^(genesis-\d+)/);
     if (genesisMatch) {
       return genesisMatch[1];
@@ -1084,8 +1225,10 @@ export class NexusBootstrap {
       return evolutionMatch[1];
     }
 
-    // Fallback: use current active project or generate a placeholder
-    return `project-${Date.now()}`;
+    // Return null instead of generating an invalid projectId
+    // This prevents FK constraint violations when the generated ID doesn't exist in projects table
+    console.warn(`[NexusBootstrap] Could not extract valid projectId for task ${taskId}`);
+    return null;
   }
 
   /**

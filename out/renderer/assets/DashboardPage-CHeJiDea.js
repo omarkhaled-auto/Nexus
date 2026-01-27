@@ -1,30 +1,14 @@
-import { c as createLucideIcon, Z as useCosts, j as jsxRuntimeExports, J as Card, a as cn, K as CardHeader, _ as CardTitle, M as CardContent, r as reactExports, $ as clsx, a0 as getDefaultExportFromCjs, s as reactDomExports, a1 as React$3, a2 as useAgentMetrics, B as Bot, E as Eye, q as React$4, a3 as fo, R as RefreshCw, a4 as MessageSquare, C as CircleAlert, a5 as useTimeline, k as useNavigate, a6 as useIsMetricsLoading, a7 as useOverview, a8 as useMetricsStore, D as Button, I as Plus, S as Sparkles, a9 as FolderOpen, aa as Link, o as ChevronRight, N as Dialog, O as DialogContent, Q as DialogHeader, U as DialogTitle, V as DialogDescription, W as Input, Y as DialogFooter, L as LoaderCircle } from "./index-B8DMw4WO.js";
-import { F as FileText } from "./file-text-Coe14bpf.js";
-import { B as Bug, G as GitMerge, P as Play, a as Pause } from "./play-CGwX_rdf.js";
-import { T as TestTubeDiagonal, C as CodeXml } from "./test-tube-diagonal-BkG2X49i.js";
-import { C as Circle } from "./circle-TdijTwss.js";
+import { c as createLucideIcon, Z as useCosts, j as jsxRuntimeExports, J as Card, a as cn, K as CardHeader, _ as CardTitle, M as CardContent, r as reactExports, $ as clsx, a0 as getDefaultExportFromCjs, s as reactDomExports, a1 as React$3, a2 as useAgentMetrics, B as Bot, E as Eye, q as React$4, a3 as fo, R as RefreshCw, a4 as MessageSquare, C as CircleAlert, a5 as useTimeline, k as useNavigate, a6 as useIsMetricsLoading, a7 as useOverview, a8 as useMetricsStore, D as Button, I as Plus, S as Sparkles, a9 as FolderOpen, aa as Link, o as ChevronRight, N as Dialog, O as DialogContent, Q as DialogHeader, U as DialogTitle, V as DialogDescription, W as Input, Y as DialogFooter, L as LoaderCircle } from "./index-D6zknste.js";
+import { F as FileText } from "./file-text-1NWYs8hM.js";
+import { B as Bug, G as GitMerge, P as Play, a as Pause } from "./play-B5ZFdA5d.js";
+import { T as TestTubeDiagonal, C as CodeXml, A as Activity } from "./test-tube-diagonal-Dx9FQnCe.js";
+import { C as Circle } from "./circle-Dx1iLOgB.js";
 import { g as getDefaultOptions, t as toDate, c as constructFrom, n as normalizeDates, a as getTimezoneOffsetInMilliseconds, m as millisecondsInDay, b as millisecondsInWeek, e as enUS } from "./en-US-DF_tYdWf.js";
-import { C as CircleCheck } from "./circle-check-DWu7kQd6.js";
-import { C as CircleX } from "./circle-x-hpKi6T_C.js";
-import { Z as Zap } from "./zap-C3nsoLzM.js";
-import { A as AnimatedPage } from "./AnimatedPage-jLeN60U5.js";
-import { C as Clock } from "./clock-SQZueF73.js";
-/**
- * @license lucide-react v0.562.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode$a = [
-  [
-    "path",
-    {
-      d: "M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2",
-      key: "169zse"
-    }
-  ]
-];
-const Activity = createLucideIcon("activity", __iconNode$a);
+import { C as CircleCheck } from "./circle-check-DEe4HTnv.js";
+import { C as CircleX } from "./circle-x-C5fFko4H.js";
+import { Z as Zap } from "./zap-B2YFclPS.js";
+import { A as AnimatedPage } from "./AnimatedPage-C7aKxnzt.js";
+import { C as Clock } from "./clock-D5BUsL0A.js";
 /**
  * @license lucide-react v0.562.0 - ISC
  *
@@ -23174,7 +23158,7 @@ function ProgressChart({ data, className, height = 200 }) {
           },
           labelStyle: { color: "#F0F6FC", fontWeight: 500, marginBottom: "4px" },
           itemStyle: { color: "#8B949E" },
-          formatter: (value) => value !== void 0 ? [`${value}%`, "Progress"] : ["", "Progress"]
+          formatter: (value) => value !== void 0 ? [`${String(value)}%`, "Progress"] : ["", "Progress"]
         }
       ),
       /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -23259,8 +23243,8 @@ function AgentActivity({ className }) {
       /* @__PURE__ */ jsxRuntimeExports.jsx(Bot, { className: "h-8 w-8 mx-auto mb-2 text-text-tertiary" }),
       "No active agents"
     ] }) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "space-y-2", children: agents.map((agent) => {
-      const Icon = agentIcons[agent.type] || Bot;
-      const agentColor = agentColors[agent.type] || "text-text-secondary";
+      const Icon = agentIcons[agent.type];
+      const agentColor = agentColors[agent.type];
       return /* @__PURE__ */ jsxRuntimeExports.jsxs(
         "div",
         {
@@ -27865,11 +27849,12 @@ function DashboardPage() {
       if (Array.isArray(projectsData)) {
         const transformedProjects = projectsData.map((p2) => {
           const proj = p2;
+          const status = proj.status;
           return {
             id: proj.id,
             name: proj.name,
             mode: proj.mode,
-            status: proj.status || "in_progress",
+            status: status ?? "in_progress",
             progress: proj.progress || 0,
             activeAgents: 0,
             updatedAt: /* @__PURE__ */ new Date()
@@ -27950,7 +27935,7 @@ function DashboardPage() {
       setCreateProjectMode("genesis");
       await loadRealData();
       const projectPath = createProjectMode === "genesis" ? "/genesis" : "/evolution";
-      navigate(projectPath);
+      void navigate(projectPath);
     } catch (err) {
       console.error("Failed to create project:", err);
       setCreateError(err instanceof Error ? err.message : "Failed to create project");
@@ -28211,7 +28196,9 @@ function DashboardPage() {
           Button,
           {
             variant: "primary",
-            onClick: handleCreateProject,
+            onClick: () => {
+              void handleCreateProject();
+            },
             disabled: isCreating || !createProjectName.trim(),
             "data-testid": "create-project-submit",
             className: "gap-2",

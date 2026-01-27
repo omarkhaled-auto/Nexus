@@ -2,14 +2,17 @@
  * StateManager - State persistence and recovery
  *
  * Manages the persistence and recovery of Nexus state across sessions.
- * Provides synchronous methods for in-memory state management.
+ * Phase 2 Workflow Fix: Now persists to database for checkpoint support.
  *
  * Layer 6: Persistence - State Management
  *
  * @module persistence/state
  */
 
+import { v4 as uuidv4 } from 'uuid';
+import { eq } from 'drizzle-orm';
 import type { DatabaseClient } from '../database/DatabaseClient';
+import { projectStates } from '../database/schema';
 
 // ============================================================================
 // Types
@@ -109,6 +112,7 @@ export interface StateManagerOptions {
 
 /**
  * Manages Nexus state persistence and recovery
+ * Phase 2 Workflow Fix: Added database persistence for checkpoints
  */
 export class StateManager {
   private readonly db: DatabaseClient;
@@ -133,12 +137,32 @@ export class StateManager {
       return cached;
     }
 
-    // State not found in memory or DB
+    // Try to load from database
+    try {
+      const row = this.db.db
+        .select()
+        .from(projectStates)
+        .where(eq(projectStates.projectId, projectId))
+        .get();
+
+      if (row && row.stateData) {
+        const state = JSON.parse(row.stateData) as NexusState;
+        // Restore Date objects
+        state.lastUpdatedAt = new Date(state.lastUpdatedAt);
+        state.createdAt = new Date(state.createdAt);
+        this.states.set(projectId, state);
+        return state;
+      }
+    } catch (error) {
+      console.error('[StateManager] Failed to load state from database:', error);
+    }
+
+    // State not found
     return null;
   }
 
   /**
-   * Save state for a project
+   * Save state for a project (with database persistence)
    * @param state State to save
    */
   saveState(state: NexusState): void {
@@ -147,6 +171,65 @@ export class StateManager {
 
     // Store in memory
     this.states.set(state.projectId, state);
+
+    // Persist to database if autoPersist enabled
+    if (this.autoPersist) {
+      this.persistToDatabase(state);
+    }
+  }
+
+  /**
+   * Persist state to database
+   */
+  private persistToDatabase(state: NexusState): void {
+    try {
+      const now = new Date();
+      const stateData = JSON.stringify(state);
+
+      // Check if record exists
+      const existing = this.db.db
+        .select()
+        .from(projectStates)
+        .where(eq(projectStates.projectId, state.projectId))
+        .get();
+
+      if (existing) {
+        // Update existing record
+        this.db.db
+          .update(projectStates)
+          .set({
+            status: state.status,
+            mode: state.mode,
+            stateData,
+            currentFeatureIndex: state.currentFeatureIndex,
+            currentTaskIndex: state.currentTaskIndex,
+            completedTasks: state.completedTasks,
+            totalTasks: state.totalTasks,
+            updatedAt: now,
+          })
+          .where(eq(projectStates.projectId, state.projectId))
+          .run();
+      } else {
+        // Insert new record
+        this.db.db.insert(projectStates).values({
+          id: uuidv4(),
+          projectId: state.projectId,
+          status: state.status,
+          mode: state.mode,
+          stateData,
+          currentFeatureIndex: state.currentFeatureIndex,
+          currentTaskIndex: state.currentTaskIndex,
+          completedTasks: state.completedTasks,
+          totalTasks: state.totalTasks,
+          createdAt: now,
+          updatedAt: now,
+        }).run();
+      }
+
+      console.log(`[StateManager] Persisted state for project ${state.projectId}`);
+    } catch (error) {
+      console.error('[StateManager] Failed to persist state:', error);
+    }
   }
 
   /**
@@ -180,6 +263,16 @@ export class StateManager {
    * @param projectId Project to delete state for
    */
   deleteState(projectId: string): boolean {
+    // Remove from database
+    try {
+      this.db.db
+        .delete(projectStates)
+        .where(eq(projectStates.projectId, projectId))
+        .run();
+    } catch (error) {
+      console.error('[StateManager] Failed to delete state from database:', error);
+    }
+
     return this.states.delete(projectId);
   }
 

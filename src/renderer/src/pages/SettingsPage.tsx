@@ -1,7 +1,8 @@
 /**
  * SettingsPage - Complete user settings configuration interface
- * Phase 17: Complete UI Redesign - Enhanced Settings with backend toggles,
- * model dropdowns, and advanced configuration options.
+ *
+ * Design: Linear/Raycast-inspired with vertical navigation, glassmorphism cards,
+ * and smooth toggle animations.
  *
  * Provides tabbed sections for:
  * - LLM Providers: Backend selection, model dropdowns, API keys, advanced settings
@@ -31,11 +32,14 @@ import {
   Cloud,
   Cpu,
   Sparkles,
-  Info
+  Info,
+  Zap,
+  Shield,
+  Palette,
+  Loader2,
 } from 'lucide-react'
 import { cn } from '@renderer/lib/utils'
 import { Button } from '@renderer/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@renderer/components/ui/card'
 import { CheckpointList } from '@renderer/components/checkpoints/CheckpointList'
 import { Header } from '@renderer/components/layout/Header'
 import {
@@ -62,24 +66,14 @@ import {
 // Environment Detection
 // ============================================
 
-/**
- * Check if running in Electron environment with nexusAPI available
- */
 const isElectronEnvironment = (): boolean => {
   return typeof window !== 'undefined' && typeof window.nexusAPI !== 'undefined'
 }
 
 // ============================================
-// FIX #7: Input Validation Helpers
+// Input Validation Helpers
 // ============================================
 
-/**
- * Clamp a numeric value to a valid range
- * @param value - String value from input
- * @param min - Minimum allowed value
- * @param max - Maximum allowed value
- * @param defaultVal - Default value if parsing fails
- */
 const clampValue = (value: string, min: number, max: number, defaultVal: number): number => {
   const parsed = parseInt(value, 10);
   if (isNaN(parsed)) return defaultVal;
@@ -100,11 +94,11 @@ interface TabConfig {
 }
 
 const tabs: TabConfig[] = [
-  { id: 'llm', label: 'LLM Providers', icon: <Sparkles className="w-4 h-4" />, description: 'Backend selection, models, and API keys' },
-  { id: 'agents', label: 'Agents', icon: <Bot className="w-4 h-4" />, description: 'Agent model assignments and limits' },
-  { id: 'checkpoints', label: 'Checkpoints', icon: <Save className="w-4 h-4" />, description: 'Auto-checkpoint settings' },
-  { id: 'ui', label: 'UI', icon: <Settings2 className="w-4 h-4" />, description: 'Interface preferences' },
-  { id: 'project', label: 'Projects', icon: <FolderCog className="w-4 h-4" />, description: 'Default project settings' }
+  { id: 'llm', label: 'LLM Providers', icon: <Sparkles className="w-5 h-5" />, description: 'Backend selection, models, and API keys' },
+  { id: 'agents', label: 'Agents', icon: <Bot className="w-5 h-5" />, description: 'Agent model assignments and limits' },
+  { id: 'checkpoints', label: 'Checkpoints', icon: <Shield className="w-5 h-5" />, description: 'Auto-checkpoint settings' },
+  { id: 'ui', label: 'Interface', icon: <Palette className="w-5 h-5" />, description: 'Theme and layout preferences' },
+  { id: 'project', label: 'Projects', icon: <FolderCog className="w-5 h-5" />, description: 'Default project settings' }
 ]
 
 // ============================================
@@ -120,21 +114,21 @@ function Input({ className, label, description, id, ...props }: InputProps): Rea
   return (
     <div className="space-y-2">
       {label && (
-        <label htmlFor={id} className="text-sm font-medium text-text-primary leading-none">
+        <label htmlFor={id} className="text-sm font-medium text-[#F0F6FC] leading-none">
           {label}
         </label>
       )}
       {description && (
-        <p className="text-xs text-text-secondary">{description}</p>
+        <p className="text-xs text-[#8B949E]">{description}</p>
       )}
       <input
         id={id}
         className={cn(
-          'flex h-10 w-full rounded-md border border-border-default bg-bg-dark px-3 py-2 text-sm text-text-primary',
-          'placeholder:text-text-tertiary',
-          'focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-accent-primary',
+          'flex h-11 w-full rounded-xl border border-[#30363D] bg-[#0D1117] px-4 py-2 text-sm text-[#F0F6FC]',
+          'placeholder:text-[#6E7681]',
+          'focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/50 focus:border-[#7C3AED]',
           'disabled:cursor-not-allowed disabled:opacity-50',
-          'transition-colors',
+          'transition-all duration-200',
           className
         )}
         {...props}
@@ -153,20 +147,20 @@ function Select({ className, label, description, id, options, ...props }: Select
   return (
     <div className="space-y-2">
       {label && (
-        <label htmlFor={id} className="text-sm font-medium text-text-primary leading-none">
+        <label htmlFor={id} className="text-sm font-medium text-[#F0F6FC] leading-none">
           {label}
         </label>
       )}
       {description && (
-        <p className="text-xs text-text-secondary">{description}</p>
+        <p className="text-xs text-[#8B949E]">{description}</p>
       )}
       <select
         id={id}
         className={cn(
-          'flex h-10 w-full rounded-md border border-border-default bg-bg-dark px-3 py-2 text-sm text-text-primary',
-          'focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-accent-primary',
+          'flex h-11 w-full rounded-xl border border-[#30363D] bg-[#0D1117] px-4 py-2 text-sm text-[#F0F6FC]',
+          'focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/50 focus:border-[#7C3AED]',
           'disabled:cursor-not-allowed disabled:opacity-50',
-          'transition-colors',
+          'transition-all duration-200 cursor-pointer',
           className
         )}
         {...props}
@@ -193,23 +187,58 @@ function Checkbox({ className, label, description, id, ...props }: CheckboxProps
         type="checkbox"
         id={id}
         className={cn(
-          'h-4 w-4 rounded border border-border-default bg-bg-dark mt-0.5',
-          'text-accent-primary',
-          'focus:ring-2 focus:ring-accent-primary focus:ring-offset-2 focus:ring-offset-bg-dark',
+          'h-5 w-5 rounded-md border border-[#30363D] bg-[#0D1117] mt-0.5',
+          'text-[#7C3AED]',
+          'focus:ring-2 focus:ring-[#7C3AED]/50 focus:ring-offset-2 focus:ring-offset-[#0D1117]',
           'disabled:cursor-not-allowed disabled:opacity-50',
+          'transition-all duration-200',
           className
         )}
         {...props}
       />
       <div className="space-y-1">
-        <label htmlFor={id} className="text-sm font-medium text-text-primary leading-none cursor-pointer">
+        <label htmlFor={id} className="text-sm font-medium text-[#F0F6FC] leading-none cursor-pointer">
           {label}
         </label>
         {description && (
-          <p className="text-xs text-text-secondary">{description}</p>
+          <p className="text-xs text-[#8B949E]">{description}</p>
         )}
       </div>
     </div>
+  )
+}
+
+// ============================================
+// Toggle Switch Component
+// ============================================
+
+interface ToggleSwitchProps {
+  checked: boolean
+  onChange: (checked: boolean) => void
+  disabled?: boolean
+}
+
+function ToggleSwitch({ checked, onChange, disabled }: ToggleSwitchProps): ReactElement {
+  return (
+    <button
+      type="button"
+      onClick={() => { if (!disabled) onChange(!checked); }}
+      disabled={disabled}
+      className={cn(
+        'relative w-12 h-7 rounded-full transition-all duration-300',
+        'focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/50 focus:ring-offset-2 focus:ring-offset-[#0D1117]',
+        checked ? 'bg-[#7C3AED]' : 'bg-[#30363D]',
+        disabled && 'opacity-50 cursor-not-allowed'
+      )}
+    >
+      <div
+        className={cn(
+          'absolute top-1 w-5 h-5 rounded-full bg-white shadow-lg',
+          'transition-transform duration-300 ease-out',
+          checked ? 'translate-x-6' : 'translate-x-1'
+        )}
+      />
+    </button>
   )
 }
 
@@ -227,20 +256,20 @@ interface BackendToggleProps {
 
 function BackendToggle({ label, value, options, onChange, status }: BackendToggleProps): ReactElement {
   return (
-    <div className="space-y-2">
-      <label className="text-sm font-medium text-text-primary">{label}</label>
+    <div className="space-y-3">
+      <label className="text-sm font-medium text-[#F0F6FC]">{label}</label>
       <div className="flex items-center gap-4">
-        <div className="inline-flex rounded-md border border-border-default p-1 bg-bg-dark">
+        <div className="inline-flex rounded-xl border border-[#30363D] p-1 bg-[#0D1117]">
           {options.map((option) => (
             <button
               key={option.value}
               type="button"
               onClick={() => { onChange(option.value); }}
               className={cn(
-                'flex items-center gap-2 px-3 py-1.5 rounded text-sm font-medium transition-all',
+                'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200',
                 value === option.value
-                  ? 'bg-accent-primary text-white shadow-sm'
-                  : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
+                  ? 'bg-gradient-to-r from-[#7C3AED] to-[#6366F1] text-white shadow-lg shadow-[#7C3AED]/25'
+                  : 'text-[#8B949E] hover:text-[#F0F6FC] hover:bg-[#21262D]'
               )}
               data-testid={`backend-toggle-${option.value}`}
             >
@@ -252,7 +281,7 @@ function BackendToggle({ label, value, options, onChange, status }: BackendToggl
         {status && (
           <div className={cn(
             'flex items-center gap-1.5 text-xs',
-            status.detected ? 'text-accent-success' : 'text-text-tertiary'
+            status.detected ? 'text-[#10B981]' : 'text-[#6E7681]'
           )}>
             {status.detected ? (
               <CheckCircle className="w-3.5 h-3.5" />
@@ -284,14 +313,14 @@ function ModelDropdown({ label, value, models, onChange, description: _descripti
 
   return (
     <div className="space-y-2">
-      <label className="text-sm font-medium text-text-primary">{label}</label>
+      <label className="text-sm font-medium text-[#F0F6FC]">{label}</label>
       <select
         value={value}
         onChange={(e) => { onChange(e.target.value); }}
         className={cn(
-          'flex h-10 w-full rounded-md border border-border-default bg-bg-dark px-3 py-2 text-sm text-text-primary',
-          'focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-accent-primary',
-          'transition-colors cursor-pointer'
+          'flex h-11 w-full rounded-xl border border-[#30363D] bg-[#0D1117] px-4 py-2 text-sm text-[#F0F6FC]',
+          'focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/50 focus:border-[#7C3AED]',
+          'transition-all duration-200 cursor-pointer'
         )}
         data-testid="model-dropdown"
       >
@@ -302,7 +331,7 @@ function ModelDropdown({ label, value, models, onChange, description: _descripti
         ))}
       </select>
       {selectedModel?.description && (
-        <p className="text-xs text-text-secondary flex items-center gap-1.5">
+        <p className="text-xs text-[#8B949E] flex items-center gap-1.5">
           <Info className="w-3 h-3" />
           {selectedModel.description}
         </p>
@@ -354,9 +383,9 @@ function ApiKeyInput({ provider, label, optional = false }: ApiKeyInputProps): R
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <label className="text-sm font-medium text-text-primary">{label}</label>
+        <label className="text-sm font-medium text-[#F0F6FC]">{label}</label>
         {optional && (
-          <span className="text-xs text-text-tertiary">(optional for CLI)</span>
+          <span className="text-xs text-[#6E7681]">(optional for CLI)</span>
         )}
       </div>
       <div className="flex items-center gap-2">
@@ -368,37 +397,50 @@ function ApiKeyInput({ provider, label, optional = false }: ApiKeyInputProps): R
             placeholder={hasKey ? '••••••••••••••••••••••••' : 'Enter API key'}
             disabled={saving}
             className={cn(
-              'flex h-10 w-full rounded-md border border-border-default bg-bg-dark px-3 py-2 pr-10 text-sm text-text-primary',
-              'placeholder:text-text-tertiary',
-              'focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-accent-primary',
+              'flex h-11 w-full rounded-xl border bg-[#0D1117] px-4 py-2 pr-12 text-sm text-[#F0F6FC]',
+              'placeholder:text-[#6E7681]',
+              'focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/50 focus:border-[#7C3AED]',
               'disabled:cursor-not-allowed disabled:opacity-50',
-              'transition-colors',
-              hasKey && !value && 'border-accent-success/50'
+              'transition-all duration-200',
+              hasKey && !value ? 'border-[#10B981]/50' : 'border-[#30363D]'
             )}
             data-testid={`api-key-input-${provider}`}
           />
           <button
             type="button"
             onClick={(): void => { setShow(!show) }}
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-primary transition-colors"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6E7681] hover:text-[#F0F6FC] transition-colors p-1 rounded-md hover:bg-[#21262D]"
             data-testid={`toggle-visibility-${provider}`}
           >
             {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
           </button>
         </div>
         {value && (
-          <Button onClick={(): void => { void handleSave() }} disabled={saving} size="sm" data-testid={`save-key-${provider}`}>
-            {saving ? 'Saving...' : 'Save'}
+          <Button
+            onClick={(): void => { void handleSave() }}
+            disabled={saving}
+            size="sm"
+            className="h-11 px-4 bg-gradient-to-r from-[#7C3AED] to-[#6366F1] hover:shadow-lg hover:shadow-[#7C3AED]/25"
+            data-testid={`save-key-${provider}`}
+          >
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save'}
           </Button>
         )}
         {hasKey && !value && (
-          <Button onClick={(): void => { void handleClear() }} disabled={saving} variant="destructive" size="sm" data-testid={`clear-key-${provider}`}>
+          <Button
+            onClick={(): void => { void handleClear() }}
+            disabled={saving}
+            variant="destructive"
+            size="sm"
+            className="h-11 px-4"
+            data-testid={`clear-key-${provider}`}
+          >
             Clear
           </Button>
         )}
       </div>
       {hasKey && (
-        <p className="text-xs text-accent-success flex items-center gap-1.5">
+        <p className="text-xs text-[#10B981] flex items-center gap-1.5">
           <CheckCircle className="w-3 h-3" />
           API key is securely stored
         </p>
@@ -421,18 +463,18 @@ function AdvancedSection({ title, children, defaultOpen = false }: AdvancedSecti
   const [isOpen, setIsOpen] = useState(defaultOpen)
 
   return (
-    <div className="border-t border-border-default pt-4 mt-4">
+    <div className="border-t border-[#30363D]/50 pt-4 mt-4">
       <button
         type="button"
         onClick={() => { setIsOpen(!isOpen); }}
-        className="flex items-center gap-2 text-sm font-medium text-text-secondary hover:text-text-primary transition-colors w-full"
+        className="flex items-center gap-2 text-sm font-medium text-[#8B949E] hover:text-[#F0F6FC] transition-colors w-full"
         data-testid="advanced-toggle"
       >
         {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
         {title}
       </button>
       {isOpen && (
-        <div className="mt-4 space-y-4 pl-6 animate-in fade-in slide-in-from-top-2 duration-200">
+        <div className="mt-4 space-y-4 pl-6 animate-fade-in-up">
           {children}
         </div>
       )}
@@ -441,28 +483,38 @@ function AdvancedSection({ title, children, defaultOpen = false }: AdvancedSecti
 }
 
 // ============================================
-// Provider Configuration Card
+// Settings Card Component
 // ============================================
 
-interface ProviderCardProps {
+interface SettingsCardProps {
   title: string
-  icon: ReactElement
+  description?: string
+  icon?: ReactElement
   children: ReactElement
 }
 
-function ProviderCard({ title, icon, children }: ProviderCardProps): ReactElement {
+function SettingsCard({ title, description, icon, children }: SettingsCardProps): ReactElement {
   return (
-    <Card className="bg-bg-card border-border-default">
-      <CardHeader className="pb-4">
-        <CardTitle className="flex items-center gap-2 text-base">
-          {icon}
-          {title}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <div className="rounded-2xl bg-[#161B22]/80 backdrop-blur-sm border border-[#30363D] overflow-hidden">
+      <div className="px-6 py-5 border-b border-[#30363D]/50">
+        <div className="flex items-center gap-3">
+          {icon && (
+            <div className="p-2 rounded-lg bg-[#7C3AED]/10">
+              {icon}
+            </div>
+          )}
+          <div>
+            <h3 className="text-base font-semibold text-[#F0F6FC]">{title}</h3>
+            {description && (
+              <p className="text-sm text-[#8B949E] mt-0.5">{description}</p>
+            )}
+          </div>
+        </div>
+      </div>
+      <div className="px-6 py-5 space-y-5">
         {children}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }
 
@@ -479,10 +531,6 @@ type SettingsState = ReturnType<typeof useSettingsStore.getState>
 type LLMSettingsConfig = NexusSettingsPublic['llm']
 type AgentSettingsConfig = NexusSettingsPublic['agents']
 
-/**
- * LLM Providers Tab - Enhanced with backend toggles and model dropdowns
- * Phase 17B: Dynamic CLI availability detection
- */
 function LLMProvidersSettings({ settings, updateSetting }: SettingsTabProps): ReactElement {
   const claudeModels = getClaudeModelList()
   const geminiModels = getGeminiModelList()
@@ -491,11 +539,9 @@ function LLMProvidersSettings({ settings, updateSetting }: SettingsTabProps): Re
     updateSetting('llm', key, value)
   }
 
-  // CLI availability state (Phase 17B)
   const [claudeCliStatus, setClaudeCliStatus] = useState<{ detected: boolean; message: string }>({ detected: false, message: 'Checking...' })
   const [geminiCliStatus, setGeminiCliStatus] = useState<{ detected: boolean; message: string }>({ detected: false, message: 'Checking...' })
 
-  // Check CLI availability on mount
   useEffect(() => {
     const nexusAPI = isElectronEnvironment() ? window.nexusAPI : null
     if (!nexusAPI) {
@@ -504,7 +550,6 @@ function LLMProvidersSettings({ settings, updateSetting }: SettingsTabProps): Re
       return
     }
 
-    // Check Claude CLI availability
     nexusAPI.settings.checkCliAvailability('claude')
       .then(setClaudeCliStatus)
       .catch((err: unknown) => {
@@ -512,7 +557,6 @@ function LLMProvidersSettings({ settings, updateSetting }: SettingsTabProps): Re
         setClaudeCliStatus({ detected: false, message: 'Check failed' })
       })
 
-    // Check Gemini CLI availability
     nexusAPI.settings.checkCliAvailability('gemini')
       .then(setGeminiCliStatus)
       .catch((err: unknown) => {
@@ -523,10 +567,10 @@ function LLMProvidersSettings({ settings, updateSetting }: SettingsTabProps): Re
 
   return (
     <div className="space-y-6" data-testid="llm-providers-tab">
-      {/* Claude Configuration */}
-      <ProviderCard
+      <SettingsCard
         title="Claude Configuration"
-        icon={<Sparkles className="w-5 h-5 text-accent-primary" />}
+        description="Configure Claude AI provider settings"
+        icon={<Sparkles className="w-5 h-5 text-[#7C3AED]" />}
       >
         <>
           <BackendToggle
@@ -553,7 +597,7 @@ function LLMProvidersSettings({ settings, updateSetting }: SettingsTabProps): Re
             optional={settings.llm.claude.backend === 'cli'}
           />
 
-          <AdvancedSection title="Advanced">
+          <AdvancedSection title="Advanced Settings">
             <>
               <Input
                 id="claude-timeout"
@@ -565,7 +609,6 @@ function LLMProvidersSettings({ settings, updateSetting }: SettingsTabProps): Re
                 description="Request timeout in milliseconds"
                 value={settings.llm.claude.timeout || 300000}
                 onChange={(e): void => {
-                  // FIX #7: Clamp timeout to valid range
                   const clamped = clampValue(e.target.value, 30000, 600000, 300000);
                   updateLLMSetting('claude', {
                     ...settings.llm.claude,
@@ -582,7 +625,6 @@ function LLMProvidersSettings({ settings, updateSetting }: SettingsTabProps): Re
                 description="Maximum number of retry attempts"
                 value={settings.llm.claude.maxRetries || 2}
                 onChange={(e): void => {
-                  // FIX #7: Clamp retries to valid range
                   const clamped = clampValue(e.target.value, 0, 5, 2);
                   updateLLMSetting('claude', {
                     ...settings.llm.claude,
@@ -593,12 +635,12 @@ function LLMProvidersSettings({ settings, updateSetting }: SettingsTabProps): Re
             </>
           </AdvancedSection>
         </>
-      </ProviderCard>
+      </SettingsCard>
 
-      {/* Gemini Configuration */}
-      <ProviderCard
+      <SettingsCard
         title="Gemini Configuration"
-        icon={<Sparkles className="w-5 h-5 text-accent-secondary" />}
+        description="Configure Google Gemini provider settings"
+        icon={<Zap className="w-5 h-5 text-[#6366F1]" />}
       >
         <>
           <BackendToggle
@@ -625,12 +667,12 @@ function LLMProvidersSettings({ settings, updateSetting }: SettingsTabProps): Re
             optional={settings.llm.gemini.backend === 'cli'}
           />
         </>
-      </ProviderCard>
+      </SettingsCard>
 
-      {/* Embeddings Configuration */}
-      <ProviderCard
+      <SettingsCard
         title="Embeddings Configuration"
-        icon={<Cpu className="w-5 h-5 text-accent-success" />}
+        description="Configure text embedding settings"
+        icon={<Cpu className="w-5 h-5 text-[#10B981]" />}
       >
         <>
           <BackendToggle
@@ -660,15 +702,13 @@ function LLMProvidersSettings({ settings, updateSetting }: SettingsTabProps): Re
             />
           )}
         </>
-      </ProviderCard>
+      </SettingsCard>
 
-      {/* Default Provider Selection */}
-      <Card className="bg-bg-card border-border-default">
-        <CardHeader className="pb-4">
-          <CardTitle className="text-base">Provider Settings</CardTitle>
-          <CardDescription>Configure default provider and fallback behavior</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <SettingsCard
+        title="Provider Settings"
+        description="Configure default provider and fallback behavior"
+      >
+        <>
           <Select
             id="default-provider"
             label="Default Provider"
@@ -681,26 +721,23 @@ function LLMProvidersSettings({ settings, updateSetting }: SettingsTabProps): Re
             ]}
           />
 
-          <Checkbox
-            id="fallback-enabled"
-            label="Enable Fallback"
-            description="Automatically try other providers if the primary fails"
-            checked={settings.llm.fallbackEnabled}
-            onChange={(e): void => { updateLLMSetting('fallbackEnabled', e.target.checked) }}
-          />
-        </CardContent>
-      </Card>
+          <div className="flex items-center justify-between py-2">
+            <div>
+              <div className="text-sm font-medium text-[#F0F6FC]">Enable Fallback</div>
+              <div className="text-xs text-[#8B949E]">Automatically try other providers if the primary fails</div>
+            </div>
+            <ToggleSwitch
+              checked={settings.llm.fallbackEnabled}
+              onChange={(checked) => { updateLLMSetting('fallbackEnabled', checked) }}
+            />
+          </div>
+        </>
+      </SettingsCard>
     </div>
   )
 }
 
-// ============================================
-// Agent Types and Model Assignment
-// ============================================
-
-// Types imported from shared/types/settings: AgentType, AgentProviderType, AgentModelConfig, AgentModelAssignments
-// DEFAULT_AGENT_MODEL_ASSIGNMENTS imported from shared/types/settings
-
+// Agent types display info
 const AGENT_DISPLAY_INFO: Record<AgentType, { label: string; icon: string; description: string }> = {
   planner: { label: 'Planner', icon: '🧠', description: 'Plans and decomposes tasks' },
   coder: { label: 'Coder', icon: '💻', description: 'Writes and edits code' },
@@ -725,7 +762,6 @@ function AgentModelRow({ agentType, config, onChange, claudeModels, geminiModels
   const models = config.provider === 'claude' ? claudeModels : geminiModels
 
   const handleProviderChange = (provider: AgentProviderType): void => {
-    // When switching providers, select the first model from the new provider
     const newModels = provider === 'claude' ? claudeModels : geminiModels
     const defaultModel = newModels.find(m => m.isDefault)?.id || newModels[0]?.id || ''
     onChange(agentType, { provider, model: defaultModel })
@@ -736,55 +772,51 @@ function AgentModelRow({ agentType, config, onChange, claudeModels, geminiModels
   }
 
   return (
-    <tr className="border-b border-border-default last:border-0" data-testid={`agent-model-row-${agentType}`}>
-      <td className="py-3 pr-4">
-        <div className="flex items-center gap-2">
-          <span className="text-lg">{info.icon}</span>
-          <div>
-            <div className="text-sm font-medium text-text-primary">{info.label}</div>
-            <div className="text-xs text-text-tertiary">{info.description}</div>
-          </div>
+    <div
+      className="flex items-center gap-4 p-4 rounded-xl bg-[#0D1117] border border-[#30363D]/50 hover:border-[#30363D] transition-colors"
+      data-testid={`agent-model-row-${agentType}`}
+    >
+      <div className="flex items-center gap-3 flex-1 min-w-0">
+        <span className="text-2xl">{info.icon}</span>
+        <div className="min-w-0">
+          <div className="text-sm font-medium text-[#F0F6FC]">{info.label}</div>
+          <div className="text-xs text-[#6E7681] truncate">{info.description}</div>
         </div>
-      </td>
-      <td className="py-3 px-4">
-        <select
-          value={config.provider}
-          onChange={(e) => { handleProviderChange(e.target.value as AgentProviderType); }}
-          className={cn(
-            'h-9 w-28 rounded-md border border-border-default bg-bg-dark px-2 py-1 text-sm text-text-primary',
-            'focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-accent-primary',
-            'transition-colors cursor-pointer'
-          )}
-          data-testid={`agent-provider-${agentType}`}
-        >
-          <option value="claude">Claude</option>
-          <option value="gemini">Gemini</option>
-        </select>
-      </td>
-      <td className="py-3 pl-4">
-        <select
-          value={config.model}
-          onChange={(e) => { handleModelChange(e.target.value); }}
-          className={cn(
-            'h-9 w-full rounded-md border border-border-default bg-bg-dark px-2 py-1 text-sm text-text-primary',
-            'focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-accent-primary',
-            'transition-colors cursor-pointer'
-          )}
-          data-testid={`agent-model-${agentType}`}
-        >
-          {models.map((model) => (
-            <option key={model.id} value={model.id}>
-              {model.name} {model.isDefault ? '(Recommended)' : ''}
-            </option>
-          ))}
-        </select>
-      </td>
-    </tr>
+      </div>
+      <select
+        value={config.provider}
+        onChange={(e) => { handleProviderChange(e.target.value as AgentProviderType); }}
+        className={cn(
+          'h-10 w-28 rounded-lg border border-[#30363D] bg-[#161B22] px-3 text-sm text-[#F0F6FC]',
+          'focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/50 focus:border-[#7C3AED]',
+          'transition-all cursor-pointer'
+        )}
+        data-testid={`agent-provider-${agentType}`}
+      >
+        <option value="claude">Claude</option>
+        <option value="gemini">Gemini</option>
+      </select>
+      <select
+        value={config.model}
+        onChange={(e) => { handleModelChange(e.target.value); }}
+        className={cn(
+          'h-10 w-48 rounded-lg border border-[#30363D] bg-[#161B22] px-3 text-sm text-[#F0F6FC]',
+          'focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/50 focus:border-[#7C3AED]',
+          'transition-all cursor-pointer'
+        )}
+        data-testid={`agent-model-${agentType}`}
+      >
+        {models.map((model) => (
+          <option key={model.id} value={model.id}>
+            {model.name}
+          </option>
+        ))}
+      </select>
+    </div>
   )
 }
 
 function AgentSettings({ settings, updateSetting }: SettingsTabProps): ReactElement {
-  // Get agent models from backend settings, fallback to defaults
   const agentModels = settings.agents.agentModels
   const updateAgentSetting = <K extends keyof AgentSettingsConfig>(key: K, value: AgentSettingsConfig[K]): void => {
     updateSetting('agents', key, value)
@@ -794,7 +826,6 @@ function AgentSettings({ settings, updateSetting }: SettingsTabProps): ReactElem
   const geminiModels = getGeminiModelList()
 
   const handleAgentModelChange = (agentType: AgentType, config: AgentModelConfig): void => {
-    // Update the agentModels in the settings through updateSetting
     const newAgentModels: AgentModelAssignments = {
       ...agentModels,
       [agentType]: config
@@ -810,64 +841,44 @@ function AgentSettings({ settings, updateSetting }: SettingsTabProps): ReactElem
 
   return (
     <div className="space-y-6" data-testid="agents-tab">
-      {/* Agent Model Assignments */}
-      <Card className="bg-bg-card border-border-default">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Bot className="w-5 h-5 text-accent-primary" />
-            Agent Model Assignments
-          </CardTitle>
-          <CardDescription>
-            Assign different models to each agent type for optimal performance. Each agent can use a different provider and model.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full" data-testid="agent-model-table">
-              <thead>
-                <tr className="border-b border-border-default">
-                  <th className="text-left py-2 pr-4 text-xs font-medium text-text-secondary uppercase tracking-wider">Agent</th>
-                  <th className="text-left py-2 px-4 text-xs font-medium text-text-secondary uppercase tracking-wider">Provider</th>
-                  <th className="text-left py-2 pl-4 text-xs font-medium text-text-secondary uppercase tracking-wider">Model</th>
-                </tr>
-              </thead>
-              <tbody>
-                {agentTypes.map((agentType) => (
-                  <AgentModelRow
-                    key={agentType}
-                    agentType={agentType}
-                    config={agentModels[agentType]}
-                    onChange={handleAgentModelChange}
-                    claudeModels={claudeModels}
-                    geminiModels={geminiModels}
-                  />
-                ))}
-              </tbody>
-            </table>
+      <SettingsCard
+        title="Agent Model Assignments"
+        description="Assign different models to each agent type for optimal performance"
+        icon={<Bot className="w-5 h-5 text-[#7C3AED]" />}
+      >
+        <>
+          <div className="space-y-3">
+            {agentTypes.map((agentType) => (
+              <AgentModelRow
+                key={agentType}
+                agentType={agentType}
+                config={agentModels[agentType]}
+                onChange={handleAgentModelChange}
+                claudeModels={claudeModels}
+                geminiModels={geminiModels}
+              />
+            ))}
           </div>
-          <div className="mt-4 pt-4 border-t border-border-default">
+          <div className="pt-4 border-t border-[#30363D]/50">
             <Button
               variant="outline"
               size="sm"
               onClick={handleResetToDefaults}
+              className="border-[#30363D] text-[#8B949E] hover:text-[#F0F6FC] hover:bg-[#21262D]"
               data-testid="use-recommended-defaults"
             >
               <RotateCcw className="w-4 h-4 mr-2" />
               Use Recommended Defaults
             </Button>
           </div>
-        </CardContent>
-      </Card>
+        </>
+      </SettingsCard>
 
-      {/* Agent Pool Settings */}
-      <Card className="bg-bg-card border-border-default">
-        <CardHeader>
-          <CardTitle>Agent Pool Settings</CardTitle>
-          <CardDescription>
-            Configure agent pool capacity and resource limits.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <SettingsCard
+        title="Agent Pool Settings"
+        description="Configure agent pool capacity and resource limits"
+      >
+        <>
           <Input
             id="max-parallel"
             type="number"
@@ -877,7 +888,6 @@ function AgentSettings({ settings, updateSetting }: SettingsTabProps): ReactElem
             description="Maximum number of agents running simultaneously (1-10)"
             value={settings.agents.maxParallelAgents}
             onChange={(e): void => {
-              // FIX #7: Clamp to valid range
               updateSetting('agents', 'maxParallelAgents', clampValue(e.target.value, 1, 10, 3))
             }}
           />
@@ -891,7 +901,6 @@ function AgentSettings({ settings, updateSetting }: SettingsTabProps): ReactElem
             description="Escalate to human after this many QA iterations (10-100)"
             value={settings.agents.qaIterationLimit || 50}
             onChange={(e): void => {
-              // FIX #7: Clamp to valid range
               updateAgentSetting('qaIterationLimit', clampValue(e.target.value, 10, 100, 50))
             }}
           />
@@ -905,29 +914,27 @@ function AgentSettings({ settings, updateSetting }: SettingsTabProps): ReactElem
             description="Split task if it exceeds this duration (1-120)"
             value={settings.agents.taskTimeoutMinutes}
             onChange={(e): void => {
-              // FIX #7: Clamp to valid range
               updateSetting('agents', 'taskTimeoutMinutes', clampValue(e.target.value, 1, 120, 30))
             }}
           />
-        </CardContent>
-      </Card>
+        </>
+      </SettingsCard>
 
-      {/* Retry Settings */}
-      <Card className="bg-bg-card border-border-default">
-        <CardHeader>
-          <CardTitle>Retry Settings</CardTitle>
-          <CardDescription>
-            Configure retry behavior for failed tasks.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Checkbox
-            id="auto-retry"
-            label="Auto Retry on Failure"
-            description="Automatically retry tasks when they fail"
-            checked={settings.agents.autoRetryEnabled}
-            onChange={(e): void => { updateSetting('agents', 'autoRetryEnabled', e.target.checked) }}
-          />
+      <SettingsCard
+        title="Retry Settings"
+        description="Configure retry behavior for failed tasks"
+      >
+        <>
+          <div className="flex items-center justify-between py-2">
+            <div>
+              <div className="text-sm font-medium text-[#F0F6FC]">Auto Retry on Failure</div>
+              <div className="text-xs text-[#8B949E]">Automatically retry tasks when they fail</div>
+            </div>
+            <ToggleSwitch
+              checked={settings.agents.autoRetryEnabled}
+              onChange={(checked) => { updateSetting('agents', 'autoRetryEnabled', checked) }}
+            />
+          </div>
 
           <Input
             id="max-retries"
@@ -938,13 +945,12 @@ function AgentSettings({ settings, updateSetting }: SettingsTabProps): ReactElem
             description="Number of times to retry a failed task (0-10)"
             value={settings.agents.maxRetries}
             onChange={(e): void => {
-              // FIX #7: Clamp to valid range
               updateSetting('agents', 'maxRetries', clampValue(e.target.value, 0, 10, 3))
             }}
             disabled={!settings.agents.autoRetryEnabled}
           />
-        </CardContent>
-      </Card>
+        </>
+      </SettingsCard>
     </div>
   )
 }
@@ -959,7 +965,6 @@ function CheckpointSettings({ settings, updateSetting }: SettingsTabProps): Reac
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
   const [loadingProjects, setLoadingProjects] = useState(true);
 
-  // Load projects on mount
   const loadProjects = useCallback(async () => {
     if (!isElectronEnvironment()) {
       setLoadingProjects(false);
@@ -968,7 +973,6 @@ function CheckpointSettings({ settings, updateSetting }: SettingsTabProps): Reac
     try {
       const projectList = await window.nexusAPI.getProjects() as ProjectInfo[];
       setProjects(projectList);
-      // Auto-select first project if available
       if (projectList.length > 0 && !selectedProjectId) {
         setSelectedProjectId(projectList[0].id);
       }
@@ -985,22 +989,22 @@ function CheckpointSettings({ settings, updateSetting }: SettingsTabProps): Reac
 
   return (
     <div className="space-y-6" data-testid="checkpoints-tab">
-      {/* Automatic Checkpoint Settings */}
-      <Card className="bg-bg-card border-border-default">
-        <CardHeader>
-          <CardTitle>Automatic Checkpoints</CardTitle>
-          <CardDescription>
-            Configure automatic checkpoint creation and retention.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Checkbox
-            id="auto-checkpoint"
-            label="Enable Auto-Checkpoint"
-            description="Automatically create checkpoints at regular intervals"
-            checked={settings.checkpoints.autoCheckpointEnabled}
-            onChange={(e): void => { updateSetting('checkpoints', 'autoCheckpointEnabled', e.target.checked) }}
-          />
+      <SettingsCard
+        title="Automatic Checkpoints"
+        description="Configure automatic checkpoint creation and retention"
+        icon={<Shield className="w-5 h-5 text-[#10B981]" />}
+      >
+        <>
+          <div className="flex items-center justify-between py-2">
+            <div>
+              <div className="text-sm font-medium text-[#F0F6FC]">Enable Auto-Checkpoint</div>
+              <div className="text-xs text-[#8B949E]">Automatically create checkpoints at regular intervals</div>
+            </div>
+            <ToggleSwitch
+              checked={settings.checkpoints.autoCheckpointEnabled}
+              onChange={(checked) => { updateSetting('checkpoints', 'autoCheckpointEnabled', checked) }}
+            />
+          </div>
 
           <Input
             id="checkpoint-interval"
@@ -1025,32 +1029,31 @@ function CheckpointSettings({ settings, updateSetting }: SettingsTabProps): Reac
             onChange={(e): void => { updateSetting('checkpoints', 'maxCheckpointsToKeep', parseInt(e.target.value) || 10) }}
           />
 
-          <Checkbox
-            id="checkpoint-on-feature"
-            label="Checkpoint on Feature Complete"
-            description="Automatically create a checkpoint when a feature is marked complete"
-            checked={settings.checkpoints.checkpointOnFeatureComplete}
-            onChange={(e): void => { updateSetting('checkpoints', 'checkpointOnFeatureComplete', e.target.checked) }}
-          />
-        </CardContent>
-      </Card>
+          <div className="flex items-center justify-between py-2">
+            <div>
+              <div className="text-sm font-medium text-[#F0F6FC]">Checkpoint on Feature Complete</div>
+              <div className="text-xs text-[#8B949E]">Automatically create a checkpoint when a feature is marked complete</div>
+            </div>
+            <ToggleSwitch
+              checked={settings.checkpoints.checkpointOnFeatureComplete}
+              onChange={(checked) => { updateSetting('checkpoints', 'checkpointOnFeatureComplete', checked) }}
+            />
+          </div>
+        </>
+      </SettingsCard>
 
-      {/* Project Checkpoints Management */}
-      <Card className="bg-bg-card border-border-default">
-        <CardHeader>
-          <CardTitle>Project Checkpoints</CardTitle>
-          <CardDescription>
-            View, restore, and manage checkpoints for your projects.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <SettingsCard
+        title="Project Checkpoints"
+        description="View, restore, and manage checkpoints for your projects"
+      >
+        <>
           {loadingProjects ? (
-            <div className="flex items-center gap-2 text-text-secondary">
-              <div className="h-4 w-4 border-2 border-accent-primary border-t-transparent rounded-full animate-spin" />
+            <div className="flex items-center gap-2 text-[#8B949E]">
+              <Loader2 className="h-4 w-4 animate-spin" />
               <span className="text-sm">Loading projects...</span>
             </div>
           ) : projects.length === 0 ? (
-            <p className="text-sm text-text-secondary">
+            <p className="text-sm text-[#8B949E]">
               No projects found. Create a project to manage checkpoints.
             </p>
           ) : (
@@ -1065,14 +1068,14 @@ function CheckpointSettings({ settings, updateSetting }: SettingsTabProps): Reac
               />
 
               {selectedProjectId && (
-                <div className="mt-4 pt-4 border-t border-border-default">
+                <div className="mt-4 pt-4 border-t border-[#30363D]/50">
                   <CheckpointList projectId={selectedProjectId} />
                 </div>
               )}
             </>
           )}
-        </CardContent>
-      </Card>
+        </>
+      </SettingsCard>
     </div>
   )
 }
@@ -1080,76 +1083,67 @@ function CheckpointSettings({ settings, updateSetting }: SettingsTabProps): Reac
 function UISettings({ settings, updateSetting }: SettingsTabProps): ReactElement {
   return (
     <div className="space-y-6" data-testid="ui-tab">
-      <Card className="bg-bg-card border-border-default">
-        <CardHeader>
-          <CardTitle>Theme</CardTitle>
-          <CardDescription>
-            Choose your preferred color scheme.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-3 gap-4">
-            {[
-              { value: 'light' as const, label: 'Light', icon: <Sun className="w-5 h-5" /> },
-              { value: 'dark' as const, label: 'Dark', icon: <Moon className="w-5 h-5" /> },
-              { value: 'system' as const, label: 'System', icon: <Monitor className="w-5 h-5" /> }
-            ].map((theme) => (
-              <button
-                key={theme.value}
-                type="button"
-                onClick={(): void => { updateSetting('ui', 'theme', theme.value) }}
-                className={cn(
-                  'flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all',
-                  settings.ui.theme === theme.value
-                    ? 'border-accent-primary bg-accent-primary/10'
-                    : 'border-border-default hover:border-accent-primary/50 bg-bg-dark'
-                )}
-              >
-                {theme.icon}
-                <span className="text-sm font-medium">{theme.label}</span>
-              </button>
-            ))}
+      <SettingsCard
+        title="Theme"
+        description="Choose your preferred color scheme"
+        icon={<Palette className="w-5 h-5 text-[#7C3AED]" />}
+      >
+        <div className="grid grid-cols-3 gap-4">
+          {[
+            { value: 'light' as const, label: 'Light', icon: <Sun className="w-6 h-6" /> },
+            { value: 'dark' as const, label: 'Dark', icon: <Moon className="w-6 h-6" /> },
+            { value: 'system' as const, label: 'System', icon: <Monitor className="w-6 h-6" /> }
+          ].map((theme) => (
+            <button
+              key={theme.value}
+              type="button"
+              onClick={(): void => { updateSetting('ui', 'theme', theme.value) }}
+              className={cn(
+                'flex flex-col items-center gap-3 p-5 rounded-xl border-2 transition-all duration-200',
+                settings.ui.theme === theme.value
+                  ? 'border-[#7C3AED] bg-[#7C3AED]/10 text-[#F0F6FC]'
+                  : 'border-[#30363D] bg-[#0D1117] text-[#8B949E] hover:border-[#7C3AED]/50 hover:text-[#F0F6FC]'
+              )}
+            >
+              {theme.icon}
+              <span className="text-sm font-medium">{theme.label}</span>
+            </button>
+          ))}
+        </div>
+      </SettingsCard>
+
+      <SettingsCard
+        title="Layout"
+        description="Customize the interface layout"
+      >
+        <Input
+          id="sidebar-width"
+          type="number"
+          min={200}
+          max={400}
+          step={10}
+          label="Sidebar Width (px)"
+          description="Width of the sidebar in pixels"
+          value={settings.ui.sidebarWidth}
+          onChange={(e): void => { updateSetting('ui', 'sidebarWidth', parseInt(e.target.value) || 256) }}
+        />
+      </SettingsCard>
+
+      <SettingsCard
+        title="Notifications"
+        description="Configure notification behavior"
+      >
+        <>
+          <div className="flex items-center justify-between py-2">
+            <div>
+              <div className="text-sm font-medium text-[#F0F6FC]">Show Notifications</div>
+              <div className="text-xs text-[#8B949E]">Display toast notifications for events</div>
+            </div>
+            <ToggleSwitch
+              checked={settings.ui.showNotifications}
+              onChange={(checked) => { updateSetting('ui', 'showNotifications', checked) }}
+            />
           </div>
-        </CardContent>
-      </Card>
-
-      <Card className="bg-bg-card border-border-default">
-        <CardHeader>
-          <CardTitle>Layout</CardTitle>
-          <CardDescription>
-            Customize the interface layout.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Input
-            id="sidebar-width"
-            type="number"
-            min={200}
-            max={400}
-            step={10}
-            label="Sidebar Width (px)"
-            description="Width of the sidebar in pixels"
-            value={settings.ui.sidebarWidth}
-            onChange={(e): void => { updateSetting('ui', 'sidebarWidth', parseInt(e.target.value) || 256) }}
-          />
-        </CardContent>
-      </Card>
-
-      <Card className="bg-bg-card border-border-default">
-        <CardHeader>
-          <CardTitle>Notifications</CardTitle>
-          <CardDescription>
-            Configure notification behavior.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Checkbox
-            id="show-notifications"
-            label="Show Notifications"
-            description="Display toast notifications for events"
-            checked={settings.ui.showNotifications}
-            onChange={(e): void => { updateSetting('ui', 'showNotifications', e.target.checked) }}
-          />
 
           <Input
             id="notification-duration"
@@ -1163,8 +1157,8 @@ function UISettings({ settings, updateSetting }: SettingsTabProps): ReactElement
             onChange={(e): void => { updateSetting('ui', 'notificationDuration', parseInt(e.target.value) || 5000) }}
             disabled={!settings.ui.showNotifications}
           />
-        </CardContent>
-      </Card>
+        </>
+      </SettingsCard>
     </div>
   )
 }
@@ -1172,14 +1166,12 @@ function UISettings({ settings, updateSetting }: SettingsTabProps): ReactElement
 function ProjectSettings({ settings, updateSetting }: SettingsTabProps): ReactElement {
   return (
     <div className="space-y-6" data-testid="project-tab">
-      <Card className="bg-bg-card border-border-default">
-        <CardHeader>
-          <CardTitle>Project Defaults</CardTitle>
-          <CardDescription>
-            Default values used when creating new projects.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <SettingsCard
+        title="Project Defaults"
+        description="Default values used when creating new projects"
+        icon={<FolderCog className="w-5 h-5 text-[#7C3AED]" />}
+      >
+        <>
           <Input
             id="default-language"
             label="Default Language"
@@ -1206,8 +1198,8 @@ function ProjectSettings({ settings, updateSetting }: SettingsTabProps): ReactEl
             onChange={(e): void => { updateSetting('project', 'outputDirectory', e.target.value) }}
             placeholder="e.g., ~/projects"
           />
-        </CardContent>
-      </Card>
+        </>
+      </SettingsCard>
     </div>
   )
 }
@@ -1224,7 +1216,6 @@ export default function SettingsPage(): ReactElement {
   const isDirty = useSettingsDirty()
   const { loadSettings, updateSetting, saveSettings, discardChanges, resetToDefaults } = useSettingsStore()
 
-  // Load settings on mount
   useEffect(() => {
     if (!isElectronEnvironment()) {
       setError('Backend not available. Please run in Electron.')
@@ -1251,31 +1242,31 @@ export default function SettingsPage(): ReactElement {
     }
   }
 
-  // Error state (no backend)
   if (error) {
     return (
-      <div className="flex flex-col h-screen bg-bg-dark" data-testid="settings-page-error">
+      <div className="flex flex-col h-screen bg-[#0D1117]" data-testid="settings-page-error">
         <Header title="Settings" icon={Settings2} showBack />
         <div className="flex items-center justify-center flex-1">
-          <div className="flex flex-col items-center gap-3 text-center max-w-md px-4">
-            <AlertCircle className="h-12 w-12 text-status-warning" />
-            <h2 className="text-lg font-medium text-text-primary">Settings Unavailable</h2>
-            <p className="text-sm text-text-secondary">{error}</p>
+          <div className="flex flex-col items-center gap-4 text-center max-w-md px-4">
+            <div className="w-16 h-16 rounded-2xl bg-amber-500/10 flex items-center justify-center">
+              <AlertCircle className="h-8 w-8 text-amber-500" />
+            </div>
+            <h2 className="text-xl font-semibold text-[#F0F6FC]">Settings Unavailable</h2>
+            <p className="text-sm text-[#8B949E]">{error}</p>
           </div>
         </div>
       </div>
     )
   }
 
-  // Loading state
   if (isLoading || !settings) {
     return (
-      <div className="flex flex-col h-screen bg-bg-dark" data-testid="settings-page-loading">
+      <div className="flex flex-col h-screen bg-[#0D1117]" data-testid="settings-page-loading">
         <Header title="Settings" icon={Settings2} showBack />
         <div className="flex items-center justify-center flex-1">
-          <div className="flex flex-col items-center gap-2">
-            <div className="h-8 w-8 border-2 border-accent-primary border-t-transparent rounded-full animate-spin" />
-            <span className="text-sm text-text-secondary">Loading settings...</span>
+          <div className="flex flex-col items-center gap-3">
+            <Loader2 className="h-10 w-10 text-[#7C3AED] animate-spin" />
+            <span className="text-sm text-[#8B949E]">Loading settings...</span>
           </div>
         </div>
       </div>
@@ -1283,75 +1274,83 @@ export default function SettingsPage(): ReactElement {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-bg-dark" data-testid="settings-page">
+    <div className="flex flex-col h-screen bg-[#0D1117] relative overflow-hidden" data-testid="settings-page">
+      {/* Background effects */}
+      <div className="absolute inset-0 bg-gradient-mesh opacity-10 pointer-events-none" />
+
       {/* Header */}
       <Header
         title="Settings"
         icon={Settings2}
         showBack
         actions={
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={(): void => { void handleReset() }}
-              className="text-accent-error hover:text-accent-error hover:bg-accent-error/10"
-              data-testid="reset-defaults-button"
-            >
-              <RotateCcw className="w-4 h-4 mr-2" />
-              Reset Defaults
-            </Button>
-          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={(): void => { void handleReset() }}
+            className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+            data-testid="reset-defaults-button"
+          >
+            <RotateCcw className="w-4 h-4 mr-2" />
+            Reset Defaults
+          </Button>
         }
       />
 
       {/* Main content area */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* Left: Vertical tabs */}
-        <nav className="w-56 border-r border-border-default p-4 space-y-1 flex-shrink-0 bg-bg-card">
+      <div className="relative z-10 flex flex-1 overflow-hidden">
+        {/* Left: Vertical navigation */}
+        <nav className="w-64 border-r border-[#30363D]/50 p-4 space-y-1 flex-shrink-0 bg-[#161B22]/50 backdrop-blur-sm">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={(): void => { setActiveTab(tab.id) }}
               className={cn(
-                'w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm transition-all',
+                'w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-all duration-200',
                 activeTab === tab.id
-                  ? 'bg-accent-primary text-white font-medium'
-                  : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'
+                  ? 'bg-gradient-to-r from-[#7C3AED]/20 to-[#6366F1]/10 text-[#F0F6FC] border-l-2 border-[#7C3AED]'
+                  : 'text-[#8B949E] hover:bg-[#21262D] hover:text-[#F0F6FC]'
               )}
               data-testid={`tab-${tab.id}`}
             >
-              {tab.icon}
-              <span>{tab.label}</span>
+              <span className={cn(
+                activeTab === tab.id ? 'text-[#7C3AED]' : ''
+              )}>
+                {tab.icon}
+              </span>
+              <span className="font-medium">{tab.label}</span>
             </button>
           ))}
         </nav>
 
         {/* Right: Content panel */}
-        <main className="flex-1 p-6 overflow-y-auto">
+        <main className="flex-1 p-8 overflow-y-auto custom-scrollbar">
           {/* Tab header */}
-          <div className="mb-6">
-            <h2 className="text-xl font-semibold text-text-primary">{tabs.find((t) => t.id === activeTab)?.label}</h2>
-            <p className="text-sm text-text-secondary mt-1">
+          <div className="mb-8 animate-fade-in-up">
+            <h2 className="text-2xl font-bold text-[#F0F6FC]">{tabs.find((t) => t.id === activeTab)?.label}</h2>
+            <p className="text-sm text-[#8B949E] mt-1">
               {tabs.find((t) => t.id === activeTab)?.description}
             </p>
           </div>
 
           {/* Tab content */}
-          {activeTab === 'llm' && <LLMProvidersSettings settings={settings} updateSetting={updateSetting} />}
-          {activeTab === 'agents' && <AgentSettings settings={settings} updateSetting={updateSetting} />}
-          {activeTab === 'checkpoints' && <CheckpointSettings settings={settings} updateSetting={updateSetting} />}
-          {activeTab === 'ui' && <UISettings settings={settings} updateSetting={updateSetting} />}
-          {activeTab === 'project' && <ProjectSettings settings={settings} updateSetting={updateSetting} />}
+          <div className="max-w-3xl">
+            {activeTab === 'llm' && <LLMProvidersSettings settings={settings} updateSetting={updateSetting} />}
+            {activeTab === 'agents' && <AgentSettings settings={settings} updateSetting={updateSetting} />}
+            {activeTab === 'checkpoints' && <CheckpointSettings settings={settings} updateSetting={updateSetting} />}
+            {activeTab === 'ui' && <UISettings settings={settings} updateSetting={updateSetting} />}
+            {activeTab === 'project' && <ProjectSettings settings={settings} updateSetting={updateSetting} />}
+          </div>
         </main>
       </div>
 
       {/* Footer with Save/Cancel */}
-      <footer className="flex justify-end gap-3 p-4 border-t border-border-default bg-bg-card">
+      <footer className="relative z-10 flex justify-end gap-3 p-4 border-t border-[#30363D]/50 bg-[#161B22]/80 backdrop-blur-xl">
         <Button
           variant="outline"
           onClick={(): void => { discardChanges() }}
           disabled={!isDirty}
+          className="border-[#30363D] text-[#8B949E] hover:text-[#F0F6FC] hover:bg-[#21262D] disabled:opacity-50"
           data-testid="cancel-button"
         >
           Cancel
@@ -1359,6 +1358,7 @@ export default function SettingsPage(): ReactElement {
         <Button
           onClick={(): void => { void handleSave() }}
           disabled={!isDirty}
+          className="bg-gradient-to-r from-[#7C3AED] to-[#6366F1] text-white hover:shadow-lg hover:shadow-[#7C3AED]/25 disabled:opacity-50"
           data-testid="save-button"
         >
           <Save className="w-4 h-4 mr-2" />

@@ -87,6 +87,8 @@ export class SettingsLoader {
         claudePath: llmSettings.claude.cliPath,
         timeout: llmSettings.claude.timeout,
         maxRetries: llmSettings.claude.maxRetries,
+        // Required for non-interactive automated execution (--dangerously-skip-permissions)
+        skipPermissions: llmSettings.claude.skipPermissions ?? true,
       },
       claudeConfig: {
         // ClaudeClientOptions doesn't have model - it's set per-request

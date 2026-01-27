@@ -135,6 +135,8 @@ export interface OrchestrationTask {
   priority: number;
   waveId?: number;
   featureId?: string;
+  /** Project ID this task belongs to */
+  projectId?: string;
   files?: string[];
   /** @deprecated Use dependsOn instead */
   dependencies?: string[];
@@ -206,6 +208,7 @@ export interface IAgentPool {
 
 /**
  * Task queue interface
+ * Phase 2 Workflow Fix: Added onEvent and updateTaskStatus for UI visibility
  */
 export interface ITaskQueue {
   /** Add task to queue */
@@ -220,6 +223,9 @@ export interface ITaskQueue {
   /** Get tasks in a specific wave */
   getByWave(waveId: number): OrchestrationTask[];
 
+  /** Get task by ID without removing it */
+  getTask(taskId: string): OrchestrationTask | undefined;
+
   /** Mark task as complete */
   markComplete(taskId: string): void;
 
@@ -231,6 +237,12 @@ export interface ITaskQueue {
 
   /** Check if queue is empty */
   isEmpty(): boolean;
+
+  /** Phase 2 addition: Register event handler for status changes */
+  onEvent(handler: (event: NexusEvent) => void): void;
+
+  /** Phase 2 addition: Update task status and emit change event */
+  updateTaskStatus(taskId: string, newStatus: TaskStatus): void;
 }
 
 // ============================================================================
@@ -239,6 +251,7 @@ export interface ITaskQueue {
 
 /**
  * Event types specific to orchestration
+ * Phase 2 Workflow Fix: Added task:status-changed for UI visibility
  */
 export type NexusEventType =
   | 'coordinator:started'
@@ -255,6 +268,7 @@ export type NexusEventType =
   | 'task:merged'
   | 'task:merge-failed'
   | 'task:pushed'
+  | 'task:status-changed' // Phase 2 addition - for tracking status transitions
   | 'agent:released'
   | 'checkpoint:created'
   | 'checkpoint:failed'

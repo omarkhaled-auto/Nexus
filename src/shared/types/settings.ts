@@ -58,6 +58,8 @@ export interface ClaudeProviderSettings {
   maxRetries?: number;
   /** Model to use - see src/llm/models.ts for available models */
   model?: string;
+  /** Skip permission prompts for automated execution (default: true for CLI backend) */
+  skipPermissions?: boolean;
 }
 
 /**

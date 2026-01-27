@@ -23,6 +23,7 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { execSync } from 'child_process';
+import { ensureIdentityForCommit } from '../../infrastructure/git/GitIdentityHelper';
 
 /** Helper to check if path exists */
 async function pathExists(p: string): Promise<boolean> {
@@ -124,8 +125,11 @@ export class ProjectInitializer {
 
     // Initialize git if requested (default: true)
     if (options.initGit !== false) {
-      await this.initializeGit(projectPath);
+      await this.initializeGit(projectPath, options.name);
     }
+
+    // Create Claude Code configuration for automated execution
+    await this.createClaudeCodeConfig(projectPath, options.name);
 
     const projectId = this.generateProjectId();
 
@@ -207,7 +211,7 @@ ${new Date().toISOString()}
   /**
    * Initialize git repository for the project
    */
-  private async initializeGit(projectPath: string): Promise<void> {
+  private async initializeGit(projectPath: string, projectName: string): Promise<void> {
     try {
       // Check if already a git repo
       const gitDir = path.join(projectPath, '.git');
@@ -226,6 +230,9 @@ ${new Date().toISOString()}
 
       // Initialize git
       execSync('git init', { cwd: projectPath, stdio: 'pipe' });
+
+      // Ensure git identity is configured for commits
+      ensureIdentityForCommit(projectPath, projectName);
 
       // Create .gitignore
       const gitignore = `# Dependencies
@@ -250,6 +257,9 @@ out/
 # Nexus working files
 .nexus/worktrees/
 .nexus/checkpoints/
+
+# Claude Code local settings (machine-specific permissions)
+.claude/settings.local.json
 
 # OS
 .DS_Store
@@ -289,6 +299,60 @@ coverage/
    */
   private generateProjectId(): string {
     return `proj_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+  }
+
+  /**
+   * Create Claude Code configuration for automated execution
+   * Creates .claude/settings.local.json with auto-approve permissions
+   * and .claude/CLAUDE.md with project context
+   */
+  private async createClaudeCodeConfig(projectPath: string, projectName: string): Promise<void> {
+    try {
+      const claudeDir = path.join(projectPath, '.claude');
+      await ensureDir(claudeDir);
+
+      // Create settings.local.json with auto-approve for this project
+      // This allows Claude Code CLI to operate non-interactively
+      const settings = {
+        permissions: {
+          allow: [
+            'Read(*)',    // Allow reading any file
+            'Write(*)',   // Allow writing any file
+            'Edit(*)',    // Allow editing any file
+            'Bash(*)',    // Allow bash commands
+            'Glob(*)',    // Allow glob searches
+            'Grep(*)',    // Allow grep searches
+          ],
+          deny: [],
+        },
+      };
+
+      await writeJson(path.join(claudeDir, 'settings.local.json'), settings, { spaces: 2 });
+
+      // Create CLAUDE.md with project context
+      const claudeMd = `# ${projectName}
+
+This project is managed by Nexus - an autonomous AI application builder.
+
+## Project Structure
+- \`src/\` - Source code
+- \`tests/\` - Test files
+- \`.nexus/\` - Nexus configuration and state
+
+## Guidelines
+- Follow existing code patterns
+- Write comprehensive tests
+- Use TypeScript with strict mode
+- Ensure all code is production-ready
+`;
+
+      await fs.writeFile(path.join(claudeDir, 'CLAUDE.md'), claudeMd);
+
+      console.log(`[ProjectInitializer] Created Claude Code configuration`);
+    } catch (error) {
+      // Non-fatal - project can still work without Claude Code config
+      console.warn(`[ProjectInitializer] Failed to create Claude Code config:`, error);
+    }
   }
 }
 

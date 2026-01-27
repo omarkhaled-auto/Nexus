@@ -204,6 +204,7 @@ export const projectsRelations = relations(projects, ({ many }) => ({
   sessions: many(sessions),
   episodes: many(episodes),
   continuePoints: many(continuePoints),
+  projectStates: many(projectStates),
 }));
 
 export const featuresRelations = relations(features, ({ one, many }) => ({
@@ -323,6 +324,32 @@ export const continuePointsRelations = relations(continuePoints, ({ one }) => ({
 }));
 
 // ============================================================================
+// Project States table (for state persistence - Phase 2 Workflow Fix)
+// ============================================================================
+export const projectStates = sqliteTable('project_states', {
+  id: text('id').primaryKey(),
+  projectId: text('project_id')
+    .notNull()
+    .references(() => projects.id, { onDelete: 'cascade' }),
+  status: text('status').notNull().default('initializing'),
+  mode: text('mode').$type<'genesis' | 'evolution'>().notNull(),
+  stateData: text('state_data'), // JSON blob of full NexusState
+  currentFeatureIndex: integer('current_feature_index').default(0),
+  currentTaskIndex: integer('current_task_index').default(0),
+  completedTasks: integer('completed_tasks').default(0),
+  totalTasks: integer('total_tasks').default(0),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
+});
+
+export const projectStatesRelations = relations(projectStates, ({ one }) => ({
+  project: one(projects, {
+    fields: [projectStates.projectId],
+    references: [projects.id],
+  }),
+}));
+
+// ============================================================================
 // Code Chunks table (for semantic code search - Plan 13-03)
 // ============================================================================
 export const codeChunks = sqliteTable('code_chunks', {
@@ -379,3 +406,6 @@ export type NewContinuePointRecord = typeof continuePoints.$inferInsert;
 
 export type CodeChunkRecord = typeof codeChunks.$inferSelect;
 export type NewCodeChunkRecord = typeof codeChunks.$inferInsert;
+
+export type ProjectState = typeof projectStates.$inferSelect;
+export type NewProjectState = typeof projectStates.$inferInsert;

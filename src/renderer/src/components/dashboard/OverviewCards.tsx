@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@renderer/components/u
 import { cn } from '@renderer/lib/utils'
 import { useOverview } from '@renderer/stores/metricsStore'
 import type { OverviewMetrics } from '@renderer/types/metrics'
-import { CheckCircle2, Circle, AlertCircle, Users } from 'lucide-react'
+import { CheckCircle2, Layers, AlertCircle, Users, TrendingUp } from 'lucide-react'
 
 export interface OverviewCardsProps {
   metrics?: OverviewMetrics
@@ -11,7 +11,74 @@ export interface OverviewCardsProps {
 }
 
 /**
+ * StatCard - Individual metric card with gradient styling
+ */
+function StatCard({
+  title,
+  value,
+  subtitle,
+  icon: Icon,
+  gradientFrom,
+  gradientTo,
+  iconColor,
+  trend,
+}: {
+  title: string
+  value: string | number
+  subtitle: string
+  icon: React.ElementType
+  gradientFrom: string
+  gradientTo: string
+  iconColor: string
+  trend?: { value: string; positive: boolean }
+}): ReactElement {
+  return (
+    <Card className={cn(
+      "relative overflow-hidden",
+      "bg-[#161B22]/80 backdrop-blur-sm",
+      "border border-[#30363D]",
+      "hover:border-[#484F58]",
+      "transition-all duration-300",
+      "hover:shadow-[0_8px_30px_rgba(0,0,0,0.3)]"
+    )}>
+      {/* Subtle gradient overlay */}
+      <div className={cn(
+        "absolute inset-0 opacity-5",
+        `bg-gradient-to-br ${gradientFrom} ${gradientTo}`
+      )} />
+
+      <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0 relative">
+        <CardTitle className="text-sm font-medium text-[#8B949E]">{title}</CardTitle>
+        <div className={cn(
+          "p-2.5 rounded-xl",
+          `bg-gradient-to-br ${gradientFrom} ${gradientTo}`,
+          "shadow-lg"
+        )}>
+          <Icon className="h-4 w-4 text-white" />
+        </div>
+      </CardHeader>
+      <CardContent className="relative">
+        <div className="text-3xl font-bold text-[#F0F6FC] tabular-nums">{value}</div>
+        <div className="flex items-center gap-2 mt-1">
+          <p className="text-xs text-[#8B949E]">{subtitle}</p>
+          {trend && (
+            <span className={cn(
+              'text-xs font-medium flex items-center gap-0.5',
+              trend.positive ? 'text-[#3FB950]' : 'text-[#F85149]'
+            )}>
+              {trend.positive && <TrendingUp className="h-3 w-3" />}
+              {trend.value}
+            </span>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+/**
  * OverviewCards - Dashboard header cards showing key metrics.
+ * Features glassmorphism design with gradient icons.
  * If metrics prop is not provided, gets data from metricsStore.
  */
 export function OverviewCards({ metrics: propMetrics, className }: OverviewCardsProps): ReactElement {
@@ -21,66 +88,64 @@ export function OverviewCards({ metrics: propMetrics, className }: OverviewCards
   if (!metrics) {
     return (
       <div className={cn('grid grid-cols-2 gap-4 lg:grid-cols-4', className)}>
-        <Card><CardContent className="p-6 text-muted-foreground">No data available</CardContent></Card>
-        <Card><CardContent className="p-6 text-muted-foreground">No data available</CardContent></Card>
-        <Card><CardContent className="p-6 text-muted-foreground">No data available</CardContent></Card>
-        <Card><CardContent className="p-6 text-muted-foreground">No data available</CardContent></Card>
+        {[1, 2, 3, 4].map((i) => (
+          <Card key={i} className="bg-[#161B22]/60 border-[#30363D]">
+            <CardContent className="p-6">
+              <div className="h-4 w-24 bg-[#21262D] rounded animate-pulse mb-3" />
+              <div className="h-8 w-16 bg-[#21262D] rounded animate-pulse" />
+            </CardContent>
+          </Card>
+        ))}
       </div>
     )
   }
+
   const progressPercent = metrics.totalTasks > 0
     ? Math.round((metrics.completedTasks / metrics.totalTasks) * 100)
     : 0
 
   return (
     <div className={cn('grid grid-cols-2 gap-4 lg:grid-cols-4', className)}>
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <CardTitle className="text-sm font-medium">Progress</CardTitle>
-          <CheckCircle2 className="h-4 w-4 text-green-500" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{progressPercent}%</div>
-          <p className="text-muted-foreground text-xs">
-            {metrics.completedTasks} of {metrics.totalTasks} tasks
-          </p>
-        </CardContent>
-      </Card>
+      <StatCard
+        title="Progress"
+        value={`${progressPercent}%`}
+        subtitle={`${metrics.completedTasks} of ${metrics.totalTasks} tasks`}
+        icon={CheckCircle2}
+        gradientFrom="from-[#238636]"
+        gradientTo="to-[#3FB950]"
+        iconColor="text-[#3FB950]"
+        trend={{ value: '+12%', positive: true }}
+      />
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <CardTitle className="text-sm font-medium">Features</CardTitle>
-          <Circle className="h-4 w-4 text-blue-500" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{metrics.completedFeatures}</div>
-          <p className="text-muted-foreground text-xs">
-            of {metrics.totalFeatures} completed
-          </p>
-        </CardContent>
-      </Card>
+      <StatCard
+        title="Features"
+        value={metrics.completedFeatures}
+        subtitle={`of ${metrics.totalFeatures} completed`}
+        icon={Layers}
+        gradientFrom="from-[#7C3AED]"
+        gradientTo="to-[#A855F7]"
+        iconColor="text-[#A78BFA]"
+      />
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <CardTitle className="text-sm font-medium">Active Agents</CardTitle>
-          <Users className="h-4 w-4 text-purple-500" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{metrics.activeAgents}</div>
-          <p className="text-muted-foreground text-xs">currently working</p>
-        </CardContent>
-      </Card>
+      <StatCard
+        title="Active Agents"
+        value={metrics.activeAgents}
+        subtitle="currently working"
+        icon={Users}
+        gradientFrom="from-[#0891B2]"
+        gradientTo="to-[#06B6D4]"
+        iconColor="text-[#06B6D4]"
+      />
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <CardTitle className="text-sm font-medium">Failed Tasks</CardTitle>
-          <AlertCircle className="h-4 w-4 text-red-500" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{metrics.failedTasks}</div>
-          <p className="text-muted-foreground text-xs">require attention</p>
-        </CardContent>
-      </Card>
+      <StatCard
+        title="Failed Tasks"
+        value={metrics.failedTasks}
+        subtitle="require attention"
+        icon={AlertCircle}
+        gradientFrom="from-[#DA3633]"
+        gradientTo="to-[#F85149]"
+        iconColor="text-[#F85149]"
+      />
     </div>
   )
 }

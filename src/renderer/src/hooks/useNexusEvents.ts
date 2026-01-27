@@ -23,7 +23,7 @@ import { useProjectStore } from '../stores/projectStore';
 import { useAgentStore } from '../stores/agentStore';
 import { useInterviewStore } from '../stores/interviewStore';
 import { useMetricsStore } from '../stores/metricsStore';
-import { useUIStore } from '../stores/uiStore';
+import { toast } from '../lib/toast';
 
 /** Type for Nexus events from the main process */
 interface NexusEvent {
@@ -84,6 +84,37 @@ interface PlanningEventPayload {
   taskCount?: number;
 }
 
+/** Phase 2 addition: Wave event payload */
+interface WaveEventPayload {
+  waveId: number;
+  projectId?: string;
+}
+
+/** Phase 2 addition: Checkpoint event payload */
+interface CheckpointEventPayload {
+  checkpointId?: string;
+  waveId?: number;
+  reason?: string;
+  error?: string;
+}
+
+/** Phase 2 addition: Task status change payload */
+interface TaskStatusChangePayload {
+  taskId: string;
+  oldStatus: string;
+  newStatus: string;
+  featureId?: string;
+}
+
+/** Phase 2 addition: Feature event payload */
+interface FeatureEventPayload {
+  featureId: string;
+  projectId?: string;
+  tasksCompleted?: number;
+  previousStatus?: string;
+  newStatus?: string;
+}
+
 /**
  * Hook to subscribe to Nexus backend events
  *
@@ -99,6 +130,8 @@ export function useNexusEvents(): void {
   const loadTasks = useTaskStore((s) => s.loadTasks);
 
   const loadFeatures = useFeatureStore((s) => s.loadFeatures);
+  const updateFeatureFromTaskCompletion = useFeatureStore((s) => s.updateFeatureFromTaskCompletion);
+  const updateFeatureStatusFromTasks = useFeatureStore((s) => s.updateFeatureStatusFromTasks);
 
   const setProject = useProjectStore((s) => s.setProject);
 
@@ -108,9 +141,6 @@ export function useNexusEvents(): void {
   const addRequirement = useInterviewStore((s) => s.addRequirement);
 
   const refreshMetrics = useMetricsStore((s) => s.loadMetrics);
-
-  // eslint-disable-next-line @typescript-eslint/no-deprecated -- TODO: Migrate to sonner toast
-  const addToast = useUIStore((s) => s.addToast);
 
   useEffect(() => {
     // Prevent double subscription in strict mode
@@ -147,6 +177,11 @@ export function useNexusEvents(): void {
               status: 'pending',
               assignedAgent: p.agentId,
             });
+            // CRITICAL FIX: Update feature when task is assigned
+            const assignedFeatureId = (payload as Record<string, unknown>).featureId as string | undefined;
+            if (assignedFeatureId) {
+              updateFeatureStatusFromTasks(assignedFeatureId);
+            }
             break;
           }
 
@@ -157,12 +192,24 @@ export function useNexusEvents(): void {
             if (p.agentId) {
               updateAgent(p.agentId, { status: 'working' });
             }
+            // CRITICAL FIX: Update feature when task starts (moves feature from backlog to in_progress)
+            const startedFeatureId = (payload as Record<string, unknown>).featureId as string | undefined;
+            if (startedFeatureId) {
+              updateFeatureStatusFromTasks(startedFeatureId);
+            }
             break;
           }
 
           case 'task:completed': {
             const p = payload as TaskEventPayload;
             updateTask(p.taskId, { status: 'completed' });
+            // Phase 2 fix: Update feature when task completes
+            // The payload may include featureId from the backend
+            const featureId = (payload as Record<string, unknown>).featureId as string | undefined;
+            if (featureId) {
+              updateFeatureFromTaskCompletion(featureId);
+              updateFeatureStatusFromTasks(featureId);
+            }
             // Refresh metrics to update progress
             void refreshMetrics();
             break;
@@ -171,22 +218,14 @@ export function useNexusEvents(): void {
           case 'task:failed': {
             const p = payload as TaskEventPayload;
             updateTask(p.taskId, { status: 'failed' });
-            addToast({
-              id: `task-failed-${p.taskId}`,
-              type: 'error',
-              message: `Task failed: ${p.error || 'Unknown error'}`,
-            });
+            toast.error(`Task failed: ${p.error || 'Unknown error'}`);
             break;
           }
 
           case 'task:escalated': {
             const p = payload as TaskEventPayload;
             updateTask(p.taskId, { status: 'failed' });
-            addToast({
-              id: `task-escalated-${p.taskId}`,
-              type: 'info', // Use 'info' as warning is not supported
-              message: `Task escalated for human review: ${p.reason || 'Max iterations exceeded'}`,
-            });
+            toast.warning(`Task escalated for human review: ${p.reason || 'Max iterations exceeded'}`);
             break;
           }
 
@@ -201,22 +240,13 @@ export function useNexusEvents(): void {
           }
 
           case 'project:completed': {
-            const p = payload as ProjectEventPayload;
-            addToast({
-              id: `project-completed-${p.projectId}`,
-              type: 'success',
-              message: 'Project completed successfully!',
-            });
+            toast.success('Project completed successfully!');
             break;
           }
 
           case 'project:failed': {
             const p = payload as ProjectEventPayload;
-            addToast({
-              id: `project-failed-${p.projectId}`,
-              type: 'error',
-              message: `Project failed: ${p.error || 'Unknown error'}`,
-            });
+            toast.error(`Project failed: ${p.error || 'Unknown error'}`);
             break;
           }
 
@@ -231,11 +261,7 @@ export function useNexusEvents(): void {
           case 'interview:completed': {
             const p = payload as InterviewEventPayload;
             setStage('complete');
-            addToast({
-              id: `interview-completed-${p.projectId}`,
-              type: 'success',
-              message: `Interview completed with ${p.totalRequirements || 0} requirements captured`,
-            });
+            toast.success(`Interview completed with ${p.totalRequirements || 0} requirements captured`);
             break;
           }
 
@@ -272,11 +298,7 @@ export function useNexusEvents(): void {
             void refreshMetrics();
 
             // Show notification
-            addToast({
-              id: `planning-completed-${p.projectId}`,
-              type: 'success',
-              message: `Planning complete! ${p.taskCount ?? 0} tasks created across ${p.featureCount ?? 0} features.`,
-            });
+            toast.success(`Planning complete! ${p.taskCount ?? 0} tasks created across ${p.featureCount ?? 0} features.`);
             break;
           }
 
@@ -290,11 +312,7 @@ export function useNexusEvents(): void {
             const p = payload as QAEventPayload;
             const stepType = type.split(':')[1]?.replace('-completed', '') || 'unknown';
             if (!p.success) {
-              addToast({
-                id: `qa-${stepType}-failed-${p.taskId}`,
-                type: 'error', // Use 'error' for QA failures
-                message: `QA ${stepType} failed for task`,
-              });
+              toast.error(`QA ${stepType} failed for task`);
             }
             break;
           }
@@ -310,11 +328,101 @@ export function useNexusEvents(): void {
 
           case 'system:error': {
             const p = payload as SystemEventPayload;
-            addToast({
-              id: `system-error-${Date.now()}`,
-              type: 'error',
-              message: `System error: ${p.error || 'Unknown error'}`,
-            });
+            toast.error(`System error: ${p.error || 'Unknown error'}`);
+            break;
+          }
+
+          // ========================================
+          // Wave Events (Phase 2 addition)
+          // ========================================
+          case 'wave:started': {
+            const p = payload as WaveEventPayload;
+            console.log(`[useNexusEvents] Wave ${p.waveId} started`);
+            break;
+          }
+
+          case 'wave:completed': {
+            const p = payload as WaveEventPayload;
+            console.log(`[useNexusEvents] Wave ${p.waveId} completed`);
+            void refreshMetrics();
+            break;
+          }
+
+          // ========================================
+          // Checkpoint Events (Phase 2 addition)
+          // ========================================
+          case 'checkpoint:created': {
+            const p = payload as CheckpointEventPayload;
+            console.log(`[useNexusEvents] Checkpoint created: ${p.checkpointId ?? 'unknown'}, reason: ${p.reason ?? 'Wave checkpoint'}`);
+            break;
+          }
+
+          case 'checkpoint:failed': {
+            const p = payload as CheckpointEventPayload;
+            console.warn(`[useNexusEvents] Checkpoint failed: ${p.error ?? 'Unknown error'}`);
+            break;
+          }
+
+          // ========================================
+          // Task Status Change (Phase 2 addition)
+          // ========================================
+          case 'task:status-changed': {
+            const p = payload as TaskStatusChangePayload;
+            console.log(`[useNexusEvents] Task ${p.taskId} status: ${p.oldStatus} -> ${p.newStatus}`);
+            updateTask(p.taskId, { status: p.newStatus as 'pending' | 'in_progress' | 'completed' | 'failed' });
+
+            // Phase 2 fix: If task has featureId, update feature status
+            if (p.featureId) {
+              updateFeatureStatusFromTasks(p.featureId);
+              if (p.newStatus === 'completed') {
+                updateFeatureFromTaskCompletion(p.featureId);
+              }
+              void refreshMetrics();
+            }
+            break;
+          }
+
+          // ========================================
+          // Coordinator Events (Phase 2 addition)
+          // ========================================
+          case 'coordinator:started': {
+            console.log('[useNexusEvents] Coordinator started');
+            break;
+          }
+
+          case 'coordinator:paused': {
+            console.log('[useNexusEvents] Coordinator paused');
+            toast.info('Execution paused');
+            break;
+          }
+
+          case 'coordinator:resumed': {
+            console.log('[useNexusEvents] Coordinator resumed');
+            toast.info('Execution resumed');
+            break;
+          }
+
+          case 'coordinator:stopped': {
+            console.log('[useNexusEvents] Coordinator stopped');
+            break;
+          }
+
+          // ========================================
+          // Feature Events (Phase 2 addition)
+          // ========================================
+          case 'feature:status-changed': {
+            const p = payload as FeatureEventPayload;
+            console.log(`[useNexusEvents] Feature ${p.featureId} status: ${p.previousStatus ?? 'unknown'} -> ${p.newStatus ?? 'unknown'}`);
+            void loadFeatures(p.projectId);
+            break;
+          }
+
+          case 'feature:completed': {
+            const p = payload as FeatureEventPayload;
+            console.log(`[useNexusEvents] Feature ${p.featureId} completed`);
+            toast.success('Feature completed!');
+            void loadFeatures(p.projectId);
+            void refreshMetrics();
             break;
           }
 
@@ -341,12 +449,13 @@ export function useNexusEvents(): void {
     addTask,
     loadTasks,
     loadFeatures,
+    updateFeatureFromTaskCompletion,
+    updateFeatureStatusFromTasks,
     setProject,
     updateAgent,
     setStage,
     addRequirement,
     refreshMetrics,
-    addToast,
   ]);
 }
 

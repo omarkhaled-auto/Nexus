@@ -1,10 +1,10 @@
-import { k as useNavigate, m as useLocation, r as reactExports, j as jsxRuntimeExports, S as Sparkles, L as LoaderCircle, n as ListTodo, C as CircleAlert, a as cn, R as RefreshCw, o as ChevronRight } from "./index-B8DMw4WO.js";
-import { A as AnimatedPage } from "./AnimatedPage-jLeN60U5.js";
-import { u as usePlanningProgress } from "./usePlanningProgress-CrOmKCb6.js";
-import { C as Clock } from "./clock-SQZueF73.js";
-import { C as CircleCheck } from "./circle-check-DWu7kQd6.js";
-import { A as ArrowRight } from "./arrow-right-cVg_yzHs.js";
-import { L as Layers } from "./layers-DU86WCvq.js";
+import { k as useNavigate, m as useLocation, r as reactExports, j as jsxRuntimeExports, S as Sparkles, L as LoaderCircle, n as ListTodo, C as CircleAlert, a as cn, R as RefreshCw, o as ChevronRight } from "./index-D6zknste.js";
+import { A as AnimatedPage } from "./AnimatedPage-C7aKxnzt.js";
+import { u as usePlanningProgress } from "./usePlanningProgress-Xs7R4GDp.js";
+import { C as Clock } from "./clock-D5BUsL0A.js";
+import { C as CircleCheck } from "./circle-check-DEe4HTnv.js";
+import { A as ArrowRight } from "./arrow-right-Tu11VD0Q.js";
+import { L as Layers } from "./layers-CdrB5-Ro.js";
 function ProgressBar({ progress, className }) {
   return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: cn("h-2 bg-bg-hover rounded-full overflow-hidden", className), "data-testid": "progress-bar", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
     "div",
@@ -209,7 +209,7 @@ function PlanningPage() {
     const projectId = locationState?.projectId ?? "current";
     if (status === "idle" && requirements && requirements.length > 0) {
       console.log("[PlanningPage] Starting planning for project:", projectId, "with", requirements.length, "requirements");
-      void startPlanning(projectId);
+      startPlanning(projectId);
     }
   }, [locationState, status, startPlanning]);
   reactExports.useEffect(() => {

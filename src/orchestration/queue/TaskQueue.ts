@@ -1,7 +1,14 @@
 // TaskQueue - Priority Queue with Wave Awareness
 // Phase 04-02: Full implementation
+// Phase 2 Workflow Fix: Added task status transitions with events
 
-import type { OrchestrationTask, ITaskQueue } from '../types';
+import type { OrchestrationTask, ITaskQueue, NexusEvent, NexusEventType } from '../types';
+import type { TaskStatus } from '../../types/task';
+
+/**
+ * Event handler type for task queue events
+ */
+export type TaskQueueEventHandler = (event: NexusEvent) => void;
 
 /**
  * TaskQueue manages task scheduling with dependency and wave awareness.
@@ -16,6 +23,9 @@ export class TaskQueue implements ITaskQueue {
   /** Main task storage: taskId -> task */
   private tasks: Map<string, OrchestrationTask> = new Map();
 
+  /** Tasks that have been dequeued but not yet completed/failed */
+  private assignedTasks: Map<string, OrchestrationTask> = new Map();
+
   /** Tasks by wave: waveId -> Set<taskId> */
   private waveIndex: Map<number, Set<string>> = new Map();
 
@@ -27,6 +37,9 @@ export class TaskQueue implements ITaskQueue {
 
   /** Current active wave being processed */
   private currentWave = 0;
+
+  /** Event handlers for task status changes (Phase 2 addition) */
+  private eventHandlers: TaskQueueEventHandler[] = [];
 
   /**
    * Add task to queue with optional wave assignment
@@ -54,6 +67,9 @@ export class TaskQueue implements ITaskQueue {
   /**
    * Get and remove next ready task
    * Returns undefined if no tasks are ready (dependencies unmet or queue empty)
+   *
+   * CRITICAL FIX: Track assigned tasks separately to enable status updates
+   * after dequeue. Previously, deleting from tasks Map broke updateTaskStatus().
    */
   dequeue(): OrchestrationTask | undefined {
     const readyTask = this.findNextReadyTask();
@@ -64,8 +80,10 @@ export class TaskQueue implements ITaskQueue {
     // Update status to assigned
     readyTask.status = 'assigned';
 
-    // Remove from queue
+    // Move from tasks to assignedTasks (track for status updates)
     this.tasks.delete(readyTask.id);
+    this.assignedTasks.set(readyTask.id, readyTask);
+
     const waveId = readyTask.waveId ?? 0;
     this.waveIndex.get(waveId)?.delete(readyTask.id);
 
@@ -81,17 +99,21 @@ export class TaskQueue implements ITaskQueue {
 
   /**
    * Mark task as complete, enabling dependent tasks
+   * CRITICAL FIX: Also remove from assignedTasks Map
    */
   markComplete(taskId: string): void {
     this.completedTaskIds.add(taskId);
+    this.assignedTasks.delete(taskId);  // Clean up assigned task
     this.updateCurrentWave();
   }
 
   /**
    * Mark task as failed
+   * CRITICAL FIX: Also remove from assignedTasks Map
    */
   markFailed(taskId: string): void {
     this.failedTaskIds.add(taskId);
+    this.assignedTasks.delete(taskId);  // Clean up assigned task
     this.updateCurrentWave();
   }
 
@@ -149,6 +171,7 @@ export class TaskQueue implements ITaskQueue {
    */
   clear(): void {
     this.tasks.clear();
+    this.assignedTasks.clear();  // Also clear assigned tasks
     this.waveIndex.clear();
     this.completedTaskIds.clear();
     this.failedTaskIds.clear();
@@ -167,6 +190,83 @@ export class TaskQueue implements ITaskQueue {
    */
   getFailedCount(): number {
     return this.failedTaskIds.size;
+  }
+
+  /**
+   * Get a task by ID without removing it from the queue
+   * Used for looking up task details (e.g., projectId) without dequeuing
+   *
+   * CRITICAL FIX: Also check assignedTasks Map for dequeued tasks
+   */
+  getTask(taskId: string): OrchestrationTask | undefined {
+    return this.tasks.get(taskId) ?? this.assignedTasks.get(taskId);
+  }
+
+  /**
+   * Register event handler for task status changes
+   * Phase 2 Workflow Fix: Enable UI visibility of status transitions
+   */
+  onEvent(handler: TaskQueueEventHandler): void {
+    this.eventHandlers.push(handler);
+  }
+
+  /**
+   * Update task status and emit status change event
+   * Phase 2 Workflow Fix: Track status transitions for UI visibility
+   *
+   * CRITICAL FIX: Also check assignedTasks Map for dequeued tasks
+   *
+   * Status flow:
+   * - pending -> planning (when decomposing)
+   * - planning -> in_progress (when assigned to agent)
+   * - in_progress -> ai_review (when QA loop starts)
+   * - ai_review -> human_review (when escalated)
+   * - human_review -> completed (when approved)
+   */
+  updateTaskStatus(taskId: string, newStatus: TaskStatus): void {
+    // CRITICAL FIX: Check both maps - tasks (queued) and assignedTasks (dequeued)
+    const task = this.tasks.get(taskId) ?? this.assignedTasks.get(taskId);
+    if (!task) {
+      console.warn(`[TaskQueue] Cannot update status for unknown task: ${taskId}`);
+      return;
+    }
+
+    const oldStatus = task.status;
+    if (oldStatus === newStatus) return;
+
+    // Update task status
+    task.status = newStatus;
+    task.updatedAt = new Date();
+
+    console.log(`[TaskQueue] Task ${taskId} status: ${oldStatus} -> ${newStatus}`);
+
+    // Emit status change event
+    this.emitEvent('task:status-changed', {
+      taskId,
+      oldStatus,
+      newStatus,
+      featureId: task.featureId,
+      projectId: task.projectId,
+    });
+  }
+
+  /**
+   * Emit event to all registered handlers
+   */
+  private emitEvent(type: NexusEventType, data: Record<string, unknown>): void {
+    const event: NexusEvent = {
+      type,
+      timestamp: new Date(),
+      data,
+    };
+
+    for (const handler of this.eventHandlers) {
+      try {
+        handler(event);
+      } catch (error) {
+        console.error('[TaskQueue] Event handler error:', error);
+      }
+    }
   }
 
   /**

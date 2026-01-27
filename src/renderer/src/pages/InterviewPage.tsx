@@ -13,6 +13,8 @@ import {
   CheckCircle2,
   Sparkles,
   Loader2,
+  MessageSquare,
+  FileText,
 } from 'lucide-react';
 import { cn } from '@renderer/lib/utils';
 import { toast } from 'sonner';
@@ -23,6 +25,8 @@ import { toast } from 'sonner';
  * Split-screen layout with chat on left, requirements sidebar on right.
  * Automatically starts the interview on mount if not already interviewing.
  * Supports draft persistence with auto-save and session recovery.
+ *
+ * Design: Linear/Raycast-inspired glassmorphism with animated elements.
  */
 export default function InterviewPage(): ReactElement {
   const navigate = useNavigate();
@@ -157,25 +161,38 @@ export default function InterviewPage(): ReactElement {
   const canComplete = requirements.length >= 3;
 
   return (
-    <AnimatedPage className="h-full flex flex-col bg-bg-dark">
-      {/* Page Header */}
-      <header className="flex-shrink-0 border-b border-border-default bg-bg-card px-6 py-4">
+    <AnimatedPage className="h-full flex flex-col bg-[#0D1117] relative overflow-hidden">
+      {/* Background gradient mesh */}
+      <div className="absolute inset-0 bg-gradient-mesh opacity-20 pointer-events-none" />
+
+      {/* Subtle grid pattern */}
+      <div className="absolute inset-0 bg-grid-pattern opacity-30 pointer-events-none" />
+
+      {/* Page Header - Glassmorphism style */}
+      <header className="relative z-10 flex-shrink-0 border-b border-[#30363D]/50 bg-[#161B22]/80 backdrop-blur-xl px-6 py-4">
         <div className="flex items-center justify-between">
           {/* Left: Back button and title */}
           <div className="flex items-center gap-4">
             <button
               onClick={() => { void navigate(-1); }}
-              className="p-2 -ml-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-bg-hover transition-colors"
+              className={cn(
+                'p-2 -ml-2 rounded-xl',
+                'text-[#8B949E] hover:text-[#F0F6FC]',
+                'hover:bg-[#21262D] transition-all duration-200',
+                'focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/50'
+              )}
               data-testid="back-button"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
             <div>
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-accent-primary" />
-                <h1 className="text-lg font-semibold text-text-primary">Genesis Interview</h1>
+              <div className="flex items-center gap-2.5">
+                <div className="p-1.5 rounded-lg bg-gradient-to-br from-[#7C3AED] to-[#6366F1] shadow-lg shadow-[#7C3AED]/20">
+                  <Sparkles className="w-4 h-4 text-white" />
+                </div>
+                <h1 className="text-lg font-semibold text-[#F0F6FC]">Genesis Interview</h1>
               </div>
-              <p className="text-sm text-text-secondary mt-0.5">
+              <p className="text-sm text-[#8B949E] mt-0.5">
                 Define your project requirements through conversation
               </p>
             </div>
@@ -184,15 +201,15 @@ export default function InterviewPage(): ReactElement {
           {/* Right: Actions */}
           <div className="flex items-center gap-3">
             {/* Save status indicator */}
-            <div className="flex items-center gap-2 text-xs text-text-tertiary">
+            <div className="flex items-center gap-2 text-xs text-[#6E7681]">
               {isSaving ? (
                 <>
-                  <span className="h-2 w-2 rounded-full bg-accent-warning animate-pulse" />
+                  <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
                   <span>Saving...</span>
                 </>
               ) : lastSaved ? (
                 <>
-                  <Check className="h-3.5 w-3.5 text-accent-success" />
+                  <Check className="h-3.5 w-3.5 text-[#10B981]" />
                   <span>Saved {formatLastSaved()}</span>
                 </>
               ) : null}
@@ -203,11 +220,11 @@ export default function InterviewPage(): ReactElement {
               onClick={() => void handleSaveDraft()}
               disabled={isSavingDraft}
               className={cn(
-                'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium',
-                'border border-border-default bg-bg-dark text-text-secondary',
-                'hover:bg-bg-hover hover:text-text-primary',
+                'flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium',
+                'bg-[#21262D] border border-[#30363D] text-[#C9D1D9]',
+                'hover:bg-[#30363D] hover:text-[#F0F6FC] hover:border-[#484F58]',
                 'disabled:opacity-50 disabled:cursor-not-allowed',
-                'transition-colors'
+                'transition-all duration-200'
               )}
               data-testid="save-draft-button"
             >
@@ -224,11 +241,11 @@ export default function InterviewPage(): ReactElement {
               onClick={() => void handleComplete()}
               disabled={!canComplete || isCompleting}
               className={cn(
-                'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium',
-                'bg-accent-primary text-white',
-                'hover:bg-accent-primary/90 hover:shadow-glow-primary',
+                'flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-medium',
+                'bg-gradient-to-r from-[#7C3AED] to-[#6366F1] text-white',
+                'hover:shadow-lg hover:shadow-[#7C3AED]/25',
                 'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none',
-                'transition-all'
+                'transition-all duration-200'
               )}
               data-testid="complete-button"
             >
@@ -248,32 +265,44 @@ export default function InterviewPage(): ReactElement {
         </div>
       </header>
 
-      {/* Resume Banner */}
+      {/* Resume Banner - Animated entrance */}
       {showResumeBanner && (
         <div
-          className="flex items-center justify-between px-6 py-3 bg-accent-primary/10 border-b border-accent-primary/20"
+          className={cn(
+            'relative z-10 flex items-center justify-between px-6 py-4',
+            'bg-[#7C3AED]/10 border-b border-[#7C3AED]/20',
+            'backdrop-blur-sm animate-fade-in-up'
+          )}
           data-testid="resume-banner"
         >
-          <div className="flex items-center gap-3">
-            <RotateCcw className="h-5 w-5 text-accent-primary" />
+          <div className="flex items-center gap-4">
+            <div className="p-2 rounded-xl bg-[#7C3AED]/20">
+              <RotateCcw className="h-5 w-5 text-[#7C3AED]" />
+            </div>
             <div>
-              <span className="text-sm font-medium text-text-primary">
+              <span className="text-sm font-medium text-[#F0F6FC]">
                 Resume your previous interview?
               </span>
-              <span className="text-xs text-text-secondary ml-2">
-                ({pendingDraft?.messages.length || 0} messages,{' '}
-                {pendingDraft?.requirements.length || 0} requirements)
-              </span>
+              <div className="flex items-center gap-3 text-xs text-[#8B949E] mt-0.5">
+                <span className="flex items-center gap-1">
+                  <MessageSquare className="w-3 h-3" />
+                  {pendingDraft?.messages.length || 0} messages
+                </span>
+                <span className="flex items-center gap-1">
+                  <FileText className="w-3 h-3" />
+                  {pendingDraft?.requirements.length || 0} requirements
+                </span>
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={handleStartFresh}
               className={cn(
-                'px-4 py-2 text-sm font-medium rounded-lg',
-                'border border-border-default text-text-secondary',
-                'hover:bg-bg-hover hover:text-text-primary',
-                'transition-colors'
+                'px-4 py-2 text-sm font-medium rounded-xl',
+                'border border-[#30363D] text-[#8B949E] bg-[#21262D]',
+                'hover:bg-[#30363D] hover:text-[#F0F6FC] hover:border-[#484F58]',
+                'transition-all duration-200'
               )}
               data-testid="start-fresh-button"
             >
@@ -282,10 +311,10 @@ export default function InterviewPage(): ReactElement {
             <button
               onClick={handleResume}
               className={cn(
-                'px-4 py-2 text-sm font-medium rounded-lg',
-                'bg-accent-primary text-white',
-                'hover:bg-accent-primary/90',
-                'transition-colors'
+                'px-4 py-2 text-sm font-medium rounded-xl',
+                'bg-gradient-to-r from-[#7C3AED] to-[#6366F1] text-white',
+                'hover:shadow-lg hover:shadow-[#7C3AED]/25',
+                'transition-all duration-200'
               )}
               data-testid="resume-button"
             >
@@ -296,22 +325,29 @@ export default function InterviewPage(): ReactElement {
       )}
 
       {/* Main Content */}
-      <main className="flex-1 min-h-0">
+      <main className="relative z-10 flex-1 min-h-0">
         <InterviewLayout
           chatPanel={<ChatPanel />}
           sidebarPanel={<RequirementsSidebar />}
         />
       </main>
 
-      {/* Bottom Status Bar */}
+      {/* Bottom Status Bar - Glassmorphism */}
       {!showResumeBanner && (
-        <footer className="flex-shrink-0 flex items-center justify-between px-6 py-2 border-t border-border-default bg-bg-card">
-          <div className="flex items-center gap-4 text-xs text-text-tertiary">
-            <span>
-              {requirements.length} requirement{requirements.length !== 1 ? 's' : ''} captured
-            </span>
+        <footer className="relative z-10 flex-shrink-0 flex items-center justify-between px-6 py-3 border-t border-[#30363D]/50 bg-[#161B22]/80 backdrop-blur-xl">
+          <div className="flex items-center gap-4 text-xs text-[#6E7681]">
+            <div className="flex items-center gap-2">
+              <div className={cn(
+                'w-2 h-2 rounded-full',
+                requirements.length >= 3 ? 'bg-[#10B981]' : 'bg-amber-500'
+              )} />
+              <span className="text-[#8B949E]">
+                {requirements.length} requirement{requirements.length !== 1 ? 's' : ''} captured
+              </span>
+            </div>
             {requirements.length < 3 && (
-              <span className="text-accent-warning">
+              <span className="text-amber-400 flex items-center gap-1.5">
+                <span className="w-1 h-1 rounded-full bg-amber-500" />
                 Need at least 3 requirements to complete
               </span>
             )}
@@ -320,7 +356,11 @@ export default function InterviewPage(): ReactElement {
           {/* New Interview button */}
           <button
             onClick={handleStartFresh}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-text-secondary hover:text-text-primary hover:bg-bg-hover transition-colors"
+            className={cn(
+              'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs',
+              'text-[#8B949E] hover:text-[#F0F6FC] hover:bg-[#21262D]',
+              'transition-all duration-200'
+            )}
             data-testid="new-interview-button"
           >
             <RotateCcw className="h-3.5 w-3.5" />

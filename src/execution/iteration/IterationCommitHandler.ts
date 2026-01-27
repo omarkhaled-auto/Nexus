@@ -16,6 +16,7 @@
 
 import type { IIterationCommitHandler } from './types';
 import type { IGitExecutor } from './GitDiffContextBuilder';
+import { ensureIdentityForCommit } from '../../infrastructure/git/GitIdentityHelper';
 
 // ============================================================================
 // Types
@@ -142,6 +143,13 @@ export class IterationCommitHandler implements IIterationCommitHandler {
     if (!hasChanges && !this.options.forceCommit) {
       // No changes to commit
       throw new Error(`No changes to commit for iteration ${iteration} of task ${taskId}`);
+    }
+
+    // Ensure git identity is configured
+    try {
+      ensureIdentityForCommit(this.projectPath);
+    } catch {
+      // Non-fatal - commit may still work if global identity exists
     }
 
     // Stage all changes

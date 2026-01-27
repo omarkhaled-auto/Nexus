@@ -335,20 +335,39 @@ export function KanbanBoard() {
         onDragEnd={handleDragEnd}
         onDragCancel={handleDragCancel}
       >
-        <div className="flex h-full gap-6 overflow-x-auto p-4" data-testid="kanban-board">
-          {COLUMNS.map((column) => (
-            <KanbanColumn
-              key={column.id}
-              column={column}
-              features={featuresByColumn[column.id]}
-              onFeatureClick={handleFeatureClick}
-              onFeatureEdit={handleFeatureEdit}
-              onFeatureDelete={(feature) => void handleFeatureDelete(feature.id)}
-              onContextMenu={handleContextMenu}
-            />
-          ))}
+        {/* Enhanced Kanban container with layered backgrounds */}
+        <div className="relative h-full bg-bg-dark bg-grid-pattern" data-testid="kanban-board">
+          {/* Gradient mesh overlay for depth */}
+          <div className="absolute inset-0 bg-gradient-mesh pointer-events-none" />
+
+          {/* Radial spotlight effect - top center glow */}
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background: 'radial-gradient(ellipse 800px 400px at 50% -10%, rgba(124, 58, 237, 0.08) 0%, transparent 60%)'
+            }}
+          />
+
+          {/* Column container */}
+          <div className="relative flex h-full gap-4 overflow-x-auto p-4 pb-6">
+            {COLUMNS.map((column, index) => (
+              <KanbanColumn
+                key={column.id}
+                column={column}
+                features={featuresByColumn[column.id]}
+                onFeatureClick={handleFeatureClick}
+                onFeatureEdit={handleFeatureEdit}
+                onFeatureDelete={(feature) => void handleFeatureDelete(feature.id)}
+                onContextMenu={handleContextMenu}
+                className={`animate-fade-in-up stagger-${Math.min(index + 1, 6)}`}
+              />
+            ))}
+          </div>
         </div>
-        <DragOverlay>
+        <DragOverlay dropAnimation={{
+          duration: 200,
+          easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)'
+        }}>
           {activeFeature ? <FeatureCard feature={activeFeature} isOverlay /> : null}
         </DragOverlay>
       </DndContext>

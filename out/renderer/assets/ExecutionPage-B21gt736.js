@@ -1,10 +1,10 @@
-import { r as reactExports, j as jsxRuntimeExports, N as Dialog, O as DialogContent, Q as DialogHeader, U as DialogTitle, V as DialogDescription, Y as DialogFooter, D as Button, af as Terminal, T as TriangleAlert, C as CircleAlert, L as LoaderCircle, a as cn } from "./index-B8DMw4WO.js";
-import { H as Header } from "./Header-D8V4ab2j.js";
-import { u as useCheckpoint, C as CircleCheckBig } from "./useCheckpoint-CiUD0HMW.js";
-import { D as Download } from "./download-BE9_Kuzw.js";
-import { T as Trash2 } from "./trash-2-5qD4E5Wc.js";
-import { C as CircleX } from "./circle-x-hpKi6T_C.js";
-import "./arrow-left-BumfNhxk.js";
+import { r as reactExports, j as jsxRuntimeExports, N as Dialog, O as DialogContent, Q as DialogHeader, U as DialogTitle, V as DialogDescription, Y as DialogFooter, D as Button, t as toast, a as cn, L as LoaderCircle, af as Terminal, T as TriangleAlert, C as CircleAlert, F as Search } from "./index-D6zknste.js";
+import { H as Header } from "./Header-CUxpwrTf.js";
+import { u as useCheckpoint, C as CircleCheckBig } from "./useCheckpoint-DVitJsuZ.js";
+import { T as Trash2 } from "./trash-2-DsUKbn2O.js";
+import { D as Download } from "./download-Dtg0Wiov.js";
+import { C as CircleX } from "./circle-x-C5fFko4H.js";
+import "./arrow-left-OjicJZKL.js";
 function ReviewModal({ review, onApprove, onReject, onClose }) {
   const [feedback, setFeedback] = reactExports.useState("");
   const [isSubmitting, setIsSubmitting] = reactExports.useState(false);
@@ -97,11 +97,146 @@ function ReviewModal({ review, onApprove, onReject, onClose }) {
     ] })
   ] }) });
 }
+function isElectronEnvironment$1() {
+  return typeof window !== "undefined" && typeof window.nexusAPI !== "undefined";
+}
+function formatLogEntry(log) {
+  const timestamp = new Date(log.timestamp).toLocaleTimeString();
+  const prefix = log.type === "error" ? "ERROR" : log.type === "warning" ? "WARN" : log.type.toUpperCase();
+  const details = log.details ? `
+  ${log.details}` : "";
+  return `[${timestamp}] ${prefix} ${log.message}${details}`;
+}
+function downloadLogFile(content) {
+  const blob = new Blob([content], { type: "text/plain" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `nexus-execution-logs-${(/* @__PURE__ */ new Date()).toISOString().slice(0, 10)}.txt`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+function ExecutionLogViewer({ stepType, isOpen, onClose }) {
+  const [logs, setLogs] = reactExports.useState([]);
+  const [isLoading, setIsLoading] = reactExports.useState(false);
+  const [error, setError] = reactExports.useState(null);
+  const logContainerRef = reactExports.useRef(null);
+  const loadLogs = reactExports.useCallback(async () => {
+    if (!isElectronEnvironment$1()) {
+      setError("Execution logs are only available in the desktop app.");
+      return;
+    }
+    setIsLoading(true);
+    setError(null);
+    try {
+      const rawLogs = await window.nexusAPI.getExecutionLogs(stepType);
+      const entries = Array.isArray(rawLogs) ? rawLogs : [];
+      setLogs(entries.map(formatLogEntry));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to load execution logs.";
+      setError(message);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [stepType]);
+  reactExports.useEffect(() => {
+    if (!isOpen) return;
+    void loadLogs();
+  }, [isOpen, loadLogs]);
+  reactExports.useEffect(() => {
+    if (!isOpen || !isElectronEnvironment$1()) return;
+    const unsubscribe = window.nexusAPI.onExecutionLogUpdate((data) => {
+      if (data.stepType !== stepType) return;
+      const logEntry = data.log;
+      setLogs((prev) => [...prev, formatLogEntry(logEntry)]);
+    });
+    return () => {
+      unsubscribe();
+    };
+  }, [isOpen, stepType]);
+  reactExports.useEffect(() => {
+    if (!isOpen) return;
+    const container = logContainerRef.current;
+    if (container) {
+      container.scrollTop = container.scrollHeight;
+    }
+  }, [logs, isOpen]);
+  const handleExportLogs = reactExports.useCallback(async () => {
+    if (!isElectronEnvironment$1()) {
+      toast.error("Exporting logs requires the desktop app.");
+      return;
+    }
+    try {
+      const content = await window.nexusAPI.exportExecutionLogs();
+      downloadLogFile(content);
+      toast.success("Execution logs exported.");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to export execution logs.";
+      toast.error(message);
+    }
+  }, []);
+  const handleClearLogs = reactExports.useCallback(async () => {
+    if (!isElectronEnvironment$1()) {
+      toast.error("Clearing logs requires the desktop app.");
+      return;
+    }
+    try {
+      await window.nexusAPI.clearExecutionLogs();
+      setLogs([]);
+      toast.success("Execution logs cleared.");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to clear execution logs.";
+      toast.error(message);
+    }
+  }, []);
+  const stepLabel = stepType.charAt(0).toUpperCase() + stepType.slice(1);
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(Dialog, { open: isOpen, onOpenChange: (open) => {
+    if (!open) onClose();
+  }, children: /* @__PURE__ */ jsxRuntimeExports.jsxs(DialogContent, { className: "sm:max-w-[760px]", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx(DialogHeader, { children: /* @__PURE__ */ jsxRuntimeExports.jsxs(DialogTitle, { children: [
+      stepLabel,
+      " Logs"
+    ] }) }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-3", children: [
+      error && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "rounded-md border border-accent-error/40 bg-accent-error/10 px-3 py-2 text-sm text-accent-error", children: error }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        "div",
+        {
+          ref: logContainerRef,
+          className: cn(
+            "max-h-[420px] overflow-auto rounded-lg border border-border-default",
+            "bg-bg-dark px-4 py-3 font-mono text-xs text-text-secondary"
+          ),
+          children: [
+            isLoading && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2 text-text-secondary", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "h-4 w-4 animate-spin" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Loading logs..." })
+            ] }),
+            !isLoading && logs.length === 0 && !error && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-text-tertiary", children: "No logs available for this step." }),
+            !isLoading && logs.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "space-y-1", children: logs.map((line, index) => /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "whitespace-pre-wrap leading-relaxed", children: line }, `${stepType}-log-${index}`)) })
+          ]
+        }
+      )
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs(DialogFooter, { className: "gap-2", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs(Button, { variant: "outline", size: "sm", onClick: () => void handleClearLogs(), children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Trash2, { className: "mr-2 h-4 w-4" }),
+        "Clear Logs"
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs(Button, { variant: "outline", size: "sm", onClick: () => void handleExportLogs(), children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Download, { className: "mr-2 h-4 w-4" }),
+        "Export Logs"
+      ] })
+    ] })
+  ] }) });
+}
 function isElectronEnvironment() {
   return typeof window !== "undefined" && typeof window.nexusAPI !== "undefined";
 }
 function convertLogsToStrings(logs) {
-  if (!logs || logs.length === 0) {
+  if (logs.length === 0) {
     return [];
   }
   return logs.map((log) => {
@@ -163,10 +298,17 @@ function TabButton({ tab, isActive, onClick }) {
     }
   );
 }
-function LogViewer({ logs, status }) {
+function LogViewer({ logs, status, autoScroll = true }) {
+  const containerRef = reactExports.useRef(null);
+  reactExports.useEffect(() => {
+    if (autoScroll && containerRef.current) {
+      containerRef.current.scrollTop = containerRef.current.scrollHeight;
+    }
+  }, [logs, autoScroll]);
   return /* @__PURE__ */ jsxRuntimeExports.jsx(
     "div",
     {
+      ref: containerRef,
       className: cn(
         "flex-1 bg-bg-dark rounded-lg border border-border-default overflow-auto",
         "font-mono text-sm"
@@ -206,6 +348,9 @@ function ExecutionPage() {
   const [currentTaskName, setCurrentTaskName] = reactExports.useState(null);
   const [loading, setLoading] = reactExports.useState(true);
   const [error, setError] = reactExports.useState(null);
+  const [logViewerStep, setLogViewerStep] = reactExports.useState(null);
+  const [searchQuery, setSearchQuery] = reactExports.useState("");
+  const [showErrorsOnly, setShowErrorsOnly] = reactExports.useState(false);
   const {
     pendingReviews,
     activeReview,
@@ -224,20 +369,16 @@ function ExecutionPage() {
       setLoading(true);
       setError(null);
       const status = await window.nexusAPI.getExecutionStatus();
-      if (status && status.steps) {
-        const newTabs = status.steps.map((step) => ({
-          id: step.type,
-          label: step.type.charAt(0).toUpperCase() + step.type.slice(1),
-          status: step.status,
-          count: step.count,
-          duration: step.duration,
-          logs: convertLogsToStrings(step.logs)
-        }));
-        setTabs(newTabs);
-        setCurrentTaskName(status.currentTaskName);
-      } else {
-        setTabs(defaultTabs);
-      }
+      const newTabs = status.steps.map((step) => ({
+        id: step.type,
+        label: step.type.charAt(0).toUpperCase() + step.type.slice(1),
+        status: step.status,
+        count: step.count,
+        duration: step.duration,
+        logs: convertLogsToStrings(step.logs)
+      }));
+      setTabs(newTabs);
+      setCurrentTaskName(status.currentTaskName);
     } catch (err) {
       console.error("Failed to load execution status:", err);
       setError(err instanceof Error ? err.message : "Failed to load execution status");
@@ -247,6 +388,8 @@ function ExecutionPage() {
   }, []);
   const subscribeToEvents = reactExports.useCallback(() => {
     if (!isElectronEnvironment()) return () => {
+    };
+    if (!window.nexusAPI) return () => {
     };
     const unsubscribeLog = window.nexusAPI.onExecutionLogUpdate((data) => {
       setTabs((prevTabs) => prevTabs.map((tab) => {
@@ -287,24 +430,40 @@ function ExecutionPage() {
     if (!isElectronEnvironment()) return;
     void loadPendingReviews();
     const reviewInterval = setInterval(() => void loadPendingReviews(), 5e3);
-    return () => clearInterval(reviewInterval);
+    return () => {
+      clearInterval(reviewInterval);
+    };
   }, [loadPendingReviews]);
   reactExports.useEffect(() => {
     if (!isElectronEnvironment()) return;
-    const unsubscribe = window.nexusAPI.onNexusEvent?.((event) => {
+    if (!window.nexusAPI) return;
+    const unsubscribe = window.nexusAPI.onNexusEvent((event) => {
       if (event.type === "review:requested" || event.type === "task:escalated") {
         void loadPendingReviews();
       }
     });
     return () => {
-      if (unsubscribe) unsubscribe();
+      unsubscribe();
     };
   }, [loadPendingReviews]);
   const activeTabData = tabs.find((t) => t.id === activeTab) || tabs[0];
+  const filteredLogs = reactExports.useMemo(() => {
+    let logs = activeTabData.logs;
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      logs = logs.filter((line) => line.toLowerCase().includes(query));
+    }
+    if (showErrorsOnly) {
+      logs = logs.filter(
+        (line) => line.toLowerCase().includes("error") || line.includes("✗") || line.toLowerCase().includes("failed") || line.toLowerCase().includes("failure")
+      );
+    }
+    return logs;
+  }, [activeTabData.logs, searchQuery, showErrorsOnly]);
   const handleClearLogs = async () => {
     if (isElectronEnvironment()) {
       try {
-        await window.nexusAPI.clearExecutionLogs();
+        await window.nexusAPI?.clearExecutionLogs();
       } catch (err) {
         console.error("Failed to clear logs:", err);
       }
@@ -315,7 +474,7 @@ function ExecutionPage() {
     let content = "";
     if (isElectronEnvironment()) {
       try {
-        content = await window.nexusAPI.exportExecutionLogs();
+        content = await window.nexusAPI?.exportExecutionLogs() ?? "";
       } catch (err) {
         console.error("Failed to export logs:", err);
         return;
@@ -356,6 +515,22 @@ ${tab.logs.length > 0 ? tab.logs.join("\n") : "No logs available"}
         icon: Terminal,
         showBack: true,
         actions: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2", children: [
+          pendingReviews.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "button",
+            {
+              type: "button",
+              onClick: () => {
+                selectReview(pendingReviews[0]);
+              },
+              className: "flex items-center gap-2 rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-xs text-amber-200",
+              children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "h-2 w-2 rounded-full bg-amber-400" }),
+                pendingReviews.length,
+                " Review",
+                pendingReviews.length === 1 ? "" : "s"
+              ]
+            }
+          ),
           /* @__PURE__ */ jsxRuntimeExports.jsxs(
             Button,
             {
@@ -406,7 +581,9 @@ ${tab.logs.length > 0 ? tab.logs.join("\n") : "No logs available"}
         {
           size: "sm",
           variant: "outline",
-          onClick: () => selectReview(pendingReviews[0]),
+          onClick: () => {
+            selectReview(pendingReviews[0]);
+          },
           className: "border-amber-500/50 text-amber-200 hover:bg-amber-500/20",
           children: "Review Now"
         }
@@ -418,7 +595,9 @@ ${tab.logs.length > 0 ? tab.logs.join("\n") : "No logs available"}
         review: activeReview,
         onApprove: approveReview,
         onReject: rejectReview,
-        onClose: () => selectReview(null)
+        onClose: () => {
+          selectReview(null);
+        }
       }
     ),
     loading && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex items-center justify-center flex-1", children: /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "w-8 h-8 text-accent-primary animate-spin" }) }),
@@ -442,14 +621,58 @@ ${tab.logs.length > 0 ? tab.logs.join("\n") : "No logs available"}
           ))
         }
       ),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex-1 mt-4 min-h-0 flex flex-col", children: /* @__PURE__ */ jsxRuntimeExports.jsx(LogViewer, { logs: activeTabData.logs, status: activeTabData.status }) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-3 mt-4 shrink-0", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative flex-1 max-w-sm", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Search, { className: "absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "input",
+            {
+              type: "text",
+              placeholder: "Search logs...",
+              value: searchQuery,
+              onChange: (e) => {
+                setSearchQuery(e.target.value);
+              },
+              className: cn(
+                "w-full pl-10 pr-3 py-2 rounded-md border border-border-default bg-bg-card",
+                "text-sm text-text-primary placeholder:text-text-tertiary",
+                "focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-accent-primary"
+              ),
+              "data-testid": "log-search-input"
+            }
+          )
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { className: "flex items-center gap-2 text-sm text-text-secondary cursor-pointer", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "input",
+            {
+              type: "checkbox",
+              checked: showErrorsOnly,
+              onChange: (e) => {
+                setShowErrorsOnly(e.target.checked);
+              },
+              className: "w-4 h-4 rounded border-border-default bg-bg-card text-accent-primary focus:ring-accent-primary",
+              "data-testid": "errors-only-checkbox"
+            }
+          ),
+          "Errors only"
+        ] }),
+        (searchQuery || showErrorsOnly) && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-xs text-text-tertiary", children: [
+          "Showing ",
+          filteredLogs.length,
+          " of ",
+          activeTabData.logs.length,
+          " lines"
+        ] })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex-1 mt-4 min-h-0 flex flex-col", children: /* @__PURE__ */ jsxRuntimeExports.jsx(LogViewer, { logs: filteredLogs, status: activeTabData.status, autoScroll: !searchQuery && !showErrorsOnly }) }),
       /* @__PURE__ */ jsxRuntimeExports.jsxs(
         "div",
         {
           className: "flex items-center justify-between mt-4 px-4 py-3 bg-bg-card rounded-lg border border-border-default shrink-0",
           "data-testid": "execution-summary",
           children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex items-center gap-4", children: tabs.map((tab) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2 text-sm", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex flex-wrap items-center gap-4", children: tabs.map((tab) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2 text-sm", children: [
               /* @__PURE__ */ jsxRuntimeExports.jsx(
                 "span",
                 {
@@ -462,7 +685,19 @@ ${tab.logs.length > 0 ? tab.logs.join("\n") : "No logs available"}
                   )
                 }
               ),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-text-secondary", children: tab.label })
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-text-secondary", children: tab.label }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                Button,
+                {
+                  variant: "ghost",
+                  size: "sm",
+                  className: "h-6 px-2 text-xs",
+                  onClick: () => {
+                    setLogViewerStep(tab.id);
+                  },
+                  children: "View Logs"
+                }
+              )
             ] }, tab.id)) }),
             /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-sm text-text-tertiary", children: [
               "Total Duration:",
@@ -473,7 +708,17 @@ ${tab.logs.length > 0 ? tab.logs.join("\n") : "No logs available"}
           ]
         }
       )
-    ] })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      ExecutionLogViewer,
+      {
+        stepType: logViewerStep ?? "build",
+        isOpen: logViewerStep !== null,
+        onClose: () => {
+          setLogViewerStep(null);
+        }
+      }
+    )
   ] });
 }
 export {

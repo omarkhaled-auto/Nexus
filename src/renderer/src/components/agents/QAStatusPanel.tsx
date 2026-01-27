@@ -4,6 +4,12 @@
  * Displays the status of QA pipeline steps: Build, Lint, Test, Review.
  * Shows step-by-step progress with icons, status indicators, and optional output.
  *
+ * Features:
+ * - Glassmorphism design
+ * - Step-specific color coding
+ * - Animated status indicators
+ * - Progress tracking with iteration counter
+ *
  * @example
  * // Basic usage
  * <QAStatusPanel steps={qaSteps} iteration={3} maxIterations={50} />
@@ -81,12 +87,32 @@ export interface QAStatusPanelProps {
 // CONSTANTS
 // =============================================================================
 
-/** Step configuration with icons and labels */
-const STEP_CONFIG: Record<QAStepType, { icon: typeof Hammer; label: string; color: string }> = {
-  build: { icon: Hammer, label: 'Build', color: '#60A5FA' }, // blue
-  lint: { icon: FileSearch, label: 'Lint', color: '#A78BFA' }, // purple
-  test: { icon: TestTube2, label: 'Test', color: '#34D399' }, // green
-  review: { icon: Eye, label: 'Review', color: '#FBBF24' }, // yellow
+/** Step configuration with icons, labels, and colors */
+const STEP_CONFIG: Record<QAStepType, { icon: typeof Hammer; label: string; color: string; gradient: string }> = {
+  build: {
+    icon: Hammer,
+    label: 'Build',
+    color: '#60A5FA',
+    gradient: 'from-[#60A5FA] to-[#3B82F6]'
+  },
+  lint: {
+    icon: FileSearch,
+    label: 'Lint',
+    color: '#A78BFA',
+    gradient: 'from-[#A78BFA] to-[#8B5CF6]'
+  },
+  test: {
+    icon: TestTube2,
+    label: 'Test',
+    color: '#34D399',
+    gradient: 'from-[#34D399] to-[#10B981]'
+  },
+  review: {
+    icon: Eye,
+    label: 'Review',
+    color: '#FBBF24',
+    gradient: 'from-[#FBBF24] to-[#F59E0B]'
+  },
 }
 
 /** Default step order */
@@ -109,16 +135,16 @@ function formatDuration(ms: number): string {
 function StatusIcon({ status }: { status: QAStepStatus }) {
   switch (status) {
     case 'success':
-      return <CheckCircle2 size={16} className="text-accent-success" />
+      return <CheckCircle2 size={14} className="text-[#3FB950]" />
     case 'error':
-      return <XCircle size={16} className="text-accent-error" />
+      return <XCircle size={14} className="text-[#F85149]" />
     case 'running':
-      return <Loader2 size={16} className="text-accent-info animate-spin" />
+      return <Loader2 size={14} className="text-[#60A5FA] animate-spin" />
     case 'skipped':
-      return <MinusCircle size={16} className="text-text-tertiary" />
+      return <MinusCircle size={14} className="text-[#6E7681]" />
     case 'pending':
     default:
-      return <Clock size={16} className="text-text-tertiary" />
+      return <Clock size={14} className="text-[#6E7681]" />
   }
 }
 
@@ -153,37 +179,46 @@ function StepItem({ step, isLast, orientation, onViewLogs }: StepItemProps) {
         data-testid={`qa-step-${step.type}`}
         className={cn(
           'relative flex items-center justify-center',
-          'w-10 h-10 rounded-full',
-          'transition-all duration-normal',
+          'w-12 h-12 rounded-xl',
+          'transition-all duration-300',
           'border-2',
 
           // Status-based styling
-          step.status === 'pending' && 'border-border-default bg-bg-dark/50',
-          step.status === 'running' && 'border-accent-info bg-accent-info/10',
-          step.status === 'success' && 'border-accent-success bg-accent-success/10',
-          step.status === 'error' && 'border-accent-error bg-accent-error/10',
-          step.status === 'skipped' && 'border-border-subtle bg-bg-muted/30',
+          step.status === 'pending' && 'border-[#30363D] bg-[#21262D]/50',
+          step.status === 'running' && 'border-[#60A5FA]/50 bg-[#60A5FA]/10',
+          step.status === 'success' && 'border-[#3FB950]/50 bg-[#3FB950]/10',
+          step.status === 'error' && 'border-[#F85149]/50 bg-[#F85149]/10',
+          step.status === 'skipped' && 'border-[#30363D] bg-[#21262D]/30',
 
           // Interactive states
           isInteractive && [
             'cursor-pointer',
             'hover:scale-105',
-            'hover:shadow-md',
-            'focus:outline-none focus:ring-2 focus:ring-accent-primary focus:ring-offset-2 focus:ring-offset-bg-card',
+            'hover:shadow-lg',
+            'focus:outline-none focus:ring-2 focus:ring-[#7C3AED] focus:ring-offset-2 focus:ring-offset-[#161B22]',
           ],
           !isInteractive && 'cursor-default'
         )}
+        style={{
+          boxShadow: step.status === 'running'
+            ? `0 0 20px ${config.color}30`
+            : step.status === 'success'
+              ? '0 0 15px rgba(63, 185, 80, 0.2)'
+              : step.status === 'error'
+                ? '0 0 15px rgba(248, 81, 73, 0.2)'
+                : undefined
+        }}
         title={isInteractive ? `View ${config.label} logs` : undefined}
       >
         {step.status === 'running' ? (
-          <Loader2 size={18} className="animate-spin" style={{ color: config.color }} />
+          <Loader2 size={20} className="animate-spin" style={{ color: config.color }} />
         ) : (
           <Icon
-            size={18}
+            size={20}
             style={{
               color:
                 step.status === 'skipped' || step.status === 'pending'
-                  ? 'var(--color-text-tertiary)'
+                  ? '#6E7681'
                   : config.color,
             }}
           />
@@ -206,15 +241,15 @@ function StepItem({ step, isLast, orientation, onViewLogs }: StepItemProps) {
           className={cn(
             'text-sm font-medium',
             step.status === 'pending' || step.status === 'skipped'
-              ? 'text-text-tertiary'
-              : 'text-text-primary'
+              ? 'text-[#6E7681]'
+              : 'text-[#F0F6FC]'
           )}
         >
           {config.label}
         </span>
 
         {/* Duration or status text */}
-        <span className="text-xs text-text-tertiary">
+        <span className="text-xs text-[#6E7681]">
           {step.status === 'running' && 'Running...'}
           {step.status === 'pending' && 'Pending'}
           {step.status === 'skipped' && 'Skipped'}
@@ -228,16 +263,16 @@ function StepItem({ step, isLast, orientation, onViewLogs }: StepItemProps) {
         {step.type === 'test' &&
           step.testCounts &&
           (step.status === 'success' || step.status === 'error') && (
-            <span className="text-xs mt-0.5">
-              <span className="text-accent-success">{step.testCounts.passed}</span>
-              <span className="text-text-tertiary"> / </span>
+            <span className="text-xs mt-0.5 tabular-nums">
+              <span className="text-[#3FB950]">{step.testCounts.passed}</span>
+              <span className="text-[#484F58]"> / </span>
               {step.testCounts.failed > 0 && (
                 <>
-                  <span className="text-accent-error">{step.testCounts.failed}</span>
-                  <span className="text-text-tertiary"> / </span>
+                  <span className="text-[#F85149]">{step.testCounts.failed}</span>
+                  <span className="text-[#484F58]"> / </span>
                 </>
               )}
-              <span className="text-text-tertiary">{step.testCounts.skipped} skip</span>
+              <span className="text-[#6E7681]">{step.testCounts.skipped} skip</span>
             </span>
           )}
       </div>
@@ -247,7 +282,7 @@ function StepItem({ step, isLast, orientation, onViewLogs }: StepItemProps) {
         <div
           className={cn(
             orientation === 'horizontal' ? 'hidden sm:block w-8 h-0.5' : 'hidden',
-            'bg-border-default mx-2'
+            'bg-[#30363D] mx-2'
           )}
         />
       )}
@@ -287,21 +322,26 @@ export const QAStatusPanel = React.forwardRef<HTMLDivElement, QAStatusPanelProps
       <div
         ref={ref}
         data-testid={testId ?? 'qa-status-panel'}
-        className={cn('rounded-lg border border-border-default bg-bg-card', className)}
+        className={cn(
+          'rounded-xl border overflow-hidden',
+          'bg-[#161B22]/60 backdrop-blur-sm',
+          'border-[#30363D]',
+          className
+        )}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border-default">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-[#30363D] bg-[#161B22]/40">
           <div className="flex items-center gap-2">
-            <span className="font-medium text-text-primary">QA Pipeline</span>
+            <span className="font-medium text-[#F0F6FC]">QA Pipeline</span>
 
             {/* Overall status badge */}
             <span
               className={cn(
-                'text-xs px-2 py-0.5 rounded-full',
-                hasError && 'bg-accent-error/20 text-accent-error',
-                isRunning && 'bg-accent-info/20 text-accent-info',
-                allSuccess && 'bg-accent-success/20 text-accent-success',
-                !hasError && !isRunning && !allSuccess && 'bg-text-muted/20 text-text-muted'
+                'text-xs px-2 py-0.5 rounded-full font-medium',
+                hasError && 'bg-[#F85149]/10 text-[#F85149]',
+                isRunning && 'bg-[#60A5FA]/10 text-[#60A5FA]',
+                allSuccess && 'bg-[#3FB950]/10 text-[#3FB950]',
+                !hasError && !isRunning && !allSuccess && 'bg-[#21262D] text-[#6E7681]'
               )}
             >
               {hasError && 'Failed'}
@@ -336,7 +376,7 @@ export const QAStatusPanel = React.forwardRef<HTMLDivElement, QAStatusPanelProps
               {orientation === 'horizontal' && index < orderedSteps.length - 1 && (
                 <ChevronRight
                   size={16}
-                  className="text-border-default flex-shrink-0 hidden sm:block"
+                  className="text-[#30363D] flex-shrink-0 hidden sm:block"
                 />
               )}
             </React.Fragment>
@@ -351,7 +391,10 @@ export const QAStatusPanel = React.forwardRef<HTMLDivElement, QAStatusPanelProps
               .map((step) => (
                 <div
                   key={step.type}
-                  className="text-sm text-accent-error bg-accent-error/10 rounded-md px-3 py-2 font-mono"
+                  className={cn(
+                    "text-sm text-[#F85149] rounded-lg px-3 py-2 font-mono",
+                    "bg-[#F85149]/10 border border-[#F85149]/20"
+                  )}
                 >
                   <span className="font-semibold">{STEP_CONFIG[step.type].label}:</span>{' '}
                   {step.error}

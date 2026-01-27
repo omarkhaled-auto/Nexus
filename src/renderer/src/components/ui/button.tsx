@@ -102,6 +102,33 @@ const buttonVariants = cva(
           'hover:bg-[#DC2626]',
           'shadow-sm hover:shadow-md',
         ].join(' '),
+
+        // Glass - Glassmorphism effect for overlays and floating elements
+        glass: [
+          'bg-white/5 backdrop-blur-md border border-white/10',
+          'text-[#F0F6FC]',
+          'hover:bg-white/10 hover:border-white/20',
+          'shadow-sm',
+        ].join(' '),
+
+        // Gradient Outline - Gradient border with transparent background
+        gradientOutline: [
+          'relative bg-transparent text-[#F0F6FC]',
+          'before:absolute before:inset-0 before:rounded-[inherit] before:p-[1px]',
+          'before:bg-gradient-to-r before:from-[#7C3AED] before:to-[#A855F7]',
+          'before:-z-10 before:content-[""]',
+          'before:[mask:linear-gradient(#fff_0_0)_content-box,linear-gradient(#fff_0_0)]',
+          'before:[mask-composite:exclude]',
+          'hover:shadow-[0_0_20px_rgba(124,58,237,0.3)]',
+        ].join(' '),
+
+        // Glow - Primary with enhanced glow effect
+        glow: [
+          'bg-[#7C3AED] text-white',
+          'shadow-[0_0_20px_rgba(124,58,237,0.4)]',
+          'hover:shadow-[0_0_30px_rgba(124,58,237,0.6)]',
+          'hover:bg-[#8B5CF6]',
+        ].join(' '),
       },
       size: {
         xs: 'h-7 px-2.5 text-xs rounded [&_svg]:h-3.5 [&_svg]:w-3.5',
@@ -138,6 +165,9 @@ export type ButtonVariant =
   | 'outline'
   | 'default'
   | 'destructive'
+  | 'glass'
+  | 'gradientOutline'
+  | 'glow'
 
 export type ButtonSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | 'icon' | 'icon-sm' | 'icon-lg' | 'default'
 

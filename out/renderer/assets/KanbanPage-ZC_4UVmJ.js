@@ -1,16 +1,16 @@
-import { c as createLucideIcon, r as reactExports, q as React, s as reactDomExports, j as jsxRuntimeExports, a as cn, n as ListTodo, v as useComposedRefs, w as createContextScope, P as Primitive, x as Presence, y as composeEventHandlers, z as useCallbackRef, A as useLayoutEffect2, X, D as Button, L as LoaderCircle, C as CircleAlert, E as Eye, B as Bot, T as TriangleAlert, g as ChevronDown, o as ChevronRight, F as Search, G as useFeatureStore, H as useFeatureCount, I as Plus, J as Card, K as CardHeader, M as CardContent, l as useCurrentProject, N as Dialog, O as DialogContent, Q as DialogHeader, U as DialogTitle, V as DialogDescription, W as Input, Y as DialogFooter } from "./index-B8DMw4WO.js";
-import { U as User, P as Pencil, L as Lock, T as TestTube, u as useExecutionStore, a as useTaskOrchestration } from "./useTaskOrchestration-BvRUoVg0.js";
-import { C as CircleCheck } from "./circle-check-DWu7kQd6.js";
-import { A as ArrowRight } from "./arrow-right-cVg_yzHs.js";
-import { T as Trash2 } from "./trash-2-5qD4E5Wc.js";
-import { F as FileText } from "./file-text-Coe14bpf.js";
-import { G as GitMerge, B as Bug, P as Play, a as Pause } from "./play-CGwX_rdf.js";
-import { C as Clock } from "./clock-SQZueF73.js";
-import { R as RotateCcw } from "./rotate-ccw-CWan0s-v.js";
-import { C as Circle } from "./circle-TdijTwss.js";
-import { I as Info } from "./info-DDDU4WnD.js";
-import { L as Layers } from "./layers-DU86WCvq.js";
-import { A as AnimatedPage } from "./AnimatedPage-jLeN60U5.js";
+import { c as createLucideIcon, r as reactExports, q as React, s as reactDomExports, j as jsxRuntimeExports, a as cn, n as ListTodo, v as useComposedRefs, w as createContextScope, P as Primitive, x as Presence, y as composeEventHandlers, z as useCallbackRef, A as useLayoutEffect2, X, D as Button, L as LoaderCircle, C as CircleAlert, E as Eye, B as Bot, T as TriangleAlert, g as ChevronDown, o as ChevronRight, F as Search, G as useFeatureStore, H as useFeatureCount, I as Plus, J as Card, K as CardHeader, M as CardContent, l as useCurrentProject, N as Dialog, O as DialogContent, Q as DialogHeader, U as DialogTitle, V as DialogDescription, W as Input, Y as DialogFooter } from "./index-D6zknste.js";
+import { U as User, P as Pencil, L as Lock, T as TestTube, u as useExecutionStore, a as useTaskOrchestration } from "./useTaskOrchestration-D9uJMdJa.js";
+import { C as CircleCheck } from "./circle-check-DEe4HTnv.js";
+import { A as ArrowRight } from "./arrow-right-Tu11VD0Q.js";
+import { T as Trash2 } from "./trash-2-DsUKbn2O.js";
+import { F as FileText } from "./file-text-1NWYs8hM.js";
+import { G as GitMerge, B as Bug, P as Play, a as Pause } from "./play-B5ZFdA5d.js";
+import { C as Clock } from "./clock-D5BUsL0A.js";
+import { R as RotateCcw } from "./rotate-ccw-BS3Q6Hrb.js";
+import { C as Circle } from "./circle-Dx1iLOgB.js";
+import { I as Info } from "./info-BSo99lQQ.js";
+import { L as Layers } from "./layers-CdrB5-Ro.js";
+import { A as AnimatedPage } from "./AnimatedPage-C7aKxnzt.js";
 /**
  * @license lucide-react v0.562.0 - ISC
  *
@@ -4571,8 +4571,12 @@ const FeatureCard = reactExports.forwardRef(
         ),
         onClick: handleClick,
         onContextMenu: (e) => onContextMenu?.(e, feature),
-        onMouseEnter: () => setIsHovered(true),
-        onMouseLeave: () => setIsHovered(false),
+        onMouseEnter: () => {
+          setIsHovered(true);
+        },
+        onMouseLeave: () => {
+          setIsHovered(false);
+        },
         ...attributes,
         ...listeners,
         ...props,
@@ -4653,7 +4657,11 @@ const FeatureCard = reactExports.forwardRef(
                   "button",
                   {
                     "data-action-button": true,
-                    onClick: (e) => handleActionClick(e, () => onEdit(feature)),
+                    onClick: (e) => {
+                      handleActionClick(e, () => {
+                        onEdit(feature);
+                      });
+                    },
                     className: "p-1.5 rounded-md bg-background/80 backdrop-blur-sm border border-border/50 text-muted-foreground hover:text-foreground hover:bg-background transition-colors",
                     title: "Edit",
                     children: /* @__PURE__ */ jsxRuntimeExports.jsx(Pencil, { className: "h-3.5 w-3.5" })
@@ -4663,7 +4671,11 @@ const FeatureCard = reactExports.forwardRef(
                   "button",
                   {
                     "data-action-button": true,
-                    onClick: (e) => handleActionClick(e, () => onMove(feature)),
+                    onClick: (e) => {
+                      handleActionClick(e, () => {
+                        onMove(feature);
+                      });
+                    },
                     className: "p-1.5 rounded-md bg-background/80 backdrop-blur-sm border border-border/50 text-muted-foreground hover:text-foreground hover:bg-background transition-colors",
                     title: "Move",
                     children: /* @__PURE__ */ jsxRuntimeExports.jsx(ArrowRight, { className: "h-3.5 w-3.5" })
@@ -4673,7 +4685,11 @@ const FeatureCard = reactExports.forwardRef(
                   "button",
                   {
                     "data-action-button": true,
-                    onClick: (e) => handleActionClick(e, () => onDelete(feature)),
+                    onClick: (e) => {
+                      handleActionClick(e, () => {
+                        onDelete(feature);
+                      });
+                    },
                     className: "p-1.5 rounded-md bg-background/80 backdrop-blur-sm border border-border/50 text-muted-foreground hover:text-destructive hover:bg-background transition-colors",
                     title: "Delete",
                     children: /* @__PURE__ */ jsxRuntimeExports.jsx(Trash2, { className: "h-3.5 w-3.5" })
@@ -6113,7 +6129,9 @@ function LogsTab({ task }) {
           {
             variant: "ghost",
             size: "sm",
-            onClick: () => setAutoScroll(!autoScroll),
+            onClick: () => {
+              setAutoScroll(!autoScroll);
+            },
             className: cn(!autoScroll && "opacity-50"),
             children: [
               "Auto-scroll ",
@@ -6153,7 +6171,9 @@ function LogsTab({ task }) {
                   "button",
                   {
                     type: "button",
-                    onClick: () => toggleLogExpand(log.id),
+                    onClick: () => {
+                      toggleLogExpand(log.id);
+                    },
                     className: "flex items-center gap-1 mt-1 text-muted-foreground hover:text-foreground",
                     children: [
                       isExpanded ? /* @__PURE__ */ jsxRuntimeExports.jsx(ChevronDown, { className: "h-3 w-3" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(ChevronRight, { className: "h-3 w-3" }),
@@ -6229,7 +6249,7 @@ function DetailPanel({
   const [activeTab, setActiveTab] = reactExports.useState("overview");
   const [isDeleting, setIsDeleting] = reactExports.useState(false);
   const [isLoading, setIsLoading] = reactExports.useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = reactExports.useState(false);
+  const [_showDeleteConfirm, setShowDeleteConfirm] = reactExports.useState(false);
   reactExports.useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === "Escape" && open) {
@@ -6237,7 +6257,9 @@ function DetailPanel({
       }
     };
     document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
   }, [open, onClose]);
   reactExports.useEffect(() => {
     if (!open) {
@@ -6280,7 +6302,7 @@ function DetailPanel({
     }
   };
   const title = mode === "feature" ? feature?.title : task?.title;
-  mode === "feature" ? feature && FEATURE_STATUS_LABELS[feature.status] : task && TASK_STATUS_STYLES[task.status]?.label;
+  mode === "feature" ? feature && FEATURE_STATUS_LABELS[feature.status] : task && TASK_STATUS_STYLES[task.status].label;
   if (mode === "feature" && !feature || mode === "task" && !task) {
     return null;
   }
@@ -6365,7 +6387,9 @@ function DetailPanel({
             {
               tab,
               isActive: activeTab === tab.id,
-              onClick: () => setActiveTab(tab.id),
+              onClick: () => {
+                setActiveTab(tab.id);
+              },
               count: tabCounts[tab.id]
             },
             tab.id
@@ -6375,7 +6399,9 @@ function DetailPanel({
               FeatureOverviewTab,
               {
                 feature,
-                onDelete: handleDeleteFeature,
+                onDelete: () => {
+                  void handleDeleteFeature();
+                },
                 onUpdate: onUpdateFeature,
                 isDeleting
               }
@@ -6637,9 +6663,15 @@ function CardContextMenu({
 function useCommandPalette(options = {}) {
   const { initialOpen = false } = options;
   const [isOpen, setIsOpen] = reactExports.useState(initialOpen);
-  const open = reactExports.useCallback(() => setIsOpen(true), []);
-  const close = reactExports.useCallback(() => setIsOpen(false), []);
-  const toggle = reactExports.useCallback(() => setIsOpen((prev) => !prev), []);
+  const open = reactExports.useCallback(() => {
+    setIsOpen(true);
+  }, []);
+  const close = reactExports.useCallback(() => {
+    setIsOpen(false);
+  }, []);
+  const toggle = reactExports.useCallback(() => {
+    setIsOpen((prev) => !prev);
+  }, []);
   reactExports.useEffect(() => {
     const handleKeyDown = (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
@@ -6652,7 +6684,9 @@ function useCommandPalette(options = {}) {
       }
     };
     document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
   }, [isOpen, toggle, close]);
   return {
     isOpen,
@@ -6789,7 +6823,9 @@ function CommandPalette({
             ref: inputRef,
             type: "text",
             value: query,
-            onChange: (e) => setQuery(e.target.value),
+            onChange: (e) => {
+              setQuery(e.target.value);
+            },
             onKeyDown: handleKeyDown,
             placeholder: "Search features...",
             className: "flex-1 bg-transparent text-foreground placeholder:text-muted-foreground focus:outline-none text-sm",
@@ -6808,8 +6844,12 @@ function CommandPalette({
         "button",
         {
           type: "button",
-          onClick: () => handleResultClick(result),
-          onMouseEnter: () => setSelectedIndex(index),
+          onClick: () => {
+            handleResultClick(result);
+          },
+          onMouseEnter: () => {
+            setSelectedIndex(index);
+          },
           className: cn(
             "w-full flex items-start gap-3 px-3 py-2.5 rounded-lg text-left transition-colors",
             index === selectedIndex ? "bg-muted" : "hover:bg-muted/50"
@@ -7129,10 +7169,14 @@ function KanbanBoard() {
         feature: contextMenuFeature,
         position: contextMenuPosition,
         columns: COLUMNS,
-        onClose: () => setContextMenuFeature(null),
+        onClose: () => {
+          setContextMenuFeature(null);
+        },
         onEdit: handleFeatureEdit,
         onMoveTo: handleMoveToColumn,
-        onChangePriority: handleChangePriority,
+        onChangePriority: (feature, priority) => {
+          void handleChangePriority(feature, priority);
+        },
         onDelete: (feature) => void handleFeatureDelete(feature.id)
       }
     ),
@@ -7767,25 +7811,30 @@ function mapBackendFeature(backendFeature) {
     moderate: "moderate",
     complex: "complex"
   };
-  const rawStatus = String(backendFeature.status || "backlog");
-  const rawPriority = String(backendFeature.priority || "medium");
-  const rawComplexity = String(backendFeature.complexity || "moderate");
+  const safeString = (value, fallback) => {
+    if (typeof value === "string") return value;
+    if (typeof value === "number" || typeof value === "boolean") return String(value);
+    return fallback;
+  };
+  const rawStatus = safeString(backendFeature.status, "backlog");
+  const rawPriority = safeString(backendFeature.priority, "medium");
+  const rawComplexity = safeString(backendFeature.complexity, "moderate");
   return {
-    id: String(backendFeature.id || `feature-${Date.now()}`),
-    title: String(backendFeature.title || backendFeature.name || "Untitled Feature"),
-    description: String(backendFeature.description || ""),
-    status: statusMap[rawStatus] || "backlog",
-    priority: priorityMap[rawPriority] || "medium",
-    complexity: complexityMap[rawComplexity] || "moderate",
+    id: safeString(backendFeature.id, `feature-${Date.now()}`),
+    title: safeString(backendFeature.title, "") || safeString(backendFeature.name, "Untitled Feature"),
+    description: safeString(backendFeature.description, ""),
+    status: statusMap[rawStatus] ?? "backlog",
+    priority: priorityMap[rawPriority] ?? "medium",
+    complexity: complexityMap[rawComplexity] ?? "moderate",
     progress: typeof backendFeature.progress === "number" ? backendFeature.progress : 0,
-    assignedAgent: backendFeature.assignedAgent ? String(backendFeature.assignedAgent) : void 0,
+    assignedAgent: typeof backendFeature.assignedAgent === "string" ? backendFeature.assignedAgent : void 0,
     tasks: Array.isArray(backendFeature.tasks) ? backendFeature.tasks.map((t) => ({
-      id: String(t.id || ""),
-      title: String(t.title || t.name || ""),
-      status: String(t.status || "pending")
+      id: safeString(t.id, ""),
+      title: safeString(t.title, "") || safeString(t.name, ""),
+      status: safeString(t.status, "pending")
     })) : [],
-    createdAt: String(backendFeature.createdAt || (/* @__PURE__ */ new Date()).toISOString()),
-    updatedAt: String(backendFeature.updatedAt || (/* @__PURE__ */ new Date()).toISOString())
+    createdAt: safeString(backendFeature.createdAt, (/* @__PURE__ */ new Date()).toISOString()),
+    updatedAt: safeString(backendFeature.updatedAt, (/* @__PURE__ */ new Date()).toISOString())
   };
 }
 function KanbanPage() {
@@ -7860,10 +7909,8 @@ function KanbanPage() {
     } catch (err) {
       console.error("Failed to load features:", err);
       setError("Failed to load features from backend.");
-      setFeatures((prev) => {
-        setIsEmpty(prev.length === 0);
-        return prev;
-      });
+      const currentFeatures = useFeatureStore.getState().features;
+      setIsEmpty(currentFeatures.length === 0);
     } finally {
       setIsLoading(false);
     }
@@ -7873,6 +7920,8 @@ function KanbanPage() {
       return () => {
       };
     }
+    if (!window.nexusAPI) return () => {
+    };
     const unsubscribeFeatureUpdate = window.nexusAPI.onFeatureUpdate((featureData) => {
       const feature = mapBackendFeature(featureData);
       updateFeature(feature.id, feature);
@@ -7901,12 +7950,16 @@ function KanbanPage() {
     setIsCreating(true);
     setCreateError(null);
     try {
-      const createdFeature = await window.nexusAPI.createFeature({
+      const createdFeature = await window.nexusAPI?.createFeature({
         title: newFeatureTitle.trim(),
         description: newFeatureDescription.trim() || void 0,
         priority: newFeaturePriority,
         complexity: newFeatureComplexity
       });
+      if (!createdFeature) {
+        setCreateError("Failed to create feature - no response from backend");
+        return;
+      }
       const mappedFeature = mapBackendFeature(createdFeature);
       addFeature(mappedFeature);
       setIsAddFeatureModalOpen(false);

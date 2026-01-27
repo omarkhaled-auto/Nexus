@@ -202,6 +202,20 @@ export const shadows = {
     error: '0 0 20px rgba(239, 68, 68, 0.3)',
     warning: '0 0 20px rgba(245, 158, 11, 0.3)',
   },
+  // Layered elevation shadows for realistic depth (Linear-inspired)
+  elevation: {
+    1: '0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.15)',
+    2: '0 2px 4px rgba(0, 0, 0, 0.3), 0 4px 8px rgba(0, 0, 0, 0.2), 0 1px 3px rgba(0, 0, 0, 0.15)',
+    3: '0 4px 8px rgba(0, 0, 0, 0.3), 0 8px 16px rgba(0, 0, 0, 0.2), 0 16px 32px rgba(0, 0, 0, 0.15)',
+  },
+  // Enhanced glow shadows with layered effects
+  glowEnhanced: {
+    primary: '0 4px 15px rgba(124, 58, 237, 0.35), 0 0 30px rgba(124, 58, 237, 0.15)',
+    success: '0 4px 15px rgba(16, 185, 129, 0.35), 0 0 30px rgba(16, 185, 129, 0.15)',
+    error: '0 4px 15px rgba(239, 68, 68, 0.35), 0 0 30px rgba(239, 68, 68, 0.15)',
+    warning: '0 4px 15px rgba(245, 158, 11, 0.35), 0 0 30px rgba(245, 158, 11, 0.15)',
+    info: '0 4px 15px rgba(59, 130, 246, 0.35), 0 0 30px rgba(59, 130, 246, 0.15)',
+  },
 } as const;
 
 // =============================================================================
@@ -257,6 +271,48 @@ export const layout = {
   sidebar: {
     width: '240px',
     collapsedWidth: '64px',
+  },
+} as const;
+
+// =============================================================================
+// GRADIENTS - Premium gradient definitions for backgrounds and accents
+// =============================================================================
+
+export const gradients = {
+  // Primary accent gradients
+  primary: 'linear-gradient(135deg, #7C3AED 0%, #A855F7 100%)',
+  primarySubtle: 'linear-gradient(135deg, rgba(124, 58, 237, 0.15) 0%, rgba(168, 85, 247, 0.15) 100%)',
+
+  // Surface gradients for backgrounds
+  surface: 'linear-gradient(180deg, #161B22 0%, #0D1117 100%)',
+  card: 'linear-gradient(145deg, rgba(30, 35, 44, 0.9) 0%, rgba(22, 27, 34, 0.95) 100%)',
+
+  // Mesh gradient for hero sections
+  mesh: 'radial-gradient(ellipse 80% 50% at 10% 0%, rgba(124, 58, 237, 0.08) 0%, transparent 50%), radial-gradient(ellipse 60% 40% at 90% 100%, rgba(6, 182, 212, 0.06) 0%, transparent 50%)',
+
+  // Status gradients
+  success: 'linear-gradient(135deg, #10B981 0%, #34D399 100%)',
+  error: 'linear-gradient(135deg, #EF4444 0%, #F87171 100%)',
+  warning: 'linear-gradient(135deg, #F59E0B 0%, #FBBF24 100%)',
+  info: 'linear-gradient(135deg, #3B82F6 0%, #60A5FA 100%)',
+} as const;
+
+// =============================================================================
+// GLASSMORPHISM - Glass effect configurations
+// =============================================================================
+
+export const glassmorphism = {
+  light: {
+    background: 'rgba(22, 27, 34, 0.4)',
+    blur: '8px',
+  },
+  medium: {
+    background: 'rgba(22, 27, 34, 0.7)',
+    blur: '12px',
+  },
+  heavy: {
+    background: 'rgba(22, 27, 34, 0.85)',
+    blur: '16px',
   },
 } as const;
 
@@ -385,6 +441,8 @@ export const tokens = {
   zIndex,
   layout,
   breakpoints,
+  gradients,
+  glassmorphism,
 } as const;
 
 export default tokens;

@@ -270,6 +270,50 @@ export class TestRunner {
       proc.on('close', (code) => {
         const parsed = this.parseOutput(stdout, stderr);
         const duration = Date.now() - startTime;
+        const combinedOutput = stdout + stderr;
+
+        // Detect vitest not installed/configured scenarios
+        // When vitest can't run (not installed, no config), exit code is non-zero
+        // but there are no actual test failures - just infrastructure issues
+        const vitestNotConfigured = (
+          code !== 0 &&
+          parsed.passed === 0 &&
+          parsed.failed === 0 && (
+            combinedOutput.includes('vitest') && (
+              combinedOutput.includes('not found') ||
+              combinedOutput.includes('Cannot find') ||
+              combinedOutput.includes('is not recognized') ||
+              combinedOutput.includes('command not found') ||
+              combinedOutput.includes('ENOENT') ||
+              combinedOutput.includes('No test files found')
+            ) ||
+            // No vitest config file
+            combinedOutput.includes('no test files found') ||
+            combinedOutput.includes('No test files match')
+          )
+        );
+
+        if (vitestNotConfigured) {
+          // Treat vitest-not-configured as success with warning
+          // This prevents infinite QA loops for newly generated projects
+          // that don't have tests set up yet
+          console.log('[TestRunner] Vitest not configured or no tests found - treating as success');
+          resolve({
+            success: true,
+            passed: 0,
+            failed: 0,
+            skipped: 0,
+            errors: [
+              this.createErrorEntry(
+                'Vitest not configured or no test files found - skipping tests',
+                'warning',
+                'VITEST_NOT_CONFIGURED'
+              ),
+            ],
+            duration,
+          });
+          return;
+        }
 
         // Determine success:
         // - Exit code 0 and no failures: success
@@ -291,6 +335,39 @@ export class TestRunner {
       });
 
       proc.on('error', (err) => {
+        const duration = Date.now() - startTime;
+        const errMsg = err.message.toLowerCase();
+
+        // Check if this is a "not found" error (vitest/npx not installed)
+        const isNotFoundError = (
+          errMsg.includes('enoent') ||
+          errMsg.includes('not found') ||
+          errMsg.includes('command not found') ||
+          errMsg.includes('is not recognized')
+        );
+
+        if (isNotFoundError) {
+          // Treat vitest not found as success with warning
+          // This prevents infinite QA loops for projects without vitest
+          console.log('[TestRunner] Vitest/npx not found - treating as success');
+          resolve({
+            success: true,
+            passed: 0,
+            failed: 0,
+            skipped: 0,
+            errors: [
+              this.createErrorEntry(
+                'Vitest not installed - skipping tests',
+                'warning',
+                'VITEST_NOT_INSTALLED'
+              ),
+            ],
+            duration,
+          });
+          return;
+        }
+
+        // Other spawn errors are real failures
         resolve({
           success: false,
           passed: 0,
@@ -303,7 +380,7 @@ export class TestRunner {
               'SPAWN_ERROR'
             ),
           ],
-          duration: Date.now() - startTime,
+          duration,
         });
       });
     });

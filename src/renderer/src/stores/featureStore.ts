@@ -88,6 +88,9 @@ interface FeatureState {
   clearFilters: () => void
   loadFeatures: (projectId?: string) => Promise<void>
   reset: () => void
+  // Phase 2 Workflow Fix: Task-triggered feature updates
+  updateFeatureFromTaskCompletion: (featureId: string) => void
+  updateFeatureStatusFromTasks: (featureId: string) => void
 }
 
 export const useFeatureStore = create<FeatureState>()((set, get) => ({
@@ -376,7 +379,65 @@ export const useFeatureStore = create<FeatureState>()((set, get) => ({
         status: null
       },
       isLoading: false
-    }); }
+    }); },
+
+  /**
+   * Phase 2 Workflow Fix: Update feature when a task is completed
+   * Triggers re-render with updated timestamp
+   */
+  updateFeatureFromTaskCompletion: (featureId: string) => {
+    set((state) => {
+      const features = state.features.map((f) => {
+        if (f.id === featureId) {
+          return {
+            ...f,
+            updatedAt: new Date().toISOString()
+          }
+        }
+        return f
+      })
+      return { features }
+    })
+    console.log(`[featureStore] Updated feature ${featureId} from task completion`)
+  },
+
+  /**
+   * Phase 2 Workflow Fix: Update feature status based on task statuses
+   * Called after task status changes to sync feature status
+   */
+  updateFeatureStatusFromTasks: (featureId: string) => {
+    set((state) => {
+      const features = state.features.map((f) => {
+        if (f.id === featureId) {
+          const tasks = f.tasks
+          const allCompleted = tasks.length > 0 && tasks.every(t => t.status === 'completed')
+          const anyInProgress = tasks.some(t => t.status === 'in_progress')
+          const anyFailed = tasks.some(t => t.status === 'failed')
+
+          let newStatus: FeatureStatus = f.status
+
+          if (allCompleted) {
+            newStatus = 'done'
+          } else if (anyFailed) {
+            newStatus = 'human_review' // Needs attention
+          } else if (anyInProgress) {
+            newStatus = 'in_progress'
+          }
+
+          if (newStatus !== f.status) {
+            console.log(`[featureStore] Feature ${featureId} status: ${f.status} -> ${newStatus}`)
+            return {
+              ...f,
+              status: newStatus,
+              updatedAt: new Date().toISOString()
+            }
+          }
+        }
+        return f
+      })
+      return { features }
+    })
+  }
 }))
 
 /**

@@ -153,6 +153,7 @@ export class NexusCoordinator implements INexusCoordinator {
 
   /**
    * Initialize coordinator with project configuration
+   * Phase 2 Workflow Fix: Wire up TaskQueue events for status tracking
    */
   initialize(config: ProjectConfig): void {
     this.projectConfig = config;
@@ -166,6 +167,18 @@ export class NexusCoordinator implements INexusCoordinator {
     this.failedTasks = 0;
     this.stopRequested = false;
     this.pauseRequested = false;
+
+    // Wire TaskQueue events to coordinator event handlers (Phase 2 fix)
+    this.taskQueue.onEvent((event) => {
+      // Forward task status changes to coordinator handlers
+      for (const handler of this.eventHandlers) {
+        try {
+          handler(event);
+        } catch {
+          // Ignore handler errors
+        }
+      }
+    });
   }
 
   /**
@@ -480,6 +493,14 @@ export class NexusCoordinator implements INexusCoordinator {
    */
   onEvent(handler: (event: NexusEvent) => void): void {
     this.eventHandlers.push(handler);
+  }
+
+  /**
+   * Get a task by ID from the queue
+   * Used for looking up task details (e.g., projectId) without dequeuing
+   */
+  getTask(taskId: string): OrchestrationTask | undefined {
+    return this.taskQueue.getTask(taskId);
   }
 
   /**
@@ -992,7 +1013,12 @@ export class NexusCoordinator implements INexusCoordinator {
 
         // Assign agent to task
         this.agentPool.assign(agent.id, dequeuedTask.id, worktreePath);
-        this.emitEvent('task:assigned', { taskId: dequeuedTask.id, agentId: agent.id });
+        // CRITICAL FIX: Include featureId in task:assigned event for UI updates
+        this.emitEvent('task:assigned', {
+          taskId: dequeuedTask.id,
+          agentId: agent.id,
+          featureId: dequeuedTask.featureId,
+        });
 
         // Start task execution
         const taskPromise = this.executeTask(dequeuedTask, agent.id, worktreePath);
@@ -1016,13 +1042,17 @@ export class NexusCoordinator implements INexusCoordinator {
    * Execute a single task with per-task merge on success
    * Hotfix #5 - Issue 2: Added merge step after successful QA loop
    * Fix: Now passes projectPath to QA engine for correct CLI working directory
+   * Phase 2 Workflow Fix: Added status transitions for UI visibility
    */
   private async executeTask(
     task: OrchestrationTask,
     agentId: string,
     worktreePath?: string
   ): Promise<void> {
-    this.emitEvent('task:started', { taskId: task.id, agentId });
+    // Phase 2 fix: Update status to in_progress
+    this.taskQueue.updateTaskStatus(task.id, 'in_progress');
+    // CRITICAL FIX: Include featureId in task:started event for UI updates
+    this.emitEvent('task:started', { taskId: task.id, agentId, featureId: task.featureId });
 
     // Get project path from config - this is the user's project folder, NOT Nexus-master
     const projectPath = this.projectConfig?.projectPath;
@@ -1135,7 +1165,8 @@ export class NexusCoordinator implements INexusCoordinator {
 
         this.taskQueue.markComplete(task.id);
         this.completedTasks++;
-        this.emitEvent('task:completed', { taskId: task.id, agentId });
+        // CRITICAL FIX: Include featureId in task:completed event for UI updates
+        this.emitEvent('task:completed', { taskId: task.id, agentId, featureId: task.featureId });
       } else if (result.escalated) {
         // Task escalated - needs human intervention
         // Phase 3 Fix: Properly integrate with HumanReviewService

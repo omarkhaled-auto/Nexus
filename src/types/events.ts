@@ -195,12 +195,14 @@ export interface TaskAssignedPayload {
   agentId: string;
   agentType: AgentType;
   worktreePath: string;
+  featureId?: string;  // CRITICAL FIX: Include for UI feature status updates
 }
 
 export interface TaskStartedPayload {
   taskId: string;
   agentId: string;
   startedAt: Date;
+  featureId?: string;  // CRITICAL FIX: Include for UI feature status updates
 }
 
 export interface TaskProgressPayload {
@@ -219,6 +221,7 @@ export interface TaskQAIterationPayload {
 export interface TaskCompletedPayload {
   taskId: string;
   result: TaskResult;
+  featureId?: string;  // CRITICAL FIX: Include for UI feature status updates
 }
 
 export interface TaskFailedPayload {

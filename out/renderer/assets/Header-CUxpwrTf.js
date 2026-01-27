@@ -1,5 +1,5 @@
-import { c as createLucideIcon, j as jsxRuntimeExports, a as cn, o as ChevronRight, aa as Link, k as useNavigate } from "./index-B8DMw4WO.js";
-import { A as ArrowLeft } from "./arrow-left-BumfNhxk.js";
+import { c as createLucideIcon, j as jsxRuntimeExports, a as cn, o as ChevronRight, aa as Link, k as useNavigate } from "./index-D6zknste.js";
+import { A as ArrowLeft } from "./arrow-left-OjicJZKL.js";
 /**
  * @license lucide-react v0.562.0 - ISC
  *
@@ -89,7 +89,7 @@ function Breadcrumbs({
   showHome = false,
   homeHref = "/"
 }) {
-  if (!items || items.length === 0) {
+  if (items.length === 0) {
     return null;
   }
   const allItems = showHome ? [{ label: "Home", href: homeHref, icon: House }, ...items] : items;
@@ -146,7 +146,7 @@ function Header({
     if (onBack) {
       onBack();
     } else {
-      navigate(-1);
+      void navigate(-1);
     }
   };
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type ReactElement } from 'react';
-import { Activity, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Activity, AlertTriangle, CheckCircle2, TrendingUp } from 'lucide-react';
 import { Progress } from '@renderer/components/ui/Progress';
 import { cn } from '@renderer/lib/utils';
 
@@ -94,62 +94,136 @@ export function AgentPoolWidget({ className }: AgentPoolWidgetProps): ReactEleme
   })();
 
   const healthLabel = health === 'healthy' ? 'Healthy' : health === 'degraded' ? 'Degraded' : 'Overloaded';
-  const healthClass = health === 'healthy'
-    ? 'text-accent-success'
+  const healthColor = health === 'healthy'
+    ? '#3FB950'
     : health === 'degraded'
-      ? 'text-accent-warning'
-      : 'text-accent-error';
+      ? '#F0883E'
+      : '#F85149';
 
   return (
     <div
       className={cn(
-        'rounded-lg border border-border-default bg-bg-card p-4',
-        'flex flex-col gap-3',
+        'relative rounded-xl border overflow-hidden',
+        'bg-[#161B22]/60 backdrop-blur-sm',
+        'border-[#30363D]',
+        'flex flex-col gap-4 p-5',
         className
       )}
     >
+      {/* Gradient top border based on health */}
+      <div
+        className="absolute inset-x-0 top-0 h-px"
+        style={{
+          background: `linear-gradient(to right, transparent, ${healthColor}50, transparent)`
+        }}
+      />
+
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Activity className="h-4 w-4 text-text-secondary" />
-          <h3 className="text-sm font-semibold text-text-primary">Pool Utilization</h3>
+          <div className="p-2 rounded-lg bg-[#60A5FA]/10">
+            <Activity className="h-4 w-4 text-[#60A5FA]" />
+          </div>
+          <h3 className="text-sm font-semibold text-[#F0F6FC]">Pool Utilization</h3>
         </div>
-        <div className={cn('flex items-center gap-1 text-xs font-medium', healthClass)}>
-          {health === 'healthy' ? <CheckCircle2 className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
+        <div
+          className={cn(
+            'flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full'
+          )}
+          style={{
+            backgroundColor: `${healthColor}15`,
+            color: healthColor
+          }}
+        >
+          {health === 'healthy' ? (
+            <CheckCircle2 className="h-3.5 w-3.5" />
+          ) : (
+            <AlertTriangle className="h-3.5 w-3.5" />
+          )}
           <span>{healthLabel}</span>
         </div>
       </div>
 
       {error && (
-        <div className="rounded-md border border-accent-error/40 bg-accent-error/10 px-3 py-2 text-xs text-accent-error">
+        <div className="rounded-lg border border-[#F85149]/30 bg-[#F85149]/10 px-3 py-2 text-xs text-[#F85149]">
           {error}
         </div>
       )}
 
       {isLoading && !error && (
-        <div className="text-xs text-text-tertiary">Loading pool status...</div>
+        <div className="text-xs text-[#6E7681] flex items-center gap-2">
+          <div className="w-3 h-3 rounded-full bg-[#30363D] animate-pulse" />
+          Loading pool status...
+        </div>
       )}
 
       {!isLoading && !error && status && (
         <>
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-text-secondary">{activeAgents}/{maxAgents} agents active</span>
-            <span className="text-text-tertiary">{utilization}%</span>
-          </div>
-          <Progress value={utilization} max={100} size="sm" variant={health === 'healthy' ? 'success' : health === 'degraded' ? 'warning' : 'error'} />
-          <div className="grid grid-cols-3 gap-3 text-xs text-text-secondary">
-            <div className="rounded-md bg-bg-muted/60 px-2 py-1">
-              <div className="text-text-tertiary">Idle</div>
-              <div className="text-text-primary">{status.idle}</div>
+          {/* Utilization Stats */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-[#8B949E]">{activeAgents}/{maxAgents} agents active</span>
             </div>
-            <div className="rounded-md bg-bg-muted/60 px-2 py-1">
-              <div className="text-text-tertiary">Working</div>
-              <div className="text-text-primary">{status.working}</div>
-            </div>
-            <div className="rounded-md bg-bg-muted/60 px-2 py-1">
-              <div className="text-text-tertiary">Errors</div>
-              <div className="text-text-primary">{status.error}</div>
+            <div className="flex items-center gap-1.5">
+              {utilization > 0 && (
+                <TrendingUp className="h-3.5 w-3.5 text-[#60A5FA]" />
+              )}
+              <span className="text-sm font-semibold text-[#F0F6FC] tabular-nums">{utilization}%</span>
             </div>
           </div>
+
+          {/* Progress Bar with gradient */}
+          <div className="h-2 bg-[#21262D] rounded-full overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all duration-500"
+              style={{
+                width: `${utilization}%`,
+                background: health === 'healthy'
+                  ? 'linear-gradient(to right, #3FB950, #2EA043)'
+                  : health === 'degraded'
+                    ? 'linear-gradient(to right, #F0883E, #D29922)'
+                    : 'linear-gradient(to right, #F85149, #DA3633)'
+              }}
+            />
+          </div>
+
+          {/* Stats Grid */}
+          <div className="grid grid-cols-3 gap-3">
+            <div className={cn(
+              "rounded-lg px-3 py-2",
+              "bg-[#21262D]/60 border border-[#30363D]"
+            )}>
+              <div className="text-xs text-[#6E7681] mb-0.5">Idle</div>
+              <div className="text-lg font-semibold text-[#8B949E] tabular-nums">{status.idle}</div>
+            </div>
+            <div className={cn(
+              "rounded-lg px-3 py-2",
+              "bg-[#60A5FA]/5 border border-[#60A5FA]/20"
+            )}>
+              <div className="text-xs text-[#6E7681] mb-0.5">Working</div>
+              <div className="text-lg font-semibold text-[#60A5FA] tabular-nums">{status.working}</div>
+            </div>
+            <div className={cn(
+              "rounded-lg px-3 py-2",
+              status.error > 0
+                ? "bg-[#F85149]/5 border border-[#F85149]/20"
+                : "bg-[#21262D]/60 border border-[#30363D]"
+            )}>
+              <div className="text-xs text-[#6E7681] mb-0.5">Errors</div>
+              <div className={cn(
+                "text-lg font-semibold tabular-nums",
+                status.error > 0 ? "text-[#F85149]" : "text-[#8B949E]"
+              )}>{status.error}</div>
+            </div>
+          </div>
+
+          {/* Tasks in Progress indicator */}
+          {status.tasksInProgress > 0 && (
+            <div className="flex items-center justify-between pt-2 border-t border-[#30363D]">
+              <span className="text-xs text-[#6E7681]">Tasks in progress</span>
+              <span className="text-sm font-medium text-[#60A5FA] tabular-nums">{status.tasksInProgress}</span>
+            </div>
+          )}
         </>
       )}
     </div>

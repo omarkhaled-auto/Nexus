@@ -22,6 +22,7 @@ export interface InterviewLayoutProps {
  * - Minimum width constraints for both panels
  * - Persists split ratio preference
  * - Smooth resize with visual feedback
+ * - Modern glassmorphism divider styling
  */
 export function InterviewLayout({
   children,
@@ -109,12 +110,13 @@ export function InterviewLayout({
             {chatPanel}
           </div>
 
-          {/* Resizable Divider */}
+          {/* Resizable Divider - Modern glassmorphism style */}
           <div
             className={cn(
               'relative flex-shrink-0 w-2 h-full cursor-col-resize group',
-              'hover:bg-accent-primary/20',
-              isDragging && 'bg-accent-primary/30'
+              'transition-colors duration-200',
+              !isDragging && 'hover:bg-[#7C3AED]/10',
+              isDragging && 'bg-[#7C3AED]/20'
             )}
             onMouseDown={handleMouseDown}
             data-testid="resize-handle"
@@ -123,21 +125,41 @@ export function InterviewLayout({
             <div
               className={cn(
                 'absolute left-1/2 top-0 h-full w-px -translate-x-1/2',
-                'bg-border-default transition-colors duration-150',
-                'group-hover:bg-accent-primary',
-                isDragging && 'bg-accent-primary'
+                'transition-all duration-200',
+                !isDragging && 'bg-[#30363D] group-hover:bg-[#7C3AED]',
+                isDragging && 'bg-[#7C3AED] shadow-[0_0_10px_rgba(124,58,237,0.5)]'
               )}
             />
-            {/* Drag handle indicator */}
+
+            {/* Drag handle indicator - visible on hover */}
             <div
               className={cn(
                 'absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2',
-                'w-1 h-8 rounded-full',
-                'bg-border-default transition-colors duration-150',
+                'flex flex-col items-center gap-1',
+                'transition-all duration-200',
                 'opacity-0 group-hover:opacity-100',
-                isDragging && 'opacity-100 bg-accent-primary'
+                isDragging && 'opacity-100'
               )}
-            />
+            >
+              {/* Three dots indicator */}
+              <div className={cn(
+                'w-1 h-1 rounded-full',
+                isDragging ? 'bg-[#7C3AED]' : 'bg-[#6E7681] group-hover:bg-[#7C3AED]'
+              )} />
+              <div className={cn(
+                'w-1 h-1 rounded-full',
+                isDragging ? 'bg-[#7C3AED]' : 'bg-[#6E7681] group-hover:bg-[#7C3AED]'
+              )} />
+              <div className={cn(
+                'w-1 h-1 rounded-full',
+                isDragging ? 'bg-[#7C3AED]' : 'bg-[#6E7681] group-hover:bg-[#7C3AED]'
+              )} />
+            </div>
+
+            {/* Glow effect when dragging */}
+            {isDragging && (
+              <div className="absolute left-1/2 top-0 h-full w-8 -translate-x-1/2 bg-[#7C3AED]/10 blur-md pointer-events-none" />
+            )}
           </div>
 
           {/* Sidebar Panel */}

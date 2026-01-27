@@ -1,15 +1,15 @@
-import { c as createLucideIcon, r as reactExports, j as jsxRuntimeExports, a as cn, X, aj as cva, C as CircleAlert, T as TriangleAlert, L as LoaderCircle, q as React, E as Eye, D as Button, g as ChevronDown, o as ChevronRight, B as Bot, R as RefreshCw } from "./index-B8DMw4WO.js";
-import { H as Header } from "./Header-D8V4ab2j.js";
-import { I as Info } from "./info-DDDU4WnD.js";
-import { C as CircleCheck } from "./circle-check-DWu7kQd6.js";
-import { F as FileText } from "./file-text-Coe14bpf.js";
-import { B as Bug, G as GitMerge, P as Play, a as Pause } from "./play-CGwX_rdf.js";
-import { T as TestTubeDiagonal, C as CodeXml } from "./test-tube-diagonal-BkG2X49i.js";
-import { Z as Zap } from "./zap-C3nsoLzM.js";
-import { C as Clock } from "./clock-SQZueF73.js";
-import { T as Trash2 } from "./trash-2-5qD4E5Wc.js";
-import { C as CircleX } from "./circle-x-hpKi6T_C.js";
-import "./arrow-left-BumfNhxk.js";
+import { c as createLucideIcon, r as reactExports, j as jsxRuntimeExports, a as cn, X, aj as cva, C as CircleAlert, T as TriangleAlert, L as LoaderCircle, q as React, E as Eye, D as Button, g as ChevronDown, N as Dialog, O as DialogContent, Q as DialogHeader, U as DialogTitle, Y as DialogFooter, o as ChevronRight, B as Bot, R as RefreshCw } from "./index-D6zknste.js";
+import { H as Header } from "./Header-CUxpwrTf.js";
+import { I as Info } from "./info-BSo99lQQ.js";
+import { C as CircleCheck } from "./circle-check-DEe4HTnv.js";
+import { F as FileText } from "./file-text-1NWYs8hM.js";
+import { B as Bug, G as GitMerge, P as Play, a as Pause } from "./play-B5ZFdA5d.js";
+import { T as TestTubeDiagonal, C as CodeXml, A as Activity } from "./test-tube-diagonal-Dx9FQnCe.js";
+import { Z as Zap } from "./zap-B2YFclPS.js";
+import { C as Clock } from "./clock-D5BUsL0A.js";
+import { T as Trash2 } from "./trash-2-DsUKbn2O.js";
+import { C as CircleX } from "./circle-x-C5fFko4H.js";
+import "./arrow-left-OjicJZKL.js";
 /**
  * @license lucide-react v0.562.0 - ISC
  *
@@ -398,7 +398,7 @@ const AgentBadge = React.forwardRef(
         onKeyDown: isInteractive ? (e) => {
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
-            onClick?.();
+            onClick();
           }
         } : void 0,
         "data-testid": testId ?? `agent-badge-${type}`,
@@ -641,7 +641,7 @@ const CircularProgress$1 = reactExports.forwardRef(
   }
 );
 CircularProgress$1.displayName = "CircularProgress";
-function formatDuration$1(ms) {
+function formatDuration$2(ms) {
   if (ms < 1e3) return `${ms}ms`;
   if (ms < 6e4) return `${(ms / 1e3).toFixed(1)}s`;
   const minutes = Math.floor(ms / 6e4);
@@ -687,7 +687,7 @@ const AgentCard = React.forwardRef(
         onKeyDown: isInteractive ? (e) => {
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
-            onClick?.();
+            onClick();
           }
         } : void 0,
         "data-testid": testId ?? `agent-card-${agent.id}`,
@@ -752,12 +752,12 @@ const AgentCard = React.forwardRef(
           !compact && hasTask && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mt-3 space-y-2", children: [
             /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2 text-sm text-text-secondary", children: [
               /* @__PURE__ */ jsxRuntimeExports.jsx(FileCodeCorner, { size: 14, className: "flex-shrink-0 text-text-tertiary" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "truncate", children: agent.currentTask.name })
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "truncate", children: agent.currentTask?.name })
             ] }),
             hasProgress && /* @__PURE__ */ jsxRuntimeExports.jsx(
               Progress,
               {
-                value: agent.currentTask.progress,
+                value: agent.currentTask?.progress ?? 0,
                 variant: "default",
                 size: "sm",
                 showValue: true,
@@ -796,7 +796,7 @@ const AgentCard = React.forwardRef(
               /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "p-1.5 rounded-md bg-bg-hover text-text-secondary", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Clock, { size: 14 }) }),
               /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
                 /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs text-text-tertiary", children: "Duration" }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm font-medium text-text-primary", children: formatDuration$1(agent.metrics.duration) })
+                /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm font-medium text-text-primary", children: formatDuration$2(agent.metrics.duration) })
               ] })
             ] }),
             agent.metrics?.tokensUsed !== void 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2", children: [
@@ -1027,7 +1027,7 @@ const AgentPoolStatus = React.forwardRef(
           else if (agent.status === "idle") acc.idle++;
           else if (agent.status === "error") acc.error++;
           else if (agent.status === "pending") acc.pending++;
-          else if (agent.status === "success") acc.complete++;
+          else acc.complete++;
           return acc;
         },
         { working: 0, idle: 0, error: 0, pending: 0, complete: 0 }
@@ -1204,6 +1204,302 @@ const AgentPoolStatus = React.forwardRef(
   }
 );
 AgentPoolStatus.displayName = "AgentPoolStatus";
+function isElectronEnvironment$1() {
+  return typeof window !== "undefined" && typeof window.nexusAPI !== "undefined";
+}
+function AgentPoolWidget({ className }) {
+  const [status, setStatus] = reactExports.useState(null);
+  const [isLoading, setIsLoading] = reactExports.useState(true);
+  const [error, setError] = reactExports.useState(null);
+  const loadStatus = reactExports.useCallback(async () => {
+    if (!isElectronEnvironment$1()) {
+      setError("Agent pool status requires the desktop app.");
+      setIsLoading(false);
+      return;
+    }
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await window.nexusAPI.getAgentPoolStatus();
+      setStatus(response);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to load agent pool status.";
+      setError(message);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+  reactExports.useEffect(() => {
+    void loadStatus();
+    if (!isElectronEnvironment$1()) return;
+    const unsubscribers = [];
+    if (window.nexusAPI?.onAgentStatus) {
+      unsubscribers.push(window.nexusAPI.onAgentStatus(() => {
+        void loadStatus();
+      }));
+    }
+    if (window.nexusAPI?.onAgentCreated) {
+      unsubscribers.push(window.nexusAPI.onAgentCreated(() => {
+        void loadStatus();
+      }));
+    }
+    const interval = setInterval(() => {
+      void loadStatus();
+    }, 3e4);
+    return () => {
+      unsubscribers.forEach((unsub) => {
+        unsub();
+      });
+      clearInterval(interval);
+    };
+  }, [loadStatus]);
+  const maxAgents = status?.maxAgents ?? 0;
+  const activeAgents = status?.working ?? 0;
+  const utilization = maxAgents > 0 ? Math.round(activeAgents / maxAgents * 100) : 0;
+  const health = (() => {
+    if (status && status.error > 0) return "degraded";
+    if (utilization >= 90) return "overloaded";
+    return "healthy";
+  })();
+  const healthLabel = health === "healthy" ? "Healthy" : health === "degraded" ? "Degraded" : "Overloaded";
+  const healthClass = health === "healthy" ? "text-accent-success" : health === "degraded" ? "text-accent-warning" : "text-accent-error";
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    "div",
+    {
+      className: cn(
+        "rounded-lg border border-border-default bg-bg-card p-4",
+        "flex flex-col gap-3",
+        className
+      ),
+      children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(Activity, { className: "h-4 w-4 text-text-secondary" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "text-sm font-semibold text-text-primary", children: "Pool Utilization" })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: cn("flex items-center gap-1 text-xs font-medium", healthClass), children: [
+            health === "healthy" ? /* @__PURE__ */ jsxRuntimeExports.jsx(CircleCheck, { className: "h-4 w-4" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(TriangleAlert, { className: "h-4 w-4" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: healthLabel })
+          ] })
+        ] }),
+        error && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "rounded-md border border-accent-error/40 bg-accent-error/10 px-3 py-2 text-xs text-accent-error", children: error }),
+        isLoading && !error && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xs text-text-tertiary", children: "Loading pool status..." }),
+        !isLoading && !error && status && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between text-sm", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-text-secondary", children: [
+              activeAgents,
+              "/",
+              maxAgents,
+              " agents active"
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-text-tertiary", children: [
+              utilization,
+              "%"
+            ] })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Progress, { value: utilization, max: 100, size: "sm", variant: health === "healthy" ? "success" : health === "degraded" ? "warning" : "error" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-3 gap-3 text-xs text-text-secondary", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "rounded-md bg-bg-muted/60 px-2 py-1", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-text-tertiary", children: "Idle" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-text-primary", children: status.idle })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "rounded-md bg-bg-muted/60 px-2 py-1", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-text-tertiary", children: "Working" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-text-primary", children: status.working })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "rounded-md bg-bg-muted/60 px-2 py-1", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-text-tertiary", children: "Errors" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-text-primary", children: status.error })
+            ] })
+          ] })
+        ] })
+      ]
+    }
+  );
+}
+function getNexusAPI() {
+  const globalWindow = globalThis;
+  return globalWindow.nexusAPI ?? null;
+}
+function formatDuration$1(ms) {
+  if (!ms) return "N/A";
+  if (ms < 1e3) return `${ms}ms`;
+  if (ms < 6e4) return `${(ms / 1e3).toFixed(1)}s`;
+  const minutes = Math.floor(ms / 6e4);
+  const seconds = Math.floor(ms % 6e4 / 1e3);
+  return `${minutes}m ${seconds}s`;
+}
+function normalizeAgent(agent) {
+  return {
+    id: typeof agent.id === "string" ? agent.id : "unknown",
+    type: typeof agent.type === "string" ? agent.type : "coder",
+    status: typeof agent.status === "string" ? agent.status : "idle",
+    model: typeof agent.model === "string" ? agent.model : void 0,
+    currentTask: agent.currentTask,
+    iteration: agent.iteration,
+    metrics: agent.metrics,
+    currentFile: typeof agent.currentFile === "string" ? agent.currentFile : void 0
+  };
+}
+function parseTaskHistory(history) {
+  if (!Array.isArray(history)) return [];
+  return history.map((entry) => {
+    const record = entry;
+    return {
+      id: typeof record.id === "string" ? record.id : "unknown",
+      name: typeof record.name === "string" ? record.name : typeof record.taskName === "string" ? record.taskName : "Untitled task",
+      status: typeof record.status === "string" ? record.status : void 0,
+      duration: typeof record.duration === "number" ? record.duration : void 0,
+      error: typeof record.error === "string" ? record.error : void 0
+    };
+  });
+}
+function parseErrorLog(agent) {
+  const errors = [];
+  if (Array.isArray(agent.errorLog)) {
+    errors.push(...agent.errorLog.filter((item) => typeof item === "string"));
+  }
+  if (Array.isArray(agent.errors)) {
+    errors.push(...agent.errors.filter((item) => typeof item === "string"));
+  }
+  if (typeof agent.error === "string") {
+    errors.push(agent.error);
+  }
+  if (typeof agent.lastError === "string") {
+    errors.push(agent.lastError);
+  }
+  return errors;
+}
+function AgentDetailModal({ agentId, isOpen, onClose }) {
+  const [agentRecord, setAgentRecord] = reactExports.useState(null);
+  const [isLoading, setIsLoading] = reactExports.useState(false);
+  const [error, setError] = reactExports.useState(null);
+  const loadAgent = reactExports.useCallback(async () => {
+    if (!agentId) return;
+    const nexusAPI = getNexusAPI();
+    if (!nexusAPI) {
+      setError("Agent details require the desktop app.");
+      return;
+    }
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await nexusAPI.getAgent(agentId);
+      if (!response) {
+        setError("Agent not found.");
+        setAgentRecord(null);
+        return;
+      }
+      setAgentRecord(response);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to load agent details.";
+      setError(message);
+      setAgentRecord(null);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [agentId]);
+  reactExports.useEffect(() => {
+    if (!isOpen) {
+      setAgentRecord(null);
+      setError(null);
+      return;
+    }
+    void loadAgent();
+  }, [isOpen, loadAgent]);
+  const agent = agentRecord ? normalizeAgent(agentRecord) : null;
+  const taskHistory = agentRecord ? parseTaskHistory(agentRecord.taskHistory) : [];
+  const errorLog = agentRecord ? parseErrorLog(agentRecord) : [];
+  const tasksCompleted = typeof agentRecord?.tasksCompleted === "number" ? agentRecord.tasksCompleted : taskHistory.length;
+  const durations = taskHistory.map((entry) => entry.duration).filter((value) => typeof value === "number");
+  const avgDuration = durations.length > 0 ? Math.round(durations.reduce((sum, value) => sum + value, 0) / durations.length) : void 0;
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(Dialog, { open: isOpen, onOpenChange: (open) => {
+    if (!open) onClose();
+  }, children: /* @__PURE__ */ jsxRuntimeExports.jsxs(DialogContent, { className: "sm:max-w-[720px]", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx(DialogHeader, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(DialogTitle, { children: "Agent Details" }) }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-4", children: [
+      error && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "rounded-md border border-accent-error/40 bg-accent-error/10 px-3 py-2 text-sm text-accent-error", children: error }),
+      isLoading && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2 text-text-secondary", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "h-4 w-4 animate-spin" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Loading agent details..." })
+      ] }),
+      !isLoading && agent && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-4", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid gap-3 rounded-lg border border-border-default bg-bg-muted/50 p-3 text-sm", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-wrap items-center gap-2", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-text-tertiary", children: "Agent ID:" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "font-mono text-text-secondary", children: agent.id })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-wrap items-center gap-2", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-text-tertiary", children: "Type:" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-text-secondary capitalize", children: agent.type })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-wrap items-center gap-2", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-text-tertiary", children: "Status:" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-text-secondary capitalize", children: agent.status })
+          ] }),
+          agent.model && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-wrap items-center gap-2", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-text-tertiary", children: "Model:" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-text-secondary", children: agent.model })
+          ] }),
+          agent.currentFile && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-wrap items-center gap-2", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-text-tertiary", children: "Current File:" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "font-mono text-text-secondary", children: agent.currentFile })
+          ] })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-1 gap-4 md:grid-cols-2", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "rounded-lg border border-border-default bg-bg-muted/50 p-3", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs uppercase text-text-tertiary", children: "Current Task" }),
+            agent.currentTask ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mt-2 space-y-1 text-sm", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-text-primary", children: agent.currentTask.name }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-text-tertiary", children: [
+                "ID: ",
+                agent.currentTask.id
+              ] }),
+              typeof agent.currentTask.progress === "number" && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-text-tertiary", children: [
+                "Progress: ",
+                Math.round(agent.currentTask.progress * 100),
+                "%"
+              ] })
+            ] }) : /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "mt-2 text-sm text-text-tertiary", children: "No active task" })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "rounded-lg border border-border-default bg-bg-muted/50 p-3", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs uppercase text-text-tertiary", children: "Performance" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mt-2 space-y-1 text-sm text-text-secondary", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                "Tasks completed: ",
+                tasksCompleted
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                "Avg duration: ",
+                formatDuration$1(avgDuration)
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                "Tokens used: ",
+                agent.metrics?.tokensUsed ?? "N/A"
+              ] })
+            ] })
+          ] })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "rounded-lg border border-border-default bg-bg-muted/50 p-3", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs uppercase text-text-tertiary", children: "Task History" }),
+          taskHistory.length === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "mt-2 text-sm text-text-tertiary", children: "No history available." }) : /* @__PURE__ */ jsxRuntimeExports.jsx("ul", { className: "mt-2 space-y-2 text-sm", children: taskHistory.map((task) => /* @__PURE__ */ jsxRuntimeExports.jsxs("li", { className: "rounded-md border border-border-default bg-bg-card p-2", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-text-primary", children: task.name }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-text-tertiary", children: formatDuration$1(task.duration) })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xs text-text-tertiary", children: task.status ?? "unknown" }),
+            task.error && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "mt-1 text-xs text-accent-error", children: task.error })
+          ] }, task.id)) })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "rounded-lg border border-border-default bg-bg-muted/50 p-3", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs uppercase text-text-tertiary", children: "Error Log" }),
+          errorLog.length === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "mt-2 text-sm text-text-tertiary", children: "No errors reported." }) : /* @__PURE__ */ jsxRuntimeExports.jsx("ul", { className: "mt-2 space-y-1 text-sm text-accent-error", children: errorLog.map((entry, index) => /* @__PURE__ */ jsxRuntimeExports.jsx("li", { children: entry }, `${agent.id}-error-${index}`)) })
+        ] })
+      ] })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(DialogFooter, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(Button, { variant: "outline", onClick: onClose, children: "Close" }) })
+  ] }) });
+}
 const SIZE_CONFIG = {
   sm: {
     container: "gap-1.5",
@@ -1561,14 +1857,16 @@ const QAStatusPanel = React.forwardRef(
 );
 QAStatusPanel.displayName = "QAStatusPanel";
 function isElectronEnvironment() {
-  return typeof window !== "undefined" && "nexusAPI" in window && window.nexusAPI !== void 0;
+  return typeof window !== "undefined" && Boolean(window.nexusAPI);
 }
 function mapBackendAgent(agent) {
   const a = agent;
+  const type = a.type;
+  const status = a.status;
   return {
     id: a.id || "unknown",
-    type: a.type || "coder",
-    status: a.status || "idle",
+    type: type ?? "coder",
+    status: status ?? "idle",
     model: a.model,
     currentTask: a.currentTask,
     iteration: a.iteration,
@@ -1588,9 +1886,11 @@ function mapQAStatus(qaStatus) {
   if (qa.steps && Array.isArray(qa.steps)) {
     return qa.steps.map((step) => {
       const s = step;
+      const type = s.type;
+      const status = s.status;
       return {
-        type: s.type || "build",
-        status: s.status || "pending",
+        type: type ?? "build",
+        status: status ?? "pending",
         duration: s.duration,
         error: s.error,
         testCounts: s.testCounts
@@ -1611,6 +1911,7 @@ function AgentsPage() {
   const [iteration, setIteration] = reactExports.useState({ current: 0, max: 50 });
   const [agentOutput, setAgentOutput] = reactExports.useState([]);
   const [selectedAgentId, setSelectedAgentId] = reactExports.useState(null);
+  const [detailAgentId, setDetailAgentId] = reactExports.useState(null);
   const [isPaused, setIsPaused] = reactExports.useState(false);
   const [isLoading, setIsLoading] = reactExports.useState(true);
   const [error, setError] = reactExports.useState(null);
@@ -1625,11 +1926,12 @@ function AgentsPage() {
     setError(null);
     try {
       const api = window.nexusAPI;
+      if (!api) return;
       const [agentsData, qaStatusData] = await Promise.all([
         api.getAgents(),
         api.getQAStatus()
       ]);
-      if (agentsData && Array.isArray(agentsData)) {
+      if (Array.isArray(agentsData)) {
         setAgents(agentsData.map(mapBackendAgent));
         if (agentsData.length > 0 && !selectedAgentId) {
           setSelectedAgentId(agentsData[0].id);
@@ -1645,7 +1947,7 @@ function AgentsPage() {
       if (selectedAgentId) {
         try {
           const output = await api.getAgentOutput(selectedAgentId);
-          if (output && Array.isArray(output)) setAgentOutput(output);
+          if (Array.isArray(output)) setAgentOutput(output);
         } catch {
         }
       }
@@ -1660,12 +1962,15 @@ function AgentsPage() {
     if (!isElectronEnvironment()) return () => {
     };
     const api = window.nexusAPI;
+    if (!api) return () => {
+    };
     const unsubscribers = [];
     unsubscribers.push(api.onAgentStatus((status) => {
       const s = status;
       const agentId = s.id || s.agentId;
       if (agentId) {
-        setAgents((prev) => prev.map((a) => a.id === agentId ? { ...a, status: s.status || a.status } : a));
+        const statusValue = s.status;
+        setAgents((prev) => prev.map((a) => a.id === agentId ? { ...a, status: statusValue ?? a.status } : a));
       }
     }));
     unsubscribers.push(api.onAgentOutput((data) => {
@@ -1676,6 +1981,18 @@ function AgentsPage() {
       const qa = status;
       if (qa.iteration !== void 0 && qa.maxIterations !== void 0) setIteration({ current: qa.iteration, max: qa.maxIterations });
     }));
+    if (api.onAgentCreated) {
+      unsubscribers.push(api.onAgentCreated((agent) => {
+        const newAgent = mapBackendAgent(agent);
+        setAgents((prev) => {
+          if (prev.some((a) => a.id === newAgent.id)) {
+            return prev;
+          }
+          return [...prev, newAgent];
+        });
+        setSelectedAgentId((current) => current ?? newAgent.id);
+      }));
+    }
     return () => {
       unsubscribers.forEach((unsub) => {
         unsub();
@@ -1691,7 +2008,7 @@ function AgentsPage() {
     setIsPaused((prev) => !prev);
     if (isElectronEnvironment()) {
       try {
-        await window.nexusAPI.pauseExecution(isPaused ? "user_resume" : "user_pause");
+        await window.nexusAPI?.pauseExecution(isPaused ? "user_resume" : "user_pause");
       } catch (err) {
         console.error("Failed to pause/resume:", err);
       }
@@ -1704,11 +2021,15 @@ function AgentsPage() {
     setSelectedAgentId(agentId);
     setAgentOutput([]);
     if (isElectronEnvironment()) {
-      void window.nexusAPI.getAgentOutput(agentId).then((output) => {
-        if (output && Array.isArray(output)) setAgentOutput(output);
+      void window.nexusAPI?.getAgentOutput(agentId).then((output) => {
+        if (Array.isArray(output)) setAgentOutput(output);
       }).catch(() => {
       });
     }
+  };
+  const handleAgentDetailOpen = (agentId) => {
+    handleAgentSelect(agentId);
+    setDetailAgentId(agentId);
   };
   const poolAgents = agents.map((a) => ({ id: a.id, type: a.type, status: a.status, taskName: a.currentTask?.name }));
   const refreshIconClass = isLoading ? "w-4 h-4 mr-2 animate-spin" : "w-4 h-4 mr-2";
@@ -1740,7 +2061,9 @@ function AgentsPage() {
             {
               variant: isPaused ? "primary" : "outline",
               size: "sm",
-              onClick: handlePauseAll,
+              onClick: () => {
+                void handlePauseAll();
+              },
               "data-testid": "pause-all-button",
               children: isPaused ? /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
                 /* @__PURE__ */ jsxRuntimeExports.jsx(Play, { className: "w-4 h-4 mr-2" }),
@@ -1765,6 +2088,7 @@ function AgentsPage() {
       /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-text-secondary", children: "Loading agent data..." })
     ] }),
     /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex-1 overflow-hidden p-6", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "h-full flex flex-col gap-6", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx(AgentPoolWidget, { className: "shrink-0" }),
       /* @__PURE__ */ jsxRuntimeExports.jsx(
         AgentPoolStatus,
         {
@@ -1789,7 +2113,7 @@ function AgentsPage() {
               agent,
               selected: agent.id === selectedAgentId,
               onClick: () => {
-                handleAgentSelect(agent.id);
+                handleAgentDetailOpen(agent.id);
               },
               "data-testid": `agent-card-${agent.id}`
             },
@@ -1823,7 +2147,17 @@ function AgentsPage() {
           ] })
         ] }) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex items-center justify-center h-full text-text-tertiary", children: "Select an agent to view details" }) })
       ] })
-    ] }) })
+    ] }) }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      AgentDetailModal,
+      {
+        agentId: detailAgentId,
+        isOpen: detailAgentId !== null,
+        onClose: () => {
+          setDetailAgentId(null);
+        }
+      }
+    )
   ] });
 }
 export {

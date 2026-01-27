@@ -5,10 +5,11 @@
  * slide-out panel. Supports both Feature and KanbanTask types.
  *
  * Features:
- * - Slide animation from right (200ms, Linear easing)
- * - Inline editable status/priority
- * - Reorganized tabs
- * - Footer actions
+ * - Slide animation from right with spring timing
+ * - Glass effect panel with left edge glow
+ * - Tab navigation with animated underline indicator
+ * - Progress bar with gradient and glow
+ * - Backdrop blur overlay
  */
 
 import { useState, useEffect, type ReactElement, type ReactNode } from 'react'
@@ -103,13 +104,13 @@ const TABS: TabConfig[] = [
   { id: 'history', label: 'History', icon: Clock, showFor: ['task'] }
 ]
 
-// Priority styles
-const PRIORITY_COLORS: Record<string, string> = {
-  critical: 'bg-red-500',
-  high: 'bg-orange-500',
-  medium: 'bg-yellow-500',
-  normal: 'bg-blue-500',
-  low: 'bg-green-500'
+// Priority styles with gradients
+const PRIORITY_COLORS: Record<string, { bg: string; glow: string }> = {
+  critical: { bg: 'bg-red-500', glow: 'shadow-[0_0_10px_rgba(239,68,68,0.4)]' },
+  high: { bg: 'bg-orange-500', glow: 'shadow-[0_0_10px_rgba(249,115,22,0.4)]' },
+  medium: { bg: 'bg-yellow-500', glow: 'shadow-[0_0_10px_rgba(234,179,8,0.4)]' },
+  normal: { bg: 'bg-blue-500', glow: 'shadow-[0_0_10px_rgba(59,130,246,0.4)]' },
+  low: { bg: 'bg-green-500', glow: 'shadow-[0_0_10px_rgba(34,197,94,0.4)]' }
 }
 
 const PRIORITY_LABELS: Record<string, string> = {
@@ -130,27 +131,27 @@ const FEATURE_STATUS_LABELS: Record<FeatureStatus, string> = {
   done: 'Done'
 }
 
-// Task status styles
-const TASK_STATUS_STYLES: Record<KanbanTaskStatus, { bg: string; text: string; label: string }> = {
+// Task status styles with glass effect
+const TASK_STATUS_STYLES: Record<KanbanTaskStatus, { bg: string; text: string; label: string; glow?: string }> = {
   pending: { bg: 'bg-slate-500/20', text: 'text-slate-400', label: 'Pending' },
-  ready: { bg: 'bg-emerald-500/20', text: 'text-emerald-400', label: 'Ready' },
+  ready: { bg: 'bg-emerald-500/20', text: 'text-emerald-400', label: 'Ready', glow: 'shadow-[0_0_8px_rgba(16,185,129,0.3)]' },
   queued: { bg: 'bg-blue-500/20', text: 'text-blue-400', label: 'Queued' },
-  'in-progress': { bg: 'bg-amber-500/20', text: 'text-amber-400', label: 'In Progress' },
-  'ai-review': { bg: 'bg-violet-500/20', text: 'text-violet-400', label: 'AI Review' },
-  'human-review': { bg: 'bg-purple-500/20', text: 'text-purple-400', label: 'Human Review' },
-  blocked: { bg: 'bg-red-500/20', text: 'text-red-400', label: 'Blocked' },
-  completed: { bg: 'bg-emerald-500/20', text: 'text-emerald-400', label: 'Completed' },
-  failed: { bg: 'bg-red-500/20', text: 'text-red-400', label: 'Failed' },
+  'in-progress': { bg: 'bg-amber-500/20', text: 'text-amber-400', label: 'In Progress', glow: 'shadow-[0_0_8px_rgba(245,158,11,0.3)]' },
+  'ai-review': { bg: 'bg-violet-500/20', text: 'text-violet-400', label: 'AI Review', glow: 'shadow-[0_0_8px_rgba(139,92,246,0.3)]' },
+  'human-review': { bg: 'bg-purple-500/20', text: 'text-purple-400', label: 'Human Review', glow: 'shadow-[0_0_8px_rgba(168,85,247,0.3)]' },
+  blocked: { bg: 'bg-red-500/20', text: 'text-red-400', label: 'Blocked', glow: 'shadow-[0_0_8px_rgba(239,68,68,0.3)]' },
+  completed: { bg: 'bg-emerald-500/20', text: 'text-emerald-400', label: 'Completed', glow: 'shadow-[0_0_8px_rgba(16,185,129,0.3)]' },
+  failed: { bg: 'bg-red-500/20', text: 'text-red-400', label: 'Failed', glow: 'shadow-[0_0_8px_rgba(239,68,68,0.3)]' },
   cancelled: { bg: 'bg-slate-500/20', text: 'text-slate-400', label: 'Cancelled' }
 }
 
 // Complexity config
 const COMPLEXITY_CONFIG: Record<TaskComplexity, { label: string; class: string }> = {
-  trivial: { label: 'Trivial', class: 'bg-slate-500/20 text-slate-300' },
-  simple: { label: 'Simple', class: 'bg-emerald-500/20 text-emerald-300' },
-  moderate: { label: 'Moderate', class: 'bg-blue-500/20 text-blue-300' },
-  complex: { label: 'Complex', class: 'bg-purple-500/20 text-purple-300' },
-  'very-complex': { label: 'Very Complex', class: 'bg-red-500/20 text-red-300' }
+  trivial: { label: 'Trivial', class: 'bg-slate-500/20 text-slate-300 border border-slate-500/20' },
+  simple: { label: 'Simple', class: 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/20' },
+  moderate: { label: 'Moderate', class: 'bg-blue-500/20 text-blue-300 border border-blue-500/20' },
+  complex: { label: 'Complex', class: 'bg-purple-500/20 text-purple-300 border border-purple-500/20' },
+  'very-complex': { label: 'Very Complex', class: 'bg-red-500/20 text-red-300 border border-red-500/20' }
 }
 
 // Agent icons
@@ -241,9 +242,9 @@ function MetadataItem({
 }): ReactElement {
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-xs text-muted-foreground">{label}</span>
-      <div className="flex items-center gap-1.5 text-sm text-foreground">
-        {Icon && <Icon className="h-4 w-4 text-muted-foreground" />}
+      <span className="text-xs text-[#8B949E]">{label}</span>
+      <div className="flex items-center gap-1.5 text-sm text-[#F0F6FC]">
+        {Icon && <Icon className="h-4 w-4 text-[#8B949E]" />}
         {value}
       </div>
     </div>
@@ -267,19 +268,25 @@ function TabButton({
       type="button"
       onClick={onClick}
       className={cn(
-        'flex items-center gap-2 px-3 py-2 text-sm font-medium transition-colors',
-        'border-b-2 -mb-px',
+        'relative flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-all duration-200',
         isActive
-          ? 'border-primary text-primary'
-          : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
+          ? 'text-[#F0F6FC]'
+          : 'text-[#8B949E] hover:text-[#F0F6FC]'
       )}
     >
       <Icon className="h-4 w-4" />
       <span>{tab.label}</span>
       {count !== undefined && count > 0 && (
-        <span className="px-1.5 py-0.5 text-xs rounded-full bg-muted">
+        <span className={cn(
+          'px-1.5 py-0.5 text-xs rounded-full',
+          isActive ? 'bg-[#7C3AED]/20 text-[#7C3AED]' : 'bg-[#21262D] text-[#8B949E]'
+        )}>
           {count}
         </span>
+      )}
+      {/* Animated underline indicator */}
+      {isActive && (
+        <div className="absolute bottom-0 left-2 right-2 h-0.5 bg-gradient-to-r from-[#7C3AED] to-[#A855F7] rounded-full" />
       )}
     </button>
   )
@@ -312,34 +319,36 @@ function FeatureOverviewTab({
   }
 
   const taskStatusColors = {
-    pending: 'text-muted-foreground',
-    in_progress: 'text-blue-500 animate-spin',
-    completed: 'text-green-500',
-    failed: 'text-red-500'
+    pending: 'text-[#8B949E]',
+    in_progress: 'text-blue-400 animate-spin',
+    completed: 'text-emerald-400',
+    failed: 'text-red-400'
   }
 
   return (
     <div className="space-y-6 p-4">
       {/* Description */}
       <div>
-        <h4 className="text-sm font-medium text-foreground mb-2">Description</h4>
-        <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+        <h4 className="text-sm font-medium text-[#F0F6FC] mb-2">Description</h4>
+        <p className="text-sm text-[#8B949E] whitespace-pre-wrap">
           {feature.description || 'No description provided.'}
         </p>
       </div>
 
-      {/* Progress */}
+      {/* Progress with gradient */}
       {totalTasks > 0 && (
         <div className="space-y-2">
           <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">Progress</span>
-            <span className="font-medium">{progress}%</span>
+            <span className="text-[#8B949E]">Progress</span>
+            <span className="font-medium text-[#7C3AED]">{progress}%</span>
           </div>
-          <div className="h-2 rounded-full bg-muted">
+          <div className="h-2 rounded-full bg-[#21262D] overflow-hidden">
             <div
               className={cn(
-                'h-2 rounded-full transition-all',
-                progress === 100 ? 'bg-green-500' : 'bg-primary'
+                'h-2 rounded-full transition-all duration-500',
+                progress === 100
+                  ? 'bg-gradient-to-r from-emerald-500 to-emerald-400'
+                  : 'bg-gradient-to-r from-[#7C3AED] to-[#A855F7]'
               )}
               style={{ width: `${progress}%` }}
             />
@@ -349,35 +358,45 @@ function FeatureOverviewTab({
 
       {/* Metadata - Inline Editable */}
       <div>
-        <h4 className="text-sm font-medium text-foreground mb-3">Details</h4>
+        <h4 className="text-sm font-medium text-[#F0F6FC] mb-3">Details</h4>
         <div className="grid grid-cols-2 gap-4">
           {/* Editable Status */}
           <div className="flex flex-col gap-1">
-            <span className="text-xs text-muted-foreground">Status</span>
+            <span className="text-xs text-[#8B949E]">Status</span>
             {onUpdate ? (
               <select
                 value={feature.status}
                 onChange={(e) => void onUpdate(feature.id, { status: e.target.value as FeatureStatus })}
-                className="w-full px-2 py-1.5 text-sm bg-muted border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                className={cn(
+                  "w-full px-2 py-1.5 text-sm rounded-lg",
+                  "bg-[#0D1117] border border-[#30363D]",
+                  "text-[#F0F6FC]",
+                  "focus:outline-none focus:border-[#7C3AED] focus:ring-2 focus:ring-[#7C3AED]/20"
+                )}
               >
                 {Object.entries(FEATURE_STATUS_LABELS).map(([value, label]) => (
                   <option key={value} value={value}>{label}</option>
                 ))}
               </select>
             ) : (
-              <Badge className="bg-primary/20 text-primary">
+              <Badge className="bg-[#7C3AED]/20 text-[#7C3AED]">
                 {FEATURE_STATUS_LABELS[feature.status]}
               </Badge>
             )}
           </div>
           {/* Editable Priority */}
           <div className="flex flex-col gap-1">
-            <span className="text-xs text-muted-foreground">Priority</span>
+            <span className="text-xs text-[#8B949E]">Priority</span>
             {onUpdate ? (
               <select
                 value={feature.priority}
                 onChange={(e) => void onUpdate(feature.id, { priority: e.target.value as FeaturePriority })}
-                className="w-full px-2 py-1.5 text-sm bg-muted border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                className={cn(
+                  "w-full px-2 py-1.5 text-sm rounded-lg",
+                  "bg-[#0D1117] border border-[#30363D]",
+                  "text-[#F0F6FC]",
+                  "focus:outline-none focus:border-[#7C3AED] focus:ring-2 focus:ring-[#7C3AED]/20"
+                )}
               >
                 {Object.entries(PRIORITY_LABELS).map(([value, label]) => (
                   <option key={value} value={value}>{label}</option>
@@ -385,8 +404,8 @@ function FeatureOverviewTab({
               </select>
             ) : (
               <div className="flex items-center gap-1.5">
-                <div className={cn('w-3 h-3 rounded-full', PRIORITY_COLORS[feature.priority])} />
-                <span className="text-sm">{PRIORITY_LABELS[feature.priority]}</span>
+                <div className={cn('w-3 h-3 rounded-full', PRIORITY_COLORS[feature.priority]?.bg)} />
+                <span className="text-sm text-[#F0F6FC]">{PRIORITY_LABELS[feature.priority]}</span>
               </div>
             )}
           </div>
@@ -411,7 +430,7 @@ function FeatureOverviewTab({
       {/* Tasks */}
       {feature.tasks.length > 0 && (
         <div className="space-y-2">
-          <h4 className="text-sm font-medium text-foreground">
+          <h4 className="text-sm font-medium text-[#F0F6FC]">
             Tasks ({completedTasks}/{totalTasks})
           </h4>
           <div className="space-y-1">
@@ -420,14 +439,21 @@ function FeatureOverviewTab({
               return (
                 <div
                   key={task.id}
-                  className="flex items-center gap-2 rounded-md bg-muted/50 px-3 py-2 text-sm"
+                  className={cn(
+                    "flex items-center gap-2 rounded-lg px-3 py-2 text-sm",
+                    "bg-[#21262D]/50 border border-[#30363D]/50",
+                    "hover:bg-[#21262D] transition-colors"
+                  )}
                 >
                   <Icon className={cn('h-4 w-4', taskStatusColors[task.status])} />
-                  <span className={task.status === 'completed' ? 'line-through opacity-60' : ''}>
+                  <span className={cn(
+                    'text-[#F0F6FC]',
+                    task.status === 'completed' && 'line-through opacity-60'
+                  )}>
                     {task.title}
                   </span>
                   {task.estimatedMinutes && (
-                    <span className="ml-auto text-xs text-muted-foreground">
+                    <span className="ml-auto text-xs text-[#8B949E]">
                       {task.estimatedMinutes}m
                     </span>
                   )}
@@ -444,7 +470,7 @@ function FeatureOverviewTab({
           {feature.tags.map((tag) => (
             <span
               key={tag}
-              className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground"
+              className="rounded-full bg-[#21262D] border border-[#30363D]/50 px-2 py-0.5 text-xs text-[#8B949E]"
             >
               {tag}
             </span>
@@ -453,11 +479,16 @@ function FeatureOverviewTab({
       )}
 
       {/* Delete Action */}
-      <div className="border-t border-border pt-4">
+      <div className="border-t border-[#30363D]/50 pt-4">
         <Button
           variant="destructive"
           size="sm"
-          className="w-full"
+          className={cn(
+            "w-full",
+            "bg-red-500/10 border-red-500/30 text-red-400",
+            "hover:bg-red-500/20 hover:border-red-500/50",
+            "hover:shadow-[0_0_15px_rgba(239,68,68,0.2)]"
+          )}
           onClick={onDelete}
           disabled={isDeleting}
         >
@@ -487,8 +518,8 @@ function TaskOverviewTab({ task }: { task: KanbanTask }): ReactElement {
     <div className="space-y-6 p-4">
       {/* Description */}
       <div>
-        <h4 className="text-sm font-medium text-foreground mb-2">Description</h4>
-        <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+        <h4 className="text-sm font-medium text-[#F0F6FC] mb-2">Description</h4>
+        <p className="text-sm text-[#8B949E] whitespace-pre-wrap">
           {task.description || 'No description provided.'}
         </p>
       </div>
@@ -496,15 +527,20 @@ function TaskOverviewTab({ task }: { task: KanbanTask }): ReactElement {
       {/* Acceptance Criteria */}
       {task.acceptanceCriteria.length > 0 && (
         <div>
-          <h4 className="text-sm font-medium text-foreground mb-2">
+          <h4 className="text-sm font-medium text-[#F0F6FC] mb-2">
             Acceptance Criteria ({task.acceptanceCriteria.length})
           </h4>
           <ul className="space-y-2">
             {task.acceptanceCriteria.map((criterion, index) => (
-              <li key={index} className="flex items-start gap-2 text-sm text-muted-foreground">
-                <div className="mt-1 h-4 w-4 flex-shrink-0 rounded border border-border flex items-center justify-center">
+              <li key={index} className="flex items-start gap-2 text-sm text-[#8B949E]">
+                <div className={cn(
+                  "mt-1 h-4 w-4 flex-shrink-0 rounded border flex items-center justify-center",
+                  task.status === 'completed'
+                    ? "border-emerald-500/50 bg-emerald-500/10"
+                    : "border-[#30363D]"
+                )}>
                   {task.status === 'completed' && (
-                    <CheckCircle2 className="h-3 w-3 text-green-500" />
+                    <CheckCircle2 className="h-3 w-3 text-emerald-400" />
                   )}
                 </div>
                 <span>{criterion}</span>
@@ -516,12 +552,16 @@ function TaskOverviewTab({ task }: { task: KanbanTask }): ReactElement {
 
       {/* Metadata Grid */}
       <div>
-        <h4 className="text-sm font-medium text-foreground mb-3">Details</h4>
+        <h4 className="text-sm font-medium text-[#F0F6FC] mb-3">Details</h4>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           <MetadataItem
             label="Priority"
             value={
-              <Badge className={cn(PRIORITY_COLORS[task.priority], 'text-white')}>
+              <Badge className={cn(
+                PRIORITY_COLORS[task.priority]?.bg,
+                PRIORITY_COLORS[task.priority]?.glow,
+                'text-white'
+              )}>
                 {PRIORITY_LABELS[task.priority]}
               </Badge>
             }
@@ -537,7 +577,11 @@ function TaskOverviewTab({ task }: { task: KanbanTask }): ReactElement {
           <MetadataItem
             label="Status"
             value={
-              <Badge className={cn(TASK_STATUS_STYLES[task.status].bg, TASK_STATUS_STYLES[task.status].text)}>
+              <Badge className={cn(
+                TASK_STATUS_STYLES[task.status].bg,
+                TASK_STATUS_STYLES[task.status].text,
+                TASK_STATUS_STYLES[task.status].glow
+              )}>
                 {TASK_STATUS_STYLES[task.status].label}
               </Badge>
             }
@@ -585,23 +629,23 @@ function TaskOverviewTab({ task }: { task: KanbanTask }): ReactElement {
         </div>
       </div>
 
-      {/* Progress */}
+      {/* Progress with gradient glow */}
       {task.progress > 0 && (
         <div>
-          <h4 className="text-sm font-medium text-foreground mb-2">Progress</h4>
+          <h4 className="text-sm font-medium text-[#F0F6FC] mb-2">Progress</h4>
           <div className="flex items-center gap-3">
-            <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+            <div className="flex-1 h-2 bg-[#21262D] rounded-full overflow-hidden">
               <div
                 className={cn(
                   'h-full rounded-full transition-all duration-300',
-                  task.status === 'completed' ? 'bg-green-500' :
-                  task.status === 'failed' ? 'bg-red-500' :
-                  'bg-primary'
+                  task.status === 'completed' ? 'bg-gradient-to-r from-emerald-500 to-emerald-400' :
+                  task.status === 'failed' ? 'bg-gradient-to-r from-red-500 to-red-400' :
+                  'bg-gradient-to-r from-[#7C3AED] to-[#A855F7]'
                 )}
                 style={{ width: `${task.progress}%` }}
               />
             </div>
-            <span className="text-sm text-muted-foreground tabular-nums w-12 text-right">
+            <span className="text-sm text-[#8B949E] tabular-nums w-12 text-right">
               {task.progress}%
             </span>
           </div>
@@ -619,25 +663,27 @@ function TaskOverviewTab({ task }: { task: KanbanTask }): ReactElement {
               <div
                 key={error.id}
                 className={cn(
-                  'p-3 rounded-lg text-sm',
-                  error.resolved ? 'bg-muted/50' : 'bg-red-500/10'
+                  'p-3 rounded-lg text-sm border',
+                  error.resolved
+                    ? 'bg-[#21262D]/50 border-[#30363D]/50'
+                    : 'bg-red-500/10 border-red-500/20'
                 )}
               >
                 <div className="flex items-start gap-2">
-                  <AlertCircle className={cn('h-4 w-4 mt-0.5 flex-shrink-0', error.resolved ? 'text-muted-foreground' : 'text-red-400')} />
+                  <AlertCircle className={cn('h-4 w-4 mt-0.5 flex-shrink-0', error.resolved ? 'text-[#8B949E]' : 'text-red-400')} />
                   <div className="flex-1 min-w-0">
-                    <p className={cn('text-foreground', error.resolved && 'line-through opacity-60')}>
+                    <p className={cn('text-[#F0F6FC]', error.resolved && 'line-through opacity-60')}>
                       {error.message}
                     </p>
                     {error.stack && (
-                      <pre className="mt-2 text-xs text-muted-foreground overflow-x-auto">
+                      <pre className="mt-2 text-xs text-[#8B949E] overflow-x-auto p-2 bg-[#0D1117] rounded">
                         {error.stack}
                       </pre>
                     )}
-                    <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+                    <div className="mt-1 flex items-center gap-2 text-xs text-[#8B949E]">
                       <span>{formatTimestamp(error.timestamp)}</span>
                       {error.recoverable && <span className="text-amber-400">Recoverable</span>}
-                      {error.resolved && <span className="text-green-400">Resolved</span>}
+                      {error.resolved && <span className="text-emerald-400">Resolved</span>}
                     </div>
                   </div>
                 </div>
@@ -666,7 +712,11 @@ function DependenciesTab({ task, allTasks }: { task: KanbanTask; allTasks: Kanba
     <div className="space-y-6 p-4">
       {/* Blocking Warning */}
       {blockingTasks.length > 0 && (
-        <div className="p-3 bg-red-500/10 rounded-lg border border-red-500/20">
+        <div className={cn(
+          "p-3 rounded-lg border",
+          "bg-red-500/10 border-red-500/20",
+          "shadow-[0_0_15px_rgba(239,68,68,0.1)]"
+        )}>
           <div className="flex items-center gap-2 text-red-400">
             <Lock className="h-4 w-4" />
             <span className="text-sm font-medium">
@@ -678,12 +728,12 @@ function DependenciesTab({ task, allTasks }: { task: KanbanTask; allTasks: Kanba
 
       {/* Upstream Dependencies */}
       <div>
-        <h4 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
+        <h4 className="text-sm font-medium text-[#F0F6FC] mb-3 flex items-center gap-2">
           <ArrowRight className="h-4 w-4 rotate-180" />
           Depends On ({upstreamTasks.length})
         </h4>
         {upstreamTasks.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No dependencies. This task can start immediately.</p>
+          <p className="text-sm text-[#8B949E]">No dependencies. This task can start immediately.</p>
         ) : (
           <div className="space-y-2">
             {upstreamTasks.map(t => {
@@ -693,21 +743,23 @@ function DependenciesTab({ task, allTasks }: { task: KanbanTask; allTasks: Kanba
                 <div
                   key={t.id}
                   className={cn(
-                    'flex items-center gap-3 p-3 rounded-lg',
-                    isComplete ? 'bg-green-500/5' : 'bg-muted/50'
+                    'flex items-center gap-3 p-3 rounded-lg border transition-colors',
+                    isComplete
+                      ? 'bg-emerald-500/5 border-emerald-500/20'
+                      : 'bg-[#21262D]/50 border-[#30363D]/50 hover:bg-[#21262D]'
                   )}
                 >
                   <div className="flex-shrink-0">
                     {isComplete ? (
-                      <CheckCircle2 className="h-5 w-5 text-green-500" />
+                      <CheckCircle2 className="h-5 w-5 text-emerald-400" />
                     ) : t.status === 'in-progress' ? (
                       <Loader2 className="h-5 w-5 text-amber-400 animate-spin" />
                     ) : (
-                      <div className="h-5 w-5 rounded-full border-2 border-border" />
+                      <div className="h-5 w-5 rounded-full border-2 border-[#30363D]" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className={cn('text-sm text-foreground', isComplete && 'line-through opacity-60')}>
+                    <p className={cn('text-sm text-[#F0F6FC]', isComplete && 'line-through opacity-60')}>
                       {t.title}
                     </p>
                     <Badge className={cn('mt-1', statusStyle.bg, statusStyle.text)}>
@@ -715,7 +767,9 @@ function DependenciesTab({ task, allTasks }: { task: KanbanTask; allTasks: Kanba
                     </Badge>
                   </div>
                   {!isComplete && (
-                    <span className="text-xs text-red-400 font-medium">BLOCKING</span>
+                    <span className="text-xs text-red-400 font-medium px-2 py-0.5 rounded bg-red-500/10 border border-red-500/20">
+                      BLOCKING
+                    </span>
                   )}
                 </div>
               )
@@ -726,23 +780,23 @@ function DependenciesTab({ task, allTasks }: { task: KanbanTask; allTasks: Kanba
 
       {/* Downstream Dependencies */}
       <div>
-        <h4 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
+        <h4 className="text-sm font-medium text-[#F0F6FC] mb-3 flex items-center gap-2">
           <ArrowRight className="h-4 w-4" />
           Blocks ({downstreamTasks.length})
         </h4>
         {downstreamTasks.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No tasks depend on this task.</p>
+          <p className="text-sm text-[#8B949E]">No tasks depend on this task.</p>
         ) : (
           <div className="space-y-2">
             {downstreamTasks.map(t => {
               const statusStyle = TASK_STATUS_STYLES[t.status]
               return (
-                <div key={t.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                <div key={t.id} className="flex items-center gap-3 p-3 rounded-lg bg-[#21262D]/50 border border-[#30363D]/50">
                   <div className="flex-shrink-0">
-                    <Clock className="h-5 w-5 text-muted-foreground" />
+                    <Clock className="h-5 w-5 text-[#8B949E]" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm text-foreground">{t.title}</p>
+                    <p className="text-sm text-[#F0F6FC]">{t.title}</p>
                     <Badge className={cn('mt-1', statusStyle.bg, statusStyle.text)}>
                       {statusStyle.label}
                     </Badge>
@@ -762,7 +816,7 @@ function FilesTab({ task }: { task: KanbanTask }): ReactElement {
 
   if (totalFiles === 0) {
     return (
-      <div className="flex items-center justify-center h-full text-muted-foreground text-sm p-8">
+      <div className="flex items-center justify-center h-full text-[#8B949E] text-sm p-8">
         No file changes planned for this task.
       </div>
     )
@@ -773,8 +827,8 @@ function FilesTab({ task }: { task: KanbanTask }): ReactElement {
       {/* Files to Create */}
       {task.filesToCreate.length > 0 && (
         <div>
-          <h4 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
-            <FilePlus className="h-4 w-4 text-green-500" />
+          <h4 className="text-sm font-medium text-[#F0F6FC] mb-3 flex items-center gap-2">
+            <FilePlus className="h-4 w-4 text-emerald-400" />
             Files to Create ({task.filesToCreate.length})
           </h4>
           <div className="space-y-1">
@@ -784,16 +838,18 @@ function FilesTab({ task }: { task: KanbanTask }): ReactElement {
                 <div
                   key={index}
                   className={cn(
-                    'flex items-center gap-2 p-2 rounded text-sm font-mono',
-                    isCreated ? 'bg-green-500/10' : 'bg-muted/50'
+                    'flex items-center gap-2 p-2 rounded-lg text-sm font-mono border',
+                    isCreated
+                      ? 'bg-emerald-500/10 border-emerald-500/20'
+                      : 'bg-[#21262D]/50 border-[#30363D]/50'
                   )}
                 >
                   {isCreated ? (
-                    <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />
+                    <CheckCircle2 className="h-4 w-4 text-emerald-400 flex-shrink-0" />
                   ) : (
-                    <FilePlus className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                    <FilePlus className="h-4 w-4 text-[#8B949E] flex-shrink-0" />
                   )}
-                  <span className={cn('text-muted-foreground truncate', isCreated && 'text-green-400')}>
+                  <span className={cn('truncate', isCreated ? 'text-emerald-400' : 'text-[#8B949E]')}>
                     {file}
                   </span>
                 </div>
@@ -806,8 +862,8 @@ function FilesTab({ task }: { task: KanbanTask }): ReactElement {
       {/* Files to Modify */}
       {task.filesToModify.length > 0 && (
         <div>
-          <h4 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
-            <FileEdit className="h-4 w-4 text-amber-500" />
+          <h4 className="text-sm font-medium text-[#F0F6FC] mb-3 flex items-center gap-2">
+            <FileEdit className="h-4 w-4 text-amber-400" />
             Files to Modify ({task.filesToModify.length})
           </h4>
           <div className="space-y-1">
@@ -817,16 +873,18 @@ function FilesTab({ task }: { task: KanbanTask }): ReactElement {
                 <div
                   key={index}
                   className={cn(
-                    'flex items-center gap-2 p-2 rounded text-sm font-mono',
-                    isModified ? 'bg-amber-500/10' : 'bg-muted/50'
+                    'flex items-center gap-2 p-2 rounded-lg text-sm font-mono border',
+                    isModified
+                      ? 'bg-amber-500/10 border-amber-500/20'
+                      : 'bg-[#21262D]/50 border-[#30363D]/50'
                   )}
                 >
                   {isModified ? (
-                    <CheckCircle2 className="h-4 w-4 text-amber-500 flex-shrink-0" />
+                    <CheckCircle2 className="h-4 w-4 text-amber-400 flex-shrink-0" />
                   ) : (
-                    <FileEdit className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                    <FileEdit className="h-4 w-4 text-[#8B949E] flex-shrink-0" />
                   )}
-                  <span className={cn('text-muted-foreground truncate', isModified && 'text-amber-400')}>
+                  <span className={cn('truncate', isModified ? 'text-amber-400' : 'text-[#8B949E]')}>
                     {file}
                   </span>
                 </div>
@@ -837,16 +895,16 @@ function FilesTab({ task }: { task: KanbanTask }): ReactElement {
       )}
 
       {/* Summary */}
-      <div className="pt-4 border-t border-border">
+      <div className="pt-4 border-t border-[#30363D]/50">
         <div className="grid grid-cols-2 gap-4 text-sm">
-          <div>
-            <span className="text-muted-foreground">Created: </span>
-            <span className="text-green-400 font-medium">
+          <div className="p-3 rounded-lg bg-emerald-500/5 border border-emerald-500/20">
+            <span className="text-[#8B949E]">Created: </span>
+            <span className="text-emerald-400 font-medium">
               {task.filesCreated.length} / {task.filesToCreate.length}
             </span>
           </div>
-          <div>
-            <span className="text-muted-foreground">Modified: </span>
+          <div className="p-3 rounded-lg bg-amber-500/5 border border-amber-500/20">
+            <span className="text-[#8B949E]">Modified: </span>
             <span className="text-amber-400 font-medium">
               {task.filesModified.length} / {task.filesToModify.length}
             </span>
@@ -882,7 +940,7 @@ function LogsTab({ task }: { task: KanbanTask }): ReactElement {
 
   if (task.logs.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-full text-muted-foreground text-sm gap-2 p-8">
+      <div className="flex flex-col items-center justify-center h-full text-[#8B949E] text-sm gap-2 p-8">
         <Bug className="h-8 w-8 opacity-50" />
         <span>No logs yet. Logs will appear here during task execution.</span>
       </div>
@@ -892,8 +950,8 @@ function LogsTab({ task }: { task: KanbanTask }): ReactElement {
   return (
     <div className="flex flex-col h-full">
       {/* Toolbar */}
-      <div className="flex items-center justify-between px-4 py-2 border-b border-border">
-        <span className="text-sm text-muted-foreground">
+      <div className="flex items-center justify-between px-4 py-2 border-b border-[#30363D]/50 bg-[#0D1117]/30">
+        <span className="text-sm text-[#8B949E]">
           {task.logs.length} log entries
         </span>
         <div className="flex items-center gap-2">
@@ -901,12 +959,15 @@ function LogsTab({ task }: { task: KanbanTask }): ReactElement {
             variant="ghost"
             size="sm"
             onClick={() => { setAutoScroll(!autoScroll); }}
-            className={cn(!autoScroll && 'opacity-50')}
+            className={cn(
+              "text-xs",
+              !autoScroll && 'opacity-50'
+            )}
           >
             Auto-scroll {autoScroll ? 'ON' : 'OFF'}
           </Button>
-          <Button variant="ghost" size="sm" onClick={handleCopyLogs}>
-            <Copy className="h-4 w-4 mr-1" />
+          <Button variant="ghost" size="sm" onClick={handleCopyLogs} className="text-xs">
+            <Copy className="h-3.5 w-3.5 mr-1" />
             Copy
           </Button>
         </div>
@@ -924,7 +985,8 @@ function LogsTab({ task }: { task: KanbanTask }): ReactElement {
             <div
               key={log.id}
               className={cn(
-                'flex items-start gap-2 p-2 rounded hover:bg-muted/30',
+                'flex items-start gap-2 p-2 rounded-lg transition-colors',
+                'hover:bg-[#21262D]/30',
                 log.level === 'error' && 'bg-red-500/5',
                 log.level === 'warning' && 'bg-amber-500/5'
               )}
@@ -932,15 +994,15 @@ function LogsTab({ task }: { task: KanbanTask }): ReactElement {
               <Icon className={cn('h-4 w-4 mt-0.5 flex-shrink-0', config.class)} />
               <div className="flex-1 min-w-0">
                 <div className="flex items-start gap-2 flex-wrap">
-                  <span className="text-muted-foreground flex-shrink-0">
+                  <span className="text-[#8B949E] flex-shrink-0">
                     {formatTimestamp(log.timestamp)}
                   </span>
                   {log.phase && (
-                    <Badge className="bg-muted text-muted-foreground">
+                    <Badge className="bg-[#21262D] text-[#8B949E] border border-[#30363D]/50">
                       {log.phase}
                     </Badge>
                   )}
-                  <span className="text-muted-foreground break-words">
+                  <span className="text-[#8B949E] break-words">
                     {log.message}
                   </span>
                 </div>
@@ -949,7 +1011,7 @@ function LogsTab({ task }: { task: KanbanTask }): ReactElement {
                     <button
                       type="button"
                       onClick={() => { toggleLogExpand(log.id); }}
-                      className="flex items-center gap-1 mt-1 text-muted-foreground hover:text-foreground"
+                      className="flex items-center gap-1 mt-1 text-[#8B949E] hover:text-[#F0F6FC]"
                     >
                       {isExpanded ? (
                         <ChevronDown className="h-3 w-3" />
@@ -959,7 +1021,7 @@ function LogsTab({ task }: { task: KanbanTask }): ReactElement {
                       <span>Details</span>
                     </button>
                     {isExpanded && (
-                      <pre className="mt-2 p-2 bg-muted rounded text-muted-foreground overflow-x-auto whitespace-pre-wrap">
+                      <pre className="mt-2 p-2 bg-[#0D1117] rounded-lg text-[#8B949E] overflow-x-auto whitespace-pre-wrap border border-[#30363D]/50">
                         {log.details}
                       </pre>
                     )}
@@ -977,7 +1039,7 @@ function LogsTab({ task }: { task: KanbanTask }): ReactElement {
 function HistoryTab({ task }: { task: KanbanTask }): ReactElement {
   if (task.statusHistory.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-full text-muted-foreground text-sm gap-2 p-8">
+      <div className="flex flex-col items-center justify-center h-full text-[#8B949E] text-sm gap-2 p-8">
         <Clock className="h-8 w-8 opacity-50" />
         <span>No history yet.</span>
       </div>
@@ -987,8 +1049,8 @@ function HistoryTab({ task }: { task: KanbanTask }): ReactElement {
   return (
     <div className="p-4">
       <div className="relative">
-        {/* Timeline line */}
-        <div className="absolute left-[7px] top-2 bottom-2 w-0.5 bg-border" />
+        {/* Timeline line with gradient */}
+        <div className="absolute left-[7px] top-2 bottom-2 w-0.5 bg-gradient-to-b from-[#7C3AED] via-[#30363D] to-[#30363D]" />
 
         {/* Timeline entries */}
         <div className="space-y-4">
@@ -1001,19 +1063,19 @@ function HistoryTab({ task }: { task: KanbanTask }): ReactElement {
                 {/* Timeline dot */}
                 <div
                   className={cn(
-                    'absolute left-0 w-3.5 h-3.5 rounded-full border-2 bg-background',
-                    isLatest ? 'border-primary' : 'border-border'
+                    'absolute left-0 w-3.5 h-3.5 rounded-full border-2 bg-[#161B22]',
+                    isLatest ? 'border-[#7C3AED] shadow-[0_0_8px_rgba(124,58,237,0.5)]' : 'border-[#30363D]'
                   )}
                 />
 
                 {/* Content */}
                 <div className="flex-1 min-w-0 pb-4">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-xs text-[#8B949E]">
                       {formatDate(entry.timestamp)}
                     </span>
                     {entry.agentId && (
-                      <Badge className="bg-muted text-muted-foreground">
+                      <Badge className="bg-[#21262D] text-[#8B949E] border border-[#30363D]/50">
                         {entry.agentId}
                       </Badge>
                     )}
@@ -1024,15 +1086,15 @@ function HistoryTab({ task }: { task: KanbanTask }): ReactElement {
                         <Badge className={cn(TASK_STATUS_STYLES[entry.fromStatus].bg, TASK_STATUS_STYLES[entry.fromStatus].text)}>
                           {TASK_STATUS_STYLES[entry.fromStatus].label}
                         </Badge>
-                        <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                        <ArrowRight className="h-3 w-3 text-[#8B949E]" />
                       </>
                     )}
-                    <Badge className={cn(toStyle.bg, toStyle.text)}>
+                    <Badge className={cn(toStyle.bg, toStyle.text, toStyle.glow)}>
                       {toStyle.label}
                     </Badge>
                   </div>
                   {entry.reason && (
-                    <p className="mt-1 text-sm text-muted-foreground">{entry.reason}</p>
+                    <p className="mt-1 text-sm text-[#8B949E]">{entry.reason}</p>
                   )}
                 </div>
               </div>
@@ -1145,22 +1207,26 @@ export function DetailPanel({
   // Panel content
   const panelContent = (
     <>
-      {/* Backdrop */}
+      {/* Backdrop with blur */}
       <div
         className={cn(
-          'fixed inset-0 z-40 bg-black/20 transition-opacity duration-200',
+          'fixed inset-0 z-40 transition-all duration-300',
+          'bg-black/40 backdrop-blur-sm',
           open ? 'opacity-100' : 'opacity-0 pointer-events-none'
         )}
         onClick={onClose}
       />
 
-      {/* Panel */}
+      {/* Panel with glass effect and left edge glow */}
       <div
         data-testid="detail-panel"
         className={cn(
-          'fixed top-0 right-0 z-50 h-full bg-background border-l border-border shadow-2xl',
+          'fixed top-0 right-0 z-50 h-full',
+          'bg-[#161B22]/95 backdrop-blur-xl',
+          'border-l border-[#30363D]',
+          'shadow-[-20px_0_40px_rgba(0,0,0,0.5),-4px_0_20px_rgba(124,58,237,0.1)]',
           'flex flex-col',
-          'transition-transform duration-200',
+          'transition-transform duration-300',
           open ? 'translate-x-0' : 'translate-x-full'
         )}
         style={{
@@ -1168,30 +1234,45 @@ export function DetailPanel({
           transitionTimingFunction: 'cubic-bezier(0.32, 0.72, 0, 1)'
         }}
       >
+        {/* Left edge glow accent */}
+        <div className="absolute left-0 top-0 bottom-0 w-px bg-gradient-to-b from-[#7C3AED]/50 via-[#7C3AED]/20 to-transparent" />
+
         {/* Header */}
-        <div className="flex-shrink-0 p-4 border-b border-border">
+        <div className="flex-shrink-0 p-4 border-b border-[#30363D]/50 bg-[#0D1117]/30">
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1 min-w-0">
               {/* Status + Priority badges */}
-              <div className="flex items-center gap-2 mb-2">
+              <div className="flex items-center gap-2 mb-2 flex-wrap">
                 {mode === 'feature' && feature && (
                   <>
-                    <div className={cn('w-3 h-3 rounded-full', PRIORITY_COLORS[feature.priority])} />
-                    <Badge className="bg-primary/20 text-primary">
+                    <div className={cn(
+                      'w-3 h-3 rounded-full',
+                      PRIORITY_COLORS[feature.priority]?.bg,
+                      PRIORITY_COLORS[feature.priority]?.glow
+                    )} />
+                    <Badge className="bg-[#7C3AED]/20 text-[#7C3AED] border border-[#7C3AED]/20">
                       {FEATURE_STATUS_LABELS[feature.status]}
                     </Badge>
                   </>
                 )}
                 {mode === 'task' && task && (
                   <>
-                    <Badge className={cn(PRIORITY_COLORS[task.priority], 'text-white')}>
+                    <Badge className={cn(
+                      PRIORITY_COLORS[task.priority]?.bg,
+                      PRIORITY_COLORS[task.priority]?.glow,
+                      'text-white'
+                    )}>
                       {PRIORITY_LABELS[task.priority]}
                     </Badge>
-                    <Badge className={cn(TASK_STATUS_STYLES[task.status].bg, TASK_STATUS_STYLES[task.status].text)}>
+                    <Badge className={cn(
+                      TASK_STATUS_STYLES[task.status].bg,
+                      TASK_STATUS_STYLES[task.status].text,
+                      TASK_STATUS_STYLES[task.status].glow
+                    )}>
                       {TASK_STATUS_STYLES[task.status].label}
                     </Badge>
                     {isBlocked && (
-                      <Badge className="bg-red-500/20 text-red-400 flex items-center gap-1">
+                      <Badge className="bg-red-500/20 text-red-400 border border-red-500/20 flex items-center gap-1">
                         <Lock className="h-3 w-3" />
                         Blocked
                       </Badge>
@@ -1200,17 +1281,17 @@ export function DetailPanel({
                 )}
               </div>
               {/* Title */}
-              <h2 className="text-lg font-semibold text-foreground truncate">
+              <h2 className="text-lg font-semibold text-[#F0F6FC] truncate">
                 {title}
               </h2>
               {/* Assignee info */}
               {mode === 'feature' && feature?.assignedAgent && (
-                <p className="text-sm text-muted-foreground mt-1">
+                <p className="text-sm text-[#8B949E] mt-1">
                   Agent: {feature.assignedAgent}
                 </p>
               )}
               {mode === 'task' && task?.assignedAgent && (
-                <p className="text-sm text-muted-foreground mt-1">
+                <p className="text-sm text-[#8B949E] mt-1">
                   Agent: {AGENT_LABELS[task.assignedAgent]}
                 </p>
               )}
@@ -1218,30 +1299,34 @@ export function DetailPanel({
             {/* Close button */}
             <button
               onClick={onClose}
-              className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              className={cn(
+                "p-1.5 rounded-lg transition-all duration-200",
+                "text-[#8B949E] hover:text-[#F0F6FC]",
+                "hover:bg-[#21262D]"
+              )}
             >
               <X className="h-5 w-5" />
             </button>
           </div>
 
-          {/* Progress bar for in-progress task */}
+          {/* Progress bar for in-progress task with gradient glow */}
           {mode === 'task' && task && task.status === 'in-progress' && task.progress > 0 && (
             <div className="mt-3 flex items-center gap-3">
-              <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+              <div className="flex-1 h-1.5 bg-[#21262D] rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-amber-500 rounded-full transition-all duration-300"
+                  className="h-full bg-gradient-to-r from-amber-500 to-amber-400 rounded-full transition-all duration-300"
                   style={{ width: `${task.progress}%` }}
                 />
               </div>
-              <span className="text-xs text-muted-foreground tabular-nums w-10 text-right">
+              <span className="text-xs text-[#8B949E] tabular-nums w-10 text-right">
                 {task.progress}%
               </span>
             </div>
           )}
         </div>
 
-        {/* Tabs */}
-        <div className="flex-shrink-0 border-b border-border px-4">
+        {/* Tabs with animated underline */}
+        <div className="flex-shrink-0 border-b border-[#30363D]/30 px-4 bg-[#0D1117]/20">
           <div className="flex items-center gap-0 overflow-x-auto">
             {availableTabs.map(tab => (
               <TabButton
@@ -1278,9 +1363,9 @@ export function DetailPanel({
           </ScrollArea>
         </div>
 
-        {/* Footer Actions (Task mode only) */}
+        {/* Footer Actions (Task mode only) with enhanced buttons */}
         {mode === 'task' && task && (
-          <div className="flex-shrink-0 p-4 border-t border-border flex items-center justify-between">
+          <div className="flex-shrink-0 p-4 border-t border-[#30363D]/50 bg-[#0D1117]/30 flex items-center justify-between">
             <div className="flex items-center gap-2">
               {canSkip && onSkipTask && (
                 <Button
@@ -1288,7 +1373,7 @@ export function DetailPanel({
                   size="sm"
                   onClick={() => void handleAction(() => onSkipTask(task.id))}
                   disabled={isLoading}
-                  className="text-muted-foreground hover:text-amber-400"
+                  className="text-[#8B949E] hover:text-amber-400 hover:bg-amber-500/10"
                 >
                   <SkipForward className="h-4 w-4 mr-1" />
                   Skip
@@ -1300,7 +1385,7 @@ export function DetailPanel({
                   size="sm"
                   onClick={() => void handleAction(() => onReopenTask(task.id))}
                   disabled={isLoading}
-                  className="text-muted-foreground"
+                  className="text-[#8B949E] hover:text-[#F0F6FC]"
                 >
                   <RotateCcw className="h-4 w-4 mr-1" />
                   Reopen
@@ -1315,6 +1400,10 @@ export function DetailPanel({
                   size="sm"
                   onClick={() => void handleAction(() => onRetryTask(task.id))}
                   disabled={isLoading}
+                  className={cn(
+                    "bg-[#21262D] border-[#30363D]",
+                    "hover:bg-[#30363D]"
+                  )}
                 >
                   {isLoading ? (
                     <Loader2 className="h-4 w-4 mr-1 animate-spin" />
@@ -1330,6 +1419,10 @@ export function DetailPanel({
                   size="sm"
                   onClick={() => void handleAction(() => onCancelTask(task.id))}
                   disabled={isLoading}
+                  className={cn(
+                    "bg-red-500/10 border-red-500/30 text-red-400",
+                    "hover:bg-red-500/20 hover:border-red-500/50"
+                  )}
                 >
                   {isLoading ? (
                     <Loader2 className="h-4 w-4 mr-1 animate-spin" />
@@ -1345,6 +1438,13 @@ export function DetailPanel({
                   size="sm"
                   onClick={() => void handleAction(() => onStartTask(task.id))}
                   disabled={isLoading || isBlocked}
+                  className={cn(
+                    "bg-gradient-to-r from-emerald-600 to-emerald-500",
+                    "hover:from-emerald-500 hover:to-emerald-400",
+                    "border-0 shadow-[0_0_15px_rgba(16,185,129,0.3)]",
+                    "hover:shadow-[0_0_20px_rgba(16,185,129,0.4)]",
+                    "disabled:opacity-50"
+                  )}
                 >
                   {isLoading ? (
                     <Loader2 className="h-4 w-4 mr-1 animate-spin" />

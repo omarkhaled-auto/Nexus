@@ -1,4 +1,4 @@
-import { c as createLucideIcon, r as reactExports } from "./index-B8DMw4WO.js";
+import { c as createLucideIcon, r as reactExports } from "./index-D6zknste.js";
 /**
  * @license lucide-react v0.562.0 - ISC
  *
@@ -17,6 +17,11 @@ function useCheckpoint() {
   const [isLoading, setIsLoading] = reactExports.useState(false);
   const [error, setError] = reactExports.useState(null);
   const loadCheckpoints = reactExports.useCallback(async (projectId) => {
+    if (!window.nexusAPI) {
+      console.warn("[useCheckpoint] nexusAPI not available");
+      setError("Checkpoint API not available");
+      return;
+    }
     setIsLoading(true);
     setError(null);
     try {
@@ -29,6 +34,11 @@ function useCheckpoint() {
     }
   }, []);
   const createCheckpoint = reactExports.useCallback(async (projectId, reason) => {
+    if (!window.nexusAPI) {
+      console.warn("[useCheckpoint] nexusAPI not available");
+      setError("Checkpoint API not available");
+      return;
+    }
     setIsLoading(true);
     setError(null);
     try {
@@ -42,6 +52,11 @@ function useCheckpoint() {
     }
   }, []);
   const restoreCheckpoint = reactExports.useCallback(async (checkpointId, restoreGit) => {
+    if (!window.nexusAPI) {
+      console.warn("[useCheckpoint] nexusAPI not available");
+      setError("Checkpoint API not available");
+      return;
+    }
     setIsLoading(true);
     setError(null);
     try {
@@ -53,6 +68,11 @@ function useCheckpoint() {
     }
   }, []);
   const deleteCheckpoint = reactExports.useCallback(async (checkpointId) => {
+    if (!window.nexusAPI) {
+      console.warn("[useCheckpoint] nexusAPI not available");
+      setError("Checkpoint API not available");
+      return;
+    }
     setIsLoading(true);
     setError(null);
     try {
@@ -65,6 +85,11 @@ function useCheckpoint() {
     }
   }, []);
   const loadPendingReviews = reactExports.useCallback(async () => {
+    if (!window.nexusAPI) {
+      console.warn("[useCheckpoint] nexusAPI not available");
+      setError("Review API not available");
+      return;
+    }
     setError(null);
     try {
       const reviews = await window.nexusAPI.reviewList();
@@ -81,6 +106,11 @@ function useCheckpoint() {
     setActiveReview(review);
   }, []);
   const approveReview = reactExports.useCallback(async (reviewId, resolution) => {
+    if (!window.nexusAPI) {
+      console.warn("[useCheckpoint] nexusAPI not available");
+      setError("Review API not available");
+      return;
+    }
     setError(null);
     try {
       await window.nexusAPI.reviewApprove(reviewId, resolution);
@@ -93,6 +123,11 @@ function useCheckpoint() {
     }
   }, [activeReview]);
   const rejectReview = reactExports.useCallback(async (reviewId, feedback) => {
+    if (!window.nexusAPI) {
+      console.warn("[useCheckpoint] nexusAPI not available");
+      setError("Review API not available");
+      return;
+    }
     setError(null);
     try {
       await window.nexusAPI.reviewReject(reviewId, feedback);

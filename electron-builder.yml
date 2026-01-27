@@ -1,5 +1,6 @@
 appId: com.nexus.app
 productName: Nexus
+npmRebuild: true
 directories:
   buildResources: build
   output: dist

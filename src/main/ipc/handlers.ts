@@ -2432,6 +2432,17 @@ export function setupEventForwarding(mainWindow: BrowserWindow): void {
         message: passed ? 'Build succeeded' : 'Build failed'
       })
     }
+    // CRITICAL FIX: Forward QA status update for Agents page
+    forwardQAStatusUpdate({
+      steps: [
+        { type: 'build', status: getExecutionStatus('build') },
+        { type: 'lint', status: getExecutionStatus('lint') },
+        { type: 'test', status: getExecutionStatus('test') },
+        { type: 'review', status: getExecutionStatus('review') }
+      ],
+      iteration: currentQAIteration,
+      maxIterations: maxQAIterations
+    })
   })
 
   eventBus.on('qa:loop-completed', (event) => {
@@ -2460,6 +2471,17 @@ export function setupEventForwarding(mainWindow: BrowserWindow): void {
         message: passed ? `QA passed after ${event.payload.iterations} iterations` : `QA failed after ${event.payload.iterations} iterations`
       })
     }
+    // CRITICAL FIX: Forward QA status update for Agents page
+    forwardQAStatusUpdate({
+      steps: [
+        { type: 'build', status: getExecutionStatus('build') },
+        { type: 'lint', status: getExecutionStatus('lint') },
+        { type: 'test', status: getExecutionStatus('test') },
+        { type: 'review', status: getExecutionStatus('review') }
+      ],
+      iteration: currentQAIteration,
+      maxIterations: maxQAIterations
+    })
   })
 
   // FIX: Add lint event handlers for execution logs
@@ -2476,6 +2498,17 @@ export function setupEventForwarding(mainWindow: BrowserWindow): void {
         message: passed ? 'Lint passed' : 'Lint failed'
       })
     }
+    // CRITICAL FIX: Forward QA status update for Agents page
+    forwardQAStatusUpdate({
+      steps: [
+        { type: 'build', status: getExecutionStatus('build') },
+        { type: 'lint', status: getExecutionStatus('lint') },
+        { type: 'test', status: getExecutionStatus('test') },
+        { type: 'review', status: getExecutionStatus('review') }
+      ],
+      iteration: currentQAIteration,
+      maxIterations: maxQAIterations
+    })
   })
 
   // FIX: Add test event handlers for execution logs
@@ -2491,6 +2524,17 @@ export function setupEventForwarding(mainWindow: BrowserWindow): void {
         message: passed ? 'All tests passed' : 'Tests failed'
       })
     }
+    // CRITICAL FIX: Forward QA status update for Agents page
+    forwardQAStatusUpdate({
+      steps: [
+        { type: 'build', status: getExecutionStatus('build') },
+        { type: 'lint', status: getExecutionStatus('lint') },
+        { type: 'test', status: getExecutionStatus('test') },
+        { type: 'review', status: getExecutionStatus('review') }
+      ],
+      iteration: currentQAIteration,
+      maxIterations: maxQAIterations
+    })
   })
 
   // ========================================
@@ -2734,6 +2778,18 @@ export function forwardFeatureUpdate(
 ): void {
   if (eventForwardingWindow && !eventForwardingWindow.isDestroyed()) {
     eventForwardingWindow.webContents.send('feature:updated', feature)
+  }
+}
+
+/**
+ * CRITICAL FIX: Forward QA status update to the renderer for Agents page
+ * This enables the QA pipeline status panel to show real-time updates
+ */
+export function forwardQAStatusUpdate(
+  status: Record<string, unknown>
+): void {
+  if (eventForwardingWindow && !eventForwardingWindow.isDestroyed()) {
+    eventForwardingWindow.webContents.send('qa:status', status)
   }
 }
 

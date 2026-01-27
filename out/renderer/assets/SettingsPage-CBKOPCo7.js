@@ -1,11 +1,11 @@
-import { c as createLucideIcon, r as reactExports, j as jsxRuntimeExports, D as Button, ab as useSettings, ac as useSettingsLoading, ad as useSettingsDirty, ae as useSettingsStore, C as CircleAlert, a as cn, S as Sparkles, B as Bot, af as Terminal, J as Card, K as CardHeader, _ as CardTitle, ag as CardDescription, M as CardContent, ah as useHasApiKey, ai as EyeOff, E as Eye, g as ChevronDown } from "./index-B8DMw4WO.js";
-import { u as useCheckpoint, C as CircleCheckBig } from "./useCheckpoint-CiUD0HMW.js";
+import { c as createLucideIcon, r as reactExports, j as jsxRuntimeExports, D as Button, ab as useSettings, ac as useSettingsLoading, ad as useSettingsDirty, ae as useSettingsStore, C as CircleAlert, a as cn, S as Sparkles, B as Bot, af as Terminal, J as Card, K as CardHeader, _ as CardTitle, ag as CardDescription, M as CardContent, ah as useHasApiKey, ai as EyeOff, E as Eye, g as ChevronDown } from "./index-D6zknste.js";
+import { u as useCheckpoint, C as CircleCheckBig } from "./useCheckpoint-DVitJsuZ.js";
 import { t as toDate, c as constructFrom, n as normalizeDates, a as getTimezoneOffsetInMilliseconds, g as getDefaultOptions, e as enUS, d as minutesInDay, f as minutesInMonth } from "./en-US-DF_tYdWf.js";
-import { H as Header } from "./Header-D8V4ab2j.js";
-import { R as RotateCcw } from "./rotate-ccw-CWan0s-v.js";
-import { S as Save, C as Cpu } from "./save-CFEc4A7P.js";
-import { I as Info } from "./info-DDDU4WnD.js";
-import "./arrow-left-BumfNhxk.js";
+import { H as Header } from "./Header-CUxpwrTf.js";
+import { R as RotateCcw } from "./rotate-ccw-BS3Q6Hrb.js";
+import { S as Save, C as Cpu } from "./save-X5s8BNNF.js";
+import { I as Info } from "./info-BSo99lQQ.js";
+import "./arrow-left-OjicJZKL.js";
 /**
  * @license lucide-react v0.562.0 - ISC
  *
@@ -449,6 +449,11 @@ const DEFAULT_AGENT_MODEL_ASSIGNMENTS = {
 const isElectronEnvironment = () => {
   return typeof window !== "undefined" && typeof window.nexusAPI !== "undefined";
 };
+const clampValue = (value, min, max, defaultVal) => {
+  const parsed = parseInt(value, 10);
+  if (isNaN(parsed)) return defaultVal;
+  return Math.max(min, Math.min(max, parsed));
+};
 const tabs = [
   { id: "llm", label: "LLM Providers", icon: /* @__PURE__ */ jsxRuntimeExports.jsx(Sparkles, { className: "w-4 h-4" }), description: "Backend selection, models, and API keys" },
   { id: "agents", label: "Agents", icon: /* @__PURE__ */ jsxRuntimeExports.jsx(Bot, { className: "w-4 h-4" }), description: "Agent model assignments and limits" },
@@ -699,19 +704,23 @@ function LLMProvidersSettings({ settings, updateSetting }) {
   const claudeModels = getClaudeModelList();
   const geminiModels = getGeminiModelList();
   const localEmbeddingModels = getLocalEmbeddingModelList();
+  const updateLLMSetting = (key, value) => {
+    updateSetting("llm", key, value);
+  };
   const [claudeCliStatus, setClaudeCliStatus] = reactExports.useState({ detected: false, message: "Checking..." });
   const [geminiCliStatus, setGeminiCliStatus] = reactExports.useState({ detected: false, message: "Checking..." });
   reactExports.useEffect(() => {
-    if (!window.nexusAPI?.settings?.checkCliAvailability) {
+    const nexusAPI = isElectronEnvironment() ? window.nexusAPI : null;
+    if (!nexusAPI) {
       setClaudeCliStatus({ detected: false, message: "Backend not available" });
       setGeminiCliStatus({ detected: false, message: "Backend not available" });
       return;
     }
-    window.nexusAPI.settings.checkCliAvailability("claude").then(setClaudeCliStatus).catch((err) => {
+    nexusAPI.settings.checkCliAvailability("claude").then(setClaudeCliStatus).catch((err) => {
       console.error("Failed to check Claude CLI:", err);
       setClaudeCliStatus({ detected: false, message: "Check failed" });
     });
-    window.nexusAPI.settings.checkCliAvailability("gemini").then(setGeminiCliStatus).catch((err) => {
+    nexusAPI.settings.checkCliAvailability("gemini").then(setGeminiCliStatus).catch((err) => {
       console.error("Failed to check Gemini CLI:", err);
       setGeminiCliStatus({ detected: false, message: "Check failed" });
     });
@@ -733,7 +742,7 @@ function LLMProvidersSettings({ settings, updateSetting }) {
                 { value: "api", label: "API", icon: /* @__PURE__ */ jsxRuntimeExports.jsx(Cloud, { className: "w-4 h-4" }) }
               ],
               onChange: (value) => {
-                updateSetting("llm", "claude", { ...settings.llm.claude, backend: value });
+                updateLLMSetting("claude", { ...settings.llm.claude, backend: value });
               },
               status: claudeCliStatus
             }
@@ -745,7 +754,7 @@ function LLMProvidersSettings({ settings, updateSetting }) {
               value: settings.llm.claude.model || DEFAULT_CLAUDE_MODEL,
               models: claudeModels,
               onChange: (value) => {
-                updateSetting("llm", "claude", { ...settings.llm.claude, model: value });
+                updateLLMSetting("claude", { ...settings.llm.claude, model: value });
               }
             }
           ),
@@ -770,9 +779,10 @@ function LLMProvidersSettings({ settings, updateSetting }) {
                 description: "Request timeout in milliseconds",
                 value: settings.llm.claude.timeout || 3e5,
                 onChange: (e) => {
-                  updateSetting("llm", "claude", {
+                  const clamped = clampValue(e.target.value, 3e4, 6e5, 3e5);
+                  updateLLMSetting("claude", {
                     ...settings.llm.claude,
-                    timeout: parseInt(e.target.value) || 3e5
+                    timeout: clamped
                   });
                 }
               }
@@ -788,9 +798,10 @@ function LLMProvidersSettings({ settings, updateSetting }) {
                 description: "Maximum number of retry attempts",
                 value: settings.llm.claude.maxRetries || 2,
                 onChange: (e) => {
-                  updateSetting("llm", "claude", {
+                  const clamped = clampValue(e.target.value, 0, 5, 2);
+                  updateLLMSetting("claude", {
                     ...settings.llm.claude,
-                    maxRetries: parseInt(e.target.value) || 2
+                    maxRetries: clamped
                   });
                 }
               }
@@ -815,7 +826,7 @@ function LLMProvidersSettings({ settings, updateSetting }) {
                 { value: "api", label: "API", icon: /* @__PURE__ */ jsxRuntimeExports.jsx(Cloud, { className: "w-4 h-4" }) }
               ],
               onChange: (value) => {
-                updateSetting("llm", "gemini", { ...settings.llm.gemini, backend: value });
+                updateLLMSetting("gemini", { ...settings.llm.gemini, backend: value });
               },
               status: geminiCliStatus
             }
@@ -827,7 +838,7 @@ function LLMProvidersSettings({ settings, updateSetting }) {
               value: settings.llm.gemini.model || DEFAULT_GEMINI_MODEL,
               models: geminiModels,
               onChange: (value) => {
-                updateSetting("llm", "gemini", { ...settings.llm.gemini, model: value });
+                updateLLMSetting("gemini", { ...settings.llm.gemini, model: value });
               }
             }
           ),
@@ -858,7 +869,7 @@ function LLMProvidersSettings({ settings, updateSetting }) {
                 { value: "api", label: "OpenAI API", icon: /* @__PURE__ */ jsxRuntimeExports.jsx(Cloud, { className: "w-4 h-4" }) }
               ],
               onChange: (value) => {
-                updateSetting("llm", "embeddings", { ...settings.llm.embeddings, backend: value });
+                updateLLMSetting("embeddings", { ...settings.llm.embeddings, backend: value });
               },
               status: settings.llm.embeddings.backend === "local" ? { detected: true, message: "No API key needed" } : void 0
             }
@@ -870,7 +881,7 @@ function LLMProvidersSettings({ settings, updateSetting }) {
               value: settings.llm.embeddings.localModel || DEFAULT_LOCAL_EMBEDDING_MODEL,
               models: localEmbeddingModels,
               onChange: (value) => {
-                updateSetting("llm", "embeddings", { ...settings.llm.embeddings, localModel: value });
+                updateLLMSetting("embeddings", { ...settings.llm.embeddings, localModel: value });
               }
             }
           ),
@@ -898,7 +909,7 @@ function LLMProvidersSettings({ settings, updateSetting }) {
             description: "Primary LLM provider to use",
             value: settings.llm.defaultProvider,
             onChange: (e) => {
-              updateSetting("llm", "defaultProvider", e.target.value);
+              updateLLMSetting("defaultProvider", e.target.value);
             },
             options: [
               { value: "claude", label: "Claude (Anthropic)" },
@@ -914,7 +925,7 @@ function LLMProvidersSettings({ settings, updateSetting }) {
             description: "Automatically try other providers if the primary fails",
             checked: settings.llm.fallbackEnabled,
             onChange: (e) => {
-              updateSetting("llm", "fallbackEnabled", e.target.checked);
+              updateLLMSetting("fallbackEnabled", e.target.checked);
             }
           }
         )
@@ -993,7 +1004,10 @@ function AgentModelRow({ agentType, config, onChange, claudeModels, geminiModels
   ] });
 }
 function AgentSettings({ settings, updateSetting }) {
-  const agentModels = settings.agents.agentModels || DEFAULT_AGENT_MODEL_ASSIGNMENTS;
+  const agentModels = settings.agents.agentModels;
+  const updateAgentSetting = (key, value) => {
+    updateSetting("agents", key, value);
+  };
   const claudeModels = getClaudeModelList();
   const geminiModels = getGeminiModelList();
   const handleAgentModelChange = (agentType, config) => {
@@ -1001,10 +1015,10 @@ function AgentSettings({ settings, updateSetting }) {
       ...agentModels,
       [agentType]: config
     };
-    updateSetting("agents", "agentModels", newAgentModels);
+    updateAgentSetting("agentModels", newAgentModels);
   };
   const handleResetToDefaults = () => {
-    updateSetting("agents", "agentModels", DEFAULT_AGENT_MODEL_ASSIGNMENTS);
+    updateAgentSetting("agentModels", DEFAULT_AGENT_MODEL_ASSIGNMENTS);
   };
   const agentTypes = ["planner", "coder", "tester", "reviewer", "merger", "architect", "debugger", "documenter"];
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-6", "data-testid": "agents-tab", children: [
@@ -1067,7 +1081,7 @@ function AgentSettings({ settings, updateSetting }) {
             description: "Maximum number of agents running simultaneously (1-10)",
             value: settings.agents.maxParallelAgents,
             onChange: (e) => {
-              updateSetting("agents", "maxParallelAgents", parseInt(e.target.value) || 1);
+              updateSetting("agents", "maxParallelAgents", clampValue(e.target.value, 1, 10, 3));
             }
           }
         ),
@@ -1082,7 +1096,7 @@ function AgentSettings({ settings, updateSetting }) {
             description: "Escalate to human after this many QA iterations (10-100)",
             value: settings.agents.qaIterationLimit || 50,
             onChange: (e) => {
-              updateSetting("agents", "qaIterationLimit", parseInt(e.target.value) || 50);
+              updateAgentSetting("qaIterationLimit", clampValue(e.target.value, 10, 100, 50));
             }
           }
         ),
@@ -1097,7 +1111,7 @@ function AgentSettings({ settings, updateSetting }) {
             description: "Split task if it exceeds this duration (1-120)",
             value: settings.agents.taskTimeoutMinutes,
             onChange: (e) => {
-              updateSetting("agents", "taskTimeoutMinutes", parseInt(e.target.value) || 30);
+              updateSetting("agents", "taskTimeoutMinutes", clampValue(e.target.value, 1, 120, 30));
             }
           }
         )
@@ -1132,7 +1146,7 @@ function AgentSettings({ settings, updateSetting }) {
             description: "Number of times to retry a failed task (0-10)",
             value: settings.agents.maxRetries,
             onChange: (e) => {
-              updateSetting("agents", "maxRetries", parseInt(e.target.value) || 0);
+              updateSetting("agents", "maxRetries", clampValue(e.target.value, 0, 10, 3));
             },
             disabled: !settings.agents.autoRetryEnabled
           }
@@ -1245,7 +1259,9 @@ function CheckpointSettings({ settings, updateSetting }) {
             label: "Select Project",
             description: "Choose a project to view its checkpoints",
             value: selectedProjectId,
-            onChange: (e) => setSelectedProjectId(e.target.value),
+            onChange: (e) => {
+              setSelectedProjectId(e.target.value);
+            },
             options: projects.map((p) => ({ value: p.id, label: p.name || p.id }))
           }
         ),

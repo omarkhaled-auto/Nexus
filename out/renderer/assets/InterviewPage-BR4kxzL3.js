@@ -1,17 +1,17 @@
-import { c as createLucideIcon, r as reactExports, j as jsxRuntimeExports, a as cn, u as useMessages, b as useIsInterviewing, d as useInterviewStore, e as useSessionId, f as useProjectStore, L as LoaderCircle, C as CircleAlert, S as Sparkles, B as Bot, g as ChevronDown, h as useRequirements, i as useInterviewStage, k as useNavigate, l as useCurrentProject, t as toast } from "./index-B8DMw4WO.js";
-import { U as User, T as TestTube, L as Lock, P as Pencil } from "./useTaskOrchestration-BvRUoVg0.js";
-import { Z as Zap } from "./zap-C3nsoLzM.js";
-import { C as Cpu, S as Save } from "./save-CFEc4A7P.js";
-import { L as Layers } from "./layers-DU86WCvq.js";
-import { C as CircleCheck } from "./circle-check-DWu7kQd6.js";
-import { C as Circle } from "./circle-TdijTwss.js";
-import { T as Trash2 } from "./trash-2-5qD4E5Wc.js";
-import { F as FileText } from "./file-text-Coe14bpf.js";
-import { D as Download } from "./download-BE9_Kuzw.js";
-import "./usePlanningProgress-CrOmKCb6.js";
-import { A as AnimatedPage } from "./AnimatedPage-jLeN60U5.js";
-import { A as ArrowLeft } from "./arrow-left-BumfNhxk.js";
-import { R as RotateCcw } from "./rotate-ccw-CWan0s-v.js";
+import { c as createLucideIcon, r as reactExports, j as jsxRuntimeExports, a as cn, u as useMessages, b as useIsInterviewing, d as useInterviewStore, e as useSessionId, f as useProjectStore, L as LoaderCircle, C as CircleAlert, S as Sparkles, B as Bot, g as ChevronDown, h as useRequirements, i as useInterviewStage, k as useNavigate, l as useCurrentProject, t as toast } from "./index-D6zknste.js";
+import { U as User, T as TestTube, L as Lock, P as Pencil } from "./useTaskOrchestration-D9uJMdJa.js";
+import { Z as Zap } from "./zap-B2YFclPS.js";
+import { C as Cpu, S as Save } from "./save-X5s8BNNF.js";
+import { L as Layers } from "./layers-CdrB5-Ro.js";
+import { C as CircleCheck } from "./circle-check-DEe4HTnv.js";
+import { C as Circle } from "./circle-Dx1iLOgB.js";
+import { T as Trash2 } from "./trash-2-DsUKbn2O.js";
+import { F as FileText } from "./file-text-1NWYs8hM.js";
+import { D as Download } from "./download-Dtg0Wiov.js";
+import "./usePlanningProgress-Xs7R4GDp.js";
+import { A as AnimatedPage } from "./AnimatedPage-C7aKxnzt.js";
+import { A as ArrowLeft } from "./arrow-left-OjicJZKL.js";
+import { R as RotateCcw } from "./rotate-ccw-BS3Q6Hrb.js";
 /**
  * @license lucide-react v0.562.0 - ISC
  *
@@ -291,7 +291,7 @@ function mapCategory(backendCategory) {
     "assumption": "functional"
     // Map assumptions to functional
   };
-  return mapping[backendCategory] || "functional";
+  return mapping[backendCategory] ?? "functional";
 }
 function mapPriority(backendPriority) {
   const mapping = {
@@ -300,7 +300,10 @@ function mapPriority(backendPriority) {
     "could": "could",
     "wont": "wont"
   };
-  return mapping[backendPriority] || "should";
+  return mapping[backendPriority] ?? "should";
+}
+function getNexusAPI() {
+  return window.nexusAPI;
 }
 function ChatPanel({ className }) {
   const messages = useMessages();
@@ -321,7 +324,8 @@ function ChatPanel({ className }) {
     if (sessionId || isInitializing.current) {
       return;
     }
-    if (!window.nexusAPI) {
+    const nexusAPI = getNexusAPI();
+    if (!nexusAPI) {
       setError("Backend not available. Please run in Electron to use the interview feature.");
       return;
     }
@@ -329,39 +333,37 @@ function ChatPanel({ className }) {
     setError(null);
     try {
       const projectId = currentProject?.id || `temp-${nanoid(8)}`;
-      let session = await window.nexusAPI.interview.resumeByProject(projectId);
+      let session = await nexusAPI.interview.resumeByProject(projectId);
       if (!session) {
-        session = await window.nexusAPI.interview.start(projectId, currentProject?.name);
+        session = await nexusAPI.interview.start(projectId, currentProject?.name);
       }
-      if (session) {
-        setSessionId(session.id);
-        if (session.messages.length === 0) {
-          const greeting = await window.nexusAPI.interview.getGreeting();
-          addMessage({
-            id: nanoid(),
-            role: "assistant",
-            content: greeting,
-            timestamp: Date.now()
-          });
-        } else {
-          const restoredMessages = session.messages.map((msg) => ({
-            id: msg.id,
-            role: msg.role,
-            content: msg.content,
-            timestamp: typeof msg.timestamp === "string" ? new Date(msg.timestamp).getTime() : msg.timestamp.getTime()
-          }));
-          const restoredRequirements = (session.extractedRequirements || []).map((req) => ({
-            id: req.id,
-            category: mapCategory(req.category),
-            text: req.text,
-            priority: mapPriority(req.priority),
-            source: "interview",
-            createdAt: Date.now(),
-            updatedAt: Date.now()
-          }));
-          restoreSession(restoredMessages, restoredRequirements);
-          console.log(`[ChatPanel] Restored session with ${restoredMessages.length} messages and ${restoredRequirements.length} requirements`);
-        }
+      setSessionId(session.id);
+      if (session.messages.length === 0) {
+        const greeting = await nexusAPI.interview.getGreeting();
+        addMessage({
+          id: nanoid(),
+          role: "assistant",
+          content: greeting,
+          timestamp: Date.now()
+        });
+      } else {
+        const restoredMessages = session.messages.map((msg) => ({
+          id: msg.id,
+          role: msg.role,
+          content: msg.content,
+          timestamp: typeof msg.timestamp === "string" ? new Date(msg.timestamp).getTime() : msg.timestamp.getTime()
+        }));
+        const restoredRequirements = session.extractedRequirements.map((req) => ({
+          id: req.id,
+          category: mapCategory(req.category),
+          text: req.text,
+          priority: mapPriority(req.priority),
+          source: "interview",
+          createdAt: Date.now(),
+          updatedAt: Date.now()
+        }));
+        restoreSession(restoredMessages, restoredRequirements);
+        console.log(`[ChatPanel] Restored session with ${restoredMessages.length} messages and ${restoredRequirements.length} requirements`);
       }
     } catch (err) {
       console.error("Failed to initialize interview session:", err);
@@ -390,8 +392,9 @@ function ChatPanel({ className }) {
     e.target.style.height = "auto";
     e.target.style.height = `${Math.min(e.target.scrollHeight, 150)}px`;
   };
-  const sendMessageToBackend = reactExports.useCallback(async (message, userMessageId) => {
-    if (!sessionId || !window.nexusAPI) {
+  const sendMessageToBackend = reactExports.useCallback(async (message, _userMessageId) => {
+    const nexusAPI = getNexusAPI();
+    if (!sessionId || !nexusAPI) {
       setError("Backend not available. Please run in Electron to use the interview feature.");
       return;
     }
@@ -404,12 +407,12 @@ function ChatPanel({ className }) {
         timestamp: Date.now(),
         isStreaming: true
       });
-      const result = await window.nexusAPI.interview.sendMessage(sessionId, message);
+      const result = await nexusAPI.interview.sendMessage(sessionId, message);
       useInterviewStore.getState().updateMessage(assistantMessageId, {
         content: result.response,
         isStreaming: false
       });
-      if (result.extractedRequirements && result.extractedRequirements.length > 0) {
+      if (result.extractedRequirements.length > 0) {
         const now = Date.now();
         for (const req of result.extractedRequirements) {
           addRequirement({
@@ -449,7 +452,7 @@ function ChatPanel({ className }) {
       content: message,
       timestamp: Date.now()
     });
-    sendMessageToBackend(message, userMessageId).finally(() => {
+    void sendMessageToBackend(message, userMessageId).finally(() => {
       setIsLoading(false);
     });
   };
@@ -1240,7 +1243,9 @@ function InterviewPage() {
         /* @__PURE__ */ jsxRuntimeExports.jsx(
           "button",
           {
-            onClick: () => navigate(-1),
+            onClick: () => {
+              void navigate(-1);
+            },
             className: "p-2 -ml-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-bg-hover transition-colors",
             "data-testid": "back-button",
             children: /* @__PURE__ */ jsxRuntimeExports.jsx(ArrowLeft, { className: "w-5 h-5" })
